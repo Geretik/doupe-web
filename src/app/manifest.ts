@@ -4,7 +4,7 @@ import { siteName } from "@/lib/site";
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: siteName(),
-    short_name: "BotC",
+    short_name: "DoUPě",
     description: "Blood on the Clocktower – registrace na herní večery",
     start_url: "/",
     display: "standalone",

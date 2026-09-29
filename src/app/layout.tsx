@@ -32,7 +32,7 @@ export async function generateMetadata(): Promise<Metadata> {
       locale: locale === "cs" ? "cs_CZ" : "en_GB",
     },
     twitter: { card: "summary_large_image" },
-    appleWebApp: { capable: true, title: "BotC", statusBarStyle: "black-translucent" },
+    appleWebApp: { capable: true, title: "DoUPě", statusBarStyle: "black-translucent" },
   };
 }
 

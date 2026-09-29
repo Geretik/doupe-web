@@ -13,11 +13,11 @@ export default function AppleIcon() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "linear-gradient(135deg, #16120f 0%, #8b1e2d 100%)",
-          fontSize: 120,
+          background: "#16120f",
+          fontSize: 130,
         }}
       >
-        🕰
+        🎲
       </div>
     ),
     size,

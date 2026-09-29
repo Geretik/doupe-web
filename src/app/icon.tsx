@@ -3,7 +3,7 @@ import { ImageResponse } from "next/og";
 export const size = { width: 512, height: 512 };
 export const contentType = "image/png";
 
-/** App icon (PWA / favicon): the clocktower on the site's dark red gradient. */
+/** App icon (PWA / favicon): a game die on the site's dark background. */
 export default function Icon() {
   return new ImageResponse(
     (
@@ -14,12 +14,12 @@ export default function Icon() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "linear-gradient(135deg, #16120f 0%, #8b1e2d 100%)",
+          background: "#16120f",
           borderRadius: 96,
-          fontSize: 340,
+          fontSize: 380,
         }}
       >
-        🕰
+        🎲
       </div>
     ),
     size,
