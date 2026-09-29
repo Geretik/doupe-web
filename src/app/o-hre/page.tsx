@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { H2, Ul } from "@/components/prose";
 import { getDict } from "@/i18n/server";
-import { AboutContent, H2, Ul } from "./content";
+import { AboutContent } from "./content";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getDict();

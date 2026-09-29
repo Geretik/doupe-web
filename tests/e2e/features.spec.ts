@@ -600,3 +600,25 @@ test("session settings: 'arrive later' checkbox instead of times, required phone
   await expect(page.locator("main table")).toContainText("později");
   await expect(page.getByTestId("presence")).toHaveCount(0);
 });
+
+test("club page: schedule, place and Discord sign-up, linked from the header, in both languages", async ({ page }) => {
+  await page.goto("/");
+  await page.click("header nav a:has-text('Klub')");
+  await expect(page).toHaveURL(/\/klub$/);
+  await expect(page.locator("h1")).toHaveText("Klub deskových her DoUPě Olomouc");
+  await expect(page.locator("main")).toContainText("Každé úterý a čtvrtek v 16:30");
+  await expect(page.locator("main")).toContainText("učebna 1.037");
+  await expect(page.locator("main")).toContainText("Discord je náš hlavní komunikátor.");
+  await expect(page.getByRole("link", { name: "Přidat se na Discord" })).toHaveAttribute(
+    "href",
+    "https://discord.gg/vCg3WdHpZR",
+  );
+
+  await page.click("header button:has-text('English')");
+  await expect(page.locator("main")).toContainText("A board game club in Olomouc");
+  await expect(page.locator("main")).toContainText("Discord is our main communication channel.");
+  await expect(page.getByRole("link", { name: "Join our Discord" })).toHaveAttribute(
+    "href",
+    "https://discord.gg/vCg3WdHpZR",
+  );
+});

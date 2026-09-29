@@ -54,6 +54,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <Link href="/o-hre" className="rounded-md px-2 py-1.5 hover:underline">{t.nav.about}</Link>
               <Link href="/archiv" className="rounded-md px-2 py-1.5 hover:underline">{t.nav.archive}</Link>
               <Link href="/moje-hry" className="rounded-md px-2 py-1.5 hover:underline sm:hidden">{t.nav.myGames}</Link>
+              <Link href="/klub" className="rounded-md px-2 py-1.5 hover:underline">{t.nav.club}</Link>
             </nav>
           </div>
         </header>

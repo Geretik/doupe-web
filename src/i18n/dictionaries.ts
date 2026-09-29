@@ -5,12 +5,15 @@ export const defaultLocale: Locale = "cs";
 /** Public site name; NEXT_PUBLIC_* is inlined at build time, so it works in client components too. */
 export const SITE_NAME = process.env.NEXT_PUBLIC_SITE_NAME ?? "DoUPě Olomouc";
 
+/** Official club name, the same in every language. */
+const CLUB_NAME = "Klub deskových her DoUPě Olomouc";
+
 export const cs = {
   meta: {
     title: SITE_NAME,
     description: "Registrace na herní večery Blood on the Clocktower v Olomouci a Praze",
   },
-  nav: { sessions: "Termíny", about: "O hře", archive: "Archiv", admin: "Admin", myGames: "Moje hry", footer: "Herní večery v Olomouci a Praze", calendarFeed: "Kalendář (iCal)" },
+  nav: { sessions: "Termíny", about: "O hře", archive: "Archiv", club: "Klub", admin: "Admin", myGames: "Moje hry", footer: "Herní večery v Olomouci a Praze", calendarFeed: "Kalendář (iCal)" },
   lang: { switchTo: "English", label: "Jazyk" },
   city: { label: "Město", all: "Všechna města", olomouc: "Olomouc", praha: "Praha" },
   home: {
@@ -203,6 +206,10 @@ export const cs = {
     links: "Další odkazy",
     linkCentral: "Přehled hry na BotC Central",
     linkZatrolene: "Krvavá hodina odbila na Zatrolených hrách",
+  },
+  club: {
+    title: CLUB_NAME,
+    subtitle: "Kdy a kde hrajeme, jak se přihlásit na hry a jak to u nás chodí.",
   },
   admin: {
     nav: { home: "Admin", newSession: "+ Nový termín", stats: "Statistiky", accounts: "Účty", logout: "Odhlásit" },
@@ -519,7 +526,7 @@ export const en: Dict = {
     title: SITE_NAME,
     description: "Sign up for Blood on the Clocktower game nights in Olomouc and Prague",
   },
-  nav: { sessions: "Sessions", about: "About the game", archive: "Archive", admin: "Admin", myGames: "My games", footer: "Game nights in Olomouc and Prague", calendarFeed: "Calendar (iCal)" },
+  nav: { sessions: "Sessions", about: "About the game", archive: "Archive", club: "The club", admin: "Admin", myGames: "My games", footer: "Game nights in Olomouc and Prague", calendarFeed: "Calendar (iCal)" },
   lang: { switchTo: "Česky", label: "Language" },
   city: { label: "City", all: "All cities", olomouc: "Olomouc", praha: "Prague" },
   home: {
@@ -707,6 +714,10 @@ export const en: Dict = {
     links: "More links",
     linkCentral: "Game overview on BotC Central (Czech)",
     linkZatrolene: "Blood on the Clocktower on Zatrolené hry (Czech)",
+  },
+  club: {
+    title: CLUB_NAME,
+    subtitle: "A board game club in Olomouc – when and where we play, how to sign up for games and how things work.",
   },
   admin: {
     nav: { home: "Admin", newSession: "+ New session", stats: "Statistics", accounts: "Accounts", logout: "Log out" },

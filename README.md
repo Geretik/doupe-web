@@ -20,6 +20,7 @@ registraci upravit nebo zrušit.
 - `/termin/[id]/kalendar.ics` – termín jako soubor do kalendáře; odkaz i na Google Kalendář je na stránce termínu a v e-mailech
 - `/kalendar.ics` – veřejný iCal feed všech termínů (odběr kalendáře)
 - `/archiv` – proběhlé večery s odehranými scripty a počtem hráčů
+- `/klub` – o klubu: kdy a kde se hraje, pravidla, přihlašování na klubová hraní (zatím přes Discord)
 - `/r/[token]` – úprava / zrušení registrace přes odkaz z e-mailu
 - `/admin` – správa termínů a přehled přihlášených (účty organizátorů s hashovanými hesly, role správce / organizátor)
 - `/admin/ucty` – účty a pozvánky (jen správce): pozvánka vygeneruje jednorázový odkaz, na kterém si nový organizátor založí účet
