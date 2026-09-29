@@ -1,6 +1,6 @@
 /** Public site name, shown in the header, e-mails and calendar feeds. */
 export function siteName() {
-  return process.env.NEXT_PUBLIC_SITE_NAME ?? "Blood on the Clocktower CZ";
+  return process.env.NEXT_PUBLIC_SITE_NAME ?? "DoUPě Olomouc";
 }
 
 export function siteUrl() {

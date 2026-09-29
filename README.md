@@ -72,7 +72,7 @@ Admin: `/admin/login`. Při prvním spuštění (žádný účet) stránka nabí
 | `EMAIL_REDIRECT_TO` | Volitelné. Ve vývoji bez ověřené domény: všechny e-maily se doručí na tuto adresu (Resend v testovacím režimu posílá jen na e-mail vlastníka účtu), původní příjemce je uveden v předmětu a těle. V produkci nenastavovat. |
 | `NEXT_PUBLIC_SITE_URL` | Veřejná URL webu pro odkazy v e-mailech, bez lomítka na konci |
 | `ADMIN_PASSWORD` | Bootstrap heslo, slouží jen k založení prvního účtu správce |
-| `NEXT_PUBLIC_SITE_NAME` | Název webu v hlavičce, e-mailech a kalendářích (výchozí „Blood on the Clocktower CZ“) |
+| `NEXT_PUBLIC_SITE_NAME` | Název webu v hlavičce, e-mailech a kalendářích (výchozí „DoUPě Olomouc“) |
 | `ADMIN_SECRET` | Náhodný řetězec pro podpis admin cookie (`openssl rand -hex 32`) |
 | `CRON_SECRET` | Tajemství pro cron připomínek; Vercel ho posílá automaticky v hlavičce `Authorization: Bearer …` (`openssl rand -hex 32`) |
 | `DISCORD_WEBHOOK_URL` | Volitelné. Webhook Discord kanálu pro oznámení nových termínů (bez něj se tlačítka jen hlásí, že Discord není nastavený) |

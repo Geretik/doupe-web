@@ -374,7 +374,7 @@ test("cities: public filter, badges, calendar feed per city", async ({ page }) =
   const ics = await feed.text();
   expect(ics).toContain("Pražský večer");
   expect(ics).not.toContain("Olomoucký večer");
-  expect(ics).toContain("X-WR-CALNAME:Blood on the Clocktower CZ – Praha");
+  expect(ics).toContain("X-WR-CALNAME:DoUPě Olomouc – Praha");
 
   // admin: the city is editable and shown in the list
   await adminLogin(page);

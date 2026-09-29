@@ -3,7 +3,7 @@ export type Locale = (typeof locales)[number];
 export const defaultLocale: Locale = "cs";
 
 /** Public site name; NEXT_PUBLIC_* is inlined at build time, so it works in client components too. */
-export const SITE_NAME = process.env.NEXT_PUBLIC_SITE_NAME ?? "Blood on the Clocktower CZ";
+export const SITE_NAME = process.env.NEXT_PUBLIC_SITE_NAME ?? "DoUPě Olomouc";
 
 export const cs = {
   meta: {
@@ -166,7 +166,7 @@ export const cs = {
     tableStoryteller: (name: string) => `Vypravěč tvého stolu: ${name}.`,
     tableMates: "U stolu s tebou budou:",
     broadcastFooter: (title: string, when: string) =>
-      `Tuto zprávu posílají organizátoři ${SITE_NAME} všem přihlášeným na termín "${title}" (${when}). Svou registraci můžeš upravit nebo zrušit zde:`,
+      `Tuto zprávu posílají organizátoři všem přihlášeným na termín "${title}" (${when}) přes web ${SITE_NAME}. Svou registraci můžeš upravit nebo zrušit zde:`,
   },
   archive: {
     title: "Archiv",
@@ -233,7 +233,7 @@ export const cs = {
     /** Plain strings only – passed to client components. */
     invite: {
       title: "Vytvoření účtu organizátora",
-      intro: "Dostal/a jsi pozvánku do adminu {site}. Vyplň své údaje, účet vznikne hned a budeš přihlášený/á.",
+      intro: "Dostal/a jsi pozvánku do adminu webu {site}. Vyplň své údaje, účet vznikne hned a budeš přihlášený/á.",
       role: "Role",
       nickname: "Přezdívka",
       email: "E-mail",
