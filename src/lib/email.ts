@@ -127,6 +127,11 @@ function calendarBlock(t: EmailDict, session: Session) {
   };
 }
 
+/** Small print at the end of the sign-up e-mails. */
+function retentionBlock(t: EmailDict) {
+  return { text: t.retentionNote, html: `<p style="color:#666;font-size:90%">${escapeHtml(t.retentionNote)}</p>` };
+}
+
 function editBlock(t: EmailDict, reg: Registration) {
   const link = editUrl(reg.editToken);
   return {
@@ -141,6 +146,7 @@ export async function sendConfirmationEmail(reg: Registration, session: Session)
   const d = detailsTable(t, reg, session, locale);
   const cal = calendarBlock(t, session);
   const edit = editBlock(t, reg);
+  const retention = retentionBlock(t);
 
   const text = `${t.hi(greetingName(reg))}
 
@@ -152,14 +158,17 @@ ${cal.text}
 
 ${edit.text}
 
-${t.seeYou}`;
+${t.seeYou}
+
+${retention.text}`;
 
   const html = `<p>${escapeHtml(t.hi(greetingName(reg)))}</p>
 <p>${escapeHtml(t.confirmed)}</p>
 ${d.html}
 ${cal.html}
 ${edit.html}
-<p>${t.seeYou}</p>`;
+<p>${t.seeYou}</p>
+${retention.html}`;
 
   await send(reg.email, t.confirmSubject(session.title), html, text);
 }
@@ -169,6 +178,7 @@ export async function sendWaitlistEmail(reg: Registration, session: Session, pos
   const t = dictionaries[locale].email;
   const d = detailsTable(t, reg, session, locale);
   const edit = editBlock(t, reg);
+  const retention = retentionBlock(t);
 
   const text = `${t.hi(greetingName(reg))}
 
@@ -176,12 +186,15 @@ ${t.waitlisted(position)}
 
 ${d.text}
 
-${edit.text}`;
+${edit.text}
+
+${retention.text}`;
 
   const html = `<p>${escapeHtml(t.hi(greetingName(reg)))}</p>
 <p>${escapeHtml(t.waitlisted(position))}</p>
 ${d.html}
-${edit.html}`;
+${edit.html}
+${retention.html}`;
 
   await send(reg.email, t.waitlistSubject(session.title), html, text);
 }

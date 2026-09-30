@@ -611,6 +611,7 @@ test("session settings: 'arrive later' checkbox instead of times, required phone
   await expect(page.locator("#arrivalTime")).toHaveCount(0);
   await expect(page.locator("#arrivesLate")).toBeVisible();
   await expect(page.locator("main")).toContainText("pouze kvůli pořádání tohoto konkrétního hraní");
+  await expect(page.locator("main")).toContainText("se 14 dní po konání hraní automaticky smažou");
 
   // phone is required for this session: the browser insists, and so does the server
   await expect(page.locator("#phone")).toHaveAttribute("required", "");

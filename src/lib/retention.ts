@@ -3,7 +3,7 @@ import { and, eq, inArray, lt, notLike } from "drizzle-orm";
 import { db } from "@/db";
 import { registrations, sessions } from "@/db/schema";
 
-/** Players' personal data is deleted this long after the session ended. */
+/** Players' personal data is deleted this long after the session ended; privacyNote and email.retentionNote in dictionaries.ts say it too. */
 export const RETENTION_DAYS = 14;
 
 const ANON_SUFFIX = "@anonym.invalid";
