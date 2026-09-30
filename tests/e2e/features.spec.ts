@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { expect, test } from "@playwright/test";
 import { E2E } from "../../playwright.config";
 import { createMyGamesToken } from "../../src/lib/my-games-token";
@@ -908,4 +909,106 @@ test("admin login: too many wrong passwords from one network are refused for a w
   await attacker.waitForURL(/\/admin$/);
   expect(await sql("select id from login_failures")).toHaveLength(0);
   await ctx.close();
+});
+
+test("admin: change own password, other devices are logged out", async ({ browser, page }) => {
+  await adminLogin(page);
+  // a second device signed in before the change
+  const other = await browser.newContext();
+  const otherPage = await other.newPage();
+  await adminLogin(otherPage);
+  // login cookies carry whole seconds; one issued in the same second as the change would survive it
+  await page.waitForTimeout(1100);
+
+  await page.click("main nav >> text=Změnit heslo");
+  await expect(page).toHaveURL(/\/admin\/heslo$/);
+  const change = async (current: string, next: string, again = next) => {
+    await page.fill("#currentPassword", current);
+    await page.fill("#password", next);
+    await page.fill("#passwordAgain", again);
+    // not "main button[type=submit]": the admin nav with "Log out" is inside <main> too
+    await page.getByRole("button", { name: "Změnit heslo" }).click();
+  };
+  await change("wrong-password", "brand-new-password");
+  await expect(page.locator("main")).toContainText("Současné heslo nesouhlasí");
+  await change(E2E.adminUserPassword, "brand-new-password", "something-else");
+  await expect(page.locator("main")).toContainText("Hesla se neshodují");
+  await change(E2E.adminUserPassword, "brand-new-password");
+  await expect(page.locator("main")).toContainText("Heslo je změněné");
+
+  // this device stays signed in, the other one is logged out
+  await page.goto("/admin");
+  await expect(page).toHaveURL(/\/admin$/);
+  await otherPage.goto("/admin");
+  await expect(otherPage).toHaveURL(/\/admin\/login$/);
+  await other.close();
+
+  // only the new password works now
+  await page.click("main nav button:has-text('Odhlásit')");
+  await page.goto("/admin/login");
+  await page.fill("#email", E2E.adminEmail);
+  await page.fill("#password", E2E.adminUserPassword);
+  await page.click("main button[type=submit]");
+  await expect(page.locator("main")).toContainText("Nesprávný e-mail nebo heslo");
+  await adminLogin(page, { email: E2E.adminEmail, password: "brand-new-password" });
+});
+
+test("admin: one-time new-password link for a forgotten password", async ({ browser, page }) => {
+  await createAdminUser({ email: "org@example.com", password: "forgotten-password", nickname: "Zapomnětlivec", role: "organizer" });
+  await adminLogin(page);
+  await page.goto("/admin/ucty");
+  await page.locator("tr", { hasText: "org@example.com" }).locator("button:has-text('Odkaz pro nové heslo')").click();
+  const url = await page.getByTestId("reset-url").textContent();
+  expect(url).toMatch(/\/admin\/nove-heslo\/[\w-]+$/);
+  const path = new URL(url!).pathname;
+
+  const ctx = await browser.newContext();
+  const org = await ctx.newPage();
+  const res = await org.goto(path);
+  expect(res!.headers()["referrer-policy"]).toBe("no-referrer");
+  await expect(org.locator("main")).toContainText("Zapomnětlivec (org@example.com)");
+  await org.fill("#password", "remembered-password");
+  await org.fill("#passwordAgain", "remembered-password");
+  await org.click("main button[type=submit]");
+  await org.waitForURL(/\/admin$/);
+  await expect(org.locator("main nav")).toContainText("Zapomnětlivec");
+
+  // the link works once; the old password is gone, the new one works
+  await org.goto(path);
+  await expect(org.locator("main")).toContainText("Odkaz neplatí");
+  await ctx.close();
+  const again = await browser.newContext();
+  const login = await again.newPage();
+  await login.goto("/admin/login");
+  await login.fill("#email", "org@example.com");
+  await login.fill("#password", "forgotten-password");
+  await login.click("main button[type=submit]");
+  await expect(login.locator("main")).toContainText("Nesprávný e-mail nebo heslo");
+  await adminLogin(login, { email: "org@example.com", password: "remembered-password" });
+  await again.close();
+});
+
+test("scripts/reset-link.mjs makes a working link when no administrator can log in", async ({ page, baseURL }) => {
+  await createAdminUser();
+  const out = execFileSync("node", ["scripts/reset-link.mjs", E2E.adminEmail], {
+    env: { ...process.env, DATABASE_URL: E2E.databaseUrl, SITE_URL: baseURL! },
+    encoding: "utf8",
+  });
+  const url = out.match(/http\S+\/admin\/nove-heslo\/\S+/)?.[0];
+  expect(url).toBeTruthy();
+  await page.goto(url!);
+  await page.fill("#password", "recovered-password");
+  await page.fill("#passwordAgain", "recovered-password");
+  await page.click("main button[type=submit]");
+  await page.waitForURL(/\/admin$/);
+});
+
+test("security headers: no framing anywhere, no referrer from secret-link pages", async ({ request }) => {
+  const home = await request.get("/");
+  expect(home.headers()["content-security-policy"]).toBe("frame-ancestors 'none'");
+  expect(home.headers()["x-frame-options"]).toBe("DENY");
+  expect(home.headers()["referrer-policy"]).toBe("strict-origin-when-cross-origin");
+  const edit = await request.get("/r/some-token");
+  expect(edit.headers()["referrer-policy"]).toBe("no-referrer");
+  expect(edit.headers()["x-frame-options"]).toBe("DENY");
 });

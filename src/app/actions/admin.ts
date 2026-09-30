@@ -5,7 +5,7 @@ import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/db";
-import { adminInvites, adminUsers, games, registrations, sessions, tables, type AdminRole, type AdminUser, type RegistrationState } from "@/db/schema";
+import { adminInvites, adminUsers, games, passwordResets, registrations, sessions, tables, type AdminRole, type AdminUser, type RegistrationState } from "@/db/schema";
 import {
   checkBootstrapPassword,
   clearAdminCookie,
@@ -13,7 +13,7 @@ import {
   hasRole,
   setAdminCookie,
 } from "@/lib/admin-auth";
-import { countAdminUsers, createInvite, getOpenInvite } from "@/lib/admin-users";
+import { countAdminUsers, createInvite, createPasswordReset, getOpenInvite, getOpenPasswordReset } from "@/lib/admin-users";
 import { clientIpHash } from "@/lib/client-ip";
 import { clearLoginFailures, LOGIN_WINDOW_MINUTES, loginBlocked, recordLoginFailure } from "@/lib/login-limit";
 import { hashPassword, verifyPassword } from "@/lib/password";
@@ -22,14 +22,16 @@ import { sendBroadcastEmail, sendExistingRegistrationEmail, sendTableEmail } fro
 import { autoAssign, createTables, listTables } from "@/lib/tables";
 import { sendDueReminders } from "@/lib/reminders";
 import { getDict } from "@/i18n/server";
-import { inviteUrl } from "@/lib/site";
+import { inviteUrl, passwordResetUrl } from "@/lib/site";
 import { pragueLocalToDate } from "@/lib/time";
 import {
   accountSchema,
   broadcastSchema,
+  changePasswordSchema,
   fieldErrorsOf,
   gameSchema,
   inviteSchema,
+  newPasswordSchema,
   repeatSchema,
   parseScripts,
   sessionSchema,
@@ -180,6 +182,65 @@ export async function deleteAdminUserAction(id: number): Promise<SimpleResult> {
 export async function logoutAction() {
   await clearAdminCookie();
   redirect("/");
+}
+
+/** Signed-in organiser changes their own password; other devices get logged out. */
+export async function changePasswordAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const me = await requireAdmin();
+  const { t } = await getDict();
+  const e = t.admin.errors;
+  const ipHash = await clientIpHash();
+  if (ipHash && (await loginBlocked(ipHash))) return { error: e.tooManyLogins(LOGIN_WINDOW_MINUTES) };
+  const parsed = changePasswordSchema(e).safeParse(Object.fromEntries(formData.entries()));
+  if (!parsed.success) return { error: e.checkForm, fieldErrors: fieldErrorsOf(parsed.error) };
+  if (!(await verifyPassword(parsed.data.currentPassword, me.passwordHash))) {
+    // the current password is as guessable as the login, so it counts towards the same limit
+    if (ipHash) await recordLoginFailure(ipHash);
+    return { error: e.wrongCurrentPassword, fieldErrors: { currentPassword: [e.wrongCurrentPassword] } };
+  }
+  await setPassword(me.id, parsed.data.password);
+  // this device stays signed in with a fresh cookie
+  await setAdminCookie(me.id);
+  return { ok: true };
+}
+
+export type ResetLinkResult = SimpleResult & { url?: string };
+
+/** Administrator makes a one-time link for an organiser who forgot their password. */
+export async function createPasswordResetAction(userId: number): Promise<ResetLinkResult> {
+  await requireAdmin("admin");
+  const target = await db.query.adminUsers.findFirst({ where: eq(adminUsers.id, userId) });
+  if (!target) return {};
+  const reset = await createPasswordReset(target.id);
+  return { ok: true, url: passwordResetUrl(reset.token) };
+}
+
+/** Sets a new password from a reset link and logs that organiser in. */
+export async function resetPasswordAction(token: string, _prev: FormState, formData: FormData): Promise<FormState> {
+  const { t } = await getDict();
+  const e = t.admin.errors;
+  const open = await getOpenPasswordReset(token);
+  if (!open) return { error: e.resetInvalid };
+  const parsed = newPasswordSchema(e).safeParse(Object.fromEntries(formData.entries()));
+  if (!parsed.success) return { error: e.checkForm, fieldErrors: fieldErrorsOf(parsed.error) };
+  // claim the link first; the where clause makes a double submit fail instead of using it twice
+  const [used] = await db
+    .update(passwordResets)
+    .set({ usedAt: new Date() })
+    .where(and(eq(passwordResets.id, open.reset.id), isNull(passwordResets.usedAt)))
+    .returning({ id: passwordResets.id });
+  if (!used) return { error: e.resetInvalid };
+  await setPassword(open.user.id, parsed.data.password);
+  await db.update(adminUsers).set({ lastLoginAt: new Date() }).where(eq(adminUsers.id, open.user.id));
+  await setAdminCookie(open.user.id);
+  redirect("/admin");
+}
+
+async function setPassword(userId: number, password: string) {
+  await db
+    .update(adminUsers)
+    .set({ passwordHash: await hashPassword(password), passwordChangedAt: new Date() })
+    .where(eq(adminUsers.id, userId));
 }
 
 async function parseSessionForm(formData: FormData) {

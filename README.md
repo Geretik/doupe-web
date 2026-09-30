@@ -26,6 +26,8 @@ registraci upravit nebo zrušit.
 - `/admin` – správa termínů a přehled přihlášených (účty organizátorů s hashovanými hesly, role správce / organizátor)
 - `/admin/ucty` – účty a pozvánky (jen správce): pozvánka vygeneruje jednorázový odkaz, na kterém si nový organizátor založí účet
 - Přihlášení do adminu: po 10 špatných pokusech z jedné sítě se na 15 minut odmítá (i se správným heslem)
+- Hesla organizátorů: `/admin/heslo` – změna vlastního hesla; zapomenuté heslo – správce v `/admin/ucty` vytvoří jednorázový odkaz `/admin/nove-heslo/…` (platí 3 dny). Změna i obnova hesla odhlásí účet na ostatních zařízeních. Když heslo zapomene jediný správce, viz `scripts/reset-link.mjs` níže.
+- Bezpečnostní hlavičky (`next.config.ts`): web se nedá vložit do cizí stránky (rámeček), stránky s tajným odkazem v adrese ho neposílají dál při prokliku ven
 - Hlídání nastavení: hlavní stránka adminu upozorní, když chybí `CRON_SECRET` nebo `CONTACT_EMAIL` nebo když denní úlohy neproběhly déle než 26 hodin (s odkazem „Spustit teď“)
 - Hráči: poznámka pro organizátory, výběr příchodu/odchodu po 15 minutách v rámci termínu, zrušení s důvodem, stránka `/moje-hry` (odkaz na přehled registrací e-mailem), sdílení termínu, PWA
 - Registrace u termínu: otevřené / zatím neotevřené (termín je vidět, přihlásit se ještě nejde) / pozastavené; v adminu jedním kliknutím „Otevřít“ / „Pozastavit“, server nové registrace mimo „otevřené“ odmítne, přihlášení mohou dál upravovat a rušit
@@ -79,7 +81,7 @@ Admin: `/admin/login`. Při prvním spuštění (žádný účet) stránka nabí
 | `NEXT_PUBLIC_SITE_URL` | Veřejná URL webu pro odkazy v e-mailech, bez lomítka na konci |
 | `ADMIN_PASSWORD` | Bootstrap heslo, slouží jen k založení prvního účtu správce |
 | `NEXT_PUBLIC_SITE_NAME` | Název webu v hlavičce, e-mailech a kalendářích (výchozí „DoUPě Olomouc“) |
-| `ADMIN_SECRET` | Náhodný řetězec pro podpis admin cookie (`openssl rand -hex 32`) |
+| `ADMIN_SECRET` | Náhodný řetězec (`openssl rand -hex 32`) pro podpis admin cookie, odkazů „moje hry“ a kalendáře organizátorů, pseudonymů hráčů po smazání údajů a otisků IP. **Neměň ho:** všichni organizátoři se odhlásí, rozeslané odkazy „moje hry“ a odběr kalendáře organizátorů přestanou fungovat a statistiky pravidelných hráčů přestanou poznávat stejné hráče ze starších termínů. |
 | `CRON_SECRET` | Tajemství pro cron připomínek; Vercel ho posílá automaticky v hlavičce `Authorization: Bearer …` (`openssl rand -hex 32`) |
 | `DISCORD_WEBHOOK_URL` | Volitelné. Webhook Discord kanálu pro oznámení nových termínů (bez něj se tlačítka jen hlásí, že Discord není nastavený) |
 | `DISCORD_ALERTS_WEBHOOK_URL` | Volitelné. Webhook **neveřejného** kanálu organizátorů pro upozornění (pozdní odhlášení s přezdívkou a důvodem, selhání e-mailu nebo cronu). Bez něj chodí upozornění jen e-mailem. |
@@ -122,3 +124,5 @@ Potřebné GitHub secrets: `VERCEL_TOKEN` (vytvoř na vercel.com/account/tokens)
 - `npm run db:push` – synchronizuje schéma do DB (vhodné pro vývoj a malé projekty)
 - `npm run db:generate`, `npm run db:migrate` – SQL migrace
 - `npm run db:studio` – Drizzle Studio pro prohlížení dat
+- `node scripts/reset-link.mjs <e-mail>` – jednorázový odkaz na nové heslo, když se nemůže přihlásit žádný správce (s produkčním `DATABASE_URL` v `.env.local`)
+- `node scripts/migrate-db.mjs counts|copy|sync` – přesun dat do nové databáze

@@ -2,10 +2,11 @@ import { redirect } from "next/navigation";
 import { deleteAdminUserAction, revokeInviteAction } from "@/app/actions/admin";
 import { ActionButton } from "@/components/admin/action-button";
 import { InviteForm } from "@/components/admin/invite-form";
+import { ResetLinkButton } from "@/components/admin/password-forms";
 import { Button, Card } from "@/components/ui";
 import { getDict } from "@/i18n/server";
 import { getAdmin, hasRole } from "@/lib/admin-auth";
-import { INVITE_DAYS, listAdminUsers, listOpenInvites } from "@/lib/admin-users";
+import { INVITE_DAYS, listAdminUsers, listOpenInvites, RESET_DAYS } from "@/lib/admin-users";
 import { inviteUrl } from "@/lib/site";
 import { formatDate } from "@/lib/time";
 
@@ -40,21 +41,28 @@ export default async function AccountsPage() {
                   <td className="p-3"><a href={`mailto:${u.email}`} className="hover:underline">{u.email}</a></td>
                   <td className="p-3">{t.admin.roles[u.role]}</td>
                   <td className="p-3 whitespace-nowrap">{u.lastLoginAt ? formatDate(u.lastLoginAt, locale) : a.never}</td>
-                  <td className="p-3 text-right">
-                    {u.id !== me!.id && (
-                      <ActionButton
-                        action={deleteAdminUserAction.bind(null, u.id)}
-                        label={a.delete}
-                        confirmText={a.deleteConfirm}
-                        variant="danger"
+                  <td className="p-3">
+                    <span className="flex flex-wrap items-center justify-end gap-2">
+                      <ResetLinkButton
+                        userId={u.id}
+                        t={{ resetLink: a.resetLink, created: a.resetCreated(RESET_DAYS), copy: a.copy, copied: a.copied }}
                       />
-                    )}
+                      {u.id !== me!.id && (
+                        <ActionButton
+                          action={deleteAdminUserAction.bind(null, u.id)}
+                          label={a.delete}
+                          confirmText={a.deleteConfirm}
+                          variant="danger"
+                        />
+                      )}
+                    </span>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+        <p className="text-sm text-muted">{a.resetHint}</p>
       </section>
 
       <Card>

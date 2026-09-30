@@ -221,7 +221,7 @@ export const cs = {
     subtitle: "Jaké údaje při registraci sbíráme, k čemu je potřebujeme, kdo k nim má přístup a kdy je smažeme.",
   },
   admin: {
-    nav: { home: "Admin", newSession: "+ Nový termín", stats: "Statistiky", accounts: "Účty", logout: "Odhlásit" },
+    nav: { home: "Admin", newSession: "+ Nový termín", stats: "Statistiky", accounts: "Účty", password: "Změnit heslo", logout: "Odhlásit" },
     /** Plain strings only – passed to client components. */
     login: {
       title: "Přihlášení do adminu",
@@ -245,6 +245,30 @@ export const cs = {
       passwordAgain: "Nové heslo znovu",
       submit: "Založit účet a přihlásit",
       submitting: "Zakládám…",
+    },
+    /** Plain strings only – passed to client components. */
+    password: {
+      title: "Změna hesla",
+      intro: "Po změně se účet odhlásí na všech ostatních zařízeních.",
+      current: "Současné heslo",
+      password: "Nové heslo",
+      passwordHint: "Alespoň {n} znaků.",
+      passwordAgain: "Nové heslo znovu",
+      submit: "Změnit heslo",
+      submitting: "Ukládám…",
+      saved: "Heslo je změněné. Na ostatních zařízeních se bude potřeba přihlásit znovu.",
+    },
+    /** Plain strings only – passed to client components. */
+    reset: {
+      title: "Nové heslo",
+      intro: "Nastav nové heslo k účtu {nickname} ({email}). Po uložení budeš přihlášený/á a na ostatních zařízeních se účet odhlásí.",
+      password: "Nové heslo",
+      passwordHint: "Alespoň {n} znaků.",
+      passwordAgain: "Nové heslo znovu",
+      submit: "Uložit heslo a přihlásit",
+      submitting: "Ukládám…",
+      invalidTitle: "Odkaz neplatí",
+      invalidBody: "Odkaz na nové heslo je neplatný, už byl použitý nebo mu vypršela platnost. Požádej správce o nový.",
     },
     /** Plain strings only – passed to client components. */
     invite: {
@@ -288,6 +312,10 @@ export const cs = {
       expires: "platí do",
       revoke: "Zrušit",
       link: "odkaz",
+      resetLink: "Odkaz pro nové heslo",
+      resetCreated: (days: number) =>
+        `Pošli odkaz majiteli účtu. Platí ${days} ${days === 1 ? "den" : days < 5 ? "dny" : "dní"} a jde použít jednou; do té doby platí i staré heslo.`,
+      resetHint: "Když někdo zapomene heslo, vytvoř mu u účtu odkaz pro nové heslo. Měj aspoň dva správce, aby si heslo mohli obnovit navzájem.",
     },
     roles: { admin: "správce", organizer: "organizátor" },
     rolesHint: { admin: "Správce může vše včetně správy účtů a pozvánek.", organizer: "Organizátor spravuje termíny a registrace." },
@@ -528,6 +556,8 @@ export const cs = {
       wrongPassword: "Nesprávné heslo.",
       wrongLogin: "Nesprávný e-mail nebo heslo.",
       tooManyLogins: (minutes: number) => `Příliš mnoho špatných pokusů o přihlášení z této sítě. Zkus to znovu za ${minutes} minut.`,
+      wrongCurrentPassword: "Současné heslo nesouhlasí.",
+      resetInvalid: "Odkaz na nové heslo je neplatný, už byl použitý nebo mu vypršela platnost. Požádej správce o nový.",
       wrongBootstrap: "Heslo ze serveru nesouhlasí.",
       received: "přijato znaků / otisk",
       setupDone: "První účet už existuje, přihlas se.",
@@ -781,7 +811,7 @@ export const en: Dict = {
     subtitle: "What we collect when you sign up, what we need it for, who can see it and when we delete it.",
   },
   admin: {
-    nav: { home: "Admin", newSession: "+ New session", stats: "Statistics", accounts: "Accounts", logout: "Log out" },
+    nav: { home: "Admin", newSession: "+ New session", stats: "Statistics", accounts: "Accounts", password: "Change password", logout: "Log out" },
     login: {
       title: "Admin login",
       email: "E-mail",
@@ -803,6 +833,28 @@ export const en: Dict = {
       passwordAgain: "New password again",
       submit: "Create account and log in",
       submitting: "Creating…",
+    },
+    password: {
+      title: "Change password",
+      intro: "After the change the account is logged out on all other devices.",
+      current: "Current password",
+      password: "New password",
+      passwordHint: "At least {n} characters.",
+      passwordAgain: "New password again",
+      submit: "Change password",
+      submitting: "Saving…",
+      saved: "Password changed. Other devices will need to log in again.",
+    },
+    reset: {
+      title: "New password",
+      intro: "Set a new password for the account {nickname} ({email}). Once saved you will be logged in and the account is logged out on other devices.",
+      password: "New password",
+      passwordHint: "At least {n} characters.",
+      passwordAgain: "New password again",
+      submit: "Save password and log in",
+      submitting: "Saving…",
+      invalidTitle: "Link not valid",
+      invalidBody: "The new-password link is invalid, already used or expired. Ask an administrator for a new one.",
     },
     invite: {
       title: "Create an organiser account",
@@ -845,6 +897,10 @@ export const en: Dict = {
       expires: "valid until",
       revoke: "Revoke",
       link: "link",
+      resetLink: "New-password link",
+      resetCreated: (days) =>
+        `Send the link to the account owner. It is valid for ${days} ${days === 1 ? "day" : "days"} and works once; the old password keeps working until then.`,
+      resetHint: "When someone forgets their password, make a new-password link at their account. Keep at least two administrators so they can reset each other.",
     },
     roles: { admin: "administrator", organizer: "organiser" },
     rolesHint: { admin: "An administrator can do everything, including managing accounts and invitations.", organizer: "An organiser manages sessions and sign-ups." },
@@ -1079,6 +1135,8 @@ export const en: Dict = {
       wrongPassword: "Wrong password.",
       wrongLogin: "Wrong e-mail or password.",
       tooManyLogins: (minutes) => `Too many failed logins from this network. Try again in ${minutes} minutes.`,
+      wrongCurrentPassword: "The current password is wrong.",
+      resetInvalid: "The new-password link is invalid, already used or expired. Ask an administrator for a new one.",
       wrongBootstrap: "The server password does not match.",
       received: "received length / fingerprint",
       setupDone: "The first account already exists, please log in.",

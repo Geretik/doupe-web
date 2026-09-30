@@ -127,16 +127,34 @@ export function parseScripts(formData: FormData, t: Dict["admin"]["errors"]) {
   return { scripts: result.data };
 }
 
+function newPassword(t: Dict["admin"]["errors"]) {
+  return {
+    password: z.string().min(PASSWORD_MIN_LENGTH, t.passwordShort(PASSWORD_MIN_LENGTH)).max(200),
+    passwordAgain: z.string(),
+  };
+}
+const samePasswords = (v: { password: string; passwordAgain: string }) => v.password === v.passwordAgain;
+
 /** Nickname + e-mail + password twice; shared by the first-account setup and invitation forms. */
 export function accountSchema(t: Dict["admin"]["errors"]) {
   return z
     .object({
       nickname: z.string().trim().min(1, t.fillNickname).max(100),
       email: z.string().trim().toLowerCase().email(t.invalidEmail).max(200),
-      password: z.string().min(PASSWORD_MIN_LENGTH, t.passwordShort(PASSWORD_MIN_LENGTH)).max(200),
-      passwordAgain: z.string(),
+      ...newPassword(t),
     })
-    .refine((v) => v.password === v.passwordAgain, { message: t.passwordsDiffer, path: ["passwordAgain"] });
+    .refine(samePasswords, { message: t.passwordsDiffer, path: ["passwordAgain"] });
+}
+
+/** New password twice (reset link); with the current one when changing it while signed in. */
+export function newPasswordSchema(t: Dict["admin"]["errors"]) {
+  return z.object(newPassword(t)).refine(samePasswords, { message: t.passwordsDiffer, path: ["passwordAgain"] });
+}
+
+export function changePasswordSchema(t: Dict["admin"]["errors"]) {
+  return z
+    .object({ currentPassword: z.string(), ...newPassword(t) })
+    .refine(samePasswords, { message: t.passwordsDiffer, path: ["passwordAgain"] });
 }
 
 /** Series of identical sessions: interval in weeks (0 = none) and total count. */

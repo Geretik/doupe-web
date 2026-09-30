@@ -17,6 +17,7 @@ export async function resetDb() {
   await sql("delete from registrations");
   await sql("delete from sessions");
   await sql("delete from admin_invites");
+  await sql("delete from password_resets");
   await sql("delete from admin_users");
   await sql("delete from login_failures");
   await sql("delete from job_runs");

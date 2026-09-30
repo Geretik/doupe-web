@@ -189,6 +189,20 @@ export const adminUsers = pgTable("admin_users", {
   role: text("role", { enum: adminRoles }).notNull().default("organizer"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
+  /** Login cookies issued before this stop working (password changed or reset) */
+  passwordChangedAt: timestamp("password_changed_at", { withTimezone: true }),
+});
+
+/** One-time links for setting a new password, made by an administrator (or scripts/reset-link.mjs). */
+export const passwordResets = pgTable("password_resets", {
+  id: serial("id").primaryKey(),
+  token: text("token").notNull().unique(),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => adminUsers.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  usedAt: timestamp("used_at", { withTimezone: true }),
 });
 
 /** One-time invitation links; whoever opens one creates their own account. */

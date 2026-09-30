@@ -27,3 +27,8 @@ export function editUrl(token: string) {
 export function inviteUrl(token: string) {
   return `${siteUrl()}/admin/pozvanka/${token}`;
 }
+
+/** Keep in sync with scripts/reset-link.mjs */
+export function passwordResetUrl(token: string) {
+  return `${siteUrl()}/admin/nove-heslo/${token}`;
+}

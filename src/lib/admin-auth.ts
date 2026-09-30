@@ -18,7 +18,7 @@ function sign(payload: string) {
 }
 
 /** The cookie is "<user id>.<expiry unix seconds>.<hmac>" – stateless, no session table needed. */
-function parseCookie(value: string | undefined): number | null {
+function parseCookie(value: string | undefined): { userId: number; issuedAt: number } | null {
   if (!value) return null;
   const [id, exp, sig] = value.split(".");
   if (!id || !exp || !sig) return null;
@@ -26,7 +26,8 @@ function parseCookie(value: string | undefined): number | null {
   if (sig.length !== expected.length || !timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null;
   if (Number(exp) * 1000 < Date.now()) return null;
   const userId = Number(id);
-  return Number.isInteger(userId) ? userId : null;
+  // every cookie lives MAX_AGE, so the expiry also tells when it was issued
+  return Number.isInteger(userId) ? { userId, issuedAt: Number(exp) - MAX_AGE } : null;
 }
 
 /** Bootstrap password from the environment; only used to create the very first account. */
@@ -41,10 +42,13 @@ export function checkBootstrapPassword(input: string) {
 /** The signed-in organiser, or null. */
 export async function getAdmin(): Promise<AdminUser | null> {
   if (!process.env.ADMIN_SECRET) return null;
-  const userId = parseCookie((await cookies()).get(COOKIE)?.value);
-  if (userId === null) return null;
-  const user = await db.query.adminUsers.findFirst({ where: eq(adminUsers.id, userId) });
-  return user ?? null;
+  const cookie = parseCookie((await cookies()).get(COOKIE)?.value);
+  if (!cookie) return null;
+  const user = await db.query.adminUsers.findFirst({ where: eq(adminUsers.id, cookie.userId) });
+  if (!user) return null;
+  // a password change or reset logs out every other device
+  if (user.passwordChangedAt && cookie.issuedAt < Math.floor(user.passwordChangedAt.getTime() / 1000)) return null;
+  return user;
 }
 
 export async function isAdmin() {

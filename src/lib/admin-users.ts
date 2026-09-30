@@ -1,9 +1,11 @@
 import { randomBytes } from "node:crypto";
 import { and, asc, desc, eq, gt, isNull, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { adminInvites, adminUsers, type AdminRole } from "@/db/schema";
+import { adminInvites, adminUsers, passwordResets, type AdminRole } from "@/db/schema";
 
 export const INVITE_DAYS = 7;
+/** Keep in sync with scripts/reset-link.mjs */
+export const RESET_DAYS = 3;
 
 export async function countAdminUsers() {
   const [{ c }] = await db.select({ c: sql<number>`count(*)::int` }).from(adminUsers);
@@ -43,4 +45,24 @@ export async function getOpenInvite(token: string) {
   const invite = await db.query.adminInvites.findFirst({ where: eq(adminInvites.token, token) });
   if (!invite || invite.usedAt || invite.expiresAt < new Date()) return null;
   return invite;
+}
+
+/** A new one-time link for setting a password; older unused links for the account stop working. */
+export async function createPasswordReset(userId: number) {
+  await db.delete(passwordResets).where(and(eq(passwordResets.userId, userId), isNull(passwordResets.usedAt)));
+  const [reset] = await db
+    .insert(passwordResets)
+    .values({ token: randomBytes(24).toString("base64url"), userId, expiresAt: new Date(Date.now() + RESET_DAYS * 864e5) })
+    .returning();
+  return reset;
+}
+
+/** A usable reset link with its account, or null when unknown, used or expired. */
+export async function getOpenPasswordReset(token: string) {
+  const [row] = await db
+    .select({ reset: passwordResets, user: adminUsers })
+    .from(passwordResets)
+    .innerJoin(adminUsers, eq(adminUsers.id, passwordResets.userId))
+    .where(and(eq(passwordResets.token, token), isNull(passwordResets.usedAt), gt(passwordResets.expiresAt, new Date())));
+  return row ?? null;
 }
