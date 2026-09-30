@@ -374,6 +374,25 @@ test("one city: no city filter or Prague on the site, a single calendar feed", a
   await expect(page.locator("#city")).toHaveCount(0);
 });
 
+test("edit link: a page left open cannot change or cancel a sign-up once the session is over", async ({ page }) => {
+  const id = await createSession({ title: "Končící večer", capacity: 5 });
+  await register(page, id, { nick: "Pozdní", email: "pozdni@example.com" });
+  const [{ edit_token }] = await sql<{ edit_token: string }>("select edit_token from registrations where email = 'pozdni@example.com'");
+  await page.goto(`/r/${edit_token}`);
+  // the evening ends while the page is open
+  await sql("update sessions set starts_at = now() - interval '5 hours', ends_at = now() - interval '1 hour' where id = $1", [id]);
+
+  await page.fill("#nickname", "Přejmenovaný");
+  await page.click("main form button[type=submit]");
+  await expect(page.locator("main")).toContainText("Tento termín už proběhl.");
+  await page.click("button:has-text('Zrušit registraci')");
+  await page.click("button:has-text('Ano, zrušit registraci')");
+  await expect(page.locator("main")).toContainText("Tento termín už proběhl.");
+  expect(await sql("select nickname, status from registrations where email = 'pozdni@example.com'")).toEqual([
+    { nickname: "Pozdní", status: "confirmed" },
+  ]);
+});
+
 test("personal data is deleted 14 days after the session; nickname, attendance and stats stay", async ({ page, request }) => {
   const old = await createSession({ title: "Starý večer", daysAhead: -20 });
   const recent = await createSession({ title: "Nedávný večer", daysAhead: -3 });
@@ -410,6 +429,20 @@ test("personal data is deleted 14 days after the session; nickname, attendance a
   await expect(row).toHaveCount(1);
   await expect(row.locator("td").nth(1)).toHaveText("honza@example.com");
   await expect(row.locator("td").nth(2)).toHaveText("2");
+});
+
+test("sitemap lists public pages and upcoming sessions; robots.txt keeps admin and personal links out", async ({ page }) => {
+  const upcoming = await createSession({ title: "Budoucí", daysAhead: 5 });
+  const past = await createSession({ title: "Minulý", daysAhead: -5 });
+  const sitemap = await (await page.request.get("/sitemap.xml")).text();
+  expect(sitemap).toContain("/klub</loc>");
+  expect(sitemap).toContain(`/termin/${upcoming}</loc>`);
+  expect(sitemap).not.toContain(`/termin/${past}</loc>`);
+  expect(sitemap).not.toContain("/admin");
+
+  const robots = await (await page.request.get("/robots.txt")).text();
+  for (const path of ["/admin", "/api/", "/r/", "/moje-hry/"]) expect(robots).toContain(`Disallow: ${path}\n`);
+  expect(robots).toMatch(/Sitemap: .*\/sitemap\.xml/);
 });
 
 test("old vercel.app addresses redirect to www.doupeol.cz, except /api (cron)", async ({ page }) => {

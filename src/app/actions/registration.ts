@@ -249,6 +249,8 @@ export async function updateRegistrationAction(
   const { t } = await getDict();
   const current = await getRegistrationByToken(token);
   if (!current) return { error: t.errors.regNotFound };
+  // the edit page hides the form once the session is over; this also stops a page left open
+  if (current.session.endsAt < new Date()) return { error: t.errors.past };
   const parsed = registrationEditSchema(t.errors, current.session).safeParse(
     Object.fromEntries(formData.entries()),
   );
@@ -297,6 +299,9 @@ export async function cancelRegistrationAction(token: string, reason?: string): 
   const { t } = await getDict();
   const cleanReason = (reason ?? "").trim().slice(0, 500) || null;
   const now = new Date();
+  const current = await getRegistrationByToken(token);
+  if (!current) return { error: t.errors.regNotFound };
+  if (current.session.endsAt < now) return { error: t.errors.past };
   // Cancelling never e-mails the player who cancels – but it may free a spot for a waitlisted one.
   const [updated] = await db
     .update(registrations)
