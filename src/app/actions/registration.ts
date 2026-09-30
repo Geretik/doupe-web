@@ -3,7 +3,6 @@
 import { createHash } from "node:crypto";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { headers } from "next/headers";
-import { dictionaries } from "@/i18n/dictionaries";
 import { notifyOrganizers } from "@/lib/alerts";
 import { siteUrl } from "@/lib/site";
 import { formatRange } from "@/lib/time";
@@ -313,10 +312,9 @@ export async function cancelRegistrationAction(token: string, reason?: string): 
   const promoted = await promoteWaitlist(updated.sessionId);
   const session = await db.query.sessions.findFirst({ where: eq(sessions.id, updated.sessionId) });
   if (session && session.startsAt.getTime() - now.getTime() < LATE_CANCEL_HOURS * 3600_000 && session.startsAt > now) {
-    const cs = dictionaries.cs;
     await notifyOrganizers(
       `Pozdní odhlášení: ${session.title}`,
-      `${updated.nickname} se odhlásil/a z termínu „${session.title}“ (${formatRange(session.startsAt, session.endsAt, "cs")}, ${cs.city[session.city]}), tedy méně než ${LATE_CANCEL_HOURS} h před hrou.` +
+      `${updated.nickname} se odhlásil/a z termínu „${session.title}“ (${formatRange(session.startsAt, session.endsAt, "cs")}), tedy méně než ${LATE_CANCEL_HOURS} h před hrou.` +
         (cleanReason ? `\nDůvod: ${cleanReason}` : "") +
         (promoted.length ? `\nMísto automaticky dostal/a náhradník: ${promoted.map((p) => p.nickname).join(", ")}.` : "\nŽádný náhradník není, místo je volné.") +
         `\n${siteUrl()}/admin/termin/${session.id}`,

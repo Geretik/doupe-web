@@ -357,37 +357,21 @@ test("accounts: first-run wizard, invitation link, roles", async ({ page, browse
   expect(await sql("select count(*)::int as c from admin_users")).toEqual([{ c: 1 }]);
 });
 
-test("cities: public filter, badges, calendar feed per city", async ({ page }) => {
-  await createSession({ title: "Olomoucký večer", city: "olomouc" });
-  await createSession({ title: "Pražský večer", city: "praha" });
+test("one city: no city filter or Prague on the site, a single calendar feed", async ({ page }) => {
+  await createSession({ title: "Olomoucký večer" });
 
   await page.goto("/");
   await expect(page.locator("main")).toContainText("Olomoucký večer");
-  await expect(page.locator("main")).toContainText("Pražský večer");
-  await page.click("main nav a:has-text('Praha')");
-  await expect(page).toHaveURL(/\?city=praha$/);
-  await expect(page.locator("main")).toContainText("Pražský večer");
-  await expect(page.locator("main")).not.toContainText("Olomoucký večer");
-  await expect(page.locator("main a[href$='/kalendar.ics?city=praha']")).toBeVisible();
+  await expect(page.locator("body")).not.toContainText("Praha");
+  await expect(page.locator("main a[href$='/kalendar.ics']")).toBeVisible();
 
-  const feed = await page.request.get("/kalendar.ics?city=praha");
-  const ics = await feed.text();
-  expect(ics).toContain("Pražský večer");
-  expect(ics).not.toContain("Olomoucký večer");
-  expect(ics).toContain("X-WR-CALNAME:DoUPě Olomouc – Praha");
+  const ics = await (await page.request.get("/kalendar.ics")).text();
+  expect(ics).toContain("Olomoucký večer");
+  expect(ics).toMatch(/X-WR-CALNAME:DoUPě Olomouc\r?\n/);
 
-  // admin: the city is editable and shown in the list
   await adminLogin(page);
   await page.goto("/admin/novy");
-  await page.fill("#title", "Nový pražský");
-  await page.selectOption("#city", "praha");
-  await page.fill("#startsAt", "2031-01-10T18:00");
-  await page.fill("#endsAt", "2031-01-10T22:00");
-  await page.fill("#place", "Praha, Kavárna");
-  await page.click("button:has-text('Vytvořit termín')");
-  await page.waitForURL(/\/admin$/);
-  expect(await sql("select city from sessions where title='Nový pražský'")).toEqual([{ city: "praha" }]);
-  await expect(page.locator("main a:has-text('Nový pražský')")).toContainText("Praha");
+  await expect(page.locator("#city")).toHaveCount(0);
 });
 
 test("pwa manifest and icons are served, share button on session page", async ({ page }) => {

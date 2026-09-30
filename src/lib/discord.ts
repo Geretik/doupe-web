@@ -1,5 +1,4 @@
 import type { Session } from "@/db/schema";
-import { dictionaries } from "@/i18n/dictionaries";
 import { sessionUrl } from "./ics";
 import { formatRange } from "./time";
 
@@ -27,8 +26,7 @@ export async function postDiscordMessage(content: string) {
 
 /** "Two days to go, N spots left" nudge. */
 export function spotsLeftMessage(s: Session, free: number) {
-  const city = dictionaries.cs.city[s.city];
-  return `🕰️ **${s.title}** (${city}) je už za dva dny a zbývá ještě **${free} ${free === 1 ? "volné místo" : free < 5 ? "volná místa" : "volných míst"}** z ${s.capacity}!\n📅 ${formatRange(s.startsAt, s.endsAt, "cs")} · 📍 ${s.place}\nRegistrace: ${sessionUrl(s.id)}`;
+  return `🕰️ **${s.title}** je už za dva dny a zbývá ještě **${free} ${free === 1 ? "volné místo" : free < 5 ? "volná místa" : "volných míst"}** z ${s.capacity}!\n📅 ${formatRange(s.startsAt, s.endsAt, "cs")} · 📍 ${s.place}\nRegistrace: ${sessionUrl(s.id)}`;
 }
 
 /**
@@ -43,7 +41,7 @@ export async function announceSessionOnDiscord(
   if (!url) return "not_configured";
   const fields = [
     { name: "📅 Kdy", value: formatRange(s.startsAt, s.endsAt, "cs"), inline: false },
-    { name: "📍 Kde", value: `${dictionaries.cs.city[s.city]} · ${s.place}`, inline: true },
+    { name: "📍 Kde", value: s.place, inline: true },
     { name: "👥 Volná místa", value: `${freeSpots} z ${s.capacity}`, inline: true },
   ];
   if (s.storyteller) fields.push({ name: "🎩 Vypravěč", value: s.storyteller, inline: true });

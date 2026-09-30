@@ -191,7 +191,6 @@ async function parseSessionForm(formData: FormData) {
     values: {
       scripts: scripts.scripts,
       title: parsed.data.title,
-      city: parsed.data.city,
       place: parsed.data.place,
       capacity: parsed.data.capacity,
       arrivalMode: parsed.data.arrivalMode,

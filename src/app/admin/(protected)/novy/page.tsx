@@ -38,7 +38,6 @@ export default async function NewSessionPage({
           defaults={defaults}
           discordConfigured={discordConfigured()}
           t={t.admin.form}
-          cityNames={t.city}
         />
       </Card>
     </div>

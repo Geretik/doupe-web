@@ -11,7 +11,6 @@ import { ScriptLinks } from "@/components/script-links";
 import { freeSpots } from "@/components/session-card";
 import { Alert, Card } from "@/components/ui";
 import { getDict } from "@/i18n/server";
-import { CityBadge } from "@/components/city";
 import { sessionUrl } from "@/lib/ics";
 import { isAdmin } from "@/lib/admin-auth";
 import { getSessionWithCount, listPublicPlayers } from "@/lib/queries";
@@ -73,7 +72,6 @@ export default async function SessionPage({
       <div>
         <h1 className="flex flex-wrap items-center gap-3 text-2xl sm:text-3xl font-bold tracking-tight">
           {session.title}
-          <CityBadge city={session.city} t={t} />
           {admin && <EditPencil sessionId={session.id} title={t.session.editPencil} />}
         </h1>
         <p className="mt-2">

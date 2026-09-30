@@ -2,7 +2,6 @@ import { timingSafeEqual } from "node:crypto";
 import { asc, gte } from "drizzle-orm";
 import { db } from "@/db";
 import { registrations, sessions, type Session } from "@/db/schema";
-import { dictionaries } from "@/i18n/dictionaries";
 import { isAdmin } from "@/lib/admin-auth";
 import { buildIcs, sessionUrl } from "@/lib/ics";
 import { orgFeedKey } from "@/lib/org-feed";
@@ -25,13 +24,12 @@ export async function GET(req: Request) {
     orderBy: [asc(sessions.startsAt)],
     with: { registrations: { orderBy: [asc(registrations.createdAt)] } },
   });
-  const t = dictionaries.cs;
   const describe = (s: Session) => {
     const full = list.find((x) => x.id === s.id)!;
     const confirmed = full.registrations.filter((r) => r.status === "confirmed");
     const waitlisted = full.registrations.filter((r) => r.status === "waitlisted");
     const parts = [
-      `${t.city[s.city]} · ${s.place}`,
+      s.place,
       `Přihlášeno ${confirmed.length} / ${s.capacity}${waitlisted.length ? `, náhradníků ${waitlisted.length}` : ""}`,
     ];
     if (s.storyteller) parts.push(`🎩 Vypravěč: ${s.storyteller}`);

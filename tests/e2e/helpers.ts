@@ -41,7 +41,6 @@ export async function createSession(
     title: string;
     capacity: number;
     daysAhead: number;
-    city: "olomouc" | "praha";
     arrivalMode: "times" | "late";
     phoneRequired: boolean;
   }> = {},
@@ -51,10 +50,9 @@ export async function createSession(
   start.setUTCHours(17, 0, 0, 0);
   const end = new Date(start.getTime() + 4 * 36e5);
   const rows = await sql<{ id: number }>(
-    "insert into sessions (title, city, starts_at, ends_at, place, capacity, note, scripts, arrival_mode, phone_required) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) returning id",
+    "insert into sessions (title, starts_at, ends_at, place, capacity, note, scripts, arrival_mode, phone_required) values ($1,$2,$3,$4,$5,$6,$7,$8,$9) returning id",
     [
       overrides.title ?? "Herní večer",
-      overrides.city ?? "olomouc",
       start.toISOString(),
       end.toISOString(),
       "Klubovna",

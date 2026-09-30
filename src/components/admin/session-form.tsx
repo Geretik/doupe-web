@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { arrivalModes, cities, type City, type Session } from "@/db/schema";
+import { arrivalModes, type Session } from "@/db/schema";
 import type { Dict } from "@/i18n/dictionaries";
 import type { FormState } from "@/lib/validation";
 import { Alert, Button, Checkbox, Field, inputClass } from "../ui";
@@ -14,17 +14,15 @@ export function SessionForm({
   mode = session ? "edit" : "create",
   discordConfigured = false,
   t,
-  cityNames,
 }: {
   action: (prev: FormState, fd: FormData) => Promise<FormState>;
   /** Prefilled values – the session being edited, or a template when duplicating */
-  session?: Pick<Session, "title" | "city" | "place" | "capacity" | "storyteller" | "note" | "scripts" | "arrivalMode" | "phoneRequired">;
+  session?: Pick<Session, "title" | "place" | "capacity" | "storyteller" | "note" | "scripts" | "arrivalMode" | "phoneRequired">;
   /** datetime-local strings in Prague time */
   defaults?: { startsAt: string; endsAt: string };
   mode?: "create" | "edit";
   discordConfigured?: boolean;
   t: Dict["admin"]["form"];
-  cityNames: Record<City, string>;
 }) {
   const [state, action, pending] = useActionState<FormState, FormData>(serverAction, {});
   const fe = state.fieldErrors ?? {};
@@ -34,13 +32,6 @@ export function SessionForm({
       {state.ok && <Alert kind="success">{t.saved}</Alert>}
       <Field label={t.title} name="title" errors={fe.title}>
         <input id="title" name="title" required defaultValue={session?.title ?? ""} className={inputClass} placeholder={t.titlePlaceholder} />
-      </Field>
-      <Field label={t.city} name="city" errors={fe.city}>
-        <select id="city" name="city" required defaultValue={session?.city ?? "olomouc"} className={inputClass}>
-          {cities.map((c) => (
-            <option key={c} value={c}>{cityNames[c]}</option>
-          ))}
-        </select>
       </Field>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label={t.startsAt} name="startsAt" errors={fe.startsAt}>

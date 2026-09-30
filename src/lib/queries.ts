@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, gte, inArray, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { type City, games, registrations, sessions } from "@/db/schema";
+import { games, registrations, sessions } from "@/db/schema";
 
 export type SessionWithCount = typeof sessions.$inferSelect & {
   confirmedCount: number;
@@ -43,21 +43,21 @@ const sessionColumns = {
   storytellerCount,
 };
 
-/** Upcoming sessions, optionally only for one city. */
-export async function listUpcomingSessions(city?: City): Promise<SessionWithCount[]> {
+/** Upcoming sessions. */
+export async function listUpcomingSessions(): Promise<SessionWithCount[]> {
   return db
     .select(sessionColumns)
     .from(sessions)
-    .where(and(gte(sessions.endsAt, new Date()), city ? eq(sessions.city, city) : undefined))
+    .where(gte(sessions.endsAt, new Date()))
     .orderBy(asc(sessions.startsAt));
 }
 
-/** Past sessions, newest first, optionally only for one city. */
-export async function listPastSessions(city?: City): Promise<SessionWithCount[]> {
+/** Past sessions, newest first. */
+export async function listPastSessions(): Promise<SessionWithCount[]> {
   return db
     .select(sessionColumns)
     .from(sessions)
-    .where(and(lt(sessions.endsAt, new Date()), city ? eq(sessions.city, city) : undefined))
+    .where(lt(sessions.endsAt, new Date()))
     .orderBy(desc(sessions.startsAt));
 }
 

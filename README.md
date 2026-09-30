@@ -1,6 +1,6 @@
 # Blood on the Clocktower CZ – registrace na herní večery
 
-Registrační web pro **Blood on the Clocktower** herní večery v českých městech (aktuálně Olomouc a Praha). Bez uživatelských účtů:
+Registrační web pro **Blood on the Clocktower** herní večery v Olomouci. Bez uživatelských účtů:
 hráč vyplní formulář, na e-mail dostane potvrzení s tajným odkazem, přes který může
 registraci upravit nebo zrušit.
 
@@ -27,7 +27,6 @@ registraci upravit nebo zrušit.
 - Hráči: poznámka pro organizátory, výběr příchodu/odchodu po 15 minutách v rámci termínu, zrušení s důvodem, stránka `/moje-hry` (odkaz na přehled registrací e-mailem), sdílení termínu, PWA
 - Organizátoři: přehled „kolik lidí bude v kterou hodinu“ podle příchodů a odchodů, vypravěč u termínu, opakující se termíny, rozdělení ke stolům (auto + ručně, e-mail hráčům), evidence odehraných her (archiv, statistiky), soukromý iCal `/admin/kalendar.ics?key=…`, ✉️ nové poslání odkazu hráči, ⚠️ u registrací bez potvrzení
 - Automatika: Discord post „zbývá míst“ dva dny před hrou, upozornění organizátorům (e-mail + Discord) při pozdním odhlášení (<24 h), selhání e-mailu nebo cronu; limit registrací z jedné sítě (`REGISTRATION_RATE_LIMIT`, výchozí 10/h)
-- Termíny jsou rozdělené podle města (Olomouc / Praha): filtr na hlavní stránce i v archivu, kalendář iCal pro každé město zvlášť (`/kalendar.ics?city=praha`)
 - `/admin/statistiky` – obsazenost, docházka, pravidelní hráči
 - `/api/cron/reminders` – denní připomínky (Vercel Cron, viz níže)
 

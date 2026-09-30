@@ -1,4 +1,3 @@
-import { CityTabs, isCity } from "@/components/city";
 import { SessionCard } from "@/components/session-card";
 import { getDict } from "@/i18n/server";
 import { isAdmin } from "@/lib/admin-auth";
@@ -7,11 +6,9 @@ import { listUpcomingSessions } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
 
-export default async function HomePage({ searchParams }: { searchParams: Promise<{ city?: string }> }) {
-  const { city: cityParam } = await searchParams;
-  const city = isCity(cityParam) ? cityParam : undefined;
+export default async function HomePage() {
   const [sessions, admin, { locale, t }] = await Promise.all([
-    listUpcomingSessions(city),
+    listUpcomingSessions(),
     isAdmin(),
     getDict(),
   ]);
@@ -21,7 +18,6 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{t.home.title}</h1>
         <p className="mt-2 text-muted">{t.home.intro}</p>
       </div>
-      <CityTabs current={city} t={t} />
       {sessions.length === 0 ? (
         <p className="text-muted">{t.home.empty}</p>
       ) : (
@@ -34,7 +30,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
       <p className="text-sm text-muted">
         <span aria-hidden className="mr-1.5">🗓️</span>
         {t.home.calendarFeed}
-        <a href={feedIcsUrl(city)} className="underline hover:text-accent">{t.home.calendarFeedLink}</a>
+        <a href={feedIcsUrl()} className="underline hover:text-accent">{t.home.calendarFeedLink}</a>
         <span className="block text-xs">{t.home.calendarFeedHint}</span>
       </p>
     </div>

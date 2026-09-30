@@ -1,5 +1,4 @@
 import type { Session } from "@/db/schema";
-import type { City } from "@/db/schema";
 import { siteName, siteUrl } from "./site";
 
 /** RFC 5545 text escaping. */
@@ -48,8 +47,8 @@ export function sessionIcsUrl(id: number) {
   return `${siteUrl()}/termin/${id}/kalendar.ics`;
 }
 
-export function feedIcsUrl(city?: City) {
-  return `${siteUrl()}/kalendar.ics${city ? `?city=${city}` : ""}`;
+export function feedIcsUrl() {
+  return `${siteUrl()}/kalendar.ics`;
 }
 
 export function sessionDescription(s: Session) {

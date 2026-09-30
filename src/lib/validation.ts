@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { adminRoles, arrivalModes, cities, gameWinners, type ArrivalMode } from "@/db/schema";
+import { adminRoles, arrivalModes, gameWinners, type ArrivalMode } from "@/db/schema";
 import type { Dict } from "@/i18n/dictionaries";
 import { PASSWORD_MIN_LENGTH } from "./password";
 import { formatTime, TIME_RE } from "./time";
@@ -77,7 +77,6 @@ export function registrationEditSchema(t: Dict["errors"], rules: RegistrationRul
 export function sessionSchema(t: Dict["admin"]["errors"]) {
   return z.object({
     title: z.string().trim().min(1, t.fillTitle).max(200),
-    city: z.enum(cities),
     startsAt: z.string().min(1, t.fillStart),
     endsAt: z.string().min(1, t.fillEnd),
     place: z.string().trim().min(1, t.fillPlace).max(300),

@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { CityBadge } from "@/components/city";
 import { Card } from "@/components/ui";
 import { getDict } from "@/i18n/server";
 import { listAllSessions } from "@/lib/queries";
@@ -17,7 +16,7 @@ export default async function AdminHomePage() {
     <Link href={`/admin/termin/${s.id}`} className="block">
       <Card className="flex flex-col gap-1 hover:border-accent/50 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="flex items-center gap-2 font-semibold">{s.title}<CityBadge city={s.city} t={t} /></p>
+          <p className="flex items-center gap-2 font-semibold">{s.title}</p>
           <p className="text-sm text-muted">
             <span>{formatDate(s.startsAt, locale)}</span>, {formatTime(s.startsAt, locale)}–{formatTime(s.endsAt, locale)} · {s.place}
           </p>

@@ -26,7 +26,7 @@ export default function OpenGraphImage() {
         <div style={{ fontSize: 72, fontWeight: 700, marginTop: 24, letterSpacing: -2 }}>
           {siteName()}
         </div>
-        <div style={{ fontSize: 44, color: "#c9394b", fontWeight: 700, marginTop: 8 }}>Olomouc · Praha</div>
+        <div style={{ fontSize: 44, color: "#c9394b", fontWeight: 700, marginTop: 8 }}>Olomouc</div>
         <div style={{ fontSize: 30, color: "#a89c8e", marginTop: 40 }}>
           Herní večery · Game nights
         </div>

@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { CityBadge } from "@/components/city";
 import { Alert, Card } from "@/components/ui";
 import { getDict } from "@/i18n/server";
 import { verifyMyGamesToken } from "@/lib/my-games-token";
@@ -47,7 +46,6 @@ export default async function MyGamesPage({ params }: { params: Promise<{ token:
             <div>
               <p className="flex flex-wrap items-center gap-2 font-semibold">
                 <Link href={`/termin/${r.session.id}`} className="hover:underline">{r.session.title}</Link>
-                <CityBadge city={r.session.city} t={t} />
               </p>
               <p className="text-sm text-muted">
                 📅 {formatRange(r.session.startsAt, r.session.endsAt, locale)} · 📍 {r.session.place}

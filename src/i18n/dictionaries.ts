@@ -11,11 +11,10 @@ const CLUB_NAME = "Klub deskových her DoUPě Olomouc";
 export const cs = {
   meta: {
     title: SITE_NAME,
-    description: "Registrace na herní večery Blood on the Clocktower v Olomouci a Praze",
+    description: "Registrace na herní večery Blood on the Clocktower v Olomouci",
   },
-  nav: { sessions: "Termíny", about: "O hře", archive: "Archiv", club: "Klub", admin: "Admin", myGames: "Moje hry", footer: "Herní večery v Olomouci a Praze", calendarFeed: "Kalendář (iCal)" },
+  nav: { sessions: "Termíny", about: "O hře", archive: "Archiv", club: "Klub", admin: "Admin", myGames: "Moje hry", footer: "Herní večery v Olomouci", calendarFeed: "Kalendář (iCal)" },
   lang: { switchTo: "English", label: "Jazyk" },
-  city: { label: "Město", all: "Všechna města", olomouc: "Olomouc", praha: "Praha" },
   home: {
     title: "Nadcházející termíny",
     intro: "Vyber si termín, vyplň krátký formulář a potvrzení ti přijde na e-mail. Účet nepotřebuješ.",
@@ -298,7 +297,6 @@ export const cs = {
       saved: "Uloženo.",
       title: "Název",
       titlePlaceholder: "Herní večer #12",
-      city: "Město",
       startsAt: "Začátek",
       endsAt: "Konec",
       place: "Místo",
@@ -522,11 +520,10 @@ export type Dict = typeof cs;
 export const en: Dict = {
   meta: {
     title: SITE_NAME,
-    description: "Sign up for Blood on the Clocktower game nights in Olomouc and Prague",
+    description: "Sign up for Blood on the Clocktower game nights in Olomouc",
   },
-  nav: { sessions: "Sessions", about: "About the game", archive: "Archive", club: "The club", admin: "Admin", myGames: "My games", footer: "Game nights in Olomouc and Prague", calendarFeed: "Calendar (iCal)" },
+  nav: { sessions: "Sessions", about: "About the game", archive: "Archive", club: "The club", admin: "Admin", myGames: "My games", footer: "Game nights in Olomouc", calendarFeed: "Calendar (iCal)" },
   lang: { switchTo: "Česky", label: "Language" },
-  city: { label: "City", all: "All cities", olomouc: "Olomouc", praha: "Prague" },
   home: {
     title: "Upcoming sessions",
     intro: "Pick a session, fill in a short form and you'll get a confirmation by e-mail. No account needed.",
@@ -800,7 +797,6 @@ export const en: Dict = {
       saved: "Saved.",
       title: "Title",
       titlePlaceholder: "Game night #12",
-      city: "City",
       startsAt: "Start",
       endsAt: "End",
       place: "Place",
