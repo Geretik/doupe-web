@@ -399,7 +399,11 @@ test("pwa manifest and icons are served, share button on session page", async ({
 
   const id = await createSession({ title: "Sdílený večer", capacity: 5 });
   await page.goto(`/termin/${id}`);
-  await expect(page.locator("main button:has-text('Sdílet termín')")).toBeVisible();
+  await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.click("main button:has-text('Sdílet termín')");
+  await expect(page.locator("main button:has-text('Odkaz zkopírován')")).toBeVisible();
+  // only the path: NEXT_PUBLIC_SITE_URL is inlined at build time
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toMatch(new RegExp(`/termin/${id}$`));
 });
 
 test("organisers' calendar feed is private and lists players; cron endpoint runs daily jobs", async ({ page }) => {

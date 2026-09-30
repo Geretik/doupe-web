@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { Button } from "./ui";
 
-/** Copies a ready-made announcement (or opens the native share sheet on phones). */
-export function ShareButton({ text, url, title, label, copiedLabel }: { text: string; url: string; title: string; label: string; copiedLabel: string }) {
+/** Copies the link (or opens the native share sheet on phones); the page's metadata makes the link preview. */
+export function ShareButton({ url, title, label, copiedLabel }: { url: string; title: string; label: string; copiedLabel: string }) {
   const [copied, setCopied] = useState(false);
   return (
     <Button
@@ -13,10 +13,10 @@ export function ShareButton({ text, url, title, label, copiedLabel }: { text: st
       onClick={async () => {
         try {
           if (typeof navigator.share === "function" && /Mobi|Android/i.test(navigator.userAgent)) {
-            await navigator.share({ title, text, url });
+            await navigator.share({ title, url });
             return;
           }
-          await navigator.clipboard.writeText(text);
+          await navigator.clipboard.writeText(url);
           setCopied(true);
           setTimeout(() => setCopied(false), 2500);
         } catch {

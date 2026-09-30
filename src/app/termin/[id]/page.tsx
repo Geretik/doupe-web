@@ -104,15 +104,6 @@ export default async function SessionPage({
             <ShareButton
               title={session.title}
               url={sessionUrl(session.id)}
-              text={t.session.shareText({
-                title: session.title,
-                when: formatRange(session.startsAt, session.endsAt, locale),
-                city: t.city[session.city],
-                place: session.place,
-                free,
-                cap: session.capacity,
-                url: sessionUrl(session.id),
-              })}
               label={t.session.share}
               copiedLabel={t.session.shareCopied}
             />

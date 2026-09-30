@@ -47,9 +47,7 @@ export const cs = {
     calendarGoogle: "Google Kalendář",
     editPencil: "Upravit termín (admin)",
     share: "Sdílet termín",
-    shareCopied: "Zkopírováno do schránky",
-    shareText: (o: { title: string; when: string; city: string; place: string; free: number; cap: number; url: string }) =>
-      `🕰️ ${o.title} – Blood on the Clocktower, ${o.city}\n📅 ${o.when}\n📍 ${o.place}\n👥 ${o.free === 0 ? "plno, lze se zapsat jako náhradník" : `volných míst ${o.free} z ${o.cap}`}\nRegistrace: ${o.url}`,
+    shareCopied: "Odkaz zkopírován",
   },
   form: {
     firstName: "Jméno",
@@ -559,9 +557,7 @@ export const en: Dict = {
     calendarGoogle: "Google Calendar",
     editPencil: "Edit session (admin)",
     share: "Share session",
-    shareCopied: "Copied to clipboard",
-    shareText: (o) =>
-      `🕰️ ${o.title} – Blood on the Clocktower, ${o.city}\n📅 ${o.when}\n📍 ${o.place}\n👥 ${o.free === 0 ? "full, you can join the waitlist" : `${o.free} of ${o.cap} spots free`}\nSign up: ${o.url}`,
+    shareCopied: "Link copied",
   },
   form: {
     firstName: "First name",
