@@ -243,7 +243,7 @@ export default async function AdminSessionPage({
               <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-card px-3 py-2">
                 <span>
                   <span className="mr-2 font-semibold text-muted">{i + 1}.</span>
-                  {fullName(r) ? `${fullName(r)} (${r.nickname}` : `(${r.nickname}`}<Flags r={r} t={t} />){shownEmail(r.email) && <> · {r.email}</>}{r.phone && <> · {r.phone}</>}
+                  {fullName(r) ? `${fullName(r)} (${r.nickname}` : `(${r.nickname}`}<Flags r={r} t={t} />){shownEmail(r.email) && <> · {r.email}</>}{r.phone && <> · <a href={`tel:${r.phone}`} className="hover:underline">{r.phone}</a></>}
                 </span>
                 <span className="flex gap-2">
                   <a href={editUrl(r.editToken)} className="self-center text-muted hover:underline" target="_blank" rel="noreferrer">{t.link}</a>
