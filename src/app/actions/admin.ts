@@ -188,6 +188,13 @@ async function parseSessionForm(formData: FormData) {
   if (endsAt <= startsAt) return { error: { endsAt: [e.endAfterStart] }, message: e.checkForm };
   const scripts = parseScripts(formData, e);
   if (scripts.error) return { error: { scripts: scripts.error }, message: e.checkForm };
+  let registrationOpensAt: Date | null = null;
+  if (parsed.data.registrationState !== "open" && parsed.data.registrationOpensAt) {
+    registrationOpensAt = pragueLocalToDate(parsed.data.registrationOpensAt);
+    if (!registrationOpensAt) return { error: { registrationOpensAt: [e.invalidOpensAt] }, message: e.checkForm };
+    if (registrationOpensAt <= new Date()) return { error: { registrationOpensAt: [e.opensAtPast] }, message: e.checkForm };
+    if (registrationOpensAt >= endsAt) return { error: { registrationOpensAt: [e.opensAtAfterEnd] }, message: e.checkForm };
+  }
   return {
     values: {
       scripts: scripts.scripts,
@@ -197,6 +204,7 @@ async function parseSessionForm(formData: FormData) {
       arrivalMode: parsed.data.arrivalMode,
       phoneRequired: parsed.data.phoneRequired,
       registrationState: parsed.data.registrationState,
+      registrationOpensAt,
       storyteller: parsed.data.storyteller,
       note: parsed.data.note,
       startsAt,
@@ -218,7 +226,13 @@ export async function createSessionAction(
   const count = repeat.success && weeks > 0 ? repeat.data.repeatCount : 1;
   const rows = Array.from({ length: count }, (_, i) => {
     const shift = i * weeks * 7 * 864e5;
-    return { ...r.values, startsAt: new Date(r.values.startsAt.getTime() + shift), endsAt: new Date(r.values.endsAt.getTime() + shift) };
+    const opensAt = r.values.registrationOpensAt;
+    return {
+      ...r.values,
+      startsAt: new Date(r.values.startsAt.getTime() + shift),
+      endsAt: new Date(r.values.endsAt.getTime() + shift),
+      registrationOpensAt: opensAt && new Date(opensAt.getTime() + shift),
+    };
   });
   const [created] = await db.insert(sessions).values(rows).returning();
   if (formData.get("announceDiscord") === "on") {
@@ -274,7 +288,8 @@ export async function adminCancelRegistrationAction(registrationId: number) {
 export async function setRegistrationStateAction(sessionId: number, state: RegistrationState): Promise<SimpleResult> {
   await requireAdmin();
   const { t } = await getDict();
-  await db.update(sessions).set({ registrationState: state }).where(eq(sessions.id, sessionId));
+  // a manual switch replaces any scheduled opening
+  await db.update(sessions).set({ registrationState: state, registrationOpensAt: null }).where(eq(sessions.id, sessionId));
   revalidateSession(sessionId);
   return { ok: true, message: state === "open" ? t.admin.session.registrationOpened : t.admin.session.registrationPaused };
 }

@@ -1,6 +1,7 @@
 import type { Session } from "@/db/schema";
 import { sessionUrl } from "./ics";
-import { formatRange } from "./time";
+import { effectiveRegistrationState, scheduledOpening } from "./registration-state";
+import { formatRange, formatShortDate, formatTime } from "./time";
 
 export function discordConfigured() {
   return Boolean(process.env.DISCORD_WEBHOOK_URL);
@@ -33,6 +34,14 @@ export function spotsLeftMessage(s: Session, free: number) {
   return `🕰️ **${s.title}** je už za dva dny a zbývá ještě **${free} ${free === 1 ? "volné místo" : free < 5 ? "volná místa" : "volných míst"}** z ${s.capacity}!\n📅 ${formatRange(s.startsAt, s.endsAt, "cs")} · 📍 ${s.place}\nRegistrace: ${sessionUrl(s.id)}`;
 }
 
+function registrationNote(s: Session) {
+  const state = effectiveRegistrationState(s);
+  const opensAt = scheduledOpening(s);
+  if (state === "open") return "registrace otevřena!";
+  if (opensAt) return `registrace se otevřou ${formatShortDate(opensAt)} v ${formatTime(opensAt)}.`;
+  return state === "paused" ? "registrace jsou zatím pozastavené." : "registrace se otevřou později.";
+}
+
 /**
  * Posts a session announcement to the Discord webhook from DISCORD_WEBHOOK_URL.
  * Returns "sent", "not_configured" or "failed"; never throws.
@@ -57,9 +66,7 @@ export async function announceSessionOnDiscord(
     });
   }
   const body = {
-    content: `🕰️ Nový herní večer: **${s.title}** – ${
-      s.registrationState === "open" ? "registrace otevřena!" : s.registrationState === "paused" ? "registrace jsou zatím pozastavené." : "registrace se otevřou později."
-    }`,
+    content: `🕰️ Nový herní večer: **${s.title}** – ${registrationNote(s)}`,
     embeds: [
       {
         title: s.title,

@@ -4,6 +4,7 @@ import { Card } from "@/components/ui";
 import { getDict } from "@/i18n/server";
 import { discordConfigured } from "@/lib/discord";
 import { getSessionWithCount } from "@/lib/queries";
+import { effectiveRegistrationState } from "@/lib/registration-state";
 import { dateToPragueLocal } from "@/lib/time";
 
 export default async function NewSessionPage({
@@ -23,6 +24,7 @@ export default async function NewSessionPage({
     ? {
         startsAt: dateToPragueLocal(new Date(template.startsAt.getTime() + week)),
         endsAt: dateToPragueLocal(new Date(template.endsAt.getTime() + week)),
+        registrationState: effectiveRegistrationState(template),
       }
     : undefined;
 

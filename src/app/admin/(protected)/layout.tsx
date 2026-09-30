@@ -17,7 +17,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     // The public site is narrow (max-w-3xl in the root layout); the admin breaks out of that
     // column and uses up to 80rem so tables with names and e-mails fit without scrolling.
     <div className="relative left-1/2 flex w-[min(calc(100vw-2rem),80rem)] -translate-x-1/2 flex-col gap-6">
-      <nav className="flex flex-wrap items-center gap-3 border-b border-border pb-3 text-sm">
+      <nav className="flex flex-wrap items-center gap-3 border-b border-border pb-3 text-sm print:hidden">
         <Link href="/admin" className="font-semibold">{t.admin.nav.home}</Link>
         <Link href="/admin/novy" className="hover:underline">{t.admin.nav.newSession}</Link>
         <Link href="/admin/statistiky" className="hover:underline">{t.admin.nav.stats}</Link>

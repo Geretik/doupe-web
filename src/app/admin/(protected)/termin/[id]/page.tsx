@@ -36,7 +36,8 @@ import { getSessionWithCount, listGamesForSession, listRegistrationsForSession }
 import { presenceByHour } from "@/lib/presence";
 import { countPendingReminders } from "@/lib/reminders";
 import { listTables, tableIssues, TABLE_MAX } from "@/lib/tables";
-import { dateToPragueLocal, formatDate, formatTime } from "@/lib/time";
+import { dateToPragueLocal, formatDate, formatShortDate, formatTime } from "@/lib/time";
+import { effectiveRegistrationState, scheduledOpening } from "@/lib/registration-state";
 import { isAnonymized, RETENTION_DAYS, shownEmail } from "@/lib/retention";
 import { editUrl } from "@/lib/site";
 
@@ -91,6 +92,8 @@ export default async function AdminSessionPage({
     .sort((a, b) => (a.waitlistedAt?.getTime() ?? 0) - (b.waitlistedAt?.getTime() ?? 0));
   const cancelled = regs.filter((r) => r.status === "cancelled");
   const past = session.endsAt < new Date();
+  const regState = effectiveRegistrationState(session);
+  const opensAt = scheduledOpening(session);
   /** the daily cron has deleted the players' names, e-mails and phones */
   const dataDeleted = session.endsAt < new Date(new Date().getTime() - RETENTION_DAYS * 864e5);
   const storytellers = confirmed.filter((r) => r.canStorytell).length;
@@ -125,11 +128,16 @@ export default async function AdminSessionPage({
           {t.exportCsv}
         </a>
         {!past && (
+          <Link href={`/admin/termin/${session.id}/plakat`} className="rounded-md border border-border bg-card px-3 py-2 hover:border-accent">
+            {t.poster}
+          </Link>
+        )}
+        {!past && (
           <ActionButton
-            action={setRegistrationStateAction.bind(null, session.id, session.registrationState === "open" ? "paused" : "open")}
-            label={session.registrationState === "open" ? t.pauseRegistration : t.openRegistration}
+            action={setRegistrationStateAction.bind(null, session.id, regState === "open" ? "paused" : "open")}
+            label={regState === "open" ? t.pauseRegistration : opensAt ? t.openNow : t.openRegistration}
             pendingLabel="…"
-            variant={session.registrationState === "open" ? "secondary" : "primary"}
+            variant={regState === "open" ? "secondary" : "primary"}
           />
         )}
         {!past && (
@@ -150,6 +158,10 @@ export default async function AdminSessionPage({
         )}
       </div>
 
+      {!past && opensAt && (
+        <Alert kind="info">{t.scheduledOpening(formatShortDate(opensAt, locale), formatTime(opensAt, locale))}</Alert>
+      )}
+
       <Card>
         <h2 className="mb-4 text-lg font-semibold">{t.edit}</h2>
         <SessionForm
@@ -159,6 +171,9 @@ export default async function AdminSessionPage({
           defaults={{
             startsAt: dateToPragueLocal(session.startsAt),
             endsAt: dateToPragueLocal(session.endsAt),
+            // once a scheduled opening has passed, the form shows the sign-ups as open
+            registrationState: regState,
+            registrationOpensAt: opensAt ? dateToPragueLocal(opensAt) : "",
           }}
           t={dict.admin.form}
         />

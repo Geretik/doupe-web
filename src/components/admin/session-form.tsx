@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { arrivalModes, registrationStates, type Session } from "@/db/schema";
+import { arrivalModes, registrationStates, type RegistrationState, type Session } from "@/db/schema";
 import type { Dict } from "@/i18n/dictionaries";
 import type { FormState } from "@/lib/validation";
 import { Alert, Button, Checkbox, Field, inputClass } from "../ui";
@@ -18,8 +18,8 @@ export function SessionForm({
   action: (prev: FormState, fd: FormData) => Promise<FormState>;
   /** Prefilled values – the session being edited, or a template when duplicating */
   session?: Pick<Session, "title" | "place" | "capacity" | "storyteller" | "note" | "scripts" | "arrivalMode" | "phoneRequired" | "registrationState">;
-  /** datetime-local strings in Prague time */
-  defaults?: { startsAt: string; endsAt: string };
+  /** datetime-local strings in Prague time; the sign-up state as players see it right now */
+  defaults?: { startsAt: string; endsAt: string; registrationState?: RegistrationState; registrationOpensAt?: string };
   mode?: "create" | "edit";
   discordConfigured?: boolean;
   t: Dict["admin"]["form"];
@@ -48,13 +48,16 @@ export function SessionForm({
         <input id="capacity" name="capacity" type="number" min={1} max={500} required defaultValue={session?.capacity ?? 15} className={inputClass} />
       </Field>
       <Field label={t.registrationState} name="registrationState" errors={fe.registrationState} hint={t.registrationStateHint}>
-        <select id="registrationState" name="registrationState" defaultValue={session?.registrationState ?? "open"} className={inputClass}>
+        <select id="registrationState" name="registrationState" defaultValue={defaults?.registrationState ?? session?.registrationState ?? "open"} className={inputClass}>
           {registrationStates.map((s) => (
             <option key={s} value={s}>
               {s === "open" ? t.registrationOpen : s === "not_open" ? t.registrationNotOpen : t.registrationPaused}
             </option>
           ))}
         </select>
+      </Field>
+      <Field label={t.registrationOpensAt} name="registrationOpensAt" errors={fe.registrationOpensAt} hint={t.registrationOpensAtHint}>
+        <input id="registrationOpensAt" name="registrationOpensAt" type="datetime-local" defaultValue={defaults?.registrationOpensAt ?? ""} className={inputClass} />
       </Field>
       <Field label={t.arrivalMode} name="arrivalMode" errors={fe.arrivalMode} hint={t.arrivalModeHint}>
         <select id="arrivalMode" name="arrivalMode" defaultValue={session?.arrivalMode ?? "times"} className={inputClass}>

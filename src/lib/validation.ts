@@ -84,6 +84,8 @@ export function sessionSchema(t: Dict["admin"]["errors"]) {
     arrivalMode: z.enum(arrivalModes).default("times"),
     phoneRequired: checkbox,
     registrationState: z.enum(registrationStates).default("open"),
+    /** datetime-local in Prague time; only used while sign-ups are closed */
+    registrationOpensAt: z.string().optional().default(""),
     storyteller: z
       .string()
       .trim()

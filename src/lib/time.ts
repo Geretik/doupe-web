@@ -20,6 +20,11 @@ export function formatDate(d: Date, locale: Locale = "cs") {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
+/** "pá 9. 10." / "Fri 9 Oct" – for badges and inside sentences */
+export function formatShortDate(d: Date, locale: Locale = "cs") {
+  return fmt(locale, locale === "cs" ? { weekday: "short", day: "numeric", month: "numeric" } : { weekday: "short", day: "numeric", month: "short" }).format(d);
+}
+
 export function formatTime(d: Date, locale: Locale = "cs") {
   return fmt(locale, { hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(d);
 }

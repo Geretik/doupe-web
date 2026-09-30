@@ -1,4 +1,4 @@
-import { and, eq, gte, isNull, lte, sql } from "drizzle-orm";
+import { and, eq, gte, isNull, lte, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { registrations, sessions } from "@/db/schema";
 import { notifyOrganizers } from "./alerts";
@@ -22,7 +22,15 @@ export async function postSpotsLeft() {
     })
     .from(sessions)
     // closed sign-ups: no "spots left" post (left unclaimed, so it still goes out if they reopen in time)
-    .where(and(gte(sessions.startsAt, from), lte(sessions.startsAt, to), isNull(sessions.spotsPostedAt), eq(sessions.registrationState, "open")));
+    .where(
+      and(
+        gte(sessions.startsAt, from),
+        lte(sessions.startsAt, to),
+        isNull(sessions.spotsPostedAt),
+        // sign-ups open, or opened on schedule (see lib/registration-state)
+        or(eq(sessions.registrationState, "open"), lte(sessions.registrationOpensAt, new Date())),
+      ),
+    );
   let posted = 0;
   for (const { session, confirmed } of due) {
     const free = session.capacity - confirmed;

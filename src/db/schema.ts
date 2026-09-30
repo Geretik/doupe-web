@@ -41,6 +41,8 @@ export const sessions = pgTable("sessions", {
   phoneRequired: boolean("phone_required").notNull().default(true),
   /** New sign-ups only while "open"; players already signed up can always edit or cancel */
   registrationState: text("registration_state", { enum: registrationStates }).notNull().default("open"),
+  /** Closed sign-ups open on their own at this moment (see lib/registration-state) */
+  registrationOpensAt: timestamp("registration_opens_at", { withTimezone: true }),
   /** Links to scripts played that evening (botcscripts.com, script tool, PDF on a drive, …) */
   scripts: jsonb("scripts").$type<ScriptLink[]>().notNull().default([]),
   createdAt: timestamp("created_at", { withTimezone: true })

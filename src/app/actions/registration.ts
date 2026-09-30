@@ -5,7 +5,7 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 import { headers } from "next/headers";
 import { notifyOrganizers } from "@/lib/alerts";
 import { siteUrl } from "@/lib/site";
-import { formatRange } from "@/lib/time";
+import { formatRange, formatShortDate, formatTime } from "@/lib/time";
 import { db } from "@/db";
 import { registrations, sessions } from "@/db/schema";
 import {
@@ -26,6 +26,7 @@ import { getRegistrationByToken, listRegistrationsByEmail } from "@/lib/queries"
 import { createMyGamesToken } from "@/lib/my-games-token";
 import { promoteWaitlist } from "@/lib/waitlist";
 import { getDict } from "@/i18n/server";
+import { effectiveRegistrationState, scheduledOpening } from "@/lib/registration-state";
 
 // Note: no revalidatePath() here on purpose. All public pages are force-dynamic,
 // and revalidating would re-render the current page and replace the success
@@ -113,7 +114,8 @@ export async function registerAction(
         .for("update");
       if (!session) return { kind: "not_found" as const };
       if (session.endsAt < new Date()) return { kind: "past" as const };
-      if (session.registrationState !== "open") return { kind: "closed" as const, state: session.registrationState };
+      const state = effectiveRegistrationState(session);
+      if (state !== "open") return { kind: "closed" as const, state, opensAt: scheduledOpening(session) };
 
       const existing = await tx.query.registrations.findFirst({
         where: and(
@@ -206,6 +208,7 @@ export async function registerAction(
       case "past":
         return { error: t.errors.past };
       case "closed":
+        if (result.opensAt) return { error: t.session.registrationOpensAt(formatShortDate(result.opensAt, locale), formatTime(result.opensAt, locale)) };
         return { error: result.state === "paused" ? t.session.registrationPaused : t.session.registrationNotOpen };
       case "already_throttled":
         return { ok: true, outcome: "already_registered", emailThrottled: true };

@@ -14,7 +14,9 @@ import { getDict } from "@/i18n/server";
 import { sessionUrl } from "@/lib/ics";
 import { isAdmin } from "@/lib/admin-auth";
 import { getSessionWithCount, listPublicPlayers } from "@/lib/queries";
-import { formatDate, formatRange, formatTime } from "@/lib/time";
+import { formatDate, formatRange, formatShortDate, formatTime } from "@/lib/time";
+import { effectiveRegistrationState, scheduledOpening } from "@/lib/registration-state";
+import { RefreshAt } from "@/components/refresh-at";
 
 export const dynamic = "force-dynamic";
 
@@ -61,6 +63,8 @@ export default async function SessionPage({
 
   const free = freeSpots(session);
   const past = session.endsAt < new Date();
+  const regState = effectiveRegistrationState(session);
+  const opensAt = scheduledOpening(session);
   // the waitlist has priority: while anybody is queued, newcomers queue too
   const full = free === 0 || session.waitlistedCount > 0;
 
@@ -116,10 +120,17 @@ export default async function SessionPage({
       <Card>
         {past ? (
           <Alert kind="info">{t.session.past}</Alert>
-        ) : session.registrationState !== "open" ? (
-          <Alert kind="info">
-            {session.registrationState === "paused" ? t.session.registrationPaused : t.session.registrationNotOpen}
-          </Alert>
+        ) : regState !== "open" ? (
+          <>
+            <Alert kind="info">
+              {opensAt
+                ? t.session.registrationOpensAt(formatShortDate(opensAt, locale), formatTime(opensAt, locale))
+                : regState === "paused"
+                  ? t.session.registrationPaused
+                  : t.session.registrationNotOpen}
+            </Alert>
+            {opensAt && <RefreshAt at={opensAt.toISOString()} />}
+          </>
         ) : (
           <>
             {full && (

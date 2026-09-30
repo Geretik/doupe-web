@@ -41,7 +41,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang={locale} className={`${geistSans.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
-        <header className="border-b border-border">
+        <header className="border-b border-border print:hidden">
           <div className="mx-auto max-w-3xl px-4 py-3 sm:py-4 flex flex-wrap items-center gap-x-6 gap-y-2">
             <Link href="/" className="mr-auto font-semibold tracking-tight text-lg leading-tight">
               🕰️ {t.meta.title}
@@ -61,7 +61,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <main className="mx-auto w-full max-w-3xl px-4 py-6 sm:py-8 flex-1">
           {children}
         </main>
-        <footer className="border-t border-border">
+        <footer className="border-t border-border print:hidden">
           <div className="mx-auto max-w-3xl px-4 py-4 text-sm text-muted flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <span>{t.nav.footer}</span>
             <span className="flex flex-wrap gap-x-4 gap-y-1">

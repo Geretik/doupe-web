@@ -417,6 +417,65 @@ test("sign-up state: publish a session with sign-ups not open yet, open and paus
   await expect(page.locator("#nickname")).toBeVisible();
 });
 
+test("scheduled sign-up opening: closed until the time, then the open page shows the form by itself", async ({ page }) => {
+  await adminLogin(page);
+  await page.goto("/admin/novy");
+  await page.fill("#title", "Časovaný večer");
+  await page.fill("#startsAt", "2031-03-10T18:00");
+  await page.fill("#endsAt", "2031-03-10T22:00");
+  await page.fill("#place", "Klubovna");
+  await page.selectOption("#registrationState", "not_open");
+  await page.fill("#registrationOpensAt", "2031-03-01T18:00");
+  await page.click("button:has-text('Vytvořit termín')");
+  await page.waitForURL(/\/admin$/);
+  await expect(page.locator("main a:has-text('Časovaný večer')")).toContainText("otevře se");
+  const [{ id }] = await sql<{ id: number }>("select id from sessions where title = 'Časovaný večer'");
+
+  // an opening time in the past is refused
+  await page.goto(`/admin/termin/${id}`);
+  await expect(page.locator("main")).toContainText("Registrace se automaticky otevřou");
+  await page.fill("#registrationOpensAt", "2020-01-01T10:00");
+  await page.click("button:has-text('Uložit změny')");
+  await expect(page.locator("main")).toContainText("musí být v budoucnosti");
+
+  await page.goto("/");
+  await expect(page.locator("main")).toContainText("Registrace od");
+  // the opening comes closer while a player waits on the session page
+  await sql("update sessions set registration_opens_at = now() + interval '3 seconds' where id = $1", [id]);
+  await page.goto(`/termin/${id}`);
+  await expect(page.locator("main")).toContainText("Registrace se otevřou");
+  await expect(page.locator("#nickname")).toHaveCount(0);
+  await expect(page.locator("#nickname")).toBeVisible({ timeout: 15000 });
+  await register(page, id, { nick: "Rychlík", email: "rychlik@example.com" });
+
+  // admin sees the sign-ups as open now
+  await page.goto(`/admin/termin/${id}`);
+  await expect(page.locator("button:has-text('Pozastavit registrace')")).toBeVisible();
+  await expect(page.locator("#registrationState")).toHaveValue("open");
+});
+
+test("QR code: public SVG and PNG of the sign-up link, printable poster in admin", async ({ page }) => {
+  const id = await createSession({ title: "Plakátový večer" });
+  const svg = await page.request.get(`/termin/${id}/qr.svg`);
+  expect(svg.headers()["content-type"]).toContain("image/svg+xml");
+  expect(await svg.text()).toContain("<svg");
+  const png = await page.request.get(`/termin/${id}/qr.png`);
+  expect(png.headers()["content-type"]).toBe("image/png");
+  expect((await png.body()).subarray(1, 4).toString()).toBe("PNG");
+  expect((await page.request.get("/termin/99999/qr.svg")).status()).toBe(404);
+
+  await adminLogin(page);
+  await page.goto(`/admin/termin/${id}`);
+  await page.click("a:has-text('QR kód a plakát')");
+  await expect(page).toHaveURL(new RegExp(`/admin/termin/${id}/plakat$`));
+  await expect(page.locator("article h1")).toHaveText("Plakátový večer");
+  await expect(page.locator("article")).toContainText("Naskenuj a přihlas se");
+  const img = page.locator(`article img[src="/termin/${id}/qr.svg"]`);
+  await expect(img).toHaveAttribute("alt", new RegExp(`/termin/${id}$`));
+  // the image really loads
+  expect(await img.evaluate((el: HTMLImageElement) => el.complete && el.naturalWidth > 0)).toBe(true);
+});
+
 test("edit link: a page left open cannot change or cancel a sign-up once the session is over", async ({ page }) => {
   const id = await createSession({ title: "Končící večer", capacity: 5 });
   await register(page, id, { nick: "Pozdní", email: "pozdni@example.com" });

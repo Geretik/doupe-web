@@ -1,7 +1,8 @@
 import Link from "next/link";
 import type { Dict, Locale } from "@/i18n/dictionaries";
 import type { SessionWithCount } from "@/lib/queries";
-import { formatDate, formatTime } from "@/lib/time";
+import { effectiveRegistrationState, scheduledOpening } from "@/lib/registration-state";
+import { formatDate, formatShortDate, formatTime } from "@/lib/time";
 import { EditPencil } from "./edit-pencil";
 import { ScriptLinks } from "./script-links";
 import { Card } from "./ui";
@@ -23,6 +24,9 @@ export function SessionCard({
 }) {
   const free = freeSpots(s);
   const full = free === 0;
+  const regState = effectiveRegistrationState(s);
+  const opensAt = scheduledOpening(s);
+  const closed = regState !== "open";
   return (
     <Card className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex flex-col gap-1">
@@ -62,20 +66,24 @@ export function SessionCard({
         {s.waitlistedCount > 0 && (
           <span className="text-xs text-muted">{t.session.waitlisted(s.waitlistedCount)}</span>
         )}
-        {s.registrationState !== "open" && (
+        {closed && (
           <span className="text-xs font-medium text-muted">
-            {s.registrationState === "paused" ? t.session.cardPaused : t.session.cardNotOpen}
+            {opensAt
+              ? t.session.cardOpensAt(formatShortDate(opensAt, locale), formatTime(opensAt, locale))
+              : regState === "paused"
+                ? t.session.cardPaused
+                : t.session.cardNotOpen}
           </span>
         )}
         <Link
           href={`/termin/${s.id}`}
           className={`rounded-md px-4 py-2 text-sm font-medium ${
-            full || s.registrationState !== "open"
+            full || closed
               ? "border border-border text-muted"
               : "bg-accent text-accent-foreground hover:opacity-90"
           }`}
         >
-          {full || s.registrationState !== "open" ? t.session.detail : t.session.register}
+          {full || closed ? t.session.detail : t.session.register}
         </Link>
       </div>
     </Card>
