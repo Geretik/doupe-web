@@ -61,9 +61,9 @@ function Czech() {
         <li>funguje dobře jak pro lidi, co chtějí dedukovat, tak pro ty, co si chtějí hlavně povídat, kecat a motat ostatní</li>
       </Ul>
 
-      <H2>Krvavka v rámci Doupěte</H2>
+      <H2>Krvavka v rámci DoUPěte</H2>
       <P>
-        Není problém vypsat Krvavku v rámci Doupěte jako klasické klubové hraní. Když o to
+        Není problém vypsat Krvavku v rámci DoUPěte jako klasické klubové hraní. Když o to
         bude zájem, můžeme se domluvit a něco zorganizovat – jen je potřeba počítat s tím,
         že tahle hra chce <strong>víc lidí</strong> než běžné deskovky.
       </P>
@@ -134,10 +134,10 @@ function English() {
         <li>it works both for people who love deducing and for those who mainly want to chat, scheme and mess with the others</li>
       </Ul>
 
-      <H2>Playing with the Doupě club</H2>
+      <H2>Playing with the DoUPě club</H2>
       <P>
         We can happily schedule Blood on the Clocktower as a regular club game night with
-        Doupě. If there is interest, we&apos;ll arrange something – just keep in mind that
+        DoUPě. If there is interest, we&apos;ll arrange something – just keep in mind that
         this game needs <strong>more people</strong> than the usual board games.
       </P>
       <P>
