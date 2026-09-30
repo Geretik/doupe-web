@@ -16,6 +16,7 @@ import {
   setTableStorytellerAction,
   deleteSessionAction,
   sendRemindersNowAction,
+  setRegistrationStateAction,
   updateSessionAction,
 } from "@/app/actions/admin";
 import { ActionButton } from "@/components/admin/action-button";
@@ -123,6 +124,14 @@ export default async function AdminSessionPage({
         <a href={`/admin/termin/${session.id}/export.csv`} className="rounded-md border border-border bg-card px-3 py-2 hover:border-accent">
           {t.exportCsv}
         </a>
+        {!past && (
+          <ActionButton
+            action={setRegistrationStateAction.bind(null, session.id, session.registrationState === "open" ? "paused" : "open")}
+            label={session.registrationState === "open" ? t.pauseRegistration : t.openRegistration}
+            pendingLabel="…"
+            variant={session.registrationState === "open" ? "secondary" : "primary"}
+          />
+        )}
         {!past && (
           <ActionButton
             action={sendRemindersNowAction.bind(null, session.id)}

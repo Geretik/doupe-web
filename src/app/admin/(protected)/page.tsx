@@ -16,7 +16,14 @@ export default async function AdminHomePage() {
     <Link href={`/admin/termin/${s.id}`} className="block">
       <Card className="flex flex-col gap-1 hover:border-accent/50 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="flex items-center gap-2 font-semibold">{s.title}</p>
+          <p className="flex items-center gap-2 font-semibold">
+            {s.title}
+            {s.registrationState !== "open" && (
+              <span className="rounded-full border border-border px-2 py-0.5 text-xs font-medium text-muted">
+                {s.registrationState === "paused" ? a.pausedShort : a.notOpenShort}
+              </span>
+            )}
+          </p>
           <p className="text-sm text-muted">
             <span>{formatDate(s.startsAt, locale)}</span>, {formatTime(s.startsAt, locale)}–{formatTime(s.endsAt, locale)} · {s.place}
           </p>

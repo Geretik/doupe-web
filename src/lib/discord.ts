@@ -57,7 +57,9 @@ export async function announceSessionOnDiscord(
     });
   }
   const body = {
-    content: `🕰️ Nový herní večer: **${s.title}** – registrace otevřena!`,
+    content: `🕰️ Nový herní večer: **${s.title}** – ${
+      s.registrationState === "open" ? "registrace otevřena!" : s.registrationState === "paused" ? "registrace jsou zatím pozastavené." : "registrace se otevřou později."
+    }`,
     embeds: [
       {
         title: s.title,

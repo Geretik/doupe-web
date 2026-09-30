@@ -374,6 +374,49 @@ test("one city: no city filter or Prague on the site, a single calendar feed", a
   await expect(page.locator("#city")).toHaveCount(0);
 });
 
+test("sign-up state: publish a session with sign-ups not open yet, open and pause them; the server enforces it", async ({ page }) => {
+  await adminLogin(page);
+  await page.goto("/admin/novy");
+  await page.fill("#title", "Tajný večer");
+  await page.fill("#startsAt", "2031-02-10T18:00");
+  await page.fill("#endsAt", "2031-02-10T22:00");
+  await page.fill("#place", "Klubovna");
+  await page.selectOption("#registrationState", "not_open");
+  await page.click("button:has-text('Vytvořit termín')");
+  await page.waitForURL(/\/admin$/);
+  await expect(page.locator("main a:has-text('Tajný večer')")).toContainText("neotevřeno");
+  const [{ id }] = await sql<{ id: number }>("select id from sessions where title = 'Tajný večer'");
+
+  // public: listed, but no sign-up form
+  await page.goto("/");
+  await expect(page.locator("main")).toContainText("Registrace zatím neotevřené");
+  await page.goto(`/termin/${id}`);
+  await expect(page.locator("main")).toContainText("Registrace na tento termín zatím nejsou otevřené.");
+  await expect(page.locator("#nickname")).toHaveCount(0);
+
+  // admin opens them with one click
+  await page.goto(`/admin/termin/${id}`);
+  await page.click("button:has-text('Otevřít registrace')");
+  await expect(page.locator("button:has-text('Pozastavit registrace')")).toBeVisible();
+  await register(page, id, { nick: "První", email: "prvni@example.com" });
+
+  // paused while someone has the form open: the server refuses the sign-up
+  await page.goto(`/termin/${id}`);
+  await sql("update sessions set registration_state = 'paused' where id = $1", [id]);
+  await page.fill("#firstName", "Druhý");
+  await page.fill("#nickname", "Druhý");
+  await page.fill("#email", "druhy@example.com");
+  await page.fill("#phone", "+420 777 123 456");
+  await page.click("main form button[type=submit]");
+  await expect(page.locator("main")).toContainText("Registrace na tento termín jsou momentálně pozastavené.");
+  expect(await sql("select nickname from registrations where session_id = $1", [id])).toEqual([{ nickname: "První" }]);
+
+  // players already signed up can still change their sign-up
+  const [{ edit_token }] = await sql<{ edit_token: string }>("select edit_token from registrations where session_id = $1", [id]);
+  await page.goto(`/r/${edit_token}`);
+  await expect(page.locator("#nickname")).toBeVisible();
+});
+
 test("edit link: a page left open cannot change or cancel a sign-up once the session is over", async ({ page }) => {
   const id = await createSession({ title: "Končící večer", capacity: 5 });
   await register(page, id, { nick: "Pozdní", email: "pozdni@example.com" });

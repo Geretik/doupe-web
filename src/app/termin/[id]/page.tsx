@@ -116,6 +116,10 @@ export default async function SessionPage({
       <Card>
         {past ? (
           <Alert kind="info">{t.session.past}</Alert>
+        ) : session.registrationState !== "open" ? (
+          <Alert kind="info">
+            {session.registrationState === "paused" ? t.session.registrationPaused : t.session.registrationNotOpen}
+          </Alert>
         ) : (
           <>
             {full && (

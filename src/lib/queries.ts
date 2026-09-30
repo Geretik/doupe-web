@@ -37,6 +37,7 @@ const sessionColumns = {
   note: sessions.note,
   arrivalMode: sessions.arrivalMode,
   phoneRequired: sessions.phoneRequired,
+  registrationState: sessions.registrationState,
   scripts: sessions.scripts,
   createdAt: sessions.createdAt,
   confirmedCount,

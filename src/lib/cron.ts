@@ -21,7 +21,8 @@ export async function postSpotsLeft() {
       confirmed: sql<number>`(select count(*)::int from ${registrations} r where r.session_id = ${sessions}.id and r.status = 'confirmed')`,
     })
     .from(sessions)
-    .where(and(gte(sessions.startsAt, from), lte(sessions.startsAt, to), isNull(sessions.spotsPostedAt)));
+    // closed sign-ups: no "spots left" post (left unclaimed, so it still goes out if they reopen in time)
+    .where(and(gte(sessions.startsAt, from), lte(sessions.startsAt, to), isNull(sessions.spotsPostedAt), eq(sessions.registrationState, "open")));
   let posted = 0;
   for (const { session, confirmed } of due) {
     const free = session.capacity - confirmed;

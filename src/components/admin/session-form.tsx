@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { arrivalModes, type Session } from "@/db/schema";
+import { arrivalModes, registrationStates, type Session } from "@/db/schema";
 import type { Dict } from "@/i18n/dictionaries";
 import type { FormState } from "@/lib/validation";
 import { Alert, Button, Checkbox, Field, inputClass } from "../ui";
@@ -17,7 +17,7 @@ export function SessionForm({
 }: {
   action: (prev: FormState, fd: FormData) => Promise<FormState>;
   /** Prefilled values – the session being edited, or a template when duplicating */
-  session?: Pick<Session, "title" | "place" | "capacity" | "storyteller" | "note" | "scripts" | "arrivalMode" | "phoneRequired">;
+  session?: Pick<Session, "title" | "place" | "capacity" | "storyteller" | "note" | "scripts" | "arrivalMode" | "phoneRequired" | "registrationState">;
   /** datetime-local strings in Prague time */
   defaults?: { startsAt: string; endsAt: string };
   mode?: "create" | "edit";
@@ -46,6 +46,15 @@ export function SessionForm({
       </Field>
       <Field label={t.capacity} name="capacity" errors={fe.capacity} hint={mode === "edit" ? t.capacityHint : undefined}>
         <input id="capacity" name="capacity" type="number" min={1} max={500} required defaultValue={session?.capacity ?? 15} className={inputClass} />
+      </Field>
+      <Field label={t.registrationState} name="registrationState" errors={fe.registrationState} hint={t.registrationStateHint}>
+        <select id="registrationState" name="registrationState" defaultValue={session?.registrationState ?? "open"} className={inputClass}>
+          {registrationStates.map((s) => (
+            <option key={s} value={s}>
+              {s === "open" ? t.registrationOpen : s === "not_open" ? t.registrationNotOpen : t.registrationPaused}
+            </option>
+          ))}
+        </select>
       </Field>
       <Field label={t.arrivalMode} name="arrivalMode" errors={fe.arrivalMode} hint={t.arrivalModeHint}>
         <select id="arrivalMode" name="arrivalMode" defaultValue={session?.arrivalMode ?? "times"} className={inputClass}>

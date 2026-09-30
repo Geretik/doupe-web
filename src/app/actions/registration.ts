@@ -113,6 +113,7 @@ export async function registerAction(
         .for("update");
       if (!session) return { kind: "not_found" as const };
       if (session.endsAt < new Date()) return { kind: "past" as const };
+      if (session.registrationState !== "open") return { kind: "closed" as const, state: session.registrationState };
 
       const existing = await tx.query.registrations.findFirst({
         where: and(
@@ -204,6 +205,8 @@ export async function registerAction(
         return { error: t.errors.notFound };
       case "past":
         return { error: t.errors.past };
+      case "closed":
+        return { error: result.state === "paused" ? t.session.registrationPaused : t.session.registrationNotOpen };
       case "already_throttled":
         return { ok: true, outcome: "already_registered", emailThrottled: true };
       case "already": {

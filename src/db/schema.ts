@@ -17,6 +17,10 @@ export type City = (typeof cities)[number];
 export const arrivalModes = ["times", "late"] as const;
 export type ArrivalMode = (typeof arrivalModes)[number];
 
+/** "open"; "not_open" = published, sign-ups open later; "paused" = sign-ups closed for now. */
+export const registrationStates = ["open", "not_open", "paused"] as const;
+export type RegistrationState = (typeof registrationStates)[number];
+
 export const sessions = pgTable("sessions", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
@@ -35,6 +39,8 @@ export const sessions = pgTable("sessions", {
   arrivalMode: text("arrival_mode", { enum: arrivalModes }).notNull().default("times"),
   /** Whether the registration form insists on a phone number */
   phoneRequired: boolean("phone_required").notNull().default(true),
+  /** New sign-ups only while "open"; players already signed up can always edit or cancel */
+  registrationState: text("registration_state", { enum: registrationStates }).notNull().default("open"),
   /** Links to scripts played that evening (botcscripts.com, script tool, PDF on a drive, …) */
   scripts: jsonb("scripts").$type<ScriptLink[]>().notNull().default([]),
   createdAt: timestamp("created_at", { withTimezone: true })

@@ -62,15 +62,20 @@ export function SessionCard({
         {s.waitlistedCount > 0 && (
           <span className="text-xs text-muted">{t.session.waitlisted(s.waitlistedCount)}</span>
         )}
+        {s.registrationState !== "open" && (
+          <span className="text-xs font-medium text-muted">
+            {s.registrationState === "paused" ? t.session.cardPaused : t.session.cardNotOpen}
+          </span>
+        )}
         <Link
           href={`/termin/${s.id}`}
           className={`rounded-md px-4 py-2 text-sm font-medium ${
-            full
+            full || s.registrationState !== "open"
               ? "border border-border text-muted"
               : "bg-accent text-accent-foreground hover:opacity-90"
           }`}
         >
-          {full ? t.session.detail : t.session.register}
+          {full || s.registrationState !== "open" ? t.session.detail : t.session.register}
         </Link>
       </div>
     </Card>

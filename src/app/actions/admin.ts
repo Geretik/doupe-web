@@ -5,7 +5,7 @@ import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/db";
-import { adminInvites, adminUsers, games, registrations, sessions, tables, type AdminRole, type AdminUser } from "@/db/schema";
+import { adminInvites, adminUsers, games, registrations, sessions, tables, type AdminRole, type AdminUser, type RegistrationState } from "@/db/schema";
 import {
   checkBootstrapPassword,
   clearAdminCookie,
@@ -196,6 +196,7 @@ async function parseSessionForm(formData: FormData) {
       capacity: parsed.data.capacity,
       arrivalMode: parsed.data.arrivalMode,
       phoneRequired: parsed.data.phoneRequired,
+      registrationState: parsed.data.registrationState,
       storyteller: parsed.data.storyteller,
       note: parsed.data.note,
       startsAt,
@@ -267,6 +268,15 @@ export async function adminCancelRegistrationAction(registrationId: number) {
     await promoteWaitlist(row.sessionId);
     revalidateSession(row.sessionId);
   }
+}
+
+/** One-click "open" / "pause" of new sign-ups from the admin session page. */
+export async function setRegistrationStateAction(sessionId: number, state: RegistrationState): Promise<SimpleResult> {
+  await requireAdmin();
+  const { t } = await getDict();
+  await db.update(sessions).set({ registrationState: state }).where(eq(sessions.id, sessionId));
+  revalidateSession(sessionId);
+  return { ok: true, message: state === "open" ? t.admin.session.registrationOpened : t.admin.session.registrationPaused };
 }
 
 /**
