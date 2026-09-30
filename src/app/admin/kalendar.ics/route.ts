@@ -5,6 +5,7 @@ import { registrations, sessions, type Session } from "@/db/schema";
 import { isAdmin } from "@/lib/admin-auth";
 import { buildIcs, sessionUrl } from "@/lib/ics";
 import { orgFeedKey } from "@/lib/org-feed";
+import { shownEmail } from "@/lib/retention";
 import { siteName, siteUrl } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
@@ -33,7 +34,7 @@ export async function GET(req: Request) {
       `Přihlášeno ${confirmed.length} / ${s.capacity}${waitlisted.length ? `, náhradníků ${waitlisted.length}` : ""}`,
     ];
     if (s.storyteller) parts.push(`🎩 Vypravěč: ${s.storyteller}`);
-    if (confirmed.length) parts.push(confirmed.map((r) => `${r.nickname}${r.canStorytell ? " 🎩" : ""}${r.isNewbie ? " 🌱" : ""} <${r.email}>`).join("\n"));
+    if (confirmed.length) parts.push(confirmed.map((r) => `${r.nickname}${r.canStorytell ? " 🎩" : ""}${r.isNewbie ? " 🌱" : ""}${shownEmail(r.email) ? ` <${r.email}>` : ""}`).join("\n"));
     if (s.note) parts.push(s.note);
     parts.push(`${siteUrl()}/admin/termin/${s.id}`, sessionUrl(s.id));
     return parts.join("\n\n");

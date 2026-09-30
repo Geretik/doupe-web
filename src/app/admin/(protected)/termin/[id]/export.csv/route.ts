@@ -5,6 +5,7 @@ import type { Dict } from "@/i18n/dictionaries";
 import { getDict } from "@/i18n/server";
 import { isAdmin } from "@/lib/admin-auth";
 import { listRegistrationsForSession } from "@/lib/queries";
+import { shownEmail } from "@/lib/retention";
 import { formatTime } from "@/lib/time";
 
 export const dynamic = "force-dynamic";
@@ -33,7 +34,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     r.firstName,
     r.lastName,
     r.nickname,
-    r.email,
+    shownEmail(r.email),
     r.phone,
     t.status[r.status] ?? r.status,
     session.arrivalMode === "late" ? (r.arrivesLate ? dict.admin.session.late : dict.admin.session.fromStart) : (r.arrivalTime ?? formatTime(session.startsAt, locale)),

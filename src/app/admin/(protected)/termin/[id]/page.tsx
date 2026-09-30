@@ -35,6 +35,7 @@ import { presenceByHour } from "@/lib/presence";
 import { countPendingReminders } from "@/lib/reminders";
 import { listTables, tableIssues, TABLE_MAX } from "@/lib/tables";
 import { dateToPragueLocal, formatDate, formatTime } from "@/lib/time";
+import { isAnonymized, RETENTION_DAYS, shownEmail } from "@/lib/retention";
 import { editUrl } from "@/lib/site";
 
 function Flags({ r, t }: { r: Registration; t: Dict["admin"]["session"] }) {
@@ -145,6 +146,9 @@ export default async function AdminSessionPage({
           {(attended > 0 || noShow > 0) && t.attendanceSummary(attended, noShow)}
         </p>
         {unconfirmed > 0 && <Alert kind="error">{t.noConfirmationCount(unconfirmed)}</Alert>}
+        {[...confirmed, ...waitlisted, ...cancelled].some((r) => isAnonymized(r.email)) && (
+          <Alert kind="info">{t.anonymizedInfo(RETENTION_DAYS)}</Alert>
+        )}
         {confirmed.length === 0 && <p className="text-muted">{t.nobody}</p>}
         {confirmed.length > 0 && (
           <div className="overflow-x-auto rounded-xl border border-border bg-card">
@@ -167,7 +171,7 @@ export default async function AdminSessionPage({
                   <tr key={r.id} className="border-b border-border last:border-0">
                     <td className="p-3 whitespace-nowrap">{fullName(r) ?? <span className="text-muted">–</span>}</td>
                     <td className="p-3 whitespace-nowrap">{r.nickname}<Flags r={r} t={t} /></td>
-                    <td className="p-3 whitespace-nowrap"><a href={`mailto:${r.email}`} className="hover:underline">{r.email}</a></td>
+                    <td className="p-3 whitespace-nowrap">{shownEmail(r.email) ? <a href={`mailto:${r.email}`} className="hover:underline">{r.email}</a> : <span className="text-muted">–</span>}</td>
                     <td className="p-3 whitespace-nowrap">{r.phone ? <a href={`tel:${r.phone}`} className="hover:underline">{r.phone}</a> : <span className="text-muted">–</span>}</td>
                     {session.arrivalMode === "late" ? (
                       <td className="p-3 whitespace-nowrap">{r.arrivesLate ? <strong>{t.late}</strong> : <span className="text-muted">{t.fromStart}</span>}</td>
@@ -187,15 +191,17 @@ export default async function AdminSessionPage({
                     )}
                     <td className="p-3 text-right whitespace-nowrap">
                       <a href={editUrl(r.editToken)} className="mr-3 text-muted hover:underline" target="_blank" rel="noreferrer">{t.link}</a>
-                      <span className="mr-3">
-                        <ActionButton
-                          action={adminResendLinkAction.bind(null, r.id)}
-                          label="✉️"
-                          pendingLabel="…"
-                          title={t.resendLink}
-                          confirmText={t.resendLinkConfirm}
-                        />
-                      </span>
+                      {!isAnonymized(r.email) && (
+                        <span className="mr-3">
+                          <ActionButton
+                            action={adminResendLinkAction.bind(null, r.id)}
+                            label="✉️"
+                            pendingLabel="…"
+                            title={t.resendLink}
+                            confirmText={t.resendLinkConfirm}
+                          />
+                        </span>
+                      )}
                       <form action={adminCancelRegistrationAction.bind(null, r.id)} className="inline">
                         <Button type="submit" variant="danger">{t.cancel}</Button>
                       </form>
@@ -214,9 +220,9 @@ export default async function AdminSessionPage({
             </table>
           </div>
         )}
-        {confirmed.length > 0 && (
+        {confirmed.some((r) => shownEmail(r.email)) && (
           <p className="text-xs text-muted">
-            {t.allEmails}<span className="select-all">{confirmed.map((r) => r.email).join(", ")}</span>
+            {t.allEmails}<span className="select-all">{confirmed.flatMap((r) => shownEmail(r.email) ?? []).join(", ")}</span>
           </p>
         )}
         {confirmed.length > 0 && session.arrivalMode === "times" && (
@@ -237,7 +243,7 @@ export default async function AdminSessionPage({
               <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-card px-3 py-2">
                 <span>
                   <span className="mr-2 font-semibold text-muted">{i + 1}.</span>
-                  {fullName(r) ? `${fullName(r)} (${r.nickname}` : `(${r.nickname}`}<Flags r={r} t={t} />) · {r.email}{r.phone && <> · {r.phone}</>}
+                  {fullName(r) ? `${fullName(r)} (${r.nickname}` : `(${r.nickname}`}<Flags r={r} t={t} />){shownEmail(r.email) && <> · {r.email}</>}{r.phone && <> · {r.phone}</>}
                 </span>
                 <span className="flex gap-2">
                   <a href={editUrl(r.editToken)} className="self-center text-muted hover:underline" target="_blank" rel="noreferrer">{t.link}</a>
@@ -261,7 +267,7 @@ export default async function AdminSessionPage({
             {cancelled.map((r) => (
               <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-card px-3 py-2">
                 <span className="text-muted">
-                  {fullName(r) ? `${fullName(r)} (${r.nickname})` : r.nickname} · {r.email}
+                  {fullName(r) ? `${fullName(r)} (${r.nickname})` : r.nickname}{shownEmail(r.email) && <> · {r.email}</>}
                   {r.cancelledAt && <> · {t.cancelledAt} {formatDate(r.cancelledAt, locale)} {formatTime(r.cancelledAt, locale)}</>}
                   {r.cancelReason && <> · {t.cancelReason}: „{r.cancelReason}“</>}
                 </span>

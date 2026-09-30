@@ -120,9 +120,9 @@ export default async function StatsPage() {
               </thead>
               <tbody>
                 {top.map((r) => (
-                  <tr key={r.email} className="border-b border-border last:border-0">
+                  <tr key={r.key} className="border-b border-border last:border-0">
                     <td className="p-3">{r.nickname}</td>
-                    <td className="p-3"><a href={`mailto:${r.email}`} className="hover:underline">{r.email}</a></td>
+                    <td className="p-3">{r.email ? <a href={`mailto:${r.email}`} className="hover:underline">{r.email}</a> : <span className="text-muted">–</span>}</td>
                     <td className="p-3 text-right">{r.sessions}</td>
                     <td className="p-3 text-right">{r.attended}</td>
                     <td className="p-3 text-right">{r.noShow}</td>

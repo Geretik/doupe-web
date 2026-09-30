@@ -374,6 +374,44 @@ test("one city: no city filter or Prague on the site, a single calendar feed", a
   await expect(page.locator("#city")).toHaveCount(0);
 });
 
+test("personal data is deleted 14 days after the session; nickname, attendance and stats stay", async ({ page, request }) => {
+  const old = await createSession({ title: "Starý večer", daysAhead: -20 });
+  const recent = await createSession({ title: "Nedávný večer", daysAhead: -3 });
+  // the same player at both; sign-ups for past sessions go straight into the database
+  for (const [sessionId, token] of [[old, "tok-old"], [recent, "tok-recent"]] as const) {
+    await sql(
+      "insert into registrations (session_id, first_name, last_name, nickname, email, phone, note, cancel_reason, edit_token, attended) values ($1, 'Jan', 'Novák', 'Honza', 'honza@example.com', '+420777123456', 'poznámka', 'důvod', $2, true)",
+      [sessionId, token],
+    );
+  }
+  const cron = () => request.get("/api/cron/reminders", { headers: { authorization: "Bearer e2e-cron" } });
+
+  expect((await (await cron()).json()).retention).toEqual({ anonymized: 1 });
+  const [o] = await sql<Record<string, unknown>>(
+    "select first_name, last_name, email, phone, note, cancel_reason, nickname, attended from registrations where edit_token = 'tok-old'",
+  );
+  // the note and cancel reason are kept on purpose
+  expect(o).toMatchObject({ first_name: null, last_name: null, phone: null, note: "poznámka", cancel_reason: "důvod", nickname: "Honza", attended: true });
+  expect(o.email).toMatch(/^[0-9a-f]{24}@anonym\.invalid$/);
+  expect(await sql("select email, phone from registrations where edit_token = 'tok-recent'")).toEqual([
+    { email: "honza@example.com", phone: "+420777123456" },
+  ]);
+  // the next run has nothing left to do
+  expect((await (await cron()).json()).retention).toEqual({ anonymized: 0 });
+
+  // admin: deleted data is not shown; stats still see one player with two sessions
+  await adminLogin(page);
+  await page.goto(`/admin/termin/${old}`);
+  await expect(page.locator("main")).toContainText("byly 14 dní po termínu smazány");
+  await expect(page.locator("main")).toContainText("Honza");
+  await expect(page.locator("main")).not.toContainText("anonym.invalid");
+  await page.goto("/admin/statistiky");
+  const row = page.locator("main tr:has-text('Honza')");
+  await expect(row).toHaveCount(1);
+  await expect(row.locator("td").nth(1)).toHaveText("honza@example.com");
+  await expect(row.locator("td").nth(2)).toHaveText("2");
+});
+
 test("old vercel.app addresses redirect to www.doupeol.cz, except /api (cron)", async ({ page }) => {
   for (const host of ["playbotc.vercel.app", "botc-olomoc.vercel.app"]) {
     const res = await page.request.get("/termin/5?x=1", { headers: { host }, maxRedirects: 0 });

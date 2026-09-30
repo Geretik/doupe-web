@@ -26,7 +26,7 @@ registraci upravit nebo zrušit.
 - `/admin/ucty` – účty a pozvánky (jen správce): pozvánka vygeneruje jednorázový odkaz, na kterém si nový organizátor založí účet
 - Hráči: poznámka pro organizátory, výběr příchodu/odchodu po 15 minutách v rámci termínu, zrušení s důvodem, stránka `/moje-hry` (odkaz na přehled registrací e-mailem), sdílení termínu, PWA
 - Organizátoři: přehled „kolik lidí bude v kterou hodinu“ podle příchodů a odchodů, vypravěč u termínu, opakující se termíny, rozdělení ke stolům (auto + ručně, e-mail hráčům), evidence odehraných her (archiv, statistiky), soukromý iCal `/admin/kalendar.ics?key=…`, ✉️ nové poslání odkazu hráči, ⚠️ u registrací bez potvrzení
-- Automatika: Discord post „zbývá míst“ dva dny před hrou, upozornění organizátorům (e-mail + Discord) při pozdním odhlášení (<24 h), selhání e-mailu nebo cronu; limit registrací z jedné sítě (`REGISTRATION_RATE_LIMIT`, výchozí 10/h)
+- Automatika: 14 dní po termínu se hráčům smaže jméno, e-mail a telefon (zůstane přezdívka, docházka, poznámka a důvod odhlášení; e-mail nahradí pseudonym, aby statistiky poznaly stejného hráče), Discord post „zbývá míst“ dva dny před hrou, upozornění organizátorům (e-mail + Discord) při pozdním odhlášení (<24 h), selhání e-mailu nebo cronu; limit registrací z jedné sítě (`REGISTRATION_RATE_LIMIT`, výchozí 10/h)
 - `/admin/statistiky` – obsazenost, docházka, pravidelní hráči
 - `/api/cron/reminders` – denní připomínky (Vercel Cron, viz níže)
 

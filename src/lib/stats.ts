@@ -1,6 +1,7 @@
 import { and, desc, eq, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { games, registrations, sessions } from "@/db/schema";
+import { playerPseudonym, shownEmail } from "./retention";
 
 export type PastSessionStats = {
   id: number;
@@ -36,7 +37,10 @@ export async function pastSessionStats(): Promise<PastSessionStats[]> {
 }
 
 export type Regular = {
-  email: string;
+  /** Same for all of a player's sign-ups, before and after their e-mail is deleted */
+  key: string;
+  /** null once the e-mail was deleted (RETENTION_DAYS after the session) */
+  email: string | null;
   nickname: string;
   sessions: number;
   attended: number;
@@ -44,24 +48,43 @@ export type Regular = {
   lastAt: Date;
 };
 
-/** Players by number of past sessions they were signed up for (confirmed). */
-export async function regulars(limit = 20): Promise<Regular[]> {
-  const rows = await db
+/** Confirmed sign-ups for past sessions, newest first. */
+function pastSignUps() {
+  return db
     .select({
-      email: sql<string>`lower(${registrations.email})`,
-      nickname: sql<string>`(array_agg(${registrations.nickname} order by ${sessions.startsAt} desc))[1]`,
-      sessions: sql<number>`count(*)::int`,
-      attended: sql<number>`count(*) filter (where ${registrations.attended} is true)::int`,
-      noShow: sql<number>`count(*) filter (where ${registrations.attended} is false)::int`,
-      lastAt: sql<Date>`max(${sessions.startsAt})`,
+      email: registrations.email,
+      nickname: registrations.nickname,
+      attended: registrations.attended,
+      startsAt: sessions.startsAt,
     })
     .from(registrations)
     .innerJoin(sessions, eq(registrations.sessionId, sessions.id))
     .where(and(eq(registrations.status, "confirmed"), lt(sessions.endsAt, new Date())))
-    .groupBy(sql`lower(${registrations.email})`)
-    .orderBy(desc(sql`count(*)`), desc(sql`max(${sessions.startsAt})`))
-    .limit(limit);
-  return rows.map((r) => ({ ...r, lastAt: new Date(r.lastAt) }));
+    .orderBy(desc(sessions.startsAt));
+}
+
+/**
+ * Players by number of past sessions they were signed up for (confirmed). Grouped in code by the
+ * e-mail's pseudonym, so a player whose older sign-ups are already anonymised stays one row.
+ */
+export async function regulars(limit = 20): Promise<Regular[]> {
+  const byPlayer = new Map<string, Regular>();
+  for (const r of await pastSignUps()) {
+    const key = playerPseudonym(r.email);
+    let p = byPlayer.get(key);
+    if (!p) {
+      // newest first: the first row has the player's current nickname
+      p = { key, email: null, nickname: r.nickname, sessions: 0, attended: 0, noShow: 0, lastAt: r.startsAt };
+      byPlayer.set(key, p);
+    }
+    p.email ??= shownEmail(r.email);
+    p.sessions++;
+    if (r.attended === true) p.attended++;
+    if (r.attended === false) p.noShow++;
+  }
+  return [...byPlayer.values()]
+    .sort((a, b) => b.sessions - a.sessions || b.lastAt.getTime() - a.lastAt.getTime())
+    .slice(0, limit);
 }
 
 export type GameStats = {
@@ -113,7 +136,6 @@ export async function totals(): Promise<Totals> {
   const [r] = await db
     .select({
       registrations: sql<number>`count(*)::int`,
-      uniquePlayers: sql<number>`count(distinct lower(${registrations.email}))::int`,
       attended: sql<number>`count(*) filter (where ${registrations.attended} is true)::int`,
       marked: sql<number>`count(*) filter (where ${registrations.attended} is not null)::int`,
     })
@@ -133,7 +155,7 @@ export async function totals(): Promise<Totals> {
     pastSessions: s.past,
     upcomingSessions: s.upcoming,
     registrations: r.registrations,
-    uniquePlayers: r.uniquePlayers,
+    uniquePlayers: new Set((await pastSignUps()).map((x) => playerPseudonym(x.email))).size,
     avgOccupancy: o.avg === null ? null : Number(o.avg),
     attendanceRate: r.marked ? r.attended / r.marked : null,
   };

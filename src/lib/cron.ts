@@ -4,6 +4,7 @@ import { registrations, sessions } from "@/db/schema";
 import { notifyOrganizers } from "./alerts";
 import { discordConfigured, postDiscordMessage, spotsLeftMessage } from "./discord";
 import { sendDueReminders } from "./reminders";
+import { anonymizeOldRegistrations, RETENTION_DAYS } from "./retention";
 
 /** Sessions starting this far ahead get the "spots left" Discord post (the cron runs once a day). */
 const SPOTS_WINDOW_HOURS: [number, number] = [36, 60];
@@ -49,5 +50,13 @@ export async function runDailyJobs() {
     console.error("Spots-left post failed", e);
     return { posted: 0 };
   });
-  return { reminders, spots };
+  const retention = await anonymizeOldRegistrations().catch(async (e) => {
+    console.error("Anonymisation failed", e);
+    await notifyOrganizers(
+      "Mazání starých osobních údajů selhalo",
+      `Údaje hráčů z termínů starších než ${RETENTION_DAYS} dní se nepodařilo smazat: ${e instanceof Error ? e.message : String(e)}. Zkusí se to znovu při dalším běhu; podívej se do logu ve Vercelu.`,
+    );
+    return { anonymized: 0 };
+  });
+  return { reminders, spots, retention };
 }

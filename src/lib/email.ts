@@ -4,6 +4,7 @@ import { dictionaries, type Locale } from "@/i18n/dictionaries";
 import { googleCalendarUrl, sessionIcsUrl } from "./ics";
 import { formatRange, formatTime } from "./time";
 import { greetingName } from "./names";
+import { isAnonymized } from "./retention";
 import { editUrl } from "./site";
 
 function escapeHtml(s: string) {
@@ -21,6 +22,8 @@ function fromAddress() {
 }
 
 async function send(to: string, subject: string, html: string, text: string) {
+  // the address was deleted after the session; sending would only bounce
+  if (isAnonymized(to)) return;
   const apiKey = process.env.RESEND_API_KEY;
   const from = fromAddress();
   if (!apiKey || !from) {
