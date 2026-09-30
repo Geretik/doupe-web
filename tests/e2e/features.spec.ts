@@ -374,6 +374,20 @@ test("one city: no city filter or Prague on the site, a single calendar feed", a
   await expect(page.locator("#city")).toHaveCount(0);
 });
 
+test("old vercel.app addresses redirect to www.doupeol.cz, except /api (cron)", async ({ page }) => {
+  for (const host of ["playbotc.vercel.app", "botc-olomoc.vercel.app"]) {
+    const res = await page.request.get("/termin/5?x=1", { headers: { host }, maxRedirects: 0 });
+    expect(res.status()).toBe(308);
+    expect(res.headers()["location"]).toBe("https://www.doupeol.cz/termin/5?x=1");
+  }
+  const home = await page.request.get("/", { headers: { host: "playbotc.vercel.app" }, maxRedirects: 0 });
+  expect(home.headers()["location"]).toBe("https://www.doupeol.cz/");
+  const cron = await page.request.get("/api/cron/reminders", { headers: { host: "playbotc.vercel.app" }, maxRedirects: 0 });
+  expect(cron.status()).toBe(401);
+  // the site's own address is not redirected
+  expect((await page.request.get("/", { maxRedirects: 0 })).status()).toBe(200);
+});
+
 test("pwa manifest and icons are served, share button on session page", async ({ page }) => {
   const manifest = await page.request.get("/manifest.webmanifest");
   expect(manifest.ok()).toBeTruthy();
