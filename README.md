@@ -21,6 +21,7 @@ registraci upravit nebo zrušit.
 - `/kalendar.ics` – veřejný iCal feed všech termínů (odběr kalendáře)
 - `/archiv` – proběhlé večery s odehranými scripty a počtem hráčů
 - `/klub` – o klubu: kdy a kde se hraje, pravidla, přihlašování na klubová hraní (zatím přes Discord)
+- `/ochrana-udaju` – zásady ochrany osobních údajů (co se sbírá, zpracovatelé, mazání po 14 dnech, práva); v adminu u hráče 🗑️ smaže na žádost všechny jeho údaje ve všech registracích
 - `/r/[token]` – úprava / zrušení registrace přes odkaz z e-mailu
 - `/admin` – správa termínů a přehled přihlášených (účty organizátorů s hashovanými hesly, role správce / organizátor)
 - `/admin/ucty` – účty a pozvánky (jen správce): pozvánka vygeneruje jednorázový odkaz, na kterém si nový organizátor založí účet
@@ -76,6 +77,8 @@ Admin: `/admin/login`. Při prvním spuštění (žádný účet) stránka nabí
 | `ADMIN_SECRET` | Náhodný řetězec pro podpis admin cookie (`openssl rand -hex 32`) |
 | `CRON_SECRET` | Tajemství pro cron připomínek; Vercel ho posílá automaticky v hlavičce `Authorization: Bearer …` (`openssl rand -hex 32`) |
 | `DISCORD_WEBHOOK_URL` | Volitelné. Webhook Discord kanálu pro oznámení nových termínů (bez něj se tlačítka jen hlásí, že Discord není nastavený) |
+| `DISCORD_ALERTS_WEBHOOK_URL` | Volitelné. Webhook **neveřejného** kanálu organizátorů pro upozornění (pozdní odhlášení s přezdívkou a důvodem, selhání e-mailu nebo cronu). Bez něj chodí upozornění jen e-mailem. |
+| `CONTACT_EMAIL` | Doporučené. Schránka organizátorů: Reply-To všech e-mailů (adresa odesílatele nemá schránku) a kontakt na stránce `/ochrana-udaju` (bez ní se odkazuje na Discord) |
 
 ## Nasazení na Vercel
 

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState } from "react";
 import { registerAction, type RegisterResult } from "@/app/actions/registration";
 import type { ArrivalMode } from "@/db/schema";
@@ -111,7 +112,10 @@ export function RegistrationForm({
       <Button type="submit" disabled={pending}>
         {pending ? t.submitting : waitlist ? t.submitWaitlist : t.submit}
       </Button>
-      <p className="text-xs text-muted">{t.privacyNote}</p>
+      <p className="text-xs text-muted">
+        {t.privacyNote}{" "}
+        <Link href="/ochrana-udaju" className="underline hover:text-accent">{t.privacyLink}</Link>
+      </p>
     </form>
   );
 }

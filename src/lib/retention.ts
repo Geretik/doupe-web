@@ -1,4 +1,4 @@
-import { createHmac } from "node:crypto";
+import { createHmac, randomBytes } from "node:crypto";
 import { and, eq, inArray, lt, notLike } from "drizzle-orm";
 import { db } from "@/db";
 import { registrations, sessions } from "@/db/schema";
@@ -7,6 +7,9 @@ import { registrations, sessions } from "@/db/schema";
 export const RETENTION_DAYS = 14;
 
 const ANON_SUFFIX = "@anonym.invalid";
+const ERASED_PREFIX = "erased-";
+/** Shown instead of the nickname of a player erased at their request. */
+export const ERASED_NICKNAME = "(smazáno)";
 
 /**
  * Stable stand-in for a player's e-mail once it is deleted: the same player always gets the same one,
@@ -24,9 +27,36 @@ export function isAnonymized(email: string) {
   return email.endsWith(ANON_SUFFIX);
 }
 
+/** Erased at the player's request: not tied to their other sign-ups any more, so stats skip it. */
+export function isErased(email: string) {
+  return email.startsWith(ERASED_PREFIX) && isAnonymized(email);
+}
+
 /** The e-mail to show organisers, or null once it has been deleted. */
 export function shownEmail(email: string) {
   return isAnonymized(email) ? null : email;
+}
+
+/** Column values that delete a registration's personal data; nickname, note and cancel reason stay. */
+export function anonymizedFields(email: string) {
+  return { email: playerPseudonym(email), firstName: null, lastName: null, phone: null, ipHash: null };
+}
+
+/**
+ * Values for erasing a registration at the player's request: everything personal goes, including the
+ * nickname, note and cancel reason, and a random stand-in e-mail unlinks it from their other sign-ups.
+ */
+export function erasedFields() {
+  return {
+    email: `${ERASED_PREFIX}${randomBytes(12).toString("hex")}${ANON_SUFFIX}`,
+    firstName: null,
+    lastName: null,
+    nickname: ERASED_NICKNAME,
+    phone: null,
+    note: null,
+    cancelReason: null,
+    ipHash: null,
+  };
 }
 
 /**
@@ -48,16 +78,7 @@ export async function anonymizeOldRegistrations() {
       ),
     );
   for (const r of due) {
-    await db
-      .update(registrations)
-      .set({
-        email: playerPseudonym(r.email),
-        firstName: null,
-        lastName: null,
-        phone: null,
-        ipHash: null,
-      })
-      .where(eq(registrations.id, r.id));
+    await db.update(registrations).set(anonymizedFields(r.email)).where(eq(registrations.id, r.id));
   }
   return { anonymized: due.length };
 }

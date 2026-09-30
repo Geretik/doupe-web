@@ -5,7 +5,7 @@ import { googleCalendarUrl, sessionIcsUrl } from "./ics";
 import { formatRange, formatTime } from "./time";
 import { greetingName } from "./names";
 import { isAnonymized } from "./retention";
-import { editUrl } from "./site";
+import { contactEmail, editUrl } from "./site";
 
 function escapeHtml(s: string) {
   return s
@@ -40,7 +40,9 @@ async function send(to: string, subject: string, html: string, text: string) {
     to = redirect;
   }
   const resend = new Resend(apiKey);
-  const { error } = await resend.emails.send({ from, to, subject, html, text });
+  // the sender address has no mailbox; replies go to the organisers instead
+  const replyTo = contactEmail() ?? undefined;
+  const { error } = await resend.emails.send({ from, to, subject, html, text, replyTo });
   if (error) {
     console.error("Resend error", error);
     throw new Error("E-mail could not be sent.");

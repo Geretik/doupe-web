@@ -1,6 +1,7 @@
-import { and, asc, desc, eq, gte, inArray, lt, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, lt, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { games, registrations, sessions } from "@/db/schema";
+import { playerPseudonym } from "./retention";
 
 export type SessionWithCount = typeof sessions.$inferSelect & {
   confirmedCount: number;
@@ -122,9 +123,11 @@ export async function gamesBySession(sessionIds: number[]) {
 }
 
 /** All registrations of one player (by e-mail), newest session first, with the session. */
+/** The player's sign-ups: by e-mail, plus older ones whose e-mail was already replaced by its pseudonym. */
 export async function listRegistrationsByEmail(email: string) {
+  const plain = email.toLowerCase();
   return db.query.registrations.findMany({
-    where: eq(sql`lower(${registrations.email})`, email.toLowerCase()),
+    where: or(eq(sql`lower(${registrations.email})`, plain), eq(registrations.email, playerPseudonym(plain))),
     with: { session: true },
     orderBy: [desc(registrations.createdAt)],
   });

@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import {
   adminCancelRegistrationAction,
   adminConfirmWaitlistedAction,
+  adminErasePlayerAction,
   adminResendLinkAction,
   adminRestoreRegistrationAction,
   announceDiscordAction,
@@ -51,6 +52,19 @@ function Flags({ r, t }: { r: Registration; t: Dict["admin"]["session"] }) {
   );
 }
 
+/** Deletes the player's personal data at their request, in all their sign-ups. */
+function EraseButton({ registrationId, t }: { registrationId: number; t: Dict["admin"]["session"] }) {
+  return (
+    <ActionButton
+      action={adminErasePlayerAction.bind(null, registrationId)}
+      label="🗑️"
+      pendingLabel="…"
+      title={t.erase}
+      confirmText={t.eraseConfirm}
+    />
+  );
+}
+
 export default async function AdminSessionPage({
   params,
 }: {
@@ -76,6 +90,8 @@ export default async function AdminSessionPage({
     .sort((a, b) => (a.waitlistedAt?.getTime() ?? 0) - (b.waitlistedAt?.getTime() ?? 0));
   const cancelled = regs.filter((r) => r.status === "cancelled");
   const past = session.endsAt < new Date();
+  /** the daily cron has deleted the players' names, e-mails and phones */
+  const dataDeleted = session.endsAt < new Date(new Date().getTime() - RETENTION_DAYS * 864e5);
   const storytellers = confirmed.filter((r) => r.canStorytell).length;
   const newbies = confirmed.filter((r) => r.isNewbie).length;
   const attended = confirmed.filter((r) => r.attended === true).length;
@@ -146,7 +162,7 @@ export default async function AdminSessionPage({
           {(attended > 0 || noShow > 0) && t.attendanceSummary(attended, noShow)}
         </p>
         {unconfirmed > 0 && <Alert kind="error">{t.noConfirmationCount(unconfirmed)}</Alert>}
-        {[...confirmed, ...waitlisted, ...cancelled].some((r) => isAnonymized(r.email)) && (
+        {dataDeleted && (
           <Alert kind="info">{t.anonymizedInfo(RETENTION_DAYS)}</Alert>
         )}
         {confirmed.length === 0 && <p className="text-muted">{t.nobody}</p>}
@@ -202,6 +218,11 @@ export default async function AdminSessionPage({
                           />
                         </span>
                       )}
+                      {!isAnonymized(r.email) && (
+                        <span className="mr-3">
+                          <EraseButton registrationId={r.id} t={t} />
+                        </span>
+                      )}
                       <form action={adminCancelRegistrationAction.bind(null, r.id)} className="inline">
                         <Button type="submit" variant="danger">{t.cancel}</Button>
                       </form>
@@ -247,6 +268,7 @@ export default async function AdminSessionPage({
                 </span>
                 <span className="flex gap-2">
                   <a href={editUrl(r.editToken)} className="self-center text-muted hover:underline" target="_blank" rel="noreferrer">{t.link}</a>
+                  {!isAnonymized(r.email) && <EraseButton registrationId={r.id} t={t} />}
                   <form action={adminConfirmWaitlistedAction.bind(null, r.id)}>
                     <Button type="submit" variant="secondary">{t.confirm}</Button>
                   </form>
@@ -271,9 +293,12 @@ export default async function AdminSessionPage({
                   {r.cancelledAt && <> · {t.cancelledAt} {formatDate(r.cancelledAt, locale)} {formatTime(r.cancelledAt, locale)}</>}
                   {r.cancelReason && <> · {t.cancelReason}: „{r.cancelReason}“</>}
                 </span>
-                <form action={adminRestoreRegistrationAction.bind(null, r.id)}>
-                  <Button type="submit" variant="secondary">{t.restore}</Button>
-                </form>
+                <span className="flex gap-2">
+                  {!isAnonymized(r.email) && <EraseButton registrationId={r.id} t={t} />}
+                  <form action={adminRestoreRegistrationAction.bind(null, r.id)}>
+                    <Button type="submit" variant="secondary">{t.restore}</Button>
+                  </form>
+                </span>
               </li>
             ))}
           </ul>

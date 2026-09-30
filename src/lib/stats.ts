@@ -1,7 +1,7 @@
 import { and, desc, eq, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { games, registrations, sessions } from "@/db/schema";
-import { playerPseudonym, shownEmail } from "./retention";
+import { isErased, playerPseudonym, shownEmail } from "./retention";
 
 export type PastSessionStats = {
   id: number;
@@ -48,9 +48,9 @@ export type Regular = {
   lastAt: Date;
 };
 
-/** Confirmed sign-ups for past sessions, newest first. */
-function pastSignUps() {
-  return db
+/** Confirmed sign-ups for past sessions, newest first; sign-ups erased on request are left out. */
+async function pastSignUps() {
+  const rows = await db
     .select({
       email: registrations.email,
       nickname: registrations.nickname,
@@ -61,6 +61,7 @@ function pastSignUps() {
     .innerJoin(sessions, eq(registrations.sessionId, sessions.id))
     .where(and(eq(registrations.status, "confirmed"), lt(sessions.endsAt, new Date())))
     .orderBy(desc(sessions.startsAt));
+  return rows.filter((r) => !isErased(r.email));
 }
 
 /**

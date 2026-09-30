@@ -13,7 +13,7 @@ export const cs = {
     title: SITE_NAME,
     description: "Registrace na herní večery Blood on the Clocktower v Olomouci",
   },
-  nav: { sessions: "Termíny", about: "O hře", archive: "Archiv", club: "Klub", admin: "Admin", myGames: "Moje hry", footer: "Herní večery v Olomouci", calendarFeed: "Kalendář (iCal)" },
+  nav: { sessions: "Termíny", about: "O hře", archive: "Archiv", club: "Klub", admin: "Admin", myGames: "Moje hry", footer: "Herní večery v Olomouci", calendarFeed: "Kalendář (iCal)", privacy: "Ochrana údajů" },
   lang: { switchTo: "English", label: "Jazyk" },
   home: {
     title: "Nadcházející termíny",
@@ -70,6 +70,7 @@ export const cs = {
     arrivesLate: "Přijdu později",
     arrivesLateHint: "Zaškrtni, když nedorazíš na začátek. Organizátoři s tím počítají.",
     privacyNote: "Všechny údaje sbíráme pouze kvůli pořádání tohoto konkrétního hraní. K ničemu jinému je nepoužijeme a nikomu je nepředáme. Jméno, e-mail a telefon se 14 dní po konání hraní automaticky smažou.",
+    privacyLink: "Více o ochraně údajů",
     canStorytell: "Můžu dělat vypravěče (Storyteller)",
     canStorytellHint: "Organizátoři uvidí, že máš zájem hru vést. U tvé přezdívky se zobrazí 🎩.",
     isNewbie: "Jsem nováček",
@@ -208,6 +209,10 @@ export const cs = {
   club: {
     title: CLUB_NAME,
     subtitle: "Kdy a kde hrajeme, jak se přihlásit na hry a jak to u nás chodí.",
+  },
+  privacy: {
+    title: "Ochrana osobních údajů",
+    subtitle: "Jaké údaje při registraci sbíráme, k čemu je potřebujeme, kdo k nim má přístup a kdy je smažeme.",
   },
   admin: {
     nav: { home: "Admin", newSession: "+ Nový termín", stats: "Statistiky", accounts: "Účty", logout: "Odhlásit" },
@@ -372,6 +377,9 @@ export const cs = {
       playerNote: "Poznámka hráče",
       cancel: "Odhlásit",
       allEmails: "E-maily všech: ",
+      erase: "Smazat všechny údaje hráče (na jeho žádost)",
+      eraseConfirm: "Smazat všechny údaje tohoto hráče (jméno, přezdívku, e-mail, telefon, poznámky) ve všech jeho registracích? Z nadcházejících termínů se tím odhlásí. Nejde to vrátit.",
+      erased: (n: number) => `Údaje smazány (registrací: ${n}).`,
       anonymizedInfo: (days: number) => `Jména, e-maily a telefony hráčů byly ${days} dní po termínu smazány. Přezdívky, docházka, poznámky a důvody odhlášení zůstaly.`,
       noConfirmation: "Potvrzovací e-mail neodešel, pošli hráči odkaz na úpravu ručně.",
       noConfirmationCount: (n: number) => `⚠️ ${n} přihlášeným neodešel potvrzovací e-mail (ikona ⚠️ u přezdívky). Pošli jim odkaz na úpravu ručně.`,
@@ -524,7 +532,7 @@ export const en: Dict = {
     title: SITE_NAME,
     description: "Sign up for Blood on the Clocktower game nights in Olomouc",
   },
-  nav: { sessions: "Sessions", about: "About the game", archive: "Archive", club: "The club", admin: "Admin", myGames: "My games", footer: "Game nights in Olomouc", calendarFeed: "Calendar (iCal)" },
+  nav: { sessions: "Sessions", about: "About the game", archive: "Archive", club: "The club", admin: "Admin", myGames: "My games", footer: "Game nights in Olomouc", calendarFeed: "Calendar (iCal)", privacy: "Privacy" },
   lang: { switchTo: "Česky", label: "Language" },
   home: {
     title: "Upcoming sessions",
@@ -578,6 +586,7 @@ export const en: Dict = {
     arrivesLate: "I'll arrive later",
     arrivesLateHint: "Tick this if you won't make it for the start, so the organisers know.",
     privacyNote: "We collect these details only to run this particular game night. They won't be used for anything else or shared with anyone. Your name, e-mail and phone are deleted automatically 14 days after the game.",
+    privacyLink: "More about your data",
     emptyMeansPrefix: "Empty = ",
     canStorytell: "I can be the Storyteller",
     canStorytellHint: "Organisers will see you're willing to run the game. A 🎩 is shown next to your nickname.",
@@ -714,6 +723,10 @@ export const en: Dict = {
   club: {
     title: CLUB_NAME,
     subtitle: "A board game club in Olomouc – when and where we play, how to sign up for games and how things work.",
+  },
+  privacy: {
+    title: "Privacy",
+    subtitle: "What we collect when you sign up, what we need it for, who can see it and when we delete it.",
   },
   admin: {
     nav: { home: "Admin", newSession: "+ New session", stats: "Statistics", accounts: "Accounts", logout: "Log out" },
@@ -873,6 +886,9 @@ export const en: Dict = {
       playerNote: "Player's note",
       cancel: "Remove",
       allEmails: "All e-mails: ",
+      erase: "Delete all of the player's data (at their request)",
+      eraseConfirm: "Delete all of this player's data (name, nickname, e-mail, phone, notes) in all their sign-ups? This also removes them from upcoming sessions. It cannot be undone.",
+      erased: (n) => `Data deleted (sign-ups: ${n}).`,
       anonymizedInfo: (days) => `Players' names, e-mails and phones were deleted ${days} days after the session. Nicknames, attendance, notes and cancel reasons are kept.`,
       noConfirmation: "The confirmation e-mail was not sent; send the player their edit link manually.",
       noConfirmationCount: (n) => `⚠️ ${n} signed-up players did not receive the confirmation e-mail (⚠️ next to the nickname). Send them their edit link manually.`,

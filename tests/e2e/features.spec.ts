@@ -393,6 +393,59 @@ test("edit link: a page left open cannot change or cancel a sign-up once the ses
   ]);
 });
 
+test("privacy page: linked from the footer and the sign-up form, in both languages", async ({ page }) => {
+  const id = await createSession({ title: "Soukromý večer" });
+  await page.goto(`/termin/${id}`);
+  await page.click("main form a:has-text('Více o ochraně údajů')");
+  await expect(page).toHaveURL(/\/ochrana-udaju$/);
+  await expect(page.locator("h1")).toHaveText("Ochrana osobních údajů");
+  const main = page.locator("main");
+  await expect(main).toContainText("Klubu deskových her DoUPě Olomouc");
+  await expect(main).toContainText("do uplynutí 14 dní od konání hraní");
+  await expect(main).toContainText("Vercel Inc.");
+  // no CONTACT_EMAIL in tests: contact falls back to Discord; no alerts webhook: Discord is not a processor
+  await expect(page.getByRole("link", { name: "napiš nám na Discordu" })).toHaveAttribute("href", "https://discord.gg/vCg3WdHpZR");
+  await expect(main).not.toContainText("Discord Inc.");
+
+  await page.goto("/");
+  await page.click("footer a:has-text('Ochrana údajů')");
+  await expect(page).toHaveURL(/\/ochrana-udaju$/);
+  await page.click("header button:has-text('English')");
+  await expect(page.locator("h1")).toHaveText("Privacy");
+  await expect(main).toContainText("until 14 days after the game");
+});
+
+test("admin: erasing a player on request deletes everything in all their sign-ups and frees upcoming spots", async ({ page }) => {
+  const upcoming = await createSession({ title: "Nadcházející", capacity: 5 });
+  const past = await createSession({ title: "Minulý", daysAhead: -3 });
+  await register(page, upcoming, { nick: "Mazaný", email: "mazany@example.com", note: "přijdu s kamarádem" });
+  await sql(
+    "insert into registrations (session_id, nickname, email, phone, note, edit_token, attended) values ($1, 'Mazaný', 'mazany@example.com', '+420777000111', 'poznámka', 'tok-past', true)",
+    [past],
+  );
+
+  await adminLogin(page);
+  await page.goto(`/admin/termin/${upcoming}`);
+  page.on("dialog", (d) => d.accept());
+  await page.click("button[title='Smazat všechny údaje hráče (na jeho žádost)']");
+  // the row moves to the cancelled list under the placeholder nickname
+  await expect(page.locator("main")).toContainText("Odhlášení (1)");
+  await expect(page.locator("main")).toContainText("(smazáno)");
+
+  const rows = await sql<{ nickname: string; email: string; phone: string | null; note: string | null; status: string }>(
+    "select nickname, email, phone, note, status from registrations order by session_id",
+  );
+  expect(rows.map((r) => [r.nickname, r.phone, r.note, r.status])).toEqual([
+    ["(smazáno)", null, null, "cancelled"],
+    ["(smazáno)", null, null, "confirmed"],
+  ]);
+  for (const r of rows) expect(r.email).toMatch(/^erased-[0-9a-f]{24}@anonym\.invalid$/);
+  // the two sign-ups are no longer tied together
+  expect(rows[0].email).not.toBe(rows[1].email);
+  await page.goto("/admin/statistiky");
+  await expect(page.locator("main")).not.toContainText("(smazáno)");
+});
+
 test("personal data is deleted 14 days after the session; nickname, attendance and stats stay", async ({ page, request }) => {
   const old = await createSession({ title: "Starý večer", daysAhead: -20 });
   const recent = await createSession({ title: "Nedávný večer", daysAhead: -3 });
@@ -429,6 +482,12 @@ test("personal data is deleted 14 days after the session; nickname, attendance a
   await expect(row).toHaveCount(1);
   await expect(row.locator("td").nth(1)).toHaveText("honza@example.com");
   await expect(row.locator("td").nth(2)).toHaveText("2");
+
+  // "my games" still finds the older, anonymised game through the e-mail's pseudonym
+  process.env.ADMIN_SECRET = "e2e-secret"; // same as the e2e server, so the token verifies
+  await page.goto(`/moje-hry/${createMyGamesToken("honza@example.com")}`);
+  await expect(page.locator("main")).toContainText("Starý večer");
+  await expect(page.locator("main")).toContainText("Nedávný večer");
 });
 
 test("sitemap lists public pages and upcoming sessions; robots.txt keeps admin and personal links out", async ({ page }) => {

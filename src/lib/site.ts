@@ -3,6 +3,14 @@ export function siteName() {
   return process.env.NEXT_PUBLIC_SITE_NAME ?? "DoUPě Olomouc";
 }
 
+/** Invite to the club's Discord server – the main channel for club news. */
+export const CLUB_DISCORD_URL = "https://discord.gg/vCg3WdHpZR";
+
+/** Where players can write to the organisers: Reply-To of all e-mails and the contact on the privacy page. */
+export function contactEmail() {
+  return process.env.CONTACT_EMAIL?.trim() || null;
+}
+
 export function siteUrl() {
   const url =
     process.env.NEXT_PUBLIC_SITE_URL ??

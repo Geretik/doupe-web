@@ -2,8 +2,8 @@ import Link from "next/link";
 import type { Locale } from "@/i18n/dictionaries";
 import { H2, Ul } from "@/components/prose";
 import { Card } from "@/components/ui";
+import { CLUB_DISCORD_URL as DISCORD_URL } from "@/lib/site";
 
-const DISCORD_URL = "https://discord.gg/vCg3WdHpZR";
 const MAP_URL = "https://maps.app.goo.gl/strUg6nAKamStgeB7";
 const linkClass = "underline hover:text-accent";
 

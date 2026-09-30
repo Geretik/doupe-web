@@ -6,9 +6,13 @@ export function discordConfigured() {
   return Boolean(process.env.DISCORD_WEBHOOK_URL);
 }
 
-/** Posts a plain message to the webhook; returns false when not configured or failed. Never throws. */
+/** Posts a plain message to the public announcements webhook; returns false when not configured or failed. Never throws. */
 export async function postDiscordMessage(content: string) {
-  const url = process.env.DISCORD_WEBHOOK_URL;
+  return postToWebhook(process.env.DISCORD_WEBHOOK_URL, content);
+}
+
+/** Posts to any Discord webhook; false when the URL is missing or the post failed. Never throws. */
+export async function postToWebhook(url: string | undefined, content: string) {
   if (!url) return false;
   try {
     const res = await fetch(url, {

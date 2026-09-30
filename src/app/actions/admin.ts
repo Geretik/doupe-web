@@ -34,6 +34,7 @@ import {
   type FormState,
 } from "@/lib/validation";
 import { promoteWaitlist } from "@/lib/waitlist";
+import { erasedFields } from "@/lib/retention";
 
 /** Signed-in organiser (any role); redirects to the login page otherwise. */
 async function requireAdmin(role: AdminRole = "organizer"): Promise<AdminUser> {
@@ -266,6 +267,39 @@ export async function adminCancelRegistrationAction(registrationId: number) {
     await promoteWaitlist(row.sessionId);
     revalidateSession(row.sessionId);
   }
+}
+
+/**
+ * Right to erasure on request: deletes everything personal in all the player's sign-ups (matched by
+ * e-mail) and cancels the ones for sessions that are not over yet.
+ */
+export async function adminErasePlayerAction(registrationId: number): Promise<SimpleResult> {
+  await requireAdmin();
+  const { t } = await getDict();
+  const reg = await db.query.registrations.findFirst({ where: eq(registrations.id, registrationId) });
+  if (!reg) return { message: t.errors.regNotFound };
+  const now = new Date();
+  const rows = await db
+    .select({ id: registrations.id, email: registrations.email, status: registrations.status, sessionId: registrations.sessionId, endsAt: sessions.endsAt })
+    .from(registrations)
+    .innerJoin(sessions, eq(registrations.sessionId, sessions.id))
+    .where(eq(sql`lower(${registrations.email})`, reg.email.toLowerCase()));
+  const freed = new Set<number>();
+  for (const r of rows) {
+    const active = r.status !== "cancelled" && r.endsAt >= now;
+    await db
+      .update(registrations)
+      .set({
+        ...erasedFields(),
+        ...(active ? { status: "cancelled" as const, waitlistedAt: null, cancelledAt: now } : {}),
+        updatedAt: now,
+      })
+      .where(eq(registrations.id, r.id));
+    if (active) freed.add(r.sessionId);
+  }
+  for (const id of freed) await promoteWaitlist(id);
+  for (const id of new Set(rows.map((r) => r.sessionId))) revalidateSession(id);
+  return { ok: true, message: t.admin.session.erased(rows.length) };
 }
 
 /** Restores a cancelled registration: into a free spot, or onto the waitlist when full. */
