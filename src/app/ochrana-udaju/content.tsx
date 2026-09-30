@@ -86,8 +86,8 @@ function Czech({ contact, discordAlerts }: Props) {
       <H2>Komu údaje svěřujeme</H2>
       <P>Web běží na službách těchto firem, které pro nás údaje technicky zpracovávají:</P>
       <Ul>
-        <li><strong>Vercel Inc.</strong> (USA) – provoz webu, server běží v USA.</li>
-        <li><strong>Neon</strong> (součást Databricks, Inc., USA) – databáze, data jsou uložená v USA.</li>
+        <li><strong>Vercel Inc.</strong> (USA) – provoz webu, server běží ve Frankfurtu (EU).</li>
+        <li><strong>Neon</strong> (součást Databricks, Inc., USA) – databáze, data jsou uložená ve Frankfurtu (EU).</li>
         <li><strong>Resend</strong> (USA) – odesílání e-mailů, e-maily odcházejí ze serverů v Irsku.</li>
         {discordAlerts && (
           <li>
@@ -97,8 +97,9 @@ function Czech({ contact, discordAlerts }: Props) {
         )}
       </Ul>
       <P>
-        Předávání do USA se opírá o rámec EU–USA pro ochranu osobních údajů (Data Privacy Framework)
-        nebo o standardní smluvní doložky EU, které tyto služby používají.
+        Údaje jsou uložené a zpracovávané v EU. Protože jde o americké firmy, případný přístup z USA
+        (například při technické podpoře) se opírá o rámec EU–USA pro ochranu osobních údajů (Data Privacy
+        Framework) nebo o standardní smluvní doložky EU.
       </P>
 
       <H2>Tvoje práva</H2>
@@ -196,8 +197,8 @@ function English({ contact, discordAlerts }: Props) {
       <H2>Who processes it for us</H2>
       <P>The site runs on services of these companies, which process the data for us technically:</P>
       <Ul>
-        <li><strong>Vercel Inc.</strong> (USA) – hosting, the server runs in the USA.</li>
-        <li><strong>Neon</strong> (part of Databricks, Inc., USA) – the database, stored in the USA.</li>
+        <li><strong>Vercel Inc.</strong> (USA) – hosting, the server runs in Frankfurt (EU).</li>
+        <li><strong>Neon</strong> (part of Databricks, Inc., USA) – the database, stored in Frankfurt (EU).</li>
         <li><strong>Resend</strong> (USA) – sending e-mails, from servers in Ireland.</li>
         {discordAlerts && (
           <li>
@@ -207,8 +208,9 @@ function English({ contact, discordAlerts }: Props) {
         )}
       </Ul>
       <P>
-        Transfers to the USA rely on the EU–US Data Privacy Framework or on the EU standard contractual
-        clauses these services use.
+        The data is stored and processed in the EU. As these are US companies, any access from the USA
+        (e.g. for technical support) relies on the EU–US Data Privacy Framework or on the EU standard
+        contractual clauses.
       </P>
 
       <H2>Your rights</H2>
