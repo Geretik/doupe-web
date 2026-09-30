@@ -14,6 +14,8 @@ import {
   setAdminCookie,
 } from "@/lib/admin-auth";
 import { countAdminUsers, createInvite, getOpenInvite } from "@/lib/admin-users";
+import { clientIpHash } from "@/lib/client-ip";
+import { clearLoginFailures, LOGIN_WINDOW_MINUTES, loginBlocked, recordLoginFailure } from "@/lib/login-limit";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { announceSessionOnDiscord } from "@/lib/discord";
 import { sendBroadcastEmail, sendExistingRegistrationEmail, sendTableEmail } from "@/lib/email";
@@ -51,10 +53,16 @@ export async function loginAction(
   const { t } = await getDict();
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
+  const ipHash = await clientIpHash();
+  if (ipHash && (await loginBlocked(ipHash))) return { error: t.admin.errors.tooManyLogins(LOGIN_WINDOW_MINUTES) };
   const user = email ? await db.query.adminUsers.findFirst({ where: eq(adminUsers.email, email) }) : undefined;
   // verify against a dummy hash when the user is unknown so timing does not reveal valid e-mails
   const ok = await verifyPassword(password, user?.passwordHash ?? DUMMY_HASH);
-  if (!user || !ok) return { error: t.admin.errors.wrongLogin };
+  if (!user || !ok) {
+    if (ipHash) await recordLoginFailure(ipHash);
+    return { error: t.admin.errors.wrongLogin };
+  }
+  if (ipHash) await clearLoginFailures(ipHash);
   await db.update(adminUsers).set({ lastLoginAt: new Date() }).where(eq(adminUsers.id, user.id));
   await setAdminCookie(user.id);
   redirect("/admin");

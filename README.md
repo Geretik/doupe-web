@@ -25,6 +25,8 @@ registraci upravit nebo zrušit.
 - `/r/[token]` – úprava / zrušení registrace přes odkaz z e-mailu
 - `/admin` – správa termínů a přehled přihlášených (účty organizátorů s hashovanými hesly, role správce / organizátor)
 - `/admin/ucty` – účty a pozvánky (jen správce): pozvánka vygeneruje jednorázový odkaz, na kterém si nový organizátor založí účet
+- Přihlášení do adminu: po 10 špatných pokusech z jedné sítě se na 15 minut odmítá (i se správným heslem)
+- Hlídání nastavení: hlavní stránka adminu upozorní, když chybí `CRON_SECRET` nebo `CONTACT_EMAIL` nebo když denní úlohy neproběhly déle než 26 hodin (s odkazem „Spustit teď“)
 - Hráči: poznámka pro organizátory, výběr příchodu/odchodu po 15 minutách v rámci termínu, zrušení s důvodem, stránka `/moje-hry` (odkaz na přehled registrací e-mailem), sdílení termínu, PWA
 - Registrace u termínu: otevřené / zatím neotevřené (termín je vidět, přihlásit se ještě nejde) / pozastavené; v adminu jedním kliknutím „Otevřít“ / „Pozastavit“, server nové registrace mimo „otevřené“ odmítne, přihlášení mohou dál upravovat a rušit
 - Časované otevření registrací: u zavřeného termínu čas „Automaticky otevřít“; stav se vyhodnocuje při každém požadavku (bez cronu), otevřená stránka termínu si v tu chvíli sama načte formulář

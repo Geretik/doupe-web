@@ -1,9 +1,8 @@
 "use server";
 
-import { createHash } from "node:crypto";
 import { and, eq, inArray, sql } from "drizzle-orm";
-import { headers } from "next/headers";
 import { notifyOrganizers } from "@/lib/alerts";
+import { clientIpHash } from "@/lib/client-ip";
 import { siteUrl } from "@/lib/site";
 import { formatRange, formatShortDate, formatTime } from "@/lib/time";
 import { db } from "@/db";
@@ -46,14 +45,6 @@ export type RegisterResult = FormState & {
 
 /** Sign-ups allowed from one network per hour (bots, double posts). Raised for e2e via env. */
 const RATE_LIMIT_PER_HOUR = Number(process.env.REGISTRATION_RATE_LIMIT ?? 10);
-
-/** Salted hash of the caller's IP – enough to rate-limit, not enough to identify anyone later. */
-async function clientIpHash() {
-  const h = await headers();
-  const ip = (h.get("x-forwarded-for") ?? h.get("x-real-ip") ?? "").split(",")[0]?.trim();
-  if (!ip) return null;
-  return createHash("sha256").update(`${process.env.ADMIN_SECRET ?? ""}:${ip}`).digest("hex").slice(0, 32);
-}
 
 async function recentSignupsFrom(ipHash: string) {
   const [{ c }] = await db

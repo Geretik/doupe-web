@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SetupWarnings } from "@/components/admin/setup-warnings";
 import { Card } from "@/components/ui";
 import { getDict } from "@/i18n/server";
 import { listAllSessions } from "@/lib/queries";
@@ -50,6 +51,7 @@ export default async function AdminHomePage() {
 
   return (
     <div className="flex flex-col gap-8">
+      <SetupWarnings t={t} locale={locale} />
       <section className="flex flex-col gap-3">
         <h1 className="text-2xl font-bold">{a.upcoming}</h1>
         {upcoming.length === 0 && (

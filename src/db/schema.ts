@@ -1,5 +1,6 @@
 import {
   boolean,
+  index,
   integer,
   jsonb,
   pgTable,
@@ -202,6 +203,24 @@ export const adminInvites = pgTable("admin_invites", {
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   usedAt: timestamp("used_at", { withTimezone: true }),
   usedBy: integer("used_by").references(() => adminUsers.id, { onDelete: "set null" }),
+});
+
+/** Failed admin logins per network, for the login limit (lib/login-limit); the daily cron deletes old rows. */
+export const loginFailures = pgTable(
+  "login_failures",
+  {
+    id: serial("id").primaryKey(),
+    /** Salted hash of the IP, like registrations.ipHash */
+    ipHash: text("ip_hash").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("login_failures_ip_hash_idx").on(t.ipHash, t.createdAt)],
+);
+
+/** When a recurring job last finished; the admin warns when the daily cron stops running (lib/job-runs). */
+export const jobRuns = pgTable("job_runs", {
+  name: text("name").primaryKey(),
+  finishedAt: timestamp("finished_at", { withTimezone: true }).notNull(),
 });
 
 export type AdminUser = typeof adminUsers.$inferSelect;

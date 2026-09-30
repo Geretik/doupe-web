@@ -3,6 +3,8 @@ import { db } from "@/db";
 import { registrations, sessions } from "@/db/schema";
 import { notifyOrganizers } from "./alerts";
 import { discordConfigured, postDiscordMessage, spotsLeftMessage } from "./discord";
+import { recordDailyRun } from "./job-runs";
+import { deleteOldLoginFailures } from "./login-limit";
 import { sendDueReminders } from "./reminders";
 import { anonymizeOldRegistrations, RETENTION_DAYS } from "./retention";
 
@@ -67,5 +69,7 @@ export async function runDailyJobs() {
     );
     return { anonymized: 0 };
   });
+  await deleteOldLoginFailures().catch((e) => console.error("Deleting old login failures failed", e));
+  await recordDailyRun();
   return { reminders, spots, retention };
 }

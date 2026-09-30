@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { E2E } from "../../playwright.config";
 import { createMyGamesToken } from "../../src/lib/my-games-token";
-import { adminLogin, createSession, register, resetDb, sql } from "./helpers";
+import { adminLogin, createAdminUser, createSession, register, resetDb, sql } from "./helpers";
 
 test.describe.configure({ mode: "serial" });
 
@@ -856,4 +856,56 @@ test("club page: schedule, place and Discord sign-up, linked from the header, in
     "href",
     "https://discord.gg/vCg3WdHpZR",
   );
+});
+
+test("admin home warns when the daily jobs did not run and CONTACT_EMAIL is missing", async ({ page }) => {
+  await adminLogin(page);
+  const main = page.locator("main");
+  await expect(main).toContainText("Nastavení webu potřebuje pozornost");
+  await expect(main).toContainText("mazání osobních údajů po 14 dnech) zatím neproběhly");
+  await expect(main.getByRole("link", { name: "Spustit teď" })).toHaveAttribute("href", "/api/cron/reminders");
+  // no CONTACT_EMAIL in tests
+  await expect(main).toContainText("chybí CONTACT_EMAIL");
+
+  // a run (here as the signed-in organiser, like "Run now") is recorded
+  expect((await page.request.get("/api/cron/reminders")).ok()).toBeTruthy();
+  await page.reload();
+  await expect(main).not.toContainText("Denní úlohy");
+  await expect(main).toContainText("chybí CONTACT_EMAIL");
+
+  // more than a day and a bit without a run counts as stopped
+  await sql("update job_runs set finished_at = now() - interval '30 hours'");
+  await page.reload();
+  await expect(main).toContainText("naposledy proběhly");
+});
+
+test("admin login: too many wrong passwords from one network are refused for a while", async ({ browser, page }) => {
+  await createAdminUser();
+  // next start keeps the client's x-forwarded-for (on Vercel the proxy sets it)
+  const ctx = await browser.newContext({ extraHTTPHeaders: { "x-forwarded-for": "203.0.113.7" } });
+  const attacker = await ctx.newPage();
+  const attempt = async (password: string) => {
+    await attacker.goto("/admin/login");
+    await attacker.fill("#email", E2E.adminEmail);
+    await attacker.fill("#password", password);
+    await attacker.click("main button[type=submit]");
+  };
+  for (let i = 0; i < 10; i++) {
+    await attempt("wrong");
+    await expect(attacker.locator("main")).toContainText("Nesprávný e-mail nebo heslo");
+  }
+  // blocked now, even with the right password
+  await attempt(E2E.adminUserPassword);
+  await expect(attacker.locator("main")).toContainText("Příliš mnoho špatných pokusů");
+  await expect(attacker).toHaveURL(/\/admin\/login$/);
+
+  // other networks are not affected
+  await adminLogin(page);
+
+  // once the failures are older than the window, the network can log in and starts from zero
+  await sql("update login_failures set created_at = now() - interval '16 minutes'");
+  await attempt(E2E.adminUserPassword);
+  await attacker.waitForURL(/\/admin$/);
+  expect(await sql("select id from login_failures")).toHaveLength(0);
+  await ctx.close();
 });

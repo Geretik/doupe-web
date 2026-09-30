@@ -8,7 +8,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import pg from "pg";
 
-/** Parents before children, so foreign keys hold while inserting. */
+/** Parents before children, so foreign keys hold while inserting. login_failures and job_runs are short-lived state and stay behind. */
 const TABLES = ["admin_users", "admin_invites", "sessions", "tables", "registrations", "games"];
 /** Head start for the new id sequences: rows the old database takes until the switch keep their ids. */
 const SEQUENCE_GAP = 1000;
