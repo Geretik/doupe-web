@@ -19,6 +19,12 @@ updates:
       # Node types follow the Node version in CI and on Vercel (24)
       - dependency-name: "@types/node"
         update-types: ["version-update:semver-major"]
+      # ESLint 10 breaks eslint-plugin-react from eslint-config-next; drop this once Next supports it
+      - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]
+      # TypeScript 7 is not supported by typescript-eslint (it allows <6.1); drop this once it is
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: github-actions
     directory: /
