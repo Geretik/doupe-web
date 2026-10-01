@@ -5,7 +5,7 @@ import { siteName, siteUrl } from "./site";
 function esc(s: string) {
   return s
     .replaceAll("\\", "\\\\")
-    .replaceAll(";", "\;")
+    .replaceAll(";", "\\;")
     .replaceAll(",", "\\,")
     .replaceAll(/\r?\n/g, "\\n");
 }

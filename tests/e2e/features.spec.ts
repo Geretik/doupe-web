@@ -107,13 +107,13 @@ test("storyteller / newbie flags are stored and shown", async ({ page }) => {
 });
 
 test("calendar: per-session .ics, feed and Google link", async ({ page, request }) => {
-  const id = await createSession({ title: "Kalendářový večer", capacity: 3 });
+  const id = await createSession({ title: "Kalendářový večer; hra, pivo", capacity: 3 });
   const res = await request.get(`/termin/${id}/kalendar.ics`);
   expect(res.status()).toBe(200);
   expect(res.headers()["content-type"]).toContain("text/calendar");
   const body = await res.text();
   expect(body).toContain("BEGIN:VCALENDAR");
-  expect(body).toContain("SUMMARY:BotC: Kalendářový večer");
+  expect(body).toContain("SUMMARY:BotC: Kalendářový večer\\; hra\\, pivo");
   expect(body).toContain("LOCATION:Klubovna");
   expect(body).toContain(`UID:session-${id}@`);
 
