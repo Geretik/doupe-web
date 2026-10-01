@@ -38,6 +38,7 @@ import {
   type FormState,
 } from "@/lib/validation";
 import { promoteWaitlist } from "@/lib/waitlist";
+import { refreshGameCollection } from "@/lib/game-collection";
 import { erasedFields } from "@/lib/retention";
 
 /** Signed-in organiser (any role); redirects to the login page otherwise. */
@@ -635,4 +636,15 @@ export async function announceDiscordAction(sessionId: number): Promise<SimpleRe
       failed: t.admin.errors.discordFailed,
     }[result],
   };
+}
+
+/** Reads the game list from Zatrolené hry right away, e.g. after editing it there. */
+export async function refreshGameCollectionAction(): Promise<SimpleResult> {
+  await requireAdmin();
+  const { t } = await getDict();
+  const r = await refreshGameCollection({ force: true });
+  revalidatePath("/hry");
+  revalidatePath("/admin");
+  if (!r) return { message: t.games.refreshBusy };
+  return r.ok ? { ok: true, message: t.games.refreshed(r.count) } : { ok: false, message: t.games.refreshFailed(r.error) };
 }

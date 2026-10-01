@@ -82,7 +82,11 @@ function Czech() {
           nenajdeš, zapiš se na první volný řádek na konci.
         </li>
         <li>
-          K zapůjčení jsou <strong>klubové i soukromé hry</strong>. Klubové si můžeš vzít i{" "}
+          K zapůjčení jsou{" "}
+          <Link href="/hry" className={linkClass}>
+            <strong>klubové i soukromé hry</strong>
+          </Link>
+          . Klubové si můžeš vzít i{" "}
           <strong>domů</strong> proti vratné záloze <strong>500 Kč</strong>.
         </li>
         <li>
@@ -105,8 +109,8 @@ function Czech() {
           ťukni) na sebe → „Change Server Profile“. Změna platí jen pro náš server.
         </li>
         <li>
-          Seznam klubových her a další užitečné odkazy najdeš v kanálu{" "}
-          <Channel>#🔗-užitečné-odkazy</Channel>, odpovědi na časté otázky v{" "}
+          Užitečné odkazy najdeš v kanálu <Channel>#🔗-užitečné-odkazy</Channel>, odpovědi na
+          časté otázky v{" "}
           <Channel>#❓-časté-otázky</Channel>.
         </li>
       </Ul>
@@ -154,7 +158,11 @@ function English() {
           find your name on it, write it on the first empty line at the end.
         </li>
         <li>
-          You can borrow both <strong>club and private games</strong> to play on-site. Club games
+          You can borrow both{" "}
+          <Link href="/hry" className={linkClass}>
+            <strong>club and private games</strong>
+          </Link>{" "}
+          to play on-site. Club games
           can also be taken <strong>home</strong> for a refundable deposit of{" "}
           <strong>500 CZK</strong>.
         </li>
@@ -179,8 +187,8 @@ function English() {
           our server.
         </li>
         <li>
-          The list of club games and other useful links are in{" "}
-          <Channel>#🔗-useful-links</Channel>, answers to common questions in{" "}
+          Useful links are in <Channel>#🔗-useful-links</Channel>, answers to common questions
+          in{" "}
           <Channel>#❓-faq</Channel>.
         </li>
       </Ul>

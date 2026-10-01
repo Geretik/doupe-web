@@ -10,6 +10,7 @@ import {
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
+import type { CollectionGame } from "../lib/zatrolene";
 
 export const cities = ["olomouc", "praha"] as const;
 export type City = (typeof cities)[number];
@@ -235,6 +236,21 @@ export const loginFailures = pgTable(
 export const jobRuns = pgTable("job_runs", {
   name: text("name").primaryKey(),
   finishedAt: timestamp("finished_at", { withTimezone: true }).notNull(),
+});
+
+/**
+ * The club's game collection as last read from Zatrolené hry, where the club keeps it (lib/game-collection).
+ * One row; a failed read keeps the last good list and only records the error.
+ */
+export const gameCollection = pgTable("game_collection", {
+  id: text("id").primaryKey(),
+  games: jsonb("games").$type<CollectionGame[]>().notNull().default([]),
+  /** When `games` was read; null until the first successful read */
+  loadedAt: timestamp("loaded_at", { withTimezone: true }),
+  /** Last attempt, successful or not: whoever moves it on does the next read */
+  checkedAt: timestamp("checked_at", { withTimezone: true }).notNull(),
+  /** Why the last attempt failed; null after a successful one */
+  error: text("error"),
 });
 
 export type AdminUser = typeof adminUsers.$inferSelect;

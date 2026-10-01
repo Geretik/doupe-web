@@ -21,6 +21,13 @@ export async function resetDb() {
   await sql("delete from admin_users");
   await sql("delete from login_failures");
   await sql("delete from job_runs");
+  await sql("delete from game_collection");
+}
+
+/** What the stand-in for Zatrolené hry answers: the club's page, a changed page without the list, or HTTP 503. */
+export async function setZatroleneMode(mode: "ok" | "changed" | "down") {
+  const res = await fetch(`${E2E.zatroleneUrl}/mode/${mode}`, { method: "POST" });
+  if (!res.ok) throw new Error(`Zatrolené hry stand-in: ${res.status}`);
 }
 
 /** Inserts an organiser account straight into the database (no invitation needed). */
