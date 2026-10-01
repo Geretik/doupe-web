@@ -63,12 +63,11 @@ function Czech() {
         button="Přidat se na Discord"
         note={
           <>
-            Výjimkou je Krvavka (Krvavá hodina odbila) – na tu se registruješ přímo tady na webu
-            v sekci{" "}
-            <Link href="/" className={linkClass}>
-              Termíny
-            </Link>
-            .
+            Výjimkou je{" "}
+            <Link href="/botc" className={linkClass}>
+              Krvavka
+            </Link>{" "}
+            (Krvavá hodina odbila) – na tu se registruješ přímo tady na webu.
           </>
         }
       >
@@ -137,12 +136,10 @@ function English() {
         button="Join our Discord"
         note={
           <>
-            Blood on the Clocktower is the exception – you sign up for it right here on this site
-            under{" "}
-            <Link href="/" className={linkClass}>
-              Sessions
-            </Link>
-            .
+            <Link href="/botc" className={linkClass}>
+              Blood on the Clocktower
+            </Link>{" "}
+            is the exception – you sign up for it right here on this site.
           </>
         }
       >

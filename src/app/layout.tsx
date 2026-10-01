@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
 import Link from "next/link";
 import { LanguageSwitch } from "@/components/language-switch";
+import { NavLink } from "@/components/nav-link";
 import { getDict } from "@/i18n/server";
 import { siteUrl } from "@/lib/site";
 import "./globals.css";
@@ -44,17 +45,17 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <header className="border-b border-border print:hidden">
           <div className="mx-auto max-w-3xl px-4 py-3 sm:py-4 flex flex-wrap items-center gap-x-6 gap-y-2">
             <Link href="/" className="mr-auto font-semibold tracking-tight text-lg leading-tight">
-              🕰️ {t.meta.title}
+              🎲 {t.meta.title}
             </Link>
             <LanguageSwitch locale={locale} t={t} className="order-2 sm:order-3" />
+            {/* the club's sections; each module (so far only BotC) has its own menu below */}
             <nav
               className="order-3 sm:order-2 -mx-2 flex basis-full sm:basis-auto sm:mx-0 items-center gap-1 sm:gap-4 overflow-x-auto whitespace-nowrap text-sm"
             >
-              <Link href="/" className="rounded-md px-2 py-1.5 hover:underline">{t.nav.sessions}</Link>
-              <Link href="/o-hre" className="rounded-md px-2 py-1.5 hover:underline">{t.nav.about}</Link>
-              <Link href="/archiv" className="rounded-md px-2 py-1.5 hover:underline">{t.nav.archive}</Link>
-              <Link href="/moje-hry" className="rounded-md px-2 py-1.5 hover:underline sm:hidden">{t.nav.myGames}</Link>
-              <Link href="/klub" className="rounded-md px-2 py-1.5 hover:underline">{t.nav.club}</Link>
+              <NavLink href="/" className="rounded-md px-2 py-1.5 hover:underline">{t.nav.club}</NavLink>
+              <NavLink href="/botc" prefixes={["/botc"]} className="rounded-md px-2 py-1.5 hover:underline">
+                {t.nav.botc}
+              </NavLink>
             </nav>
           </div>
         </header>
@@ -65,7 +66,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <div className="mx-auto max-w-3xl px-4 py-4 text-sm text-muted flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <span>{t.nav.footer}</span>
             <span className="flex flex-wrap gap-x-4 gap-y-1">
-              <Link href="/moje-hry" className="hover:underline">{t.nav.myGames}</Link>
+              <Link href="/botc/moje-hry" className="hover:underline">{t.nav.myGames}</Link>
               <a href="/kalendar.ics" className="hover:underline">{t.nav.calendarFeed}</a>
               <Link href="/ochrana-udaju" className="hover:underline">{t.nav.privacy}</Link>
               <Link href="/admin" className="hover:underline">

@@ -1,8 +1,9 @@
-# Blood on the Clocktower CZ – registrace na herní večery
+# DoUPě Olomouc – web klubu deskových her
 
-Registrační web pro **Blood on the Clocktower** herní večery v Olomouci. Bez uživatelských účtů:
-hráč vyplní formulář, na e-mail dostane potvrzení s tajným odkazem, přes který může
-registraci upravit nebo zrušit.
+Web **Klubu deskových her DoUPě Olomouc**. Úvodní stránka je o klubu, jednotlivé části klubu
+jsou moduly s vlastní adresou a menu. Zatím je jen jeden: **Blood on the Clocktower** („Krvavka“)
+pod `/botc`, registrace na herní večery bez uživatelských účtů. Hráč vyplní formulář, na e-mail
+dostane potvrzení s tajným odkazem, přes který může registraci upravit nebo zrušit.
 
 ## Stack
 
@@ -15,24 +16,26 @@ registraci upravit nebo zrušit.
 
 - Dvojjazyčné rozhraní **česky / English** včetně adminu (přepínač v hlavičce, volba se ukládá do cookie, e-maily chodí v jazyce hráče)
 
-- `/` – seznam nadcházejících termínů s počtem volných míst a náhradníků
-- `/termin/[id]` – detail termínu a registrační formulář (jméno, příjmení, přezdívka, e-mail, telefon, volitelný příchod/odchod, „můžu dělat vypravěče“, „jsem nováček“); telefon vidí jen organizátoři
-- `/termin/[id]/kalendar.ics` – termín jako soubor do kalendáře; odkaz i na Google Kalendář je na stránce termínu a v e-mailech
-- `/kalendar.ics` – veřejný iCal feed všech termínů (odběr kalendáře)
-- `/archiv` – proběhlé večery s odehranými scripty a počtem hráčů
-- `/klub` – o klubu: kdy a kde se hraje, pravidla, přihlašování na klubová hraní (zatím přes Discord)
+- `/` – o klubu: kdy a kde se hraje, pravidla, přihlašování na klubová hraní (zatím přes Discord)
+- `/botc` – Krvavka: seznam nadcházejících termínů s počtem volných míst a náhradníků; stránky modulu mají vlastní menu (Termíny · O hře · Archiv · Moje hry)
+- `/botc/termin/[id]` – detail termínu a registrační formulář (jméno, příjmení, přezdívka, e-mail, telefon, volitelný příchod/odchod, „můžu dělat vypravěče“, „jsem nováček“); telefon vidí jen organizátoři
+- `/botc/termin/[id]/kalendar.ics` – termín jako soubor do kalendáře; odkaz i na Google Kalendář je na stránce termínu a v e-mailech
+- `/kalendar.ics` – veřejný iCal feed všech termínů (odběr kalendáře); zůstává na nejvyšší úrovni, ať odebírané kalendáře nemusí řešit přesměrování
+- `/botc/archiv` – proběhlé večery s odehranými scripty a počtem hráčů
+- `/botc/o-hre` – o hře Blood on the Clocktower
 - `/ochrana-udaju` – zásady ochrany osobních údajů (co se sbírá, zpracovatelé, mazání po 14 dnech, práva); v adminu u hráče 🗑️ smaže na žádost všechny jeho údaje ve všech registracích
-- `/r/[token]` – úprava / zrušení registrace přes odkaz z e-mailu
+- `/botc/r/[token]` – úprava / zrušení registrace přes odkaz z e-mailu
+- Staré adresy z doby, kdy byl web jen pro Krvavku (`/termin/…`, `/r/…`, `/moje-hry/…`, `/archiv`, `/o-hre`, `/klub`), trvale přesměrují na nové (`next.config.ts`), takže fungují odkazy z odeslaných e-mailů, Discordu i QR kódy na vytištěných plakátech
 - `/admin` – správa termínů a přehled přihlášených (účty organizátorů s hashovanými hesly, role správce / organizátor)
 - `/admin/ucty` – účty a pozvánky (jen správce): pozvánka vygeneruje jednorázový odkaz, na kterém si nový organizátor založí účet
 - Přihlášení do adminu: po 10 špatných pokusech z jedné sítě se na 15 minut odmítá (i se správným heslem)
 - Hesla organizátorů: `/admin/heslo` – změna vlastního hesla; zapomenuté heslo – správce v `/admin/ucty` vytvoří jednorázový odkaz `/admin/nove-heslo/…` (platí 3 dny). Změna i obnova hesla odhlásí účet na ostatních zařízeních. Když heslo zapomene jediný správce, viz `scripts/reset-link.mjs` níže.
 - Bezpečnostní hlavičky (`next.config.ts`): web se nedá vložit do cizí stránky (rámeček), stránky s tajným odkazem v adrese ho neposílají dál při prokliku ven
 - Hlídání nastavení: hlavní stránka adminu upozorní, když chybí `CRON_SECRET` nebo `CONTACT_EMAIL` nebo když denní úlohy neproběhly déle než 26 hodin (s odkazem „Spustit teď“)
-- Hráči: poznámka pro organizátory, výběr příchodu/odchodu po 15 minutách v rámci termínu, zrušení s důvodem, stránka `/moje-hry` (odkaz na přehled registrací e-mailem), sdílení termínu, PWA
+- Hráči: poznámka pro organizátory, výběr příchodu/odchodu po 15 minutách v rámci termínu, zrušení s důvodem, stránka `/botc/moje-hry` (odkaz na přehled registrací e-mailem), sdílení termínu, PWA
 - Registrace u termínu: otevřené / zatím neotevřené (termín je vidět, přihlásit se ještě nejde) / pozastavené; v adminu jedním kliknutím „Otevřít“ / „Pozastavit“, server nové registrace mimo „otevřené“ odmítne, přihlášení mohou dál upravovat a rušit
 - Časované otevření registrací: u zavřeného termínu čas „Automaticky otevřít“; stav se vyhodnocuje při každém požadavku (bez cronu), otevřená stránka termínu si v tu chvíli sama načte formulář
-- QR kód termínu: `/termin/[id]/qr.svg` a `qr.png` (odkaz na registraci), v adminu tisknutelný plakát A4 `/admin/termin/[id]/plakat`
+- QR kód termínu: `/botc/termin/[id]/qr.svg` a `qr.png` (odkaz na registraci), v adminu tisknutelný plakát A4 `/admin/termin/[id]/plakat`
 - Organizátoři: přehled „kolik lidí bude v kterou hodinu“ podle příchodů a odchodů, vypravěč u termínu, opakující se termíny, rozdělení ke stolům (auto + ručně, e-mail hráčům), evidence odehraných her (archiv, statistiky), soukromý iCal `/admin/kalendar.ics?key=…`, ✉️ nové poslání odkazu hráči, ⚠️ u registrací bez potvrzení
 - Automatika: 14 dní po termínu se hráčům smaže jméno, e-mail a telefon (zůstane přezdívka, docházka, poznámka a důvod odhlášení; e-mail nahradí pseudonym, aby statistiky poznaly stejného hráče), volitelně Discord post „zbývá míst“ dva dny před hrou (`DISCORD_SPOTS_LEFT=1`), upozornění organizátorům (e-mail + Discord) při pozdním odhlášení (<24 h), selhání e-mailu nebo cronu; limit registrací z jedné sítě (`REGISTRATION_RATE_LIMIT`, výchozí 10/h)
 - `/admin/statistiky` – obsazenost, docházka, pravidelní hráči

@@ -307,7 +307,7 @@ export async function createSessionAction(
   if (formData.get("announceDiscord") === "on") {
     await announceSessionOnDiscord(created, created.capacity);
   }
-  revalidatePath("/");
+  revalidatePath("/botc");
   redirect("/admin");
 }
 
@@ -322,21 +322,21 @@ export async function updateSessionAction(
   await db.update(sessions).set(r.values).where(eq(sessions.id, id));
   // a bigger capacity may make room for waitlisted players
   await promoteWaitlist(id);
-  revalidatePath("/");
-  revalidatePath(`/termin/${id}`);
+  revalidatePath("/botc");
+  revalidatePath(`/botc/termin/${id}`);
   return { ok: true };
 }
 
 export async function deleteSessionAction(id: number) {
   await requireAdmin();
   await db.delete(sessions).where(eq(sessions.id, id));
-  revalidatePath("/");
+  revalidatePath("/botc");
   redirect("/admin");
 }
 
 function revalidateSession(sessionId: number) {
-  revalidatePath("/");
-  revalidatePath(`/termin/${sessionId}`);
+  revalidatePath("/botc");
+  revalidatePath(`/botc/termin/${sessionId}`);
   revalidatePath(`/admin/termin/${sessionId}`);
 }
 
@@ -595,7 +595,7 @@ export async function addGameAction(sessionId: number, _prev: FormState, formDat
   if (!parsed.success) return { error: t.admin.errors.checkForm, fieldErrors: fieldErrorsOf(parsed.error) };
   await db.insert(games).values({ sessionId, ...parsed.data });
   revalidatePath(`/admin/termin/${sessionId}`);
-  revalidatePath("/archiv");
+  revalidatePath("/botc/archiv");
   return { ok: true };
 }
 
@@ -604,7 +604,7 @@ export async function deleteGameAction(gameId: number) {
   const [row] = await db.delete(games).where(eq(games.id, gameId)).returning({ sessionId: games.sessionId });
   if (row) {
     revalidatePath(`/admin/termin/${row.sessionId}`);
-    revalidatePath("/archiv");
+    revalidatePath("/botc/archiv");
   }
 }
 

@@ -10,14 +10,14 @@ test.beforeEach(async () => {
 
 test("home page lists sessions with free spots and full state", async ({ page }) => {
   const id = await createSession({ title: "Večer A", capacity: 2 });
-  await page.goto("/");
+  await page.goto("/botc");
   await expect(page.locator("main")).toContainText("Večer A");
   await expect(page.locator("main")).toContainText("2 volná místa z 2");
   await register(page, id, { nick: "A1", email: "a1@example.com" });
   await register(page, id, { nick: "A2", email: "a2@example.com" });
-  await page.goto("/");
+  await page.goto("/botc");
   await expect(page.locator("main")).toContainText("Plno");
-  await page.goto(`/termin/${id}`);
+  await page.goto(`/botc/termin/${id}`);
   await expect(page.locator("main")).toContainText("Termín je plný");
 });
 
@@ -38,7 +38,7 @@ test("registration, duplicate handling, edit, cancel and re-registration", async
   expect(text).toContain("Hotovo, jsi registrovaný");
 
   // public nickname list shows nicknames but never e-mails
-  await page.goto(`/termin/${id}`);
+  await page.goto(`/botc/termin/${id}`);
   await expect(page.locator("main")).toContainText("Přihlášení (2)");
   await expect(page.locator("main")).toContainText("Anka");
   await expect(page.locator("main")).not.toContainText("example.com");
@@ -66,7 +66,7 @@ test("registration, duplicate handling, edit, cancel and re-registration", async
   await page.click("button:has-text('Ano, zrušit registraci')");
   await expect(page.locator("main")).toContainText("Registrace byla zrušena");
   expect(await sql("select cancel_reason from registrations where email='anna@example.com'")).toEqual([{ cancel_reason: "nemoc" }]);
-  await page.goto("/");
+  await page.goto("/botc");
   await expect(page.locator("main")).toContainText("1 volné místo z 2");
 
   // re-registration reactivates the row with a fresh token
@@ -117,15 +117,15 @@ test("e-mails are never sent twice: one confirmation per registration, re-send t
 
 test("language switch translates UI and is remembered", async ({ page }) => {
   const id = await createSession({ title: "Bilingual", capacity: 3 });
-  await page.goto("/");
+  await page.goto("/botc");
   await expect(page.locator("h1")).toHaveText("Nadcházející termíny");
   await page.click("button:has-text('English')");
   await expect(page.locator("h1")).toHaveText("Upcoming sessions");
   await expect(page.locator("main")).toContainText("3 spots left of 3");
-  await page.goto("/o-hre");
+  await page.goto("/botc/o-hre");
   await expect(page.locator("h1")).toHaveText("About the game");
   await expect(page.locator("main")).toContainText("What is Blood on the Clocktower");
-  await page.goto(`/termin/${id}`);
+  await page.goto(`/botc/termin/${id}`);
   await expect(page.locator("main")).toContainText("Sign up");
   const text = await register(page, id, { nick: "Eng", email: "eng@example.com" });
   expect(text).toContain("Done, you're signed up");
@@ -133,7 +133,7 @@ test("language switch translates UI and is remembered", async ({ page }) => {
   expect(row.locale).toBe("en");
   await page.click("button:has-text('Česky')");
   await expect(page.locator("header button:has-text('English')")).toBeVisible();
-  await page.goto("/");
+  await page.goto("/botc");
   await expect(page.locator("h1")).toHaveText("Nadcházející termíny");
 });
 
@@ -166,7 +166,7 @@ test("admin: login, create/edit session with scripts, manage registrations, dele
   expect(s.scripts).toEqual([{ name: "Trouble Brewing", url: "https://botcscripts.com/script/Trouble_Brewing/1/" }]);
 
   // pencil visible for admin on public pages, script link shown
-  await page.goto("/");
+  await page.goto("/botc");
   await expect(page.getByTestId("edit-pencil")).toHaveCount(1);
   await expect(page.locator("main")).toContainText("Trouble Brewing");
   await expect(page.locator("main")).toContainText("🎩");
@@ -196,6 +196,6 @@ test("admin: login, create/edit session with scripts, manage registrations, dele
 
   await page.click("button:has-text('Odhlásit')");
   await page.waitForURL(/\/$/);
-  await page.goto("/");
+  await page.goto("/botc");
   await expect(page.getByTestId("edit-pencil")).toHaveCount(0);
 });

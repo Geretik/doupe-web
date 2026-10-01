@@ -26,8 +26,8 @@ export default async function PosterPage({ params }: { params: Promise<{ id: str
       <div className="flex flex-wrap items-center gap-2 print:hidden">
         <Link href={`/admin/termin/${session.id}`} className={buttonClass}>{p.back}</Link>
         <PrintButton label={p.print} />
-        <a href={`/termin/${session.id}/qr.svg`} download={`termin-${session.id}-qr.svg`} className={buttonClass}>{p.downloadSvg}</a>
-        <a href={`/termin/${session.id}/qr.png`} download={`termin-${session.id}-qr.png`} className={buttonClass}>{p.downloadPng}</a>
+        <a href={`/botc/termin/${session.id}/qr.svg`} download={`termin-${session.id}-qr.svg`} className={buttonClass}>{p.downloadSvg}</a>
+        <a href={`/botc/termin/${session.id}/qr.png`} download={`termin-${session.id}-qr.png`} className={buttonClass}>{p.downloadPng}</a>
       </div>
       <p className="text-sm text-muted print:hidden">{p.hint}</p>
 
@@ -38,7 +38,7 @@ export default async function PosterPage({ params }: { params: Promise<{ id: str
         <p className="text-xl print:text-3xl">📅 {formatRange(session.startsAt, session.endsAt, locale)}</p>
         <p className="text-xl print:text-3xl">📍 {session.place}</p>
         {/* eslint-disable-next-line @next/next/no-img-element -- plain SVG from our own route, no optimisation needed */}
-        <img src={`/termin/${session.id}/qr.svg`} alt={url} width={288} height={288} className="mt-2 h-72 w-72 print:mt-8 print:h-[11cm] print:w-[11cm]" />
+        <img src={`/botc/termin/${session.id}/qr.svg`} alt={url} width={288} height={288} className="mt-2 h-72 w-72 print:mt-8 print:h-[11cm] print:w-[11cm]" />
         <p className="text-lg font-semibold print:text-3xl">{p.scan}</p>
         <p className="font-mono text-sm print:text-xl">{url.replace(/^https?:\/\//, "")}</p>
       </article>

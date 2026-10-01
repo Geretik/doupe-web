@@ -3,8 +3,12 @@ import { siteUrl } from "@/lib/site";
 
 export default function robots(): MetadataRoute.Robots {
   return {
-    // /r/… and /moje-hry/… carry personal links from e-mails
-    rules: { userAgent: "*", allow: "/", disallow: ["/admin", "/api/", "/r/", "/moje-hry/"] },
+    // /botc/r/… and /botc/moje-hry/… carry personal links from e-mails (the old top-level ones redirect there)
+    rules: {
+      userAgent: "*",
+      allow: "/",
+      disallow: ["/admin", "/api/", "/botc/r/", "/botc/moje-hry/", "/r/", "/moje-hry/"],
+    },
     sitemap: `${siteUrl()}/sitemap.xml`,
   };
 }

@@ -15,16 +15,16 @@ test("waitlist: full session queues players, cancellation promotes the first one
   await register(page, id, { nick: "First", email: "first@example.com" });
 
   // second player lands on the waitlist
-  await page.goto(`/termin/${id}`);
+  await page.goto(`/botc/termin/${id}`);
   await expect(page.locator("main")).toContainText("Zapsat se jako náhradník");
   const text = await register(page, id, { nick: "Second", email: "second@example.com" });
   expect(text).toContain("Jsi na seznamu náhradníků jako č. 1");
   const t3 = await register(page, id, { nick: "Third", email: "third@example.com" });
   expect(t3).toContain("náhradníků jako č. 2");
 
-  await page.goto(`/termin/${id}`);
+  await page.goto(`/botc/termin/${id}`);
   await expect(page.locator("main")).toContainText("Náhradníci (2)");
-  await page.goto("/");
+  await page.goto("/botc");
   await expect(page.locator("main")).toContainText("Náhradníci (2)");
 
   // waitlisted player sees their position on the edit page
@@ -55,7 +55,7 @@ test("waitlist: full session queues players, cancellation promotes the first one
   await expect(page.locator("main")).toContainText("Jsi náhradník č. 1");
 
   // session is full again with a waitlist → newcomers still queue
-  await page.goto(`/termin/${id}`);
+  await page.goto(`/botc/termin/${id}`);
   await expect(page.locator("main")).toContainText("Plno");
   await expect(page.locator("main")).toContainText("Zapsat se jako náhradník");
 });
@@ -83,7 +83,7 @@ test("waitlist: raising the capacity in admin promotes waitlisted players", asyn
 
 test("storyteller / newbie flags are stored and shown", async ({ page }) => {
   const id = await createSession({ capacity: 5 });
-  await page.goto(`/termin/${id}`);
+  await page.goto(`/botc/termin/${id}`);
   await page.fill("#firstName", "Sára");
   await page.fill("#lastName", "Vypravěčka");
   await page.fill("#nickname", "Sára");
@@ -97,7 +97,7 @@ test("storyteller / newbie flags are stored and shown", async ({ page }) => {
     "select can_storytell, is_newbie from registrations where email='st@example.com'",
   );
   expect(r).toEqual({ can_storytell: true, is_newbie: true });
-  await page.goto(`/termin/${id}`);
+  await page.goto(`/botc/termin/${id}`);
   await expect(page.locator("main li:has-text('Sára')")).toContainText("🎩");
 
   await adminLogin(page);
@@ -108,7 +108,7 @@ test("storyteller / newbie flags are stored and shown", async ({ page }) => {
 
 test("calendar: per-session .ics, feed and Google link", async ({ page, request }) => {
   const id = await createSession({ title: "Kalendářový večer; hra, pivo", capacity: 3 });
-  const res = await request.get(`/termin/${id}/kalendar.ics`);
+  const res = await request.get(`/botc/termin/${id}/kalendar.ics`);
   expect(res.status()).toBe(200);
   expect(res.headers()["content-type"]).toContain("text/calendar");
   const body = await res.text();
@@ -121,13 +121,13 @@ test("calendar: per-session .ics, feed and Google link", async ({ page, request 
   expect(feed.status()).toBe(200);
   expect(await feed.text()).toContain("Kalendářový večer");
 
-  await page.goto(`/termin/${id}`);
+  await page.goto(`/botc/termin/${id}`);
   await expect(page.locator("main")).toContainText("Přidat do kalendáře");
   const google = await page.locator("main a:has-text('Google Kalendář')").getAttribute("href");
   expect(google).toContain("calendar.google.com/calendar/render");
   expect(google).toContain("Kalend");
 
-  expect((await request.get("/termin/999999/kalendar.ics")).status()).toBe(404);
+  expect((await request.get("/botc/termin/999999/kalendar.ics")).status()).toBe(404);
 });
 
 test("reminders: cron is protected, sends once per player within the window", async ({ request, page }) => {
@@ -228,19 +228,19 @@ test("archive lists past sessions with player counts", async ({ page }) => {
   const pastId = await createSession({ title: "Dávný večer", capacity: 5, daysAhead: -10 });
   await sql("insert into registrations (session_id, first_name, last_name, nickname, email, edit_token) values ($1,'A','B','Nick','old@example.com','tok1')", [pastId]);
   await createSession({ title: "Budoucí večer", capacity: 5, daysAhead: 5 });
-  await page.goto("/archiv");
+  await page.goto("/botc/archiv");
   await expect(page.locator("h1")).toHaveText("Archiv");
   await expect(page.locator("main")).toContainText("Dávný večer");
   await expect(page.locator("main")).toContainText("1 hráč");
   await expect(page.locator("main")).not.toContainText("Budoucí večer");
-  await page.goto(`/termin/${pastId}`);
+  await page.goto(`/botc/termin/${pastId}`);
   await expect(page.locator("main")).toContainText("Tento termín už proběhl");
   await expect(page.locator("main")).not.toContainText("Přidat do kalendáře");
 });
 
 test("open graph metadata on session page", async ({ page }) => {
   const id = await createSession({ title: "OG večer", capacity: 5 });
-  await page.goto(`/termin/${id}`);
+  await page.goto(`/botc/termin/${id}`);
   await expect(page.locator('meta[property="og:title"]')).toHaveAttribute("content", /OG večer/);
   await expect(page.locator('meta[property="og:description"]')).toHaveAttribute("content", /Klubovna/);
   await expect(page.locator('meta[property="og:image"]')).toHaveCount(1);
@@ -362,7 +362,7 @@ test("accounts: first-run wizard, invitation link, roles", async ({ page, browse
 test("one city: no city filter or Prague on the site, a single calendar feed", async ({ page }) => {
   await createSession({ title: "Olomoucký večer" });
 
-  await page.goto("/");
+  await page.goto("/botc");
   await expect(page.locator("main")).toContainText("Olomoucký večer");
   await expect(page.locator("body")).not.toContainText("Praha");
   await expect(page.locator("main a[href$='/kalendar.ics']")).toBeVisible();
@@ -391,9 +391,9 @@ test("sign-up state: publish a session with sign-ups not open yet, open and paus
   const [{ id }] = await sql<{ id: number }>("select id from sessions where title = 'Tajný večer'");
 
   // public: listed, but no sign-up form
-  await page.goto("/");
+  await page.goto("/botc");
   await expect(page.locator("main")).toContainText("Registrace zatím neotevřené");
-  await page.goto(`/termin/${id}`);
+  await page.goto(`/botc/termin/${id}`);
   await expect(page.locator("main")).toContainText("Registrace na tento termín zatím nejsou otevřené.");
   await expect(page.locator("#nickname")).toHaveCount(0);
 
@@ -404,7 +404,7 @@ test("sign-up state: publish a session with sign-ups not open yet, open and paus
   await register(page, id, { nick: "První", email: "prvni@example.com" });
 
   // paused while someone has the form open: the server refuses the sign-up
-  await page.goto(`/termin/${id}`);
+  await page.goto(`/botc/termin/${id}`);
   await sql("update sessions set registration_state = 'paused' where id = $1", [id]);
   await page.fill("#firstName", "Druhý");
   await page.fill("#nickname", "Druhý");
@@ -446,11 +446,11 @@ test("scheduled sign-up opening: closed until the time, then the open page shows
   await page.click("button:has-text('Uložit změny')");
   await expect(page.locator("main")).toContainText("musí být v budoucnosti");
 
-  await page.goto("/");
+  await page.goto("/botc");
   await expect(page.locator("main")).toContainText("Registrace od");
   // the opening comes closer while a player waits on the session page
   await sql("update sessions set registration_opens_at = now() + interval '3 seconds' where id = $1", [id]);
-  await page.goto(`/termin/${id}`);
+  await page.goto(`/botc/termin/${id}`);
   await expect(page.locator("main")).toContainText("Registrace se otevřou");
   await expect(page.locator("#nickname")).toHaveCount(0);
   await expect(page.locator("#nickname")).toBeVisible({ timeout: 15000 });
@@ -485,13 +485,13 @@ test("one-click open / pause: the edit form below follows, so saving it keeps th
 
 test("QR code: public SVG and PNG of the sign-up link, printable poster in admin", async ({ page }) => {
   const id = await createSession({ title: "Plakátový večer" });
-  const svg = await page.request.get(`/termin/${id}/qr.svg`);
+  const svg = await page.request.get(`/botc/termin/${id}/qr.svg`);
   expect(svg.headers()["content-type"]).toContain("image/svg+xml");
   expect(await svg.text()).toContain("<svg");
-  const png = await page.request.get(`/termin/${id}/qr.png`);
+  const png = await page.request.get(`/botc/termin/${id}/qr.png`);
   expect(png.headers()["content-type"]).toBe("image/png");
   expect((await png.body()).subarray(1, 4).toString()).toBe("PNG");
-  expect((await page.request.get("/termin/99999/qr.svg")).status()).toBe(404);
+  expect((await page.request.get("/botc/termin/99999/qr.svg")).status()).toBe(404);
 
   await adminLogin(page);
   await page.goto(`/admin/termin/${id}`);
@@ -499,8 +499,8 @@ test("QR code: public SVG and PNG of the sign-up link, printable poster in admin
   await expect(page).toHaveURL(new RegExp(`/admin/termin/${id}/plakat$`));
   await expect(page.locator("article h1")).toHaveText("Plakátový večer");
   await expect(page.locator("article")).toContainText("Naskenuj a přihlas se");
-  const img = page.locator(`article img[src="/termin/${id}/qr.svg"]`);
-  await expect(img).toHaveAttribute("alt", new RegExp(`/termin/${id}$`));
+  const img = page.locator(`article img[src="/botc/termin/${id}/qr.svg"]`);
+  await expect(img).toHaveAttribute("alt", new RegExp(`/botc/termin/${id}$`));
   // the image really loads
   expect(await img.evaluate((el: HTMLImageElement) => el.complete && el.naturalWidth > 0)).toBe(true);
 });
@@ -526,7 +526,7 @@ test("edit link: a page left open cannot change or cancel a sign-up once the ses
 
 test("privacy page: linked from the footer and the sign-up form, in both languages", async ({ page }) => {
   const id = await createSession({ title: "Soukromý večer" });
-  await page.goto(`/termin/${id}`);
+  await page.goto(`/botc/termin/${id}`);
   await page.click("main form a:has-text('Více o ochraně údajů')");
   await expect(page).toHaveURL(/\/ochrana-udaju$/);
   await expect(page.locator("h1")).toHaveText("Ochrana osobních údajů");
@@ -616,7 +616,7 @@ test("personal data is deleted 14 days after the session; nickname, attendance a
 
   // "my games" still finds the older, anonymised game through the e-mail's pseudonym
   process.env.ADMIN_SECRET = "e2e-secret"; // same as the e2e server, so the token verifies
-  await page.goto(`/moje-hry/${createMyGamesToken("honza@example.com")}`);
+  await page.goto(`/botc/moje-hry/${createMyGamesToken("honza@example.com")}`);
   await expect(page.locator("main")).toContainText("Starý večer");
   await expect(page.locator("main")).toContainText("Nedávný večer");
 });
@@ -625,13 +625,16 @@ test("sitemap lists public pages and upcoming sessions; robots.txt keeps admin a
   const upcoming = await createSession({ title: "Budoucí", daysAhead: 5 });
   const past = await createSession({ title: "Minulý", daysAhead: -5 });
   const sitemap = await (await page.request.get("/sitemap.xml")).text();
-  expect(sitemap).toContain("/klub</loc>");
-  expect(sitemap).toContain(`/termin/${upcoming}</loc>`);
-  expect(sitemap).not.toContain(`/termin/${past}</loc>`);
+  expect(sitemap).toContain("/botc</loc>");
+  expect(sitemap).not.toContain("/klub</loc>");
+  expect(sitemap).toContain(`/botc/termin/${upcoming}</loc>`);
+  expect(sitemap).not.toContain(`/botc/termin/${past}</loc>`);
   expect(sitemap).not.toContain("/admin");
 
   const robots = await (await page.request.get("/robots.txt")).text();
-  for (const path of ["/admin", "/api/", "/r/", "/moje-hry/"]) expect(robots).toContain(`Disallow: ${path}\n`);
+  for (const path of ["/admin", "/api/", "/botc/r/", "/botc/moje-hry/", "/r/", "/moje-hry/"]) {
+    expect(robots).toContain(`Disallow: ${path}\n`);
+  }
   expect(robots).toMatch(/Sitemap: .*\/sitemap\.xml/);
 });
 
@@ -657,12 +660,12 @@ test("pwa manifest and icons are served, share button on session page", async ({
   expect((await page.request.get("/icon")).headers()["content-type"]).toContain("image/png");
 
   const id = await createSession({ title: "Sdílený večer", capacity: 5 });
-  await page.goto(`/termin/${id}`);
+  await page.goto(`/botc/termin/${id}`);
   await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
   await page.click("main button:has-text('Sdílet termín')");
   await expect(page.locator("main button:has-text('Odkaz zkopírován')")).toBeVisible();
   // only the path: NEXT_PUBLIC_SITE_URL is inlined at build time
-  expect(await page.evaluate(() => navigator.clipboard.readText())).toMatch(new RegExp(`/termin/${id}$`));
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toMatch(new RegExp(`/botc/termin/${id}$`));
 });
 
 test("organisers' calendar feed is private and lists players; cron endpoint runs daily jobs", async ({ page }) => {
@@ -784,7 +787,7 @@ test("recurring sessions, games record shown in archive and stats", async ({ pag
   await page.click("button:has-text('Přidat hru')");
   await expect(page.locator("main")).toContainText("2.Bad Moon Rising");
 
-  await page.goto("/archiv");
+  await page.goto("/botc/archiv");
   await expect(page.locator("main")).toContainText("Trouble Brewing · 😇 vyhrálo dobro · 9 hráčů");
   await expect(page.locator("main")).toContainText("Bad Moon Rising · 😈 vyhrálo zlo");
 
@@ -798,19 +801,19 @@ test("my games: magic link lists the player's sign-ups", async ({ page }) => {
   await register(page, id, { nick: "Já", email: "me@example.com" });
 
   // requesting a link always answers the same way
-  await page.goto("/moje-hry");
+  await page.goto("/botc/moje-hry");
   await page.fill("#email", "me@example.com");
   await page.click("main button[type=submit]");
   await expect(page.locator("main")).toContainText("odkaz ti přišel");
 
   process.env.ADMIN_SECRET = "e2e-secret"; // same as the e2e server, so the token verifies
-  await page.goto(`/moje-hry/${createMyGamesToken("me@example.com")}`);
+  await page.goto(`/botc/moje-hry/${createMyGamesToken("me@example.com")}`);
   await expect(page.locator("h1")).toHaveText("Moje hry");
   await expect(page.locator("main")).toContainText("Můj večer");
   await expect(page.locator("main")).toContainText("přihlášen/a");
   await expect(page.locator("main a:has-text('Upravit / zrušit')")).toBeVisible();
 
-  await page.goto("/moje-hry/neplatny.token.xyz");
+  await page.goto("/botc/moje-hry/neplatny.token.xyz");
   await expect(page.locator("main")).toContainText("Odkaz je neplatný");
 });
 
@@ -849,7 +852,7 @@ test("tables: create, auto-assign with a storyteller per table, manual move, e-m
 test("phone is optional but validated, normalised and shown only to organisers; hourly presence overview", async ({ page }) => {
   const id = await createSession({ capacity: 5 });
   // invalid phone → validation error, nothing saved
-  await page.goto(`/termin/${id}`);
+  await page.goto(`/botc/termin/${id}`);
   await page.fill("#nickname", "Bez");
   await page.fill("#email", "bez@example.com");
   await page.fill("#phone", "abc");
@@ -859,7 +862,7 @@ test("phone is optional but validated, normalised and shown only to organisers; 
 
   // only nickname and e-mail are required: name and phone may stay empty
   const other = await createSession({ capacity: 5 });
-  await page.goto(`/termin/${other}`);
+  await page.goto(`/botc/termin/${other}`);
   await page.fill("#nickname", "Bez");
   await page.fill("#email", "bez@example.com");
   await page.click("main form button[type=submit]");
@@ -876,7 +879,7 @@ test("phone is optional but validated, normalised and shown only to organisers; 
   expect(r.phone).toBe("777000111");
 
   // never on the public page
-  await page.goto(`/termin/${id}`);
+  await page.goto(`/botc/termin/${id}`);
   await expect(page.locator("main")).not.toContainText("777123456");
 
   await adminLogin(page);
@@ -896,7 +899,7 @@ test("phone is optional but validated, normalised and shown only to organisers; 
 
 test("session settings: 'arrive later' checkbox instead of times, required phone, privacy note", async ({ page }) => {
   const id = await createSession({ capacity: 5, arrivalMode: "late", phoneRequired: true });
-  await page.goto(`/termin/${id}`);
+  await page.goto(`/botc/termin/${id}`);
   await expect(page.locator("#arrivalTime")).toHaveCount(0);
   await expect(page.locator("#arrivesLate")).toBeVisible();
   await expect(page.locator("main")).toContainText("k pořádání tohoto hraní a pro statistiky docházky v klubu");
@@ -931,10 +934,11 @@ test("session settings: 'arrive later' checkbox instead of times, required phone
   await expect(page.getByTestId("presence")).toHaveCount(0);
 });
 
-test("club page: schedule, place and Discord sign-up, linked from the header, in both languages", async ({ page }) => {
-  await page.goto("/");
+test("club page is the home page: schedule, place and Discord sign-up, in both languages", async ({ page }) => {
+  await page.goto("/botc");
   await page.click("header nav a:has-text('Klub')");
-  await expect(page).toHaveURL(/\/klub$/);
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.locator("header nav a[aria-current=page]")).toHaveText("Klub");
   await expect(page.locator("h1")).toHaveText("Klub deskových her DoUPě Olomouc");
   await expect(page.locator("main")).toContainText("Každé úterý a čtvrtek v 16:30");
   await expect(page.locator("main")).toContainText("učebna 1.037");
@@ -951,6 +955,43 @@ test("club page: schedule, place and Discord sign-up, linked from the header, in
     "href",
     "https://discord.gg/vCg3WdHpZR",
   );
+});
+
+test("Blood on the Clocktower lives under /botc with its own menu; old addresses redirect there", async ({ page }) => {
+  const id = await createSession({ title: "Modulový večer" });
+  await page.goto("/");
+  await page.click("main a:has-text('Krvavka')");
+  await expect(page).toHaveURL(/\/botc$/);
+  await expect(page.locator("header nav a[aria-current=page]")).toHaveText("Krvavka");
+  await expect(page.locator("main nav a[aria-current=page]")).toHaveText("Termíny");
+  await page.click("main nav a:has-text('Archiv')");
+  await expect(page).toHaveURL(/\/botc\/archiv$/);
+  await expect(page.locator("main nav a[aria-current=page]")).toHaveText("Archiv");
+  // a session's page belongs to the session list in the menu
+  await page.goto(`/botc/termin/${id}`);
+  await expect(page.locator("main nav a[aria-current=page]")).toHaveText("Termíny");
+
+  // links in sent e-mails, Discord posts and QR codes on printed posters
+  const moved: [string, string][] = [
+    [`/termin/${id}?utm=qr`, `/botc/termin/${id}?utm=qr`],
+    [`/termin/${id}/kalendar.ics`, `/botc/termin/${id}/kalendar.ics`],
+    ["/r/abc123", "/botc/r/abc123"],
+    ["/moje-hry", "/botc/moje-hry"],
+    ["/moje-hry/abc.def", "/botc/moje-hry/abc.def"],
+    ["/archiv", "/botc/archiv"],
+    ["/o-hre", "/botc/o-hre"],
+    ["/klub", "/"],
+  ];
+  for (const [from, to] of moved) {
+    const res = await page.request.get(from, { maxRedirects: 0 });
+    expect(res.status(), from).toBe(308);
+    expect(res.headers()["location"], from).toBe(to);
+  }
+  await page.goto(`/termin/${id}`);
+  await expect(page).toHaveURL(new RegExp(`/botc/termin/${id}$`));
+  await expect(page.locator("h1")).toContainText("Modulový večer");
+  // subscribed calendars keep polling the feed at its old address
+  expect((await page.request.get("/kalendar.ics", { maxRedirects: 0 })).status()).toBe(200);
 });
 
 test("admin home warns when the daily jobs did not run and CONTACT_EMAIL is missing", async ({ page }) => {

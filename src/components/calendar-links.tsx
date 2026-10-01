@@ -8,7 +8,7 @@ export function CalendarLinks({ session, t, className = "" }: { session: Session
     <p className={`text-sm ${className}`}>
       <span aria-hidden className="mr-1.5">🗓️</span>
       <span className="text-muted">{t.session.addToCalendar} </span>
-      <a href={`/termin/${session.id}/kalendar.ics`} className="underline hover:text-accent">
+      <a href={`/botc/termin/${session.id}/kalendar.ics`} className="underline hover:text-accent">
         {t.session.calendarIcs}
       </a>
       <span className="text-muted"> · </span>

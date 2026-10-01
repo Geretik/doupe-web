@@ -87,7 +87,7 @@ export async function register(
   sessionId: number,
   data: { first?: string; last?: string; nick: string; email: string; phone?: string; arrival?: string; note?: string },
 ) {
-  await page.goto(`/termin/${sessionId}`);
+  await page.goto(`/botc/termin/${sessionId}`);
   await page.fill("#firstName", data.first ?? "Test");
   await page.fill("#lastName", data.last ?? "Testovic");
   await page.fill("#nickname", data.nick);

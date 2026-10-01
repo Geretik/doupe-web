@@ -19,7 +19,7 @@ export default async function MyGamesPage({ params }: { params: Promise<{ token:
       <div className="mx-auto flex max-w-md flex-col gap-4">
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{m.title}</h1>
         <Alert kind="error">{m.linkInvalid}</Alert>
-        <Link href="/moje-hry" className="text-sm underline">{m.submit}</Link>
+        <Link href="/botc/moje-hry" className="text-sm underline">{m.submit}</Link>
       </div>
     );
   }
@@ -39,13 +39,13 @@ export default async function MyGamesPage({ params }: { params: Promise<{ token:
       <section className="flex flex-col gap-3">
         <h2 className="text-lg font-semibold">{m.upcoming}</h2>
         {upcoming.length === 0 && (
-          <p className="text-muted">{m.none}<Link href="/" className="underline">{m.browse}</Link>.</p>
+          <p className="text-muted">{m.none}<Link href="/botc" className="underline">{m.browse}</Link>.</p>
         )}
         {upcoming.map((r) => (
           <Card key={r.id} className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="flex flex-wrap items-center gap-2 font-semibold">
-                <Link href={`/termin/${r.session.id}`} className="hover:underline">{r.session.title}</Link>
+                <Link href={`/botc/termin/${r.session.id}`} className="hover:underline">{r.session.title}</Link>
               </p>
               <p className="text-sm text-muted">
                 📅 {formatRange(r.session.startsAt, r.session.endsAt, locale)} · 📍 {r.session.place}

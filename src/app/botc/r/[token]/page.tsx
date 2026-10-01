@@ -21,7 +21,7 @@ export default async function EditRegistrationPage({
       <div className="flex flex-col gap-4">
         <h1 className="text-2xl font-bold">{t.edit.notFoundTitle}</h1>
         <Alert kind="error">{t.edit.notFoundBody}</Alert>
-        <Link href="/" className="text-sm hover:underline">{t.session.back}</Link>
+        <Link href="/botc" className="text-sm hover:underline">{t.session.back}</Link>
       </div>
     );
   }
@@ -32,7 +32,7 @@ export default async function EditRegistrationPage({
 
   return (
     <div className="flex flex-col gap-6">
-      <Link href="/" className="text-sm text-muted hover:underline">{t.session.back}</Link>
+      <Link href="/botc" className="text-sm text-muted hover:underline">{t.session.back}</Link>
       <div>
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{t.edit.title}</h1>
         <p className="mt-2 font-medium">{s.title}</p>
@@ -50,7 +50,7 @@ export default async function EditRegistrationPage({
         {reg.status === "cancelled" ? (
           <Alert kind="info">
             {t.edit.cancelledInfo}
-            <Link href={`/termin/${s.id}`} className="underline">{t.edit.registerAgain}</Link>.
+            <Link href={`/botc/termin/${s.id}`} className="underline">{t.edit.registerAgain}</Link>.
           </Alert>
         ) : past ? (
           <Alert kind="info">{t.session.past}</Alert>

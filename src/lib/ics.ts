@@ -40,11 +40,11 @@ function host() {
 }
 
 export function sessionUrl(id: number) {
-  return `${siteUrl()}/termin/${id}`;
+  return `${siteUrl()}/botc/termin/${id}`;
 }
 
 export function sessionIcsUrl(id: number) {
-  return `${siteUrl()}/termin/${id}/kalendar.ics`;
+  return `${siteUrl()}/botc/termin/${id}/kalendar.ics`;
 }
 
 export function feedIcsUrl() {

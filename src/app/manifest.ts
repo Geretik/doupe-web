@@ -1,11 +1,12 @@
 import type { MetadataRoute } from "next";
+import { cs } from "@/i18n/dictionaries";
 import { siteName } from "@/lib/site";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: siteName(),
     short_name: "DoUPě",
-    description: "Blood on the Clocktower – registrace na herní večery",
+    description: cs.meta.description,
     start_url: "/",
     display: "standalone",
     background_color: "#16120f",

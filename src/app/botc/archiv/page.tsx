@@ -64,7 +64,7 @@ export default async function ArchivePage() {
           ))}
         </ol>
       )}
-      <Link href="/" className="text-sm text-muted hover:underline">{t.session.back}</Link>
+      <Link href="/botc" className="text-sm text-muted hover:underline">{t.session.back}</Link>
     </div>
   );
 }

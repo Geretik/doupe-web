@@ -41,7 +41,7 @@ export default async function AboutPage() {
 
       <div className="mt-10">
         <Link
-          href="/"
+          href="/botc"
           className="inline-flex rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:opacity-90"
         >
           {t.about.toSessions}

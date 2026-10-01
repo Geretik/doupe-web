@@ -70,7 +70,7 @@ export default async function SessionPage({
 
   return (
     <div className="flex flex-col gap-6">
-      <Link href="/" className="text-sm text-muted hover:underline">
+      <Link href="/botc" className="text-sm text-muted hover:underline">
         {t.session.back}
       </Link>
       <div>

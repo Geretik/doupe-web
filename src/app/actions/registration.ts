@@ -281,7 +281,7 @@ export async function requestMyGamesLinkAction(_prev: FormState, formData: FormD
   const regs = await listRegistrationsByEmail(email);
   if (regs.length > 0) {
     try {
-      await sendMyGamesLinkEmail(email, `${siteUrl()}/moje-hry/${createMyGamesToken(email)}`, locale);
+      await sendMyGamesLinkEmail(email, `${siteUrl()}/botc/moje-hry/${createMyGamesToken(email)}`, locale);
     } catch (e) {
       console.error("My-games link e-mail failed", e);
     }

@@ -11,12 +11,13 @@ const CLUB_NAME = "Klub deskových her DoUPě Olomouc";
 export const cs = {
   meta: {
     title: SITE_NAME,
-    description: "Registrace na herní večery Blood on the Clocktower v Olomouci",
+    description: "Klub deskových her v Olomouci – kdy a kde hrajeme a registrace na herní večery Blood on the Clocktower",
   },
-  nav: { sessions: "Termíny", about: "O hře", archive: "Archiv", club: "Klub", admin: "Admin", myGames: "Moje hry", footer: "Herní večery v Olomouci", calendarFeed: "Kalendář (iCal)", privacy: "Ochrana údajů" },
+  nav: { sessions: "Termíny", about: "O hře", archive: "Archiv", club: "Klub", botc: "Krvavka", admin: "Admin", myGames: "Moje hry", footer: "Herní večery v Olomouci", calendarFeed: "Kalendář (iCal)", privacy: "Ochrana údajů" },
   lang: { switchTo: "English", label: "Jazyk" },
   home: {
     title: "Nadcházející termíny",
+    description: "Registrace na herní večery Blood on the Clocktower v Olomouci",
     intro: "Vyber si termín, vyplň krátký formulář a potvrzení ti přijde na e-mail. Účet nepotřebuješ.",
     empty: "Zatím nejsou vypsané žádné termíny. Zkus to později.",
     calendarFeed: "Přidej si všechny termíny do kalendáře: ",
@@ -132,7 +133,7 @@ export const cs = {
     rateLimited: "Z této sítě přišlo příliš mnoho registrací. Zkus to prosím za hodinu.",
     departureBeforeArrival: "Odchod musí být později než příchod",
   },
-  notFound: { title: "Stránka nenalezena" },
+  notFound: { title: "Stránka nenalezena", home: "Na úvodní stránku" },
   email: {
     confirmSubject: (title: string) => `Potvrzení registrace: ${title}`,
     existingSubject: (title: string) => `Tvoje registrace: ${title}`,
@@ -610,12 +611,13 @@ export type Dict = typeof cs;
 export const en: Dict = {
   meta: {
     title: SITE_NAME,
-    description: "Sign up for Blood on the Clocktower game nights in Olomouc",
+    description: "A board game club in Olomouc – when and where we play, and sign-ups for Blood on the Clocktower game nights",
   },
-  nav: { sessions: "Sessions", about: "About the game", archive: "Archive", club: "The club", admin: "Admin", myGames: "My games", footer: "Game nights in Olomouc", calendarFeed: "Calendar (iCal)", privacy: "Privacy" },
+  nav: { sessions: "Sessions", about: "About the game", archive: "Archive", club: "The club", botc: "Blood on the Clocktower", admin: "Admin", myGames: "My games", footer: "Game nights in Olomouc", calendarFeed: "Calendar (iCal)", privacy: "Privacy" },
   lang: { switchTo: "Česky", label: "Language" },
   home: {
     title: "Upcoming sessions",
+    description: "Sign up for Blood on the Clocktower game nights in Olomouc",
     intro: "Pick a session, fill in a short form and you'll get a confirmation by e-mail. No account needed.",
     empty: "No sessions are scheduled yet. Check back later.",
     calendarFeed: "Add all sessions to your calendar: ",
@@ -728,7 +730,7 @@ export const en: Dict = {
     rateLimited: "Too many sign-ups from this network. Please try again in an hour.",
     departureBeforeArrival: "Departure must be later than arrival",
   },
-  notFound: { title: "Page not found" },
+  notFound: { title: "Page not found", home: "Back to the home page" },
   email: {
     confirmSubject: (title) => `Sign-up confirmed: ${title}`,
     existingSubject: (title) => `Your sign-up: ${title}`,

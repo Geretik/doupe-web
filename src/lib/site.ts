@@ -21,7 +21,7 @@ export function siteUrl() {
 }
 
 export function editUrl(token: string) {
-  return `${siteUrl()}/r/${token}`;
+  return `${siteUrl()}/botc/r/${token}`;
 }
 
 export function inviteUrl(token: string) {

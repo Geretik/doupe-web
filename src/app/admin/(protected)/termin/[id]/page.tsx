@@ -120,7 +120,7 @@ export default async function AdminSessionPage({
       </div>
 
       <div className="flex flex-wrap items-center gap-2 text-sm">
-        <Link href={`/termin/${session.id}`} className="rounded-md border border-border bg-card px-3 py-2 hover:border-accent">
+        <Link href={`/botc/termin/${session.id}`} className="rounded-md border border-border bg-card px-3 py-2 hover:border-accent">
           {t.publicPage}
         </Link>
         <Link href={`/admin/novy?from=${session.id}`} className="rounded-md border border-border bg-card px-3 py-2 hover:border-accent">

@@ -5,7 +5,13 @@ const OLD_HOSTS = ["playbotc.vercel.app", "botc-olomoc.vercel.app"];
 const SITE = "https://www.doupeol.cz";
 
 /** Pages whose URL is itself the secret (edit link, "my games", invitation, new password). */
-const TOKEN_PAGES = ["/r/:token", "/moje-hry/:token", "/admin/pozvanka/:token", "/admin/nove-heslo/:token"];
+const TOKEN_PAGES = ["/botc/r/:token", "/botc/moje-hry/:token", "/admin/pozvanka/:token", "/admin/nove-heslo/:token"];
+
+/**
+ * Blood on the Clocktower pages that lived at the top level before the site became the club's web:
+ * links in sent e-mails, Discord posts and QR codes on printed posters keep working.
+ */
+const MOVED_TO_BOTC = ["/termin", "/archiv", "/o-hre", "/r", "/moje-hry"];
 
 const nextConfig: NextConfig = {
   async headers() {
@@ -25,13 +31,18 @@ const nextConfig: NextConfig = {
     ];
   },
   async redirects() {
-    return OLD_HOSTS.map((host) => ({
-      // not /api/: Vercel Cron calls the production URL and does not follow redirects
-      source: "/:path((?!api/).*)",
-      has: [{ type: "host" as const, value: host.replaceAll(".", "\\.") }],
-      destination: `${SITE}/:path`,
-      permanent: true,
-    }));
+    return [
+      ...OLD_HOSTS.map((host) => ({
+        // not /api/: Vercel Cron calls the production URL and does not follow redirects
+        source: "/:path((?!api/).*)",
+        has: [{ type: "host" as const, value: host.replaceAll(".", "\\.") }],
+        destination: `${SITE}/:path`,
+        permanent: true,
+      })),
+      ...MOVED_TO_BOTC.map((path) => ({ source: `${path}/:rest*`, destination: `/botc${path}/:rest*`, permanent: true })),
+      // the club page became the home page
+      { source: "/klub", destination: "/", permanent: true },
+    ];
   },
 };
 
