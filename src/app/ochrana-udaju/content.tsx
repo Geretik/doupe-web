@@ -74,8 +74,9 @@ function Czech({ contact, discordAlerts }: Props) {
           systému do uplynutí {RETENTION_DAYS} dní od konání hraní. Potom se automaticky smažou.
         </li>
         <li>
-          Místo e-mailu zůstane anonymní kód, díky kterému statistiky poznají stejného hráče a v „Mých
-          hrách“ uvidíš i starší odehrané hry. E-mail se z něj zjistit nedá.
+          Místo e-mailu zůstane pseudonymní kód, díky kterému statistiky poznají stejného hráče a v „Mých
+          hrách“ uvidíš i starší odehrané hry. E-mail se z kódu přečíst nedá, ze stejné adresy ale vždy
+          vyjde stejný kód, takže jde pořád o osobní údaj.
         </li>
         <li>
           <strong>Přezdívka, docházka, časy, poznámka a důvod odhlášení</strong> zůstávají v archivu a
@@ -184,8 +185,9 @@ function English({ contact, discordAlerts }: Props) {
           automatically.
         </li>
         <li>
-          Your e-mail is replaced by an anonymous code so the stats can recognise the same player and
-          &quot;My games&quot; still shows your older games. The e-mail cannot be recovered from it.
+          Your e-mail is replaced by a pseudonymous code so the stats can recognise the same player and
+          &quot;My games&quot; still shows your older games. The e-mail cannot be read back from the code,
+          but the same address always gives the same code, so it still counts as personal data.
         </li>
         <li>
           <strong>Nickname, attendance, times, note and cancel reason</strong> stay in the club&apos;s
