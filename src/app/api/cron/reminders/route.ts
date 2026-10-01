@@ -17,7 +17,7 @@ function bearerOk(req: Request) {
 }
 
 /**
- * Daily jobs: "game night is tomorrow" reminders, the "spots left" Discord post and deleting old personal data.
+ * Daily jobs: "game night is tomorrow" reminders, the optional "spots left" Discord post and deleting old personal data.
  * Called by Vercel Cron (see vercel.json) with `Authorization: Bearer $CRON_SECRET`;
  * a logged-in admin can also open it in the browser.
  */

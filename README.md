@@ -34,7 +34,7 @@ registraci upravit nebo zrušit.
 - Časované otevření registrací: u zavřeného termínu čas „Automaticky otevřít“; stav se vyhodnocuje při každém požadavku (bez cronu), otevřená stránka termínu si v tu chvíli sama načte formulář
 - QR kód termínu: `/termin/[id]/qr.svg` a `qr.png` (odkaz na registraci), v adminu tisknutelný plakát A4 `/admin/termin/[id]/plakat`
 - Organizátoři: přehled „kolik lidí bude v kterou hodinu“ podle příchodů a odchodů, vypravěč u termínu, opakující se termíny, rozdělení ke stolům (auto + ručně, e-mail hráčům), evidence odehraných her (archiv, statistiky), soukromý iCal `/admin/kalendar.ics?key=…`, ✉️ nové poslání odkazu hráči, ⚠️ u registrací bez potvrzení
-- Automatika: 14 dní po termínu se hráčům smaže jméno, e-mail a telefon (zůstane přezdívka, docházka, poznámka a důvod odhlášení; e-mail nahradí pseudonym, aby statistiky poznaly stejného hráče), Discord post „zbývá míst“ dva dny před hrou, upozornění organizátorům (e-mail + Discord) při pozdním odhlášení (<24 h), selhání e-mailu nebo cronu; limit registrací z jedné sítě (`REGISTRATION_RATE_LIMIT`, výchozí 10/h)
+- Automatika: 14 dní po termínu se hráčům smaže jméno, e-mail a telefon (zůstane přezdívka, docházka, poznámka a důvod odhlášení; e-mail nahradí pseudonym, aby statistiky poznaly stejného hráče), volitelně Discord post „zbývá míst“ dva dny před hrou (`DISCORD_SPOTS_LEFT=1`), upozornění organizátorům (e-mail + Discord) při pozdním odhlášení (<24 h), selhání e-mailu nebo cronu; limit registrací z jedné sítě (`REGISTRATION_RATE_LIMIT`, výchozí 10/h)
 - `/admin/statistiky` – obsazenost, docházka, pravidelní hráči
 - `/api/cron/reminders` – denní připomínky (Vercel Cron, viz níže)
 
@@ -84,6 +84,7 @@ Admin: `/admin/login`. Při prvním spuštění (žádný účet) stránka nabí
 | `ADMIN_SECRET` | Náhodný řetězec (`openssl rand -hex 32`) pro podpis admin cookie, odkazů „moje hry“ a kalendáře organizátorů, pseudonymů hráčů po smazání údajů a otisků IP. **Neměň ho:** všichni organizátoři se odhlásí, rozeslané odkazy „moje hry“ a odběr kalendáře organizátorů přestanou fungovat a statistiky pravidelných hráčů přestanou poznávat stejné hráče ze starších termínů. |
 | `CRON_SECRET` | Tajemství pro cron připomínek; Vercel ho posílá automaticky v hlavičce `Authorization: Bearer …` (`openssl rand -hex 32`) |
 | `DISCORD_WEBHOOK_URL` | Volitelné. Webhook Discord kanálu pro oznámení nových termínů (bez něj se tlačítka jen hlásí, že Discord není nastavený) |
+| `DISCORD_SPOTS_LEFT` | Volitelné. `1` = denní úloha navíc pošle do stejného kanálu „zbývá X míst“ dva dny před hrou, která není plná. Bez něj se posílají jen oznámení nových termínů. |
 | `DISCORD_ALERTS_WEBHOOK_URL` | Volitelné. Webhook **neveřejného** kanálu organizátorů pro upozornění (pozdní odhlášení s přezdívkou a důvodem, selhání e-mailu nebo cronu). Bez něj chodí upozornění jen e-mailem. |
 | `CONTACT_EMAIL` | Doporučené. Schránka organizátorů: Reply-To všech e-mailů (adresa odesílatele nemá schránku) a kontakt na stránce `/ochrana-udaju` (bez ní se odkazuje na Discord) |
 

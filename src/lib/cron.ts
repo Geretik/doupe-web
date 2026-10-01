@@ -2,7 +2,7 @@ import { and, eq, gte, isNull, lte, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { registrations, sessions } from "@/db/schema";
 import { notifyOrganizers } from "./alerts";
-import { discordConfigured, postDiscordMessage, spotsLeftMessage } from "./discord";
+import { postDiscordMessage, spotsLeftEnabled, spotsLeftMessage } from "./discord";
 import { recordDailyRun } from "./job-runs";
 import { deleteOldLoginFailures } from "./login-limit";
 import { sendDueReminders } from "./reminders";
@@ -11,9 +11,9 @@ import { anonymizeOldRegistrations, RETENTION_DAYS } from "./retention";
 /** Sessions starting this far ahead get the "spots left" Discord post (the cron runs once a day). */
 const SPOTS_WINDOW_HOURS: [number, number] = [36, 60];
 
-/** Posts "N spots left" for sessions two days ahead that are not full yet; each session at most once. */
+/** Posts "N spots left" for sessions two days ahead that are not full yet; each session at most once. Off unless DISCORD_SPOTS_LEFT=1. */
 export async function postSpotsLeft() {
-  if (!discordConfigured()) return { posted: 0 };
+  if (!spotsLeftEnabled()) return { posted: 0 };
   const now = Date.now();
   const from = new Date(now + SPOTS_WINDOW_HOURS[0] * 3600_000);
   const to = new Date(now + SPOTS_WINDOW_HOURS[1] * 3600_000);

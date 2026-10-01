@@ -335,9 +335,9 @@ export const cs = {
     health: {
       title: "⚠️ Nastavení webu potřebuje pozornost",
       cronNoSecret:
-        "Ve Vercelu chybí CRON_SECRET, takže denní úlohy vůbec neběží: připomínky „zítra je hra“, příspěvek „zbývá míst“ na Discord a mazání osobních údajů hráčů po 14 dnech. Nastav ho ve Vercelu (openssl rand -hex 32) a nasaď web znovu.",
-      cronNever: "Denní úlohy (připomínky, příspěvek „zbývá míst“, mazání osobních údajů po 14 dnech) zatím neproběhly.",
-      cronStale: (when: string) => `Denní úlohy (připomínky, příspěvek „zbývá míst“, mazání osobních údajů po 14 dnech) naposledy proběhly ${when}. Mají běžet každý den dopoledne, podívej se do logu ve Vercelu.`,
+        "Ve Vercelu chybí CRON_SECRET, takže denní úlohy vůbec neběží: připomínky „zítra je hra“ a mazání osobních údajů hráčů po 14 dnech. Nastav ho ve Vercelu (openssl rand -hex 32) a nasaď web znovu.",
+      cronNever: "Denní úlohy (připomínky, mazání osobních údajů po 14 dnech) zatím neproběhly.",
+      cronStale: (when: string) => `Denní úlohy (připomínky, mazání osobních údajů po 14 dnech) naposledy proběhly ${when}. Mají běžet každý den dopoledne, podívej se do logu ve Vercelu.`,
       runNow: "Spustit teď",
       contactMissing:
         "Ve Vercelu chybí CONTACT_EMAIL: odpovědi hráčů na e-maily se vracejí jako nedoručitelné a stránka Ochrana osobních údajů neuvádí žádný kontaktní e-mail.",
@@ -923,9 +923,9 @@ export const en: Dict = {
     health: {
       title: "⚠️ The site setup needs attention",
       cronNoSecret:
-        "CRON_SECRET is missing on Vercel, so the daily jobs do not run at all: “game night is tomorrow” reminders, the “spots left” Discord post and deleting players’ personal data after 14 days. Set it on Vercel (openssl rand -hex 32) and redeploy.",
-      cronNever: "The daily jobs (reminders, the “spots left” post, deleting personal data after 14 days) have not run yet.",
-      cronStale: (when) => `The daily jobs (reminders, the “spots left” post, deleting personal data after 14 days) last ran ${when}. They should run every morning; check the log on Vercel.`,
+        "CRON_SECRET is missing on Vercel, so the daily jobs do not run at all: “game night is tomorrow” reminders and deleting players’ personal data after 14 days. Set it on Vercel (openssl rand -hex 32) and redeploy.",
+      cronNever: "The daily jobs (reminders, deleting personal data after 14 days) have not run yet.",
+      cronStale: (when) => `The daily jobs (reminders, deleting personal data after 14 days) last ran ${when}. They should run every morning; check the log on Vercel.`,
       runNow: "Run now",
       contactMissing:
         "CONTACT_EMAIL is missing on Vercel: players’ replies to e-mails bounce and the privacy page lists no contact e-mail.",

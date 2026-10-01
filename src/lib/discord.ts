@@ -7,6 +7,11 @@ export function discordConfigured() {
   return Boolean(process.env.DISCORD_WEBHOOK_URL);
 }
 
+/** The daily "spots left" post is opt-in (DISCORD_SPOTS_LEFT=1); announcing new sessions only needs the webhook. */
+export function spotsLeftEnabled() {
+  return discordConfigured() && process.env.DISCORD_SPOTS_LEFT === "1";
+}
+
 /** Posts a plain message to the public announcements webhook; returns false when not configured or failed. Never throws. */
 export async function postDiscordMessage(content: string) {
   return postToWebhook(process.env.DISCORD_WEBHOOK_URL, content);
