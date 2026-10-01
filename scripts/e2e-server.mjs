@@ -2,14 +2,12 @@
 // and then runs the production Next.js server. Used by Playwright's webServer.
 // Requires `next build` to have run first.
 import { spawn } from "node:child_process";
-import { mkdtempSync, readFileSync } from "node:fs";
-import { createServer } from "node:http";
+import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 const PG_PORT = Number(process.env.E2E_PG_PORT ?? 5599);
 const WEB_PORT = Number(process.env.E2E_WEB_PORT ?? 3100);
-const ZH_PORT = Number(process.env.E2E_ZH_PORT ?? 5601);
 const DATABASE_URL = `postgres://postgres:postgres@127.0.0.1:${PG_PORT}/postgres`;
 
 const env = {
@@ -22,7 +20,6 @@ const env = {
   CRON_SECRET: "e2e-cron",
   DISCORD_WEBHOOK_URL: "",
   REGISTRATION_RATE_LIMIT: "1000", // tests sign up many times from one IP
-  ZATROLENE_CLUB_URL: `http://127.0.0.1:${ZH_PORT}/klub/`, // the games page reads the stand-in below
   PORT: String(WEB_PORT),
 };
 
@@ -38,24 +35,6 @@ function shutdown(code = 0) {
 }
 process.on("SIGINT", () => shutdown(0));
 process.on("SIGTERM", () => shutdown(0));
-
-// Stand-in for the club's page on Zatrolené hry. POST /mode/<mode> switches what it answers:
-// "ok" (the copy in tests/e2e/fixtures), "changed" (a page without the list) or "down" (HTTP 503).
-const zhPage = readFileSync(new URL("../tests/e2e/fixtures/zatrolene-klub.html", import.meta.url), "utf8");
-let zhMode = "ok";
-const zh = createServer((req, res) => {
-  if (req.method === "POST" && req.url?.startsWith("/mode/")) {
-    zhMode = req.url.slice("/mode/".length);
-    return res.end(zhMode);
-  }
-  if (zhMode === "down") {
-    res.statusCode = 503;
-    return res.end("Service Unavailable");
-  }
-  res.setHeader("content-type", "text/html; charset=utf-8");
-  res.end(zhMode === "changed" ? "<html><body><h1>Nový vzhled</h1></body></html>" : zhPage);
-});
-zh.listen(ZH_PORT, "127.0.0.1");
 
 const dataDir = mkdtempSync(join(tmpdir(), "botc-e2e-pg-"));
 run("npx", ["pglite-server", "--port", String(PG_PORT), "--db", dataDir, "-m", "20"]);

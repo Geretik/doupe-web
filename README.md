@@ -1,7 +1,7 @@
 # DoUPě Olomouc – web klubu deskových her
 
 Web **Klubu deskových her DoUPě Olomouc**. Úvodní stránka je o klubu, jednotlivé části klubu
-jsou moduly s vlastní adresou a menu. Sbírka her klubu je pod `/hry`. Modul je zatím jen jeden: **Blood on the Clocktower** („Krvavka“)
+jsou moduly s vlastní adresou a menu. Zatím je jen jeden: **Blood on the Clocktower** („Krvavka“)
 pod `/botc`, registrace na herní večery bez uživatelských účtů. Hráč vyplní formulář, na e-mail
 dostane potvrzení s tajným odkazem, přes který může registraci upravit nebo zrušit.
 
@@ -17,7 +17,6 @@ dostane potvrzení s tajným odkazem, přes který může registraci upravit neb
 - Dvojjazyčné rozhraní **česky / English** včetně adminu (přepínač v hlavičce, volba se ukládá do cookie, e-maily chodí v jazyce hráče)
 
 - `/` – o klubu: kdy a kde se hraje, pravidla, přihlašování na klubová hraní (zatím přes Discord)
-- `/hry` – sbírka her klubu s hledáním (i v poznámkách, bez ohledu na diakritiku) a filtry (počet hráčů, jen klubové, bez rozšíření). Seznam se upravuje jen na [Zatrolených hrách](https://www.zatrolene-hry.cz/klub/klub-deskovych-her-doupe-olomouc-58/) a web si ho odtud načítá sám: jejich API sbírky klubů neumí, takže čte veřejnou stránku klubu (`src/lib/zatrolene.ts`). Načtený seznam je v tabulce `game_collection`. Starší než hodinu se při návštěvě ukáže a znovu načte až po odeslání stránky, přihlášený organizátor může načíst hned. Když načtení selže, zůstává poslední seznam a admin ukáže varování. Když se stránka na Zatrolených hrách změní tak, že ji už nepřečteme, přijde organizátorům jednou upozornění.
 - `/botc` – Krvavka: seznam nadcházejících termínů s počtem volných míst a náhradníků; stránky modulu mají vlastní menu (Termíny · O hře · Archiv · Moje hry)
 - `/botc/termin/[id]` – detail termínu a registrační formulář (jméno, příjmení, přezdívka, e-mail, telefon, volitelný příchod/odchod, „můžu dělat vypravěče“, „jsem nováček“); telefon vidí jen organizátoři
 - `/botc/termin/[id]/kalendar.ics` – termín jako soubor do kalendáře; odkaz i na Google Kalendář je na stránce termínu a v e-mailech
@@ -32,7 +31,7 @@ dostane potvrzení s tajným odkazem, přes který může registraci upravit neb
 - Přihlášení do adminu: po 10 špatných pokusech z jedné sítě se na 15 minut odmítá (i se správným heslem)
 - Hesla organizátorů: `/admin/heslo` – změna vlastního hesla; zapomenuté heslo – správce v `/admin/ucty` vytvoří jednorázový odkaz `/admin/nove-heslo/…` (platí 3 dny). Změna i obnova hesla odhlásí účet na ostatních zařízeních. Když heslo zapomene jediný správce, viz `scripts/reset-link.mjs` níže.
 - Bezpečnostní hlavičky (`next.config.ts`): web se nedá vložit do cizí stránky (rámeček), stránky s tajným odkazem v adrese ho neposílají dál při prokliku ven
-- Hlídání nastavení: hlavní stránka adminu upozorní, když chybí `CRON_SECRET` nebo `CONTACT_EMAIL`, když denní úlohy neproběhly déle než 26 hodin (s odkazem „Spustit teď“) nebo když se nepodařilo načíst seznam her (s tlačítkem „Zkusit znovu“)
+- Hlídání nastavení: hlavní stránka adminu upozorní, když chybí `CRON_SECRET` nebo `CONTACT_EMAIL` nebo když denní úlohy neproběhly déle než 26 hodin (s odkazem „Spustit teď“)
 - Hráči: poznámka pro organizátory, výběr příchodu/odchodu po 15 minutách v rámci termínu, zrušení s důvodem, stránka `/botc/moje-hry` (odkaz na přehled registrací e-mailem), sdílení termínu, PWA
 - Registrace u termínu: otevřené / zatím neotevřené (termín je vidět, přihlásit se ještě nejde) / pozastavené; v adminu jedním kliknutím „Otevřít“ / „Pozastavit“, server nové registrace mimo „otevřené“ odmítne, přihlášení mohou dál upravovat a rušit
 - Časované otevření registrací: u zavřeného termínu čas „Automaticky otevřít“; stav se vyhodnocuje při každém požadavku (bez cronu), otevřená stránka termínu si v tu chvíli sama načte formulář
@@ -105,7 +104,7 @@ Admin: `/admin/login`. Při prvním spuštění (žádný účet) stránka nabí
 
 ## Testy
 
-End-to-end testy (Playwright) běží proti produkčnímu buildu a **embedded Postgresu (PGlite)**, takže nepotřebují žádnou externí databázi ani účty. E-maily se v testech jen logují. Místo Zatrolených her čtou testy zkrácenou kopii stránky klubu (`tests/e2e/fixtures/zatrolene-klub.html`), kterou podává `scripts/e2e-server.mjs`.
+End-to-end testy (Playwright) běží proti produkčnímu buildu a **embedded Postgresu (PGlite)**, takže nepotřebují žádnou externí databázi ani účty. E-maily se v testech jen logují.
 
 ```bash
 npx playwright install chromium   # jednorázově

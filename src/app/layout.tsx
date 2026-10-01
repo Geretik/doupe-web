@@ -53,7 +53,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               className="order-3 sm:order-2 -mx-2 flex basis-full sm:basis-auto sm:mx-0 items-center gap-1 sm:gap-4 overflow-x-auto whitespace-nowrap text-sm"
             >
               <NavLink href="/" className="rounded-md px-2 py-1.5 hover:underline">{t.nav.club}</NavLink>
-              <NavLink href="/hry" className="rounded-md px-2 py-1.5 hover:underline">{t.nav.games}</NavLink>
               <NavLink href="/botc" prefixes={["/botc"]} className="rounded-md px-2 py-1.5 hover:underline">
                 {t.nav.botc}
               </NavLink>

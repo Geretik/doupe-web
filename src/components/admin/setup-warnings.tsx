@@ -1,20 +1,13 @@
-import { refreshGameCollectionAction } from "@/app/actions/admin";
 import { Alert } from "@/components/ui";
 import type { Dict, Locale } from "@/i18n/dictionaries";
-import { gameCollectionProblem } from "@/lib/game-collection";
 import { dailyJobsHealth } from "@/lib/job-runs";
 import { contactEmail } from "@/lib/site";
 import { formatShortDate, formatTime } from "@/lib/time";
-import { ActionButton } from "./action-button";
 
-/**
- * What silently breaks things: missing configuration (e.g. no CRON_SECRET = no reminders, no data deletion)
- * or a game list that Zatrolené hry no longer gives us.
- */
+/** Missing configuration that silently breaks things (e.g. no CRON_SECRET = no reminders, no data deletion). */
 export async function SetupWarnings({ t, locale }: { t: Dict; locale: Locale }) {
   const h = t.admin.health;
-  const [cron, games] = await Promise.all([dailyJobsHealth(), gameCollectionProblem()]);
-  const when = (d: Date) => `${formatShortDate(d, locale)} ${formatTime(d, locale)}`;
+  const cron = await dailyJobsHealth();
   const items: React.ReactNode[] = [];
   if (!cron.ok) {
     items.push(
@@ -22,7 +15,7 @@ export async function SetupWarnings({ t, locale }: { t: Dict; locale: Locale }) 
         h.cronNoSecret
       ) : (
         <>
-          {cron.reason === "never" ? h.cronNever : h.cronStale(when(cron.last))}{" "}
+          {cron.reason === "never" ? h.cronNever : h.cronStale(`${formatShortDate(cron.last, locale)} ${formatTime(cron.last, locale)}`)}{" "}
           {/* the cron route also accepts a signed-in organiser */}
           <a href="/api/cron/reminders" target="_blank" className="font-medium underline">{h.runNow}</a>
         </>
@@ -30,14 +23,6 @@ export async function SetupWarnings({ t, locale }: { t: Dict; locale: Locale }) 
     );
   }
   if (!contactEmail()) items.push(h.contactMissing);
-  if (games) {
-    items.push(
-      <>
-        {h.gameCollection(games.error, games.loadedAt && when(games.loadedAt))}{" "}
-        <ActionButton action={refreshGameCollectionAction} label={h.retry} pendingLabel={t.games.refreshing} />
-      </>,
-    );
-  }
   if (items.length === 0) return null;
   return (
     <Alert kind="error">

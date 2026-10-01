@@ -2,7 +2,6 @@ import { defineConfig, devices } from "@playwright/test";
 
 const WEB_PORT = Number(process.env.E2E_WEB_PORT ?? 3100);
 const PG_PORT = Number(process.env.E2E_PG_PORT ?? 5599);
-const ZH_PORT = Number(process.env.E2E_ZH_PORT ?? 5601);
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -33,6 +32,4 @@ export const E2E = {
   adminEmail: "admin@example.com",
   adminUserPassword: "e2e-admin-password",
   databaseUrl: `postgres://postgres:postgres@127.0.0.1:${PG_PORT}/postgres`,
-  /** Stand-in for the club's page on Zatrolené hry (scripts/e2e-server.mjs) */
-  zatroleneUrl: `http://127.0.0.1:${ZH_PORT}`,
 };

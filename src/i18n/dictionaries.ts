@@ -13,7 +13,7 @@ export const cs = {
     title: SITE_NAME,
     description: "Klub deskových her v Olomouci – kdy a kde hrajeme a registrace na herní večery Blood on the Clocktower",
   },
-  nav: { sessions: "Termíny", about: "O hře", archive: "Archiv", club: "Klub", games: "Hry", botc: "Krvavka", admin: "Admin", myGames: "Moje hry", footer: "Herní večery v Olomouci", calendarFeed: "Kalendář (iCal)", privacy: "Ochrana údajů" },
+  nav: { sessions: "Termíny", about: "O hře", archive: "Archiv", club: "Klub", botc: "Krvavka", admin: "Admin", myGames: "Moje hry", footer: "Herní večery v Olomouci", calendarFeed: "Kalendář (iCal)", privacy: "Ochrana údajů" },
   lang: { switchTo: "English", label: "Jazyk" },
   home: {
     title: "Nadcházející termíny",
@@ -217,40 +217,6 @@ export const cs = {
     title: CLUB_NAME,
     subtitle: "Kdy a kde hrajeme, jak se přihlásit na hry a jak to u nás chodí.",
   },
-  games: {
-    title: "Sbírka her",
-    subtitle: "Co si u nás můžeš zahrát.",
-    intro: "Klubové hry jsou v klubu natrvalo. Soukromé hry členů (poznáš je podle poznámky) jsou ve skříni, jen dokud si je majitel neodnese, takže se jejich nabídka mění.",
-    playerCount: (min: number, max: number) => {
-      const word = (n: number) => (n === 1 ? "hráč" : n < 5 ? "hráči" : "hráčů");
-      if (max >= 99) return `od ${min} ${min === 1 ? "hráče" : "hráčů"}`;
-      return min === max ? `${min} ${word(min)}` : `${min}–${max} ${word(max)}`;
-    },
-    /** Plain strings only – passed to the client component with the filters. */
-    list: {
-      search: "Hledat",
-      searchPlaceholder: "Název nebo poznámka",
-      players: "Počet hráčů",
-      anyPlayers: "Libovolný",
-      clubOnly: "Jen klubové hry",
-      noExpansions: "Bez rozšíření",
-      expansion: "rozšíření",
-      /** {n} of {total} games */
-      shown: "Zobrazeno {n} z {total}",
-      none: "Filtru neodpovídá žádná hra.",
-      botc: "Hrajeme pravidelně – termíny a registrace",
-    },
-    source: "Seznam vedeme na ",
-    sourceLink: "Zatrolených hrách",
-    sourceAfter: (minutes: number) => ` a sem se načítá sám, změny se tu objeví do ${minutes} minut.`,
-    loadedAt: (when: string) => `Naposledy načteno ${when}.`,
-    unavailable: "Seznam her se teď nepodařilo načíst. Najdeš ho na ",
-    refresh: "Načíst znovu ze Zatrolených her",
-    refreshing: "Načítám…",
-    refreshed: (n: number) => `Načteno ${n} her.`,
-    refreshFailed: (error: string) => `Načtení selhalo: ${error}`,
-    refreshBusy: "Seznam se právě načítá, zkus to za chvíli.",
-  },
   privacy: {
     title: "Ochrana osobních údajů",
     subtitle: "Jaké údaje při registraci sbíráme, k čemu je potřebujeme, kdo k nim má přístup a kdy je smažeme.",
@@ -376,9 +342,6 @@ export const cs = {
       runNow: "Spustit teď",
       contactMissing:
         "Ve Vercelu chybí CONTACT_EMAIL: odpovědi hráčů na e-maily se vracejí jako nedoručitelné a stránka Ochrana osobních údajů neuvádí žádný kontaktní e-mail.",
-      gameCollection: (error: string, loadedAt: string | null) =>
-        `Seznam her se při posledním pokusu nepodařilo načíst ze Zatrolených her (${error}). ${loadedAt ? `Stránka Hry dál ukazuje seznam načtený ${loadedAt}.` : "Stránka Hry zatím žádný seznam nemá."}`,
-      retry: "Zkusit znovu",
     },
     create: {
       title: "Nový termín",
@@ -650,7 +613,7 @@ export const en: Dict = {
     title: SITE_NAME,
     description: "A board game club in Olomouc – when and where we play, and sign-ups for Blood on the Clocktower game nights",
   },
-  nav: { sessions: "Sessions", about: "About the game", archive: "Archive", club: "The club", games: "Games", botc: "Blood on the Clocktower", admin: "Admin", myGames: "My games", footer: "Game nights in Olomouc", calendarFeed: "Calendar (iCal)", privacy: "Privacy" },
+  nav: { sessions: "Sessions", about: "About the game", archive: "Archive", club: "The club", botc: "Blood on the Clocktower", admin: "Admin", myGames: "My games", footer: "Game nights in Olomouc", calendarFeed: "Calendar (iCal)", privacy: "Privacy" },
   lang: { switchTo: "Česky", label: "Language" },
   home: {
     title: "Upcoming sessions",
@@ -849,37 +812,6 @@ export const en: Dict = {
     title: CLUB_NAME,
     subtitle: "A board game club in Olomouc – when and where we play, how to sign up for games and how things work.",
   },
-  games: {
-    title: "Game collection",
-    subtitle: "What you can play at the club.",
-    intro: "Club games stay at the club for good. Members’ private games (their note says so) are in the cupboard only until the owner takes them home, so they come and go.",
-    playerCount: (min, max) => {
-      if (max >= 99) return `${min}+ players`;
-      return min === max ? `${min} ${min === 1 ? "player" : "players"}` : `${min}–${max} players`;
-    },
-    list: {
-      search: "Search",
-      searchPlaceholder: "Name or note",
-      players: "Players",
-      anyPlayers: "Any",
-      clubOnly: "Club games only",
-      noExpansions: "No expansions",
-      expansion: "expansion",
-      shown: "Showing {n} of {total}",
-      none: "No game matches the filter.",
-      botc: "We play it regularly – sessions and sign-up",
-    },
-    source: "We keep the list on ",
-    sourceLink: "Zatrolené hry",
-    sourceAfter: (minutes) => ` (a Czech board game site); it is copied here by itself, so changes show up within ${minutes} minutes.`,
-    loadedAt: (when) => `Last loaded ${when}.`,
-    unavailable: "The game list could not be loaded right now. You can find it on ",
-    refresh: "Reload from Zatrolené hry",
-    refreshing: "Loading…",
-    refreshed: (n) => `Loaded ${n} games.`,
-    refreshFailed: (error) => `Loading failed: ${error}`,
-    refreshBusy: "The list is being loaded right now, try again in a moment.",
-  },
   privacy: {
     title: "Privacy",
     subtitle: "What we collect when you sign up, what we need it for, who can see it and when we delete it.",
@@ -999,9 +931,6 @@ export const en: Dict = {
       runNow: "Run now",
       contactMissing:
         "CONTACT_EMAIL is missing on Vercel: players’ replies to e-mails bounce and the privacy page lists no contact e-mail.",
-      gameCollection: (error, loadedAt) =>
-        `The last attempt to load the game list from Zatrolené hry failed (${error}). ${loadedAt ? `The Games page still shows the list loaded ${loadedAt}.` : "The Games page has no list yet."}`,
-      retry: "Try again",
     },
     create: {
       title: "New session",
