@@ -32,6 +32,7 @@ import type { Registration } from "@/db/schema";
 import type { Dict } from "@/i18n/dictionaries";
 import { getDict } from "@/i18n/server";
 import { discordConfigured } from "@/lib/discord";
+import { getFormSuggestions } from "@/lib/form-suggestions";
 import { getSessionWithCount, listGamesForSession, listRegistrationsForSession } from "@/lib/queries";
 import { presenceByHour } from "@/lib/presence";
 import { countPendingReminders } from "@/lib/reminders";
@@ -75,13 +76,14 @@ export default async function AdminSessionPage({
   const { id } = await params;
   const numId = Number(id);
   if (!Number.isInteger(numId)) notFound();
-  const [{ locale, t: dict }, session, regs, pendingReminders, playedGames, sessionTables] = await Promise.all([
+  const [{ locale, t: dict }, session, regs, pendingReminders, playedGames, sessionTables, suggestions] = await Promise.all([
     getDict(),
     getSessionWithCount(numId),
     listRegistrationsForSession(numId),
     countPendingReminders(numId),
     listGamesForSession(numId),
     listTables(numId),
+    getFormSuggestions(),
   ]);
   if (!session) notFound();
   const t = dict.admin.session;
@@ -176,6 +178,7 @@ export default async function AdminSessionPage({
             registrationOpensAt: opensAt ? dateToPragueLocal(opensAt) : "",
           }}
           today={dateToPragueLocal(new Date()).slice(0, 10)}
+          suggestions={suggestions}
           t={dict.admin.form}
         />
       </Card>

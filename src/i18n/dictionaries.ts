@@ -390,7 +390,7 @@ export const cs = {
       saveChanges: "Uložit změny",
       create: "Vytvořit termín",
       scripts: "Scripty",
-      scriptsHint: "Odkazy na scripty, které se budou hrát (botcscripts.com, script tool, PDF na disku…). Zobrazí se hráčům u termínu.",
+      scriptsHint: "Odkazy na scripty, které se budou hrát (botcscripts.com, script tool, PDF na disku…). Zobrazí se hráčům u termínu. Script, který se už hrál, stačí vybrat podle názvu a odkaz se doplní sám.",
       scriptNamePlaceholder: "Název, např. Trouble Brewing",
       /** {n} = row number */
       scriptNameLabel: "Název scriptu {n}",
@@ -977,7 +977,7 @@ export const en: Dict = {
       saveChanges: "Save changes",
       create: "Create session",
       scripts: "Scripts",
-      scriptsHint: "Links to the scripts that will be played (botcscripts.com, script tool, a PDF on a drive…). Shown to players on the session page.",
+      scriptsHint: "Links to the scripts that will be played (botcscripts.com, script tool, a PDF on a drive…). Shown to players on the session page. For a script played before, pick its name and the link fills in by itself.",
       scriptNamePlaceholder: "Name, e.g. Trouble Brewing",
       scriptNameLabel: "Script name {n}",
       scriptUrlLabel: "Script link {n}",

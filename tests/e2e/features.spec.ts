@@ -706,6 +706,34 @@ test("new session form: calendars from today, times kept and reused, an end afte
   await expect(page.locator("#endTime")).toHaveValue("01:30");
 });
 
+test("session form offers earlier places, storytellers and scripts; a known script fills in its link", async ({ page }) => {
+  const id = await createSession({ title: "Minulý večer", daysAhead: -10 });
+  await sql("update sessions set place = 'Čajovna Ponorka', storyteller = 'Honza', scripts = $2 where id = $1", [
+    id,
+    JSON.stringify([{ name: "Trouble Brewing", url: "https://botcscripts.com/script/Trouble_Brewing/1/" }]),
+  ]);
+  await sql("insert into games (session_id, script_name, script_url) values ($1, 'Bad Moon Rising', 'https://botcscripts.com/script/Bad_Moon_Rising/1/')", [id]);
+  await adminLogin(page);
+  await page.goto("/admin/novy");
+  await expect(page.locator("#place-suggestions option[value='Čajovna Ponorka']")).toHaveCount(1);
+  await expect(page.locator("#storyteller-suggestions option[value='Honza']")).toHaveCount(1);
+  await expect(page.locator("#storyteller-suggestions option[value='Správce']")).toHaveCount(1); // organiser account
+  await expect(page.locator("#script-suggestions option")).toHaveCount(2);
+
+  const name = page.locator("input[name=scriptName] >> nth=0");
+  const url = page.locator("input[name=scriptUrl] >> nth=0");
+  await name.fill("trouble brewing");
+  await expect(url).toHaveValue("https://botcscripts.com/script/Trouble_Brewing/1/");
+  await name.fill("Bad Moon Rising");
+  await expect(url).toHaveValue("https://botcscripts.com/script/Bad_Moon_Rising/1/");
+  await name.fill("Vlastní script");
+  await expect(url).toHaveValue("");
+  // a link typed by hand is never replaced
+  await url.fill("https://example.com/vlastni.pdf");
+  await name.fill("Trouble Brewing");
+  await expect(url).toHaveValue("https://example.com/vlastni.pdf");
+});
+
 test("recurring sessions, games record shown in archive and stats", async ({ page }) => {
   await adminLogin(page);
   await page.goto("/admin/novy");

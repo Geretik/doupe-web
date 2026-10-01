@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { arrivalModes, registrationStates, type RegistrationState, type Session } from "@/db/schema";
 import type { Dict } from "@/i18n/dictionaries";
+import type { FormSuggestions } from "@/lib/form-suggestions";
 import type { FormState } from "@/lib/validation";
 import { Alert, Button, Checkbox, Field, inputClass } from "../ui";
 import { ScriptsFields } from "./scripts-fields";
@@ -13,6 +14,7 @@ export function SessionForm({
   session,
   defaults,
   today,
+  suggestions,
   mode = session ? "edit" : "create",
   discordConfigured = false,
   t,
@@ -24,6 +26,8 @@ export function SessionForm({
   defaults?: { startsAt: string; endsAt: string; registrationState?: RegistrationState; registrationOpensAt?: string };
   /** "YYYY-MM-DD" in Prague time – calendars offer no earlier date (the session date only when creating) */
   today: string;
+  /** Places, storytellers and scripts used before, offered while typing */
+  suggestions?: FormSuggestions;
   mode?: "create" | "edit";
   discordConfigured?: boolean;
   t: Dict["admin"]["form"];
@@ -45,7 +49,8 @@ export function SessionForm({
         t={t}
       />
       <Field label={t.place} name="place" errors={fe.place}>
-        <input id="place" name="place" required defaultValue={session?.place ?? ""} className={inputClass} />
+        <input id="place" name="place" required defaultValue={session?.place ?? ""} list="place-suggestions" autoComplete="off" className={inputClass} />
+        <Suggestions id="place-suggestions" values={suggestions?.places} />
       </Field>
       <Field label={t.capacity} name="capacity" errors={fe.capacity} hint={mode === "edit" ? t.capacityHint : undefined}>
         <input id="capacity" name="capacity" type="number" min={1} max={500} required defaultValue={session?.capacity ?? 15} className={inputClass} />
@@ -69,12 +74,13 @@ export function SessionForm({
       </Field>
       <Checkbox name="phoneRequired" label={t.phoneRequired} hint={t.phoneRequiredHint} defaultChecked={session?.phoneRequired ?? true} />
       <Field label={t.storyteller} name="storyteller" errors={fe.storyteller} hint={t.storytellerHint}>
-        <input id="storyteller" name="storyteller" maxLength={200} defaultValue={session?.storyteller ?? ""} className={inputClass} placeholder="🎩 Honza" />
+        <input id="storyteller" name="storyteller" maxLength={200} defaultValue={session?.storyteller ?? ""} list="storyteller-suggestions" autoComplete="off" className={inputClass} placeholder="🎩 Honza" />
+        <Suggestions id="storyteller-suggestions" values={suggestions?.storytellers} />
       </Field>
       <Field label={t.note} name="note" errors={fe.note} hint={t.noteHint}>
         <textarea id="note" name="note" rows={3} defaultValue={session?.note ?? ""} className={inputClass} />
       </Field>
-      <ScriptsFields initial={session?.scripts ?? []} errors={fe.scripts} t={t} />
+      <ScriptsFields initial={session?.scripts ?? []} known={suggestions?.scripts} errors={fe.scripts} t={t} />
       {mode === "create" && (
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label={t.repeat} name="repeatWeeks" hint={t.repeatHint}>
@@ -97,5 +103,16 @@ export function SessionForm({
         {pending ? t.saving : mode === "edit" ? t.saveChanges : t.create}
       </Button>
     </form>
+  );
+}
+
+/** Earlier values the browser offers under a text field; typing something new still works */
+function Suggestions({ id, values = [] }: { id: string; values?: string[] }) {
+  return (
+    <datalist id={id}>
+      {values.map((v) => (
+        <option key={v} value={v} />
+      ))}
+    </datalist>
   );
 }

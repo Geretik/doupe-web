@@ -3,6 +3,7 @@ import { SessionForm } from "@/components/admin/session-form";
 import { Card } from "@/components/ui";
 import { getDict } from "@/i18n/server";
 import { discordConfigured } from "@/lib/discord";
+import { getFormSuggestions } from "@/lib/form-suggestions";
 import { getLatestCreatedSession, getSessionWithCount } from "@/lib/queries";
 import { effectiveRegistrationState } from "@/lib/registration-state";
 import { dateToPragueLocal } from "@/lib/time";
@@ -14,10 +15,11 @@ export default async function NewSessionPage({
 }) {
   const { from } = await searchParams;
   const fromId = Number(from);
-  const [{ t }, template, latest] = await Promise.all([
+  const [{ t }, template, latest, suggestions] = await Promise.all([
     getDict(),
     from && Number.isInteger(fromId) ? getSessionWithCount(fromId) : null,
     getLatestCreatedSession(),
+    getFormSuggestions(),
   ]);
   const now = new Date();
   // duplicated session: same details, one week later – an older one moves to the next same weekday from today
@@ -47,6 +49,7 @@ export default async function NewSessionPage({
           session={template ?? undefined}
           defaults={defaults}
           today={dateToPragueLocal(now).slice(0, 10)}
+          suggestions={suggestions}
           discordConfigured={discordConfigured()}
           t={t.admin.form}
         />
