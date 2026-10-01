@@ -1,0 +1,34 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "07:00"
+      timezone: Europe/Prague
+    # new releases wait a few days, so a hijacked package is usually pulled before it gets here (security updates don't wait)
+    cooldown:
+      default-days: 3
+    open-pull-requests-limit: 5
+    groups:
+      # one PR for all minor and patch updates; major versions come one PR each
+      minor-and-patch:
+        update-types: [minor, patch]
+    ignore:
+      # Node types follow the Node version in CI and on Vercel (24)
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "07:00"
+      timezone: Europe/Prague
+    cooldown:
+      default-days: 3
+    groups:
+      actions:
+        patterns: ["*"]
