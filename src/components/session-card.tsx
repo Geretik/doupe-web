@@ -57,9 +57,10 @@ export function SessionCard({
         )}
         <ScriptLinks scripts={s.scripts} label={t.session.scripts(s.scripts.length)} />
       </div>
-      {/* spots and the button side by side: below the details on phones, on the right on wider screens */}
-      <div className="flex items-center justify-between gap-4 border-t border-border pt-3 sm:shrink-0 sm:justify-end sm:border-0 sm:pt-0">
-        <div className="flex flex-col gap-0.5 sm:items-end sm:text-right">
+      {/* phones: spots and the button side by side below the details; wider screens: on the right, the spots above
+          the button, each line kept whole however long the details are */}
+      <div className="flex items-center justify-between gap-4 border-t border-border pt-3 sm:shrink-0 sm:flex-col sm:items-end sm:gap-2 sm:border-0 sm:pt-0">
+        <div className="flex flex-col gap-0.5 sm:items-end sm:whitespace-nowrap sm:text-right">
           <span
             className={`text-sm font-medium ${full ? "text-accent" : "text-green-700 dark:text-green-400"}`}
           >
