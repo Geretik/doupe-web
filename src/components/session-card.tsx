@@ -28,8 +28,8 @@ export function SessionCard({
   const opensAt = scheduledOpening(s);
   const closed = regState !== "open";
   return (
-    <Card className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <div className="flex flex-col gap-1">
+    <Card className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+      <div className="flex min-w-0 flex-col gap-1">
         <h2 className="flex flex-wrap items-center gap-2 text-lg font-semibold">
           {s.title}
           {admin && <EditPencil sessionId={s.id} title={t.session.editPencil} />}
@@ -57,27 +57,30 @@ export function SessionCard({
         )}
         <ScriptLinks scripts={s.scripts} label={t.session.scripts(s.scripts.length)} />
       </div>
-      <div className="flex flex-col items-start gap-2 sm:items-end">
-        <span
-          className={`text-sm font-medium ${full ? "text-accent" : "text-green-700 dark:text-green-400"}`}
-        >
-          {full ? t.session.full : t.session.freeSpots(free, s.capacity)}
-        </span>
-        {s.waitlistedCount > 0 && (
-          <span className="text-xs text-muted">{t.session.waitlisted(s.waitlistedCount)}</span>
-        )}
-        {closed && (
-          <span className="text-xs font-medium text-muted">
-            {opensAt
-              ? t.session.cardOpensAt(formatShortDate(opensAt, locale), formatTime(opensAt, locale))
-              : regState === "paused"
-                ? t.session.cardPaused
-                : t.session.cardNotOpen}
+      {/* spots and the button side by side: below the details on phones, on the right on wider screens */}
+      <div className="flex items-center justify-between gap-4 border-t border-border pt-3 sm:shrink-0 sm:justify-end sm:border-0 sm:pt-0">
+        <div className="flex flex-col gap-0.5 sm:items-end sm:text-right">
+          <span
+            className={`text-sm font-medium ${full ? "text-accent" : "text-green-700 dark:text-green-400"}`}
+          >
+            {full ? t.session.full : t.session.freeSpots(free, s.capacity)}
           </span>
-        )}
+          {s.waitlistedCount > 0 && (
+            <span className="text-xs text-muted">{t.session.waitlisted(s.waitlistedCount)}</span>
+          )}
+          {closed && (
+            <span className="text-xs font-medium text-muted">
+              {opensAt
+                ? t.session.cardOpensAt(formatShortDate(opensAt, locale), formatTime(opensAt, locale))
+                : regState === "paused"
+                  ? t.session.cardPaused
+                  : t.session.cardNotOpen}
+            </span>
+          )}
+        </div>
         <Link
           href={`/botc/termin/${s.id}`}
-          className={`rounded-md px-4 py-2 text-sm font-medium ${
+          className={`shrink-0 whitespace-nowrap rounded-md px-4 py-2 text-sm font-medium ${
             full || closed
               ? "border border-border text-muted"
               : "bg-accent text-accent-foreground hover:opacity-90"
