@@ -12,7 +12,7 @@ concurrency:
 jobs:
   test:
     name: Lint, typecheck, build, e2e
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       deploy: ${{ steps.gate.outputs.deploy }}
     env:
@@ -21,10 +21,10 @@ jobs:
       ADMIN_SECRET: e2e-secret
       REGISTRATION_RATE_LIMIT: "1000"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
       - run: npm ci
       - run: npm run lint
@@ -36,7 +36,7 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: E2E tests
         run: npx playwright test
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: playwright-report
@@ -52,17 +52,17 @@ jobs:
     name: Deploy to Vercel (production)
     needs: test
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.test.outputs.deploy == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment: production
     env:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
       - run: npm ci
       - name: Apply database schema
