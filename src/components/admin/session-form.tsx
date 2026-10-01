@@ -34,6 +34,7 @@ export function SessionForm({
 }) {
   const [state, action, pending] = useActionState<FormState, FormData>(serverAction, {});
   const fe = state.fieldErrors ?? {};
+  const regState = defaults?.registrationState ?? session?.registrationState ?? "open";
   return (
     <form action={action} className="flex flex-col gap-4">
       {state.error && <Alert kind="error">{state.error}</Alert>}
@@ -56,7 +57,9 @@ export function SessionForm({
         <input id="capacity" name="capacity" type="number" min={1} max={500} required defaultValue={session?.capacity ?? 15} className={inputClass} />
       </Field>
       <Field label={t.registrationState} name="registrationState" errors={fe.registrationState} hint={t.registrationStateHint}>
-        <select id="registrationState" name="registrationState" defaultValue={defaults?.registrationState ?? session?.registrationState ?? "open"} className={inputClass}>
+        {/* the key remounts it after the one-click Open / Pause switch: a select ignores a new defaultValue,
+            and saving the form would otherwise bring the old state back */}
+        <select key={regState} id="registrationState" name="registrationState" defaultValue={regState} className={inputClass}>
           {registrationStates.map((s) => (
             <option key={s} value={s}>
               {s === "open" ? t.registrationOpen : s === "not_open" ? t.registrationNotOpen : t.registrationPaused}
@@ -64,7 +67,8 @@ export function SessionForm({
           ))}
         </select>
       </Field>
-      <OpensAtField value={defaults?.registrationOpensAt} minDate={today} errors={fe.registrationOpensAt} t={t} />
+      {/* same for the switch clearing a scheduled opening */}
+      <OpensAtField key={defaults?.registrationOpensAt} value={defaults?.registrationOpensAt} minDate={today} errors={fe.registrationOpensAt} t={t} />
       <Field label={t.arrivalMode} name="arrivalMode" errors={fe.arrivalMode} hint={t.arrivalModeHint}>
         <select id="arrivalMode" name="arrivalMode" defaultValue={session?.arrivalMode ?? "times"} className={inputClass}>
           {arrivalModes.map((m) => (

@@ -462,6 +462,27 @@ test("scheduled sign-up opening: closed until the time, then the open page shows
   await expect(page.locator("#registrationState")).toHaveValue("open");
 });
 
+test("one-click open / pause: the edit form below follows, so saving it keeps the new state", async ({ page }) => {
+  const id = await createSession({ title: "Přepínaný večer", capacity: 10 });
+  await sql("update sessions set registration_state = 'not_open', registration_opens_at = starts_at - interval '1 day' where id = $1", [id]);
+  await adminLogin(page);
+  await page.goto(`/admin/termin/${id}`);
+  await expect(page.locator("#opensAtDate")).not.toHaveValue("");
+  await page.click("button:has-text('Otevřít hned')");
+  await expect(page.locator("button:has-text('Pozastavit registrace')")).toBeVisible();
+  await expect(page.locator("#registrationState")).toHaveValue("open");
+  await expect(page.locator("#opensAtDate")).toHaveValue(""); // the manual switch replaced the scheduled opening
+
+  await page.click("button:has-text('Pozastavit registrace')");
+  await expect(page.locator("#registrationState")).toHaveValue("paused");
+  await page.fill("#capacity", "12");
+  await page.click("button:has-text('Uložit změny')");
+  await expect(page.locator("main")).toContainText("Uloženo");
+  expect(await sql("select registration_state, capacity from sessions where id = $1", [id])).toEqual([
+    { registration_state: "paused", capacity: 12 },
+  ]);
+});
+
 test("QR code: public SVG and PNG of the sign-up link, printable poster in admin", async ({ page }) => {
   const id = await createSession({ title: "Plakátový večer" });
   const svg = await page.request.get(`/termin/${id}/qr.svg`);
