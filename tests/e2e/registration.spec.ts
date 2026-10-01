@@ -149,8 +149,9 @@ test("admin: login, create/edit session with scripts, manage registrations, dele
 
   await page.goto("/admin/novy");
   await page.fill("#title", "Herní večer #2");
-  await page.fill("#startsAt", "2030-12-05T18:00");
-  await page.fill("#endsAt", "2030-12-05T23:00");
+  await page.fill("#date", "2030-12-05");
+  await page.selectOption("#startTime", "18:00");
+  await page.selectOption("#endTime", "23:00");
   await page.fill("#place", "Hospoda U Zvonu");
   await page.fill("#capacity", "10");
   await page.fill("#storyteller", "Honza");

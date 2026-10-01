@@ -175,6 +175,7 @@ export default async function AdminSessionPage({
             registrationState: regState,
             registrationOpensAt: opensAt ? dateToPragueLocal(opensAt) : "",
           }}
+          today={dateToPragueLocal(new Date()).slice(0, 10)}
           t={dict.admin.form}
         />
       </Card>

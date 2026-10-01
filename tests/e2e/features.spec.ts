@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { expect, test } from "@playwright/test";
 import { E2E } from "../../playwright.config";
 import { createMyGamesToken } from "../../src/lib/my-games-token";
-import { adminLogin, createAdminUser, createSession, register, resetDb, sql } from "./helpers";
+import { adminLogin, createAdminUser, createSession, pragueToday, register, resetDb, sql } from "./helpers";
 
 test.describe.configure({ mode: "serial" });
 
@@ -210,9 +210,8 @@ test("admin: CSV export, attendance, broadcast e-mail, duplicate, stats, Discord
   await expect(page.locator("#title")).toHaveValue("Adminový večer");
   await expect(page.locator("#place")).toHaveValue("Klubovna");
   const [orig] = await sql<{ starts_at: Date }>("select starts_at from sessions where id=$1", [id]);
-  const startsAt = await page.locator("#startsAt").inputValue();
   const expectedDay = new Date(orig.starts_at.getTime() + 7 * 864e5);
-  expect(new Date(startsAt + ":00").toISOString().slice(0, 10)).toBe(
+  await expect(page.locator("#date")).toHaveValue(
     new Date(expectedDay.getTime() + 2 * 3600_000).toISOString().slice(0, 10), // Prague local date
   );
   await page.click("button:has-text('Vytvořit termín')");
@@ -264,9 +263,11 @@ test("admin is available in English after switching the language", async ({ page
   await expect(page.locator("main")).toContainText("Saved.");
 
   // server-side validation messages come from the English dictionary too
-  await page.fill("#endsAt", "2020-01-01T10:00");
+  await page.selectOption("#registrationState", "not_open");
+  await page.fill("#opensAtDate", pragueToday());
+  await page.selectOption("#opensAtTime", "00:00");
   await page.click("button:has-text('Save changes')");
-  await expect(page.locator("main")).toContainText("The end must be after the start");
+  await expect(page.locator("main")).toContainText("The sign-up opening time must be in the future");
 
   await page.goto("/admin/statistiky");
   await expect(page.locator("h1")).toHaveText("Statistics");
@@ -379,8 +380,9 @@ test("sign-up state: publish a session with sign-ups not open yet, open and paus
   await adminLogin(page);
   await page.goto("/admin/novy");
   await page.fill("#title", "Tajný večer");
-  await page.fill("#startsAt", "2031-02-10T18:00");
-  await page.fill("#endsAt", "2031-02-10T22:00");
+  await page.fill("#date", "2031-02-10");
+  await page.selectOption("#startTime", "18:00");
+  await page.selectOption("#endTime", "22:00");
   await page.fill("#place", "Klubovna");
   await page.selectOption("#registrationState", "not_open");
   await page.click("button:has-text('Vytvořit termín')");
@@ -422,20 +424,25 @@ test("scheduled sign-up opening: closed until the time, then the open page shows
   await adminLogin(page);
   await page.goto("/admin/novy");
   await page.fill("#title", "Časovaný večer");
-  await page.fill("#startsAt", "2031-03-10T18:00");
-  await page.fill("#endsAt", "2031-03-10T22:00");
+  await page.fill("#date", "2031-03-10");
+  await page.selectOption("#startTime", "18:00");
+  await page.selectOption("#endTime", "22:00");
   await page.fill("#place", "Klubovna");
   await page.selectOption("#registrationState", "not_open");
-  await page.fill("#registrationOpensAt", "2031-03-01T18:00");
+  await page.fill("#opensAtDate", "2031-03-01");
+  await page.selectOption("#opensAtTime", "18:00");
   await page.click("button:has-text('Vytvořit termín')");
   await page.waitForURL(/\/admin$/);
   await expect(page.locator("main a:has-text('Časovaný večer')")).toContainText("otevře se");
   const [{ id }] = await sql<{ id: number }>("select id from sessions where title = 'Časovaný večer'");
 
-  // an opening time in the past is refused
+  // an opening time in the past is refused (the calendar starts today, so midnight today)
   await page.goto(`/admin/termin/${id}`);
   await expect(page.locator("main")).toContainText("Registrace se automaticky otevřou");
-  await page.fill("#registrationOpensAt", "2020-01-01T10:00");
+  await expect(page.locator("#opensAtDate")).toHaveValue("2031-03-01");
+  await expect(page.locator("#opensAtTime")).toHaveValue("18:00");
+  await page.fill("#opensAtDate", pragueToday());
+  await page.selectOption("#opensAtTime", "00:00");
   await page.click("button:has-text('Uložit změny')");
   await expect(page.locator("main")).toContainText("musí být v budoucnosti");
 
@@ -662,12 +669,50 @@ test("organisers' calendar feed is private and lists players; cron endpoint runs
   expect(await cron.json()).toMatchObject({ reminders: expect.any(Object), spots: { posted: 0 } });
 });
 
+test("new session form: calendars from today, times kept and reused, an end after midnight is the next day", async ({ page }) => {
+  await adminLogin(page);
+  await page.goto("/admin/novy");
+  await expect(page.locator("#date")).toHaveAttribute("min", pragueToday());
+  await expect(page.locator("#opensAtDate")).toHaveAttribute("min", pragueToday());
+  // an opening picked by mistake can be cleared again
+  await page.selectOption("#registrationState", "not_open");
+  await page.fill("#opensAtDate", "2031-05-01");
+  await page.click("button:has-text('Vymazat')");
+  await expect(page.locator("#opensAtDate")).toHaveValue("");
+  await page.fill("#title", "Dlouhá noc");
+  await page.fill("#date", "2031-05-15");
+  await page.selectOption("#startTime", "20:00");
+  await page.selectOption("#endTime", "01:30");
+  await expect(page.locator("#endTime option:checked")).toHaveText("01:30 (další den)");
+  // moving the start keeps the length of the evening
+  await page.selectOption("#startTime", "19:00");
+  await expect(page.locator("#endTime")).toHaveValue("00:30");
+  await page.selectOption("#startTime", "20:00");
+  await expect(page.locator("#endTime")).toHaveValue("01:30");
+  await page.fill("#place", "Klubovna");
+  await page.click("button:has-text('Vytvořit termín')");
+  await page.waitForURL(/\/admin$/);
+  const [s] = await sql<{ starts_at: Date; ends_at: Date; registration_opens_at: Date | null }>(
+    "select starts_at, ends_at, registration_opens_at from sessions where title = 'Dlouhá noc'",
+  );
+  expect(s.starts_at.toISOString()).toBe("2031-05-15T18:00:00.000Z"); // 20:00 CEST
+  expect(s.ends_at.toISOString()).toBe("2031-05-15T23:30:00.000Z"); // 01:30 CEST on the 16th
+  expect(s.registration_opens_at).toBeNull();
+
+  // the next new session starts with the same times and no date
+  await page.goto("/admin/novy");
+  await expect(page.locator("#date")).toHaveValue("");
+  await expect(page.locator("#startTime")).toHaveValue("20:00");
+  await expect(page.locator("#endTime")).toHaveValue("01:30");
+});
+
 test("recurring sessions, games record shown in archive and stats", async ({ page }) => {
   await adminLogin(page);
   await page.goto("/admin/novy");
   await page.fill("#title", "Úterky");
-  await page.fill("#startsAt", "2031-03-04T18:00");
-  await page.fill("#endsAt", "2031-03-04T22:00");
+  await page.fill("#date", "2031-03-04");
+  await page.selectOption("#startTime", "18:00");
+  await page.selectOption("#endTime", "22:00");
   await page.fill("#place", "Klub");
   await page.selectOption("#repeatWeeks", "2");
   await page.fill("#repeatCount", "3");

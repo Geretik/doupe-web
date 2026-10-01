@@ -78,6 +78,16 @@ export async function getSessionWithCount(
   return rows[0] ?? null;
 }
 
+/** The session an organiser created last – a new one starts with its times */
+export async function getLatestCreatedSession() {
+  const [row] = await db
+    .select({ startsAt: sessions.startsAt, endsAt: sessions.endsAt })
+    .from(sessions)
+    .orderBy(desc(sessions.createdAt), desc(sessions.id))
+    .limit(1);
+  return row ?? null;
+}
+
 export async function getRegistrationByToken(token: string) {
   return db.query.registrations.findFirst({
     where: eq(registrations.editToken, token),

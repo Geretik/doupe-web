@@ -99,3 +99,8 @@ export async function register(
   await expect(page.getByTestId("register-result")).toBeVisible({ timeout: 15000 });
   return page.locator("main").textContent().then((t) => t ?? "");
 }
+
+/** Today's date in Prague as "YYYY-MM-DD", like the admin date pickers use */
+export function pragueToday() {
+  return new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Prague" }).format(new Date());
+}

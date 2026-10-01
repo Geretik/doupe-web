@@ -6,11 +6,13 @@ import type { Dict } from "@/i18n/dictionaries";
 import type { FormState } from "@/lib/validation";
 import { Alert, Button, Checkbox, Field, inputClass } from "../ui";
 import { ScriptsFields } from "./scripts-fields";
+import { OpensAtField, SessionTimeFields } from "./session-time-fields";
 
 export function SessionForm({
   action: serverAction,
   session,
   defaults,
+  today,
   mode = session ? "edit" : "create",
   discordConfigured = false,
   t,
@@ -18,8 +20,10 @@ export function SessionForm({
   action: (prev: FormState, fd: FormData) => Promise<FormState>;
   /** Prefilled values – the session being edited, or a template when duplicating */
   session?: Pick<Session, "title" | "place" | "capacity" | "storyteller" | "note" | "scripts" | "arrivalMode" | "phoneRequired" | "registrationState">;
-  /** datetime-local strings in Prague time; the sign-up state as players see it right now */
+  /** datetime-local strings in Prague time (the date part may be empty); the sign-up state as players see it right now */
   defaults?: { startsAt: string; endsAt: string; registrationState?: RegistrationState; registrationOpensAt?: string };
+  /** "YYYY-MM-DD" in Prague time – calendars offer no earlier date (the session date only when creating) */
+  today: string;
   mode?: "create" | "edit";
   discordConfigured?: boolean;
   t: Dict["admin"]["form"];
@@ -33,14 +37,13 @@ export function SessionForm({
       <Field label={t.title} name="title" errors={fe.title}>
         <input id="title" name="title" required defaultValue={session?.title ?? ""} className={inputClass} placeholder={t.titlePlaceholder} />
       </Field>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label={t.startsAt} name="startsAt" errors={fe.startsAt}>
-          <input id="startsAt" name="startsAt" type="datetime-local" required defaultValue={defaults?.startsAt ?? ""} className={inputClass} />
-        </Field>
-        <Field label={t.endsAt} name="endsAt" errors={fe.endsAt}>
-          <input id="endsAt" name="endsAt" type="datetime-local" required defaultValue={defaults?.endsAt ?? ""} className={inputClass} />
-        </Field>
-      </div>
+      <SessionTimeFields
+        startsAt={defaults?.startsAt}
+        endsAt={defaults?.endsAt}
+        minDate={mode === "create" ? today : undefined}
+        errors={{ startsAt: fe.startsAt, endsAt: fe.endsAt }}
+        t={t}
+      />
       <Field label={t.place} name="place" errors={fe.place}>
         <input id="place" name="place" required defaultValue={session?.place ?? ""} className={inputClass} />
       </Field>
@@ -56,9 +59,7 @@ export function SessionForm({
           ))}
         </select>
       </Field>
-      <Field label={t.registrationOpensAt} name="registrationOpensAt" errors={fe.registrationOpensAt} hint={t.registrationOpensAtHint}>
-        <input id="registrationOpensAt" name="registrationOpensAt" type="datetime-local" defaultValue={defaults?.registrationOpensAt ?? ""} className={inputClass} />
-      </Field>
+      <OpensAtField value={defaults?.registrationOpensAt} minDate={today} errors={fe.registrationOpensAt} t={t} />
       <Field label={t.arrivalMode} name="arrivalMode" errors={fe.arrivalMode} hint={t.arrivalModeHint}>
         <select id="arrivalMode" name="arrivalMode" defaultValue={session?.arrivalMode ?? "times"} className={inputClass}>
           {arrivalModes.map((m) => (

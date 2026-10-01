@@ -45,7 +45,7 @@ Náhradníci:
 - Admin může náhradníka potvrdit ručně i nad kapacitu.
 
 Admin navíc umí: export přihlášených do CSV, hromadný e-mail všem přihlášeným (volitelně i náhradníkům),
-duplikaci termínu (předvyplněný formulář o týden později), označení docházky (dorazil / nedorazil),
+duplikaci termínu (předvyplněný formulář o týden později, u staršího termínu na nejbližší stejný den v týdnu), označení docházky (dorazil / nedorazil),
 ruční odeslání připomínky a oznámení termínu na Discord.
 
 Pravidla:
