@@ -42,6 +42,11 @@ export function SessionCard({
           <span aria-hidden className="mr-1.5">📍</span>
           {s.place}
         </p>
+        <p className="text-sm">
+          <span aria-hidden className="mr-1.5">🗣️</span>
+          <span className="text-muted">{t.session.languageLabel}: </span>
+          {t.session.languages[s.gameLanguage]}
+        </p>
         {s.storyteller && (
           <p className="text-sm">
             <span aria-hidden className="mr-1.5">🎩</span>

@@ -1,4 +1,5 @@
 import type { Session } from "@/db/schema";
+import { dictionaries } from "@/i18n/dictionaries";
 import { sessionUrl } from "./ics";
 import { effectiveRegistrationState, scheduledOpening } from "./registration-state";
 import { formatRange, formatShortDate, formatTime } from "./time";
@@ -61,6 +62,7 @@ export async function announceSessionOnDiscord(
     { name: "📅 Kdy", value: formatRange(s.startsAt, s.endsAt, "cs"), inline: false },
     { name: "📍 Kde", value: s.place, inline: true },
     { name: "👥 Volná místa", value: `${freeSpots} z ${s.capacity}`, inline: true },
+    { name: "🗣️ Jazyk", value: dictionaries.cs.session.languages[s.gameLanguage], inline: true },
   ];
   if (s.storyteller) fields.push({ name: "🎩 Vypravěč", value: s.storyteller, inline: true });
   if (s.scripts.length) {

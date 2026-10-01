@@ -37,6 +37,7 @@ export default async function PosterPage({ params }: { params: Promise<{ id: str
         <h1 className="text-4xl font-bold print:text-6xl">{session.title}</h1>
         <p className="text-xl print:text-3xl">📅 {formatRange(session.startsAt, session.endsAt, locale)}</p>
         <p className="text-xl print:text-3xl">📍 {session.place}</p>
+        <p className="text-xl print:text-3xl">🗣️ {t.session.languageLabel}: {t.session.languages[session.gameLanguage]}</p>
         {/* eslint-disable-next-line @next/next/no-img-element -- plain SVG from our own route, no optimisation needed */}
         <img src={`/botc/termin/${session.id}/qr.svg`} alt={url} width={288} height={288} className="mt-2 h-72 w-72 print:mt-8 print:h-[11cm] print:w-[11cm]" />
         <p className="text-lg font-semibold print:text-3xl">{p.scan}</p>

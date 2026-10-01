@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { arrivalModes, registrationStates, type RegistrationState, type Session } from "@/db/schema";
+import { arrivalModes, gameLanguages, registrationStates, type RegistrationState, type Session } from "@/db/schema";
 import type { Dict } from "@/i18n/dictionaries";
 import type { FormSuggestions } from "@/lib/form-suggestions";
 import type { FormState } from "@/lib/validation";
@@ -21,7 +21,7 @@ export function SessionForm({
 }: {
   action: (prev: FormState, fd: FormData) => Promise<FormState>;
   /** Prefilled values – the session being edited, or a template when duplicating */
-  session?: Pick<Session, "title" | "place" | "capacity" | "storyteller" | "note" | "scripts" | "arrivalMode" | "phoneRequired" | "registrationState">;
+  session?: Pick<Session, "title" | "place" | "capacity" | "gameLanguage" | "storyteller" | "note" | "scripts" | "arrivalMode" | "phoneRequired" | "registrationState">;
   /** datetime-local strings in Prague time (the date part may be empty); the sign-up state as players see it right now */
   defaults?: { startsAt: string; endsAt: string; registrationState?: RegistrationState; registrationOpensAt?: string };
   /** "YYYY-MM-DD" in Prague time – calendars offer no earlier date (the session date only when creating) */
@@ -52,6 +52,13 @@ export function SessionForm({
       <Field label={t.place} name="place" errors={fe.place}>
         <input id="place" name="place" required defaultValue={session?.place ?? ""} list="place-suggestions" autoComplete="off" className={inputClass} />
         <Suggestions id="place-suggestions" values={suggestions?.places} />
+      </Field>
+      <Field label={t.gameLanguage} name="gameLanguage" errors={fe.gameLanguage} hint={t.gameLanguageHint}>
+        <select id="gameLanguage" name="gameLanguage" defaultValue={session?.gameLanguage ?? "cs"} className={inputClass}>
+          {gameLanguages.map((l) => (
+            <option key={l} value={l}>{t.gameLanguages[l]}</option>
+          ))}
+        </select>
       </Field>
       <Field label={t.capacity} name="capacity" errors={fe.capacity} hint={mode === "edit" ? t.capacityHint : undefined}>
         <input id="capacity" name="capacity" type="number" min={1} max={500} required defaultValue={session?.capacity ?? 15} className={inputClass} />

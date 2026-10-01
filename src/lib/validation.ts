@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { adminRoles, arrivalModes, gameWinners, registrationStates, type ArrivalMode } from "@/db/schema";
+import { adminRoles, arrivalModes, gameLanguages, gameWinners, registrationStates, type ArrivalMode } from "@/db/schema";
 import type { Dict } from "@/i18n/dictionaries";
 import { PASSWORD_MIN_LENGTH } from "./password";
 import { formatTime, TIME_RE } from "./time";
@@ -81,6 +81,7 @@ export function sessionSchema(t: Dict["admin"]["errors"]) {
     endsAt: z.string().min(1, t.fillEnd),
     place: z.string().trim().min(1, t.fillPlace).max(300),
     capacity: z.coerce.number().int().min(1, t.capacityMin).max(500),
+    gameLanguage: z.enum(gameLanguages).default("cs"),
     arrivalMode: z.enum(arrivalModes).default("times"),
     phoneRequired: checkbox,
     registrationState: z.enum(registrationStates).default("open"),

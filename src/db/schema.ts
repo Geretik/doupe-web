@@ -22,6 +22,10 @@ export type ArrivalMode = (typeof arrivalModes)[number];
 export const registrationStates = ["open", "not_open", "paused"] as const;
 export type RegistrationState = (typeof registrationStates)[number];
 
+/** Language the game is played in; "both" = Czech and English at one table. */
+export const gameLanguages = ["cs", "en", "both"] as const;
+export type GameLanguage = (typeof gameLanguages)[number];
+
 export const sessions = pgTable("sessions", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
@@ -33,6 +37,8 @@ export const sessions = pgTable("sessions", {
   capacity: integer("capacity").notNull(),
   /** Who runs the game that night – free text, optional */
   storyteller: text("storyteller"),
+  /** Shown to players with the session, so they know whether they will understand the game */
+  gameLanguage: text("game_language", { enum: gameLanguages }).notNull().default("cs"),
   /** Set once the "N spots left" Discord post two days before the game went out */
   spotsPostedAt: timestamp("spots_posted_at", { withTimezone: true }),
   note: text("note"),

@@ -86,6 +86,11 @@ export default async function SessionPage({
           <span aria-hidden className="mr-1.5">📍</span>
           {session.place}
         </p>
+        <p className="mt-1">
+          <span aria-hidden className="mr-1.5">🗣️</span>
+          <span className="text-muted">{t.session.languageLabel}: </span>
+          {t.session.languages[session.gameLanguage]}
+        </p>
         {session.storyteller && (
           <p className="mt-1">
             <span aria-hidden className="mr-1.5">🎩</span>

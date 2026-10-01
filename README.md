@@ -17,7 +17,7 @@ dostane potvrzení s tajným odkazem, přes který může registraci upravit neb
 - Dvojjazyčné rozhraní **česky / English** včetně adminu (přepínač v hlavičce, volba se ukládá do cookie, e-maily chodí v jazyce hráče)
 
 - `/` – o klubu: kdy a kde se hraje, pravidla, přihlašování na klubová hraní (zatím přes Discord)
-- `/botc` – Krvavka: seznam nadcházejících termínů s počtem volných míst a náhradníků; stránky modulu mají vlastní menu (Termíny · O hře · Archiv · Moje hry)
+- `/botc` – Krvavka: seznam nadcházejících termínů s počtem volných míst, náhradníků a jazykem hry; stránky modulu mají vlastní menu (Termíny · O hře · Archiv · Moje hry)
 - `/botc/termin/[id]` – detail termínu a registrační formulář (jméno, příjmení, přezdívka, e-mail, telefon, volitelný příchod/odchod, „můžu dělat vypravěče“, „jsem nováček“); telefon vidí jen organizátoři
 - `/botc/termin/[id]/kalendar.ics` – termín jako soubor do kalendáře; odkaz i na Google Kalendář je na stránce termínu a v e-mailech
 - `/kalendar.ics` – veřejný iCal feed všech termínů (odběr kalendáře); zůstává na nejvyšší úrovni, ať odebírané kalendáře nemusí řešit přesměrování
@@ -36,7 +36,7 @@ dostane potvrzení s tajným odkazem, přes který může registraci upravit neb
 - Registrace u termínu: otevřené / zatím neotevřené (termín je vidět, přihlásit se ještě nejde) / pozastavené; v adminu jedním kliknutím „Otevřít“ / „Pozastavit“, server nové registrace mimo „otevřené“ odmítne, přihlášení mohou dál upravovat a rušit
 - Časované otevření registrací: u zavřeného termínu čas „Automaticky otevřít“; stav se vyhodnocuje při každém požadavku (bez cronu), otevřená stránka termínu si v tu chvíli sama načte formulář
 - QR kód termínu: `/botc/termin/[id]/qr.svg` a `qr.png` (odkaz na registraci), v adminu tisknutelný plakát A4 `/admin/termin/[id]/plakat`
-- Organizátoři: přehled „kolik lidí bude v kterou hodinu“ podle příchodů a odchodů, vypravěč u termínu, opakující se termíny, rozdělení ke stolům (auto + ručně, e-mail hráčům), evidence odehraných her (archiv, statistiky), soukromý iCal `/admin/kalendar.ics?key=…`, ✉️ nové poslání odkazu hráči, ⚠️ u registrací bez potvrzení
+- Organizátoři: jazyk hry u každého termínu (čeština / angličtina / obojí – hráči ho vidí u termínu, v potvrzovacím e-mailu a v oznámení na Discordu), přehled „kolik lidí bude v kterou hodinu“ podle příchodů a odchodů, vypravěč u termínu, opakující se termíny, rozdělení ke stolům (auto + ručně, e-mail hráčům), evidence odehraných her (archiv, statistiky), soukromý iCal `/admin/kalendar.ics?key=…`, ✉️ nové poslání odkazu hráči, ⚠️ u registrací bez potvrzení
 - Automatika: 14 dní po termínu se hráčům smaže jméno, e-mail a telefon (zůstane přezdívka, docházka, poznámka a důvod odhlášení; e-mail nahradí pseudonym, aby statistiky poznaly stejného hráče), volitelně Discord post „zbývá míst“ dva dny před hrou (`DISCORD_SPOTS_LEFT=1`), upozornění organizátorům (e-mail + Discord) při pozdním odhlášení (<24 h), selhání e-mailu nebo cronu; limit registrací z jedné sítě (`REGISTRATION_RATE_LIMIT`, výchozí 10/h)
 - `/admin/statistiky` – obsazenost, docházka, pravidelní hráči
 - `/api/cron/reminders` – denní připomínky (Vercel Cron, viz níže)

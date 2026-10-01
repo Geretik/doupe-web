@@ -934,6 +934,33 @@ test("session settings: 'arrive later' checkbox instead of times, required phone
   await expect(page.getByTestId("presence")).toHaveCount(0);
 });
 
+test("game language: picked per session in admin, shown to players in both UI languages, kept when duplicating", async ({ page }) => {
+  const id = await createSession({ title: "Anglický večer" });
+  await createSession({ title: "Dvojjazyčný večer", gameLanguage: "both" });
+  await adminLogin(page);
+  await page.goto("/admin/novy");
+  await expect(page.locator("#gameLanguage")).toHaveValue("cs");
+  await page.goto(`/admin/termin/${id}`);
+  await expect(page.locator("#gameLanguage")).toHaveValue("cs");
+  await page.selectOption("#gameLanguage", "en");
+  await page.click("button:has-text('Uložit změny')");
+  await expect(page.locator("main")).toContainText("Uloženo");
+  expect(await sql("select game_language from sessions where id = $1", [id])).toEqual([{ game_language: "en" }]);
+
+  await page.goto("/botc");
+  await expect(page.locator("main")).toContainText("Jazyk: angličtina");
+  await expect(page.locator("main")).toContainText("Jazyk: čeština i angličtina");
+  await page.goto(`/botc/termin/${id}`);
+  await expect(page.locator("main")).toContainText("Jazyk: angličtina");
+  await page.click("header button:has-text('English')");
+  await expect(page.locator("main")).toContainText("Language: English");
+
+  await page.goto(`/admin/termin/${id}/plakat`);
+  await expect(page.locator("article")).toContainText("Language: English");
+  await page.goto(`/admin/novy?from=${id}`);
+  await expect(page.locator("#gameLanguage")).toHaveValue("en");
+});
+
 test("club page is the home page: schedule, place and Discord sign-up, in both languages", async ({ page }) => {
   await page.goto("/botc");
   await page.click("header nav a:has-text('Klub')");

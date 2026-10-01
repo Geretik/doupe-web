@@ -270,6 +270,7 @@ async function parseSessionForm(formData: FormData) {
       title: parsed.data.title,
       place: parsed.data.place,
       capacity: parsed.data.capacity,
+      gameLanguage: parsed.data.gameLanguage,
       arrivalMode: parsed.data.arrivalMode,
       phoneRequired: parsed.data.phoneRequired,
       registrationState: parsed.data.registrationState,

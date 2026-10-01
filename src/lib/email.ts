@@ -99,6 +99,7 @@ function detailsTable(t: EmailDict, reg: Registration, session: Session, locale:
   const departure = reg.departureTime ?? formatTime(session.endsAt, locale);
   const when = formatRange(session.startsAt, session.endsAt, locale);
   const st = session.storyteller;
+  const language = dictionaries[locale].session.languages[session.gameLanguage];
   const timesLine =
     session.arrivalMode === "late"
       ? reg.arrivesLate ? `⏰ ${t.arrivesLate}` : ""
@@ -106,11 +107,13 @@ function detailsTable(t: EmailDict, reg: Registration, session: Session, locale:
   const text = `${t.session}: ${session.title}
 ${t.when}: ${when}
 ${t.where}: ${session.place}
+🗣️ ${t.language}: ${language}
 ${st ? `🎩 ${t.storyteller}: ${st}\n` : ""}${timesLine}`.trimEnd();
   const html = `<table cellpadding="4" style="border-collapse:collapse">
 <tr><td><strong>${t.session}</strong></td><td>${escapeHtml(session.title)}</td></tr>
 <tr><td><strong>${t.when}</strong></td><td>${escapeHtml(when)}</td></tr>
 <tr><td><strong>${t.where}</strong></td><td>${escapeHtml(session.place)}</td></tr>
+<tr><td><strong>🗣️ ${t.language}</strong></td><td>${escapeHtml(language)}</td></tr>
 ${st ? `<tr><td><strong>🎩 ${t.storyteller}</strong></td><td>${escapeHtml(st)}</td></tr>\n` : ""}${
     session.arrivalMode === "late"
       ? reg.arrivesLate ? `<tr><td><strong>⏰</strong></td><td>${escapeHtml(t.arrivesLate)}</td></tr>` : ""

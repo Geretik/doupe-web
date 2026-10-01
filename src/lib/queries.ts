@@ -33,6 +33,7 @@ const sessionColumns = {
   place: sessions.place,
   capacity: sessions.capacity,
   storyteller: sessions.storyteller,
+  gameLanguage: sessions.gameLanguage,
   spotsPostedAt: sessions.spotsPostedAt,
   note: sessions.note,
   arrivalMode: sessions.arrivalMode,
