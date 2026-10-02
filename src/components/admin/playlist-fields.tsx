@@ -4,6 +4,7 @@ import { useState, type ClipboardEvent } from "react";
 import type { PlaylistTrack } from "@/db/schema";
 import type { Dict } from "@/i18n/dictionaries";
 import { playlistFromPaste } from "@/lib/playlist-paste";
+import { PlaylistTable } from "../playlist-table";
 import { Button, inputClass } from "../ui";
 
 /** The session's playlist: filled by pasting a table of songs, shown below as a preview; sent as JSON in a hidden field. */
@@ -64,32 +65,13 @@ export function PlaylistFields({
       ))}
       {tracks.length > 0 && (
         <>
-          <ol className="flex flex-col gap-1 rounded-md border border-border p-3 text-sm" data-testid="playlist-preview">
-            {tracks.map((tr, i) => (
-              <li key={i} className="grid grid-cols-[1.75rem_1fr_auto] items-baseline gap-x-2">
-                <span className="text-right text-muted tabular-nums">{i + 1}.</span>
-                <span className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                  <span className="font-medium">{tr.title}</span>
-                  {tr.author && <span className="text-muted">{tr.author}</span>}
-                  {tr.license && <span className="text-xs text-muted">{tr.license}</span>}
-                  {tr.links.map((l) => (
-                    <a key={l.url} href={l.url} target="_blank" rel="noreferrer" className="text-xs underline hover:text-accent">
-                      {l.label || t.playlistLink}
-                    </a>
-                  ))}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setTracks((ts) => ts.filter((_, j) => j !== i))}
-                  className="text-xs text-muted hover:text-accent"
-                  aria-label={t.playlistRemove.replace("{title}", tr.title)}
-                  title={t.playlistRemove.replace("{title}", tr.title)}
-                >
-                  ✕
-                </button>
-              </li>
-            ))}
-          </ol>
+          <div className="rounded-md border border-border p-3" data-testid="playlist-preview">
+            <PlaylistTable
+              tracks={tracks}
+              labels={{ ...t.playlistColumns, remove: t.playlistRemove }}
+              onRemove={(i) => setTracks((ts) => ts.filter((_, j) => j !== i))}
+            />
+          </div>
           <div>
             <Button type="button" variant="secondary" onClick={() => { setTracks([]); setNotice(null); }}>{t.playlistClear}</Button>
           </div>

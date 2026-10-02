@@ -1315,7 +1315,9 @@ test("playlist: an organiser pastes a table of songs, players see it folded away
     "1\tClocktower\tsymphony\tCC0\tMP3 / stránka ke stažení",
   );
   await expect(page.locator("main")).toContainText("Načteno skladeb: 3");
-  await page.getByTestId("playlist-preview").locator("li:has-text('Bad link') button").click();
+  // the preview has the same column headings players see, so a wrongly read column shows at once
+  await expect(page.getByTestId("playlist-preview").locator("thead")).toHaveText(/#\s*Skladba\s*Autor\s*Licence\s*Stažení/);
+  await page.getByTestId("playlist-preview").locator("tr:has-text('Bad link') button").click();
   await page.click("button:has-text('Uložit změny')");
   await expect(page.locator("main")).toContainText("Uloženo.");
   const [s] = await sql<{ playlist: unknown }>("select playlist from sessions where id = $1", [id]);
@@ -1335,18 +1337,28 @@ test("playlist: an organiser pastes a table of songs, players see it folded away
   // players: one folded line, the songs and links after a click
   await page.goto(`/botc/termin/${id}`);
   const playlist = page.locator("main details", { hasText: "Playlist (2 skladby)" });
-  await expect(playlist.locator("li").first()).toBeHidden();
+  const table = playlist.locator("table");
+  await expect(table).toBeHidden();
   await playlist.locator("summary").click();
-  await expect(playlist.locator("li").first()).toContainText("Clocktower");
-  await expect(playlist.locator("a:has-text('MP3 / WAV ke stažení')")).toHaveAttribute("href", "https://example.com/piano");
+  // what each column means: headings on a wide screen, the licence explained below
+  await expect(table.locator("thead")).toHaveText(/#\s*Skladba\s*Autor\s*Licence\s*Stažení/);
+  await expect(table.locator("tbody tr").first()).toContainText("Clocktower");
+  await expect(table.locator("a:has-text('MP3 / WAV ke stažení')")).toHaveAttribute("href", "https://example.com/piano");
+  await expect(playlist).toContainText("CC0 znamená volné dílo");
+  // on a phone each song says "Autor:", "Licence:", "Stažení:" instead
+  await page.setViewportSize({ width: 390, height: 800 });
+  await expect(table).toBeHidden();
+  await expect(playlist.locator("li").first()).toContainText("Autor: symphony · Licence: CC0");
+  await expect(playlist.locator("li").first()).toContainText("Stažení: MP3");
+  await page.setViewportSize({ width: 1280, height: 720 });
 
   // a markdown table from a chat works too; pasting again replaces the playlist, duplicating copies it
   await page.goto(`/admin/termin/${id}`);
   await paste("", "| # | Skladba | Autor | Licence | Stažení |\n|---|---|---|---|---|\n| 1 | Darkest Hour | Indieteur | CC0 | [MP3 / WAV](https://example.com/dark) |");
-  await expect(page.getByTestId("playlist-preview").locator("li")).toHaveCount(1);
+  await expect(page.getByTestId("playlist-preview").locator("tbody tr")).toHaveCount(1);
   await page.click("button:has-text('Uložit změny')");
   await expect(page.locator("main")).toContainText("Uloženo.");
   await page.goto(`/admin/novy?from=${id}`);
   await expect(page.getByTestId("playlist-preview")).toContainText("Darkest Hour");
-  await expect(page.getByTestId("playlist-preview").locator("a")).toHaveAttribute("href", "https://example.com/dark");
+  await expect(page.getByTestId("playlist-preview").locator("table a")).toHaveAttribute("href", "https://example.com/dark");
 });
