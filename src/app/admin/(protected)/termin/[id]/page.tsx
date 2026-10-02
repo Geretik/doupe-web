@@ -255,7 +255,7 @@ export default async function AdminSessionPage({
                         </span>
                       )}
                       <form action={adminCancelRegistrationAction.bind(null, r.id)} className="inline">
-                        <SubmitButton variant="danger">{t.cancel}</SubmitButton>
+                        <SubmitButton variant="danger" confirmText={t.cancelConfirm(r.nickname)}>{t.cancel}</SubmitButton>
                       </form>
                     </td>
                   </tr>
@@ -304,7 +304,7 @@ export default async function AdminSessionPage({
                     <SubmitButton variant="secondary">{t.confirm}</SubmitButton>
                   </form>
                   <form action={adminCancelRegistrationAction.bind(null, r.id)}>
-                    <SubmitButton variant="danger">{t.cancel}</SubmitButton>
+                    <SubmitButton variant="danger" confirmText={t.cancelConfirm(r.nickname)}>{t.cancel}</SubmitButton>
                   </form>
                 </span>
               </li>

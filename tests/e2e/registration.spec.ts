@@ -188,6 +188,14 @@ test("admin: login, create/edit session with scripts, manage registrations, dele
   await expect(page.locator("main")).toContainText("Přihlášení (2 / 10)");
   await expect(page.locator("main")).toContainText("Poznámka hráče: P1: „přijdu s kamarádem“");
   await expect(page.locator("main")).toContainText("p1@example.com");
+  // the admin has to confirm removing a player; dismissing the dialog keeps them signed up
+  page.once("dialog", (d) => d.dismiss());
+  await page.click("tr:has-text('p2@example.com') button:has-text('Odhlásit')");
+  await expect(page.locator("main")).toContainText("Přihlášení (2 / 10)");
+  page.once("dialog", (d) => {
+    expect(d.message()).toContain("P2");
+    void d.accept();
+  });
   await page.click("tr:has-text('p2@example.com') button:has-text('Odhlásit')");
   await expect(page.locator("main")).toContainText("Přihlášení (1 / 10)");
   await page.click("li:has-text('p2@example.com') button:has-text('Obnovit')");
