@@ -7,6 +7,7 @@ import type { FormSuggestions } from "@/lib/form-suggestions";
 import type { FormState } from "@/lib/validation";
 import { keepValues } from "../keep-values";
 import { Alert, Button, Checkbox, Field, inputClass } from "../ui";
+import { PlaylistFields } from "./playlist-fields";
 import { ScriptsFields } from "./scripts-fields";
 import { OpensAtField, SessionTimeFields } from "./session-time-fields";
 
@@ -22,7 +23,7 @@ export function SessionForm({
 }: {
   action: (prev: FormState, fd: FormData) => Promise<FormState>;
   /** Prefilled values – the session being edited, or a template when duplicating */
-  session?: Pick<Session, "title" | "place" | "capacity" | "gameLanguage" | "storyteller" | "note" | "scripts" | "arrivalMode" | "phoneRequired" | "registrationState">;
+  session?: Pick<Session, "title" | "place" | "capacity" | "gameLanguage" | "storyteller" | "note" | "scripts" | "playlist" | "arrivalMode" | "phoneRequired" | "registrationState">;
   /** datetime-local strings in Prague time (the date part may be empty); the sign-up state as players see it right now */
   defaults?: { startsAt: string; endsAt: string; registrationState?: RegistrationState; registrationOpensAt?: string };
   /** "YYYY-MM-DD" in Prague time – calendars offer no earlier date (the session date only when creating) */
@@ -93,6 +94,7 @@ export function SessionForm({
         <textarea id="note" name="note" rows={3} defaultValue={session?.note ?? ""} className={inputClass} />
       </Field>
       <ScriptsFields initial={session?.scripts ?? []} known={suggestions?.scripts} errors={fe.scripts} t={t} />
+      <PlaylistFields initial={session?.playlist ?? []} errors={fe.playlist} t={t} />
       {mode === "create" && (
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label={t.repeat} name="repeatWeeks" hint={t.repeatHint}>

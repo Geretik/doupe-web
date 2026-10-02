@@ -35,6 +35,7 @@ import {
   inviteSchema,
   newPasswordSchema,
   repeatSchema,
+  parsePlaylist,
   parseScripts,
   sessionSchema,
   type FormState,
@@ -287,6 +288,8 @@ async function parseSessionForm(formData: FormData) {
   }
   const scripts = parseScripts(formData, e);
   if (scripts.error) return { error: { scripts: scripts.error }, message: e.checkForm };
+  const playlist = parsePlaylist(formData.get("playlist"));
+  if (playlist.error) return { error: { playlist: [e.playlistInvalid] }, message: e.checkForm };
   let registrationOpensAt: Date | null = null;
   if (parsed.data.registrationState !== "open" && parsed.data.registrationOpensAt) {
     registrationOpensAt = pragueLocalToDate(parsed.data.registrationOpensAt);
@@ -297,6 +300,7 @@ async function parseSessionForm(formData: FormData) {
   return {
     values: {
       scripts: scripts.scripts,
+      playlist: playlist.playlist,
       title: parsed.data.title,
       place: parsed.data.place,
       capacity: parsed.data.capacity,

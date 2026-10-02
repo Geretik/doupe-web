@@ -111,6 +111,39 @@ const scriptLinkSchema = z.object({
     .pipe(z.string().url().max(2000)),
 });
 
+const playlistSchema = z
+  .array(
+    z.object({
+      title: z.string().trim().min(1).max(200),
+      author: z.string().trim().max(200).nullable(),
+      license: z.string().trim().max(100).nullable(),
+      links: z
+        .array(
+          z.object({
+            label: z.string().trim().max(100),
+            // only web links: the page renders them as <a href>
+            url: z.string().trim().max(2000).regex(/^https?:\/\//i).pipe(z.string().url()),
+          }),
+        )
+        .max(5),
+    }),
+  )
+  .max(100);
+
+/**
+ * The session form's playlist (a hidden field with JSON, filled by pasting a table in the admin).
+ * Missing field → undefined, so a form without it never wipes the playlist.
+ */
+export function parsePlaylist(value: FormDataEntryValue | null) {
+  if (value === null) return { playlist: undefined };
+  try {
+    const result = playlistSchema.safeParse(JSON.parse(String(value) || "[]"));
+    return result.success ? { playlist: result.data } : { error: true as const };
+  } catch {
+    return { error: true as const };
+  }
+}
+
 /** Reads scriptName[] / scriptUrl[] pairs from a FormData, ignoring fully empty rows. */
 export function parseScripts(formData: FormData, t: Dict["admin"]["errors"]) {
   const names = formData.getAll("scriptName").map(String);

@@ -52,12 +52,22 @@ export const sessions = pgTable("sessions", {
   registrationOpensAt: timestamp("registration_opens_at", { withTimezone: true }),
   /** Links to scripts played that evening (botcscripts.com, script tool, PDF on a drive, …) */
   scripts: jsonb("scripts").$type<ScriptLink[]>().notNull().default([]),
+  /** Music for the evening, shown to players on the session page (folded away); pasted in as a table in the admin */
+  playlist: jsonb("playlist").$type<PlaylistTrack[]>().notNull().default([]),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
 });
 
 export type ScriptLink = { name: string; url: string };
+
+/** One song of a session's playlist; the links lead to the download (the file or its page). */
+export type PlaylistTrack = {
+  title: string;
+  author: string | null;
+  license: string | null;
+  links: { label: string; url: string }[];
+};
 
 /** Tables of one evening when there are too many players for a single game (7–15 per table). */
 export const tables = pgTable("tables", {

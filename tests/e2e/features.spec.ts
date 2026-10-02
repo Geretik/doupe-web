@@ -1290,3 +1290,63 @@ test("a weekly series keeps its Prague time across the end of daylight saving ti
     "2031-10-27T18:00:00.000Z", // 19:00 CET
   ]);
 });
+
+test("playlist: an organiser pastes a table of songs, players see it folded away on the session page", async ({ page }) => {
+  const id = await createSession({ title: "Hudební večer", capacity: 5 });
+  await adminLogin(page);
+  await page.goto(`/admin/termin/${id}`);
+  const paste = (html: string, text: string) =>
+    page.locator("#playlistPaste").evaluate(
+      (el, [h, t]) => {
+        const data = new DataTransfer();
+        if (h) data.setData("text/html", h);
+        data.setData("text/plain", t);
+        el.dispatchEvent(new ClipboardEvent("paste", { clipboardData: data, bubbles: true, cancelable: true }));
+      },
+      [html, text],
+    );
+
+  // a table copied from a document or a web page keeps its links
+  await paste(
+    `<table><tr><th>#</th><th>Skladba</th><th>Autor</th><th>Licence</th><th>Stažení</th></tr>
+      <tr><td>1</td><td>Clocktower</td><td>symphony</td><td>CC0</td><td><a href="https://example.com/clocktower.mp3">MP3</a> / <a href="https://example.com/clocktower">stránka ke stažení</a></td></tr>
+      <tr><td>2</td><td>Vampire's Piano</td><td>TAD</td><td>CC0</td><td><a href="https://example.com/piano">MP3 / WAV ke stažení</a></td></tr>
+      <tr><td>3</td><td>Bad link</td><td>X</td><td>CC0</td><td><a href="javascript:alert(1)">klik</a></td></tr></table>`,
+    "1\tClocktower\tsymphony\tCC0\tMP3 / stránka ke stažení",
+  );
+  await expect(page.locator("main")).toContainText("Načteno skladeb: 3");
+  await page.getByTestId("playlist-preview").locator("li:has-text('Bad link') button").click();
+  await page.click("button:has-text('Uložit změny')");
+  await expect(page.locator("main")).toContainText("Uloženo.");
+  const [s] = await sql<{ playlist: unknown }>("select playlist from sessions where id = $1", [id]);
+  expect(s.playlist).toEqual([
+    {
+      title: "Clocktower",
+      author: "symphony",
+      license: "CC0",
+      links: [
+        { label: "MP3", url: "https://example.com/clocktower.mp3" },
+        { label: "stránka ke stažení", url: "https://example.com/clocktower" },
+      ],
+    },
+    { title: "Vampire's Piano", author: "TAD", license: "CC0", links: [{ label: "MP3 / WAV ke stažení", url: "https://example.com/piano" }] },
+  ]);
+
+  // players: one folded line, the songs and links after a click
+  await page.goto(`/botc/termin/${id}`);
+  const playlist = page.locator("main details", { hasText: "Playlist (2 skladby)" });
+  await expect(playlist.locator("li").first()).toBeHidden();
+  await playlist.locator("summary").click();
+  await expect(playlist.locator("li").first()).toContainText("Clocktower");
+  await expect(playlist.locator("a:has-text('MP3 / WAV ke stažení')")).toHaveAttribute("href", "https://example.com/piano");
+
+  // a markdown table from a chat works too; pasting again replaces the playlist, duplicating copies it
+  await page.goto(`/admin/termin/${id}`);
+  await paste("", "| # | Skladba | Autor | Licence | Stažení |\n|---|---|---|---|---|\n| 1 | Darkest Hour | Indieteur | CC0 | [MP3 / WAV](https://example.com/dark) |");
+  await expect(page.getByTestId("playlist-preview").locator("li")).toHaveCount(1);
+  await page.click("button:has-text('Uložit změny')");
+  await expect(page.locator("main")).toContainText("Uloženo.");
+  await page.goto(`/admin/novy?from=${id}`);
+  await expect(page.getByTestId("playlist-preview")).toContainText("Darkest Hour");
+  await expect(page.getByTestId("playlist-preview").locator("a")).toHaveAttribute("href", "https://example.com/dark");
+});

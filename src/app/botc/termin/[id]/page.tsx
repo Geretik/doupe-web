@@ -5,6 +5,7 @@ import { cache } from "react";
 import { CalendarLinks } from "@/components/calendar-links";
 import { EditPencil } from "@/components/edit-pencil";
 import { PlayerList } from "@/components/player-list";
+import { Playlist } from "@/components/playlist";
 import { RegistrationForm } from "@/components/registration-form";
 import { ShareButton } from "@/components/share-button";
 import { ScriptLinks } from "@/components/script-links";
@@ -105,6 +106,7 @@ export default async function SessionPage({
           </p>
         )}
         <ScriptLinks scripts={session.scripts} label={t.session.scripts(session.scripts.length)} className="mt-2" />
+        <Playlist tracks={session.playlist} t={t.session} className="mt-2" />
         {!past && <CalendarLinks session={session} t={t} className="mt-2" />}
         {!past && (
           <div className="mt-3">
