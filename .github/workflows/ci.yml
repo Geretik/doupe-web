@@ -66,7 +66,14 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Apply database schema
-        run: npx drizzle-kit push --force
+        # drizzle-kit exits 0 even when it stops at a question it cannot ask here (e.g. a unique constraint
+        # on a table with rows), so check its output: never deploy code the database is not ready for
+        run: |
+          npx drizzle-kit push --force 2>&1 | tee drizzle-push.log
+          if grep -qE "^Error|Interactive prompts require" drizzle-push.log; then
+            echo "::error::drizzle-kit push did not apply the schema, not deploying"
+            exit 1
+          fi
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
       - name: Pull Vercel project settings

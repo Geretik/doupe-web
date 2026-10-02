@@ -197,8 +197,12 @@ export const adminUsers = pgTable("admin_users", {
   lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
   /** Login cookies issued before this stop working (password changed or reset) */
   passwordChangedAt: timestamp("password_changed_at", { withTimezone: true }),
-  /** Secret of this organiser's own calendar feed (/admin/kalendar.ics?key=…): made when first shown, replaced on request, gone with the account */
-  feedKey: text("feed_key").unique(),
+  /**
+   * Secret of this organiser's own calendar feed (/admin/kalendar.ics?key=…): made when first shown, replaced
+   * on request, gone with the account. 128 random bits, so no unique constraint: adding one to a table with
+   * rows makes `drizzle-kit push` stop at a question it cannot ask in CI.
+   */
+  feedKey: text("feed_key"),
 });
 
 /** One-time links for setting a new password: made by an administrator, asked for by e-mail on the login page, or by scripts/reset-link.mjs. */
