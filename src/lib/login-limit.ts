@@ -1,29 +1,42 @@
-import { and, eq, gt, lt } from "drizzle-orm";
+import { and, eq, gt, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { loginFailures } from "@/db/schema";
+import { clientIpHash } from "./client-ip";
 
 /** Wrong admin passwords allowed from one network within the window before logins from it are refused. */
 export const LOGIN_FAILURE_LIMIT = 10;
 export const LOGIN_WINDOW_MINUTES = 15;
 
-const windowStart = () => new Date(Date.now() - LOGIN_WINDOW_MINUTES * 60_000);
+export type LoginAttempt = {
+  /** The network is over the limit: refuse without checking the password (this attempt is not counted). */
+  blocked: boolean;
+  /** The password was right: this attempt does not count. Earlier wrong ones still do until they expire. */
+  succeeded: () => Promise<void>;
+};
 
-export async function loginBlocked(ipHash: string) {
-  const recent = await db
-    .select({ id: loginFailures.id })
+const noop = async () => {};
+
+/**
+ * Counts an admin password attempt (login, setup, password change) before the password is checked,
+ * so a burst of parallel requests cannot all slip under the limit. Without a client IP (local
+ * development) nothing is limited.
+ */
+export async function startLoginAttempt(): Promise<LoginAttempt> {
+  const ipHash = await clientIpHash();
+  if (!ipHash) return { blocked: false, succeeded: noop };
+  const [own] = await db.insert(loginFailures).values({ ipHash }).returning({ id: loginFailures.id });
+  const forget = async () => {
+    await db.delete(loginFailures).where(eq(loginFailures.id, own.id));
+  };
+  const [{ c }] = await db
+    .select({ c: sql<number>`count(*)::int` })
     .from(loginFailures)
-    .where(and(eq(loginFailures.ipHash, ipHash), gt(loginFailures.createdAt, windowStart())))
-    .limit(LOGIN_FAILURE_LIMIT);
-  return recent.length >= LOGIN_FAILURE_LIMIT;
-}
-
-export async function recordLoginFailure(ipHash: string) {
-  await db.insert(loginFailures).values({ ipHash });
-}
-
-/** After a successful login the network starts from zero again. */
-export async function clearLoginFailures(ipHash: string) {
-  await db.delete(loginFailures).where(eq(loginFailures.ipHash, ipHash));
+    .where(and(eq(loginFailures.ipHash, ipHash), gt(loginFailures.createdAt, new Date(Date.now() - LOGIN_WINDOW_MINUTES * 60_000))));
+  if (c > LOGIN_FAILURE_LIMIT) {
+    await forget();
+    return { blocked: true, succeeded: noop };
+  }
+  return { blocked: false, succeeded: forget };
 }
 
 /** Run by the daily cron: failures older than a day no longer count for anything. */

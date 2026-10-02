@@ -59,6 +59,15 @@ test("registration, duplicate handling, edit, cancel and re-registration", async
     "select nickname, departure_time from registrations where email='anna@example.com'",
   );
   expect(after).toEqual({ nickname: "Anička", departure_time: "22:00" });
+  // the fields keep the saved values, so a second save does not bring the old ones back
+  await expect(page.locator("#nickname")).toHaveValue("Anička");
+  await expect(page.locator("#departureTime")).toHaveValue("22:00");
+  await page.fill("#note", "přinesu čaj");
+  await page.click("button:has-text('Uložit změny')");
+  await expect(page.locator("main")).toContainText("Změny uloženy");
+  await expect
+    .poll(() => sql("select nickname, departure_time, note from registrations where email='anna@example.com'"))
+    .toEqual([{ nickname: "Anička", departure_time: "22:00", note: "přinesu čaj" }]);
 
   // cancel frees the spot (inline confirmation panel with an optional reason)
   await page.click("button:has-text('Zrušit registraci')");

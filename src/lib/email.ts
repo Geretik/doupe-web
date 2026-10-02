@@ -2,7 +2,7 @@ import { Resend } from "resend";
 import type { Registration, Session } from "@/db/schema";
 import { dictionaries, type Locale } from "@/i18n/dictionaries";
 import { googleCalendarUrl, sessionIcsUrl } from "./ics";
-import { formatRange, formatTime } from "./time";
+import { formatRange, formatShortDate, formatTime, pragueDaysBetween } from "./time";
 import { greetingName } from "./names";
 import { isAnonymized } from "./retention";
 import { contactEmail, editUrl } from "./site";
@@ -19,6 +19,15 @@ function escapeHtml(s: string) {
 function fromAddress() {
   const raw = (process.env.EMAIL_FROM ?? "").trim().replace(/^["']+|["']+$/g, "").trim();
   return raw || undefined;
+}
+
+/** Resend's default limit is 2 requests per second: sends from one server instance queue up behind each other. */
+const SEND_GAP_MS = 550;
+let sendQueue: Promise<unknown> = Promise.resolve();
+function paced<T>(fn: () => Promise<T>): Promise<T> {
+  const run = sendQueue.then(fn);
+  sendQueue = run.catch(() => {}).then(() => new Promise((resolve) => setTimeout(resolve, SEND_GAP_MS)));
+  return run;
 }
 
 async function send(to: string, subject: string, html: string, text: string) {
@@ -42,7 +51,7 @@ async function send(to: string, subject: string, html: string, text: string) {
   const resend = new Resend(apiKey);
   // the sender address has no mailbox; replies go to the organisers instead
   const replyTo = contactEmail() ?? undefined;
-  const { error } = await resend.emails.send({ from, to, subject, html, text, replyTo });
+  const { error } = await paced(() => resend.emails.send({ from, to, subject, html, text, replyTo }));
   if (error) {
     console.error("Resend error", error);
     throw new Error("E-mail could not be sent.");
@@ -81,6 +90,22 @@ export async function sendMyGamesLinkEmail(email: string, url: string, locale: L
   const text = `${t.email.hi("")}\n\n${t.myGames.emailBody}\n${url}`;
   const html = `<p>${escapeHtml(t.myGames.emailBody)}</p><p><a href="${url}">${url}</a></p>`;
   await send(email, t.myGames.emailSubject, html, text);
+}
+
+/** "Forgot password" link for an organiser account; organiser accounts have no language, so it is the one of the login page. */
+export async function sendPasswordResetEmail(user: { nickname: string; email: string }, url: string, locale: Locale) {
+  const t = dictionaries[locale].email;
+  const text = `${t.hi(user.nickname)}
+
+${t.passwordResetBody}
+${url}
+
+${t.passwordResetIgnore}`;
+  const html = `<p>${escapeHtml(t.hi(user.nickname))}</p>
+<p>${escapeHtml(t.passwordResetBody)}</p>
+<p><a href="${url}">${url}</a></p>
+<p style="color:#666;font-size:90%">${escapeHtml(t.passwordResetIgnore)}</p>`;
+  await send(user.email, t.passwordResetSubject, html, text);
 }
 
 /** Plain-text message, used for organiser alerts. */
@@ -272,7 +297,9 @@ ${edit.html}
 ${cal.html}
 <p>${t.seeYou}</p>`;
 
-  await send(reg.email, t.reminderSubject(session.title), html, text);
+  // the cron also reminds on the day itself (sign-ups after the day-before run, late-evening sessions)
+  const days = pragueDaysBetween(new Date(), session.startsAt);
+  await send(reg.email, t.reminderSubject(session.title, days, formatShortDate(session.startsAt, locale)), html, text);
 }
 
 /** Free-form message from the organisers to one player, with the edit link in the footer. */

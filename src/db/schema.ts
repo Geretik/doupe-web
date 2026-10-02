@@ -197,9 +197,11 @@ export const adminUsers = pgTable("admin_users", {
   lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
   /** Login cookies issued before this stop working (password changed or reset) */
   passwordChangedAt: timestamp("password_changed_at", { withTimezone: true }),
+  /** Secret of this organiser's own calendar feed (/admin/kalendar.ics?key=…): made when first shown, replaced on request, gone with the account */
+  feedKey: text("feed_key").unique(),
 });
 
-/** One-time links for setting a new password, made by an administrator (or scripts/reset-link.mjs). */
+/** One-time links for setting a new password: made by an administrator, asked for by e-mail on the login page, or by scripts/reset-link.mjs. */
 export const passwordResets = pgTable("password_resets", {
   id: serial("id").primaryKey(),
   token: text("token").notNull().unique(),
@@ -225,7 +227,7 @@ export const adminInvites = pgTable("admin_invites", {
   usedBy: integer("used_by").references(() => adminUsers.id, { onDelete: "set null" }),
 });
 
-/** Failed admin logins per network, for the login limit (lib/login-limit); the daily cron deletes old rows. */
+/** Admin password attempts per network that were not right, for the login limit (lib/login-limit); the daily cron deletes old rows. */
 export const loginFailures = pgTable(
   "login_failures",
   {
@@ -235,6 +237,27 @@ export const loginFailures = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("login_failures_ip_hash_idx").on(t.ipHash, t.createdAt)],
+);
+
+export const linkKinds = ["my_games", "admin_reset"] as const;
+export type LinkKind = (typeof linkKinds)[number];
+
+/** "Send me a link" requests ("my games", forgotten admin password), for throttling them (lib/link-throttle); the daily cron deletes old rows. */
+export const linkRequests = pgTable(
+  "link_requests",
+  {
+    id: serial("id").primaryKey(),
+    kind: text("kind", { enum: linkKinds }).notNull(),
+    /** Keyed hash of the e-mail asked for, never the address itself */
+    emailHash: text("email_hash").notNull(),
+    /** Salted hash of the IP, like registrations.ipHash */
+    ipHash: text("ip_hash"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("link_requests_email_hash_idx").on(t.emailHash, t.createdAt),
+    index("link_requests_ip_hash_idx").on(t.ipHash, t.createdAt),
+  ],
 );
 
 /** When a recurring job last finished; the admin warns when the daily cron stops running (lib/job-runs). */

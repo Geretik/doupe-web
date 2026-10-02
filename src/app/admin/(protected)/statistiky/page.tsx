@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Card } from "@/components/ui";
 import { getDict } from "@/i18n/server";
+import { requireAdmin } from "@/lib/admin-auth";
 import { gameStats, pastSessionStats, regulars, totals } from "@/lib/stats";
 import { formatDate } from "@/lib/time";
 
@@ -9,6 +10,7 @@ function pct(v: number | null) {
 }
 
 export default async function StatsPage() {
+  await requireAdmin();
   const [{ locale, t }, sums, past, top, g] = await Promise.all([getDict(), totals(), pastSessionStats(), regulars(), gameStats()]);
   const s = t.admin.stats;
 

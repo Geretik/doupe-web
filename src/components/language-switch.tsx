@@ -9,10 +9,10 @@ export function LanguageSwitch({ locale, t, className = "" }: { locale: Locale; 
       <button
         type="submit"
         className="rounded-md border border-border px-2 py-1 text-xs font-medium text-muted hover:border-accent hover:text-accent"
-        aria-label={t.lang.label}
         title={t.lang.label}
       >
-        {t.lang.switchTo}
+        {/* the visible "English" / "Česky" is the accessible name too, so voice control can say it */}
+        <span lang={other}>{t.lang.switchTo}</span>
       </button>
     </form>
   );

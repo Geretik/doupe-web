@@ -25,7 +25,8 @@ export async function postToWebhook(url: string | undefined, content: string) {
     const res = await fetch(url, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ content }),
+      // never ping @everyone or roles: alerts carry nicknames and cancel reasons players typed
+      body: JSON.stringify({ content, allowed_mentions: { parse: [] } }),
     });
     if (!res.ok) console.error("Discord webhook failed", res.status, await res.text());
     return res.ok;

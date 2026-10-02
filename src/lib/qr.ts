@@ -3,11 +3,12 @@ import QRCode from "qrcode";
 import { db } from "@/db";
 import { sessions } from "@/db/schema";
 import { sessionUrl } from "./ics";
+import { parseId } from "./validation";
 
 /** The session's public sign-up URL, or null for an unknown id (route handlers answer 404). */
 export async function qrTarget(id: string) {
-  const numId = Number(id);
-  if (!Number.isInteger(numId)) return null;
+  const numId = parseId(id);
+  if (!numId) return null;
   const session = await db.query.sessions.findFirst({ where: eq(sessions.id, numId), columns: { id: true } });
   return session ? sessionUrl(session.id) : null;
 }

@@ -1,4 +1,5 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHmac } from "node:crypto";
+import { safeEqual } from "./token";
 
 const TTL_DAYS = 7;
 
@@ -20,7 +21,7 @@ export function verifyMyGamesToken(token: string): string | null {
   const [emailPart, exp, sig] = token.split(".");
   if (!emailPart || !exp || !sig || !process.env.ADMIN_SECRET) return null;
   const expected = sign(`${emailPart}.${exp}`);
-  if (sig.length !== expected.length || !timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null;
+  if (!safeEqual(sig, expected)) return null;
   if (Number(exp) * 1000 < Date.now()) return null;
   return Buffer.from(emailPart, "base64url").toString();
 }

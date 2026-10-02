@@ -1,6 +1,6 @@
 import { and, asc, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
-import { registrations, tables, type Registration, type Table } from "@/db/schema";
+import { registrations, sessions, tables, type Registration, type Table } from "@/db/schema";
 
 export const TABLE_MIN = 7;
 export const TABLE_MAX = 15;
@@ -21,8 +21,12 @@ export async function listTables(sessionId: number): Promise<TableWithPlayers[]>
 
 /** Creates `count` numbered tables (replacing any existing ones). */
 export async function createTables(sessionId: number, count: number) {
-  await db.delete(tables).where(eq(tables.sessionId, sessionId));
-  await db.insert(tables).values(Array.from({ length: count }, (_, i) => ({ sessionId, number: i + 1 })));
+  // locked, so a double click cannot interleave and leave tables 1, 2, 1, 2
+  await db.transaction(async (tx) => {
+    await tx.select({ id: sessions.id }).from(sessions).where(eq(sessions.id, sessionId)).for("update");
+    await tx.delete(tables).where(eq(tables.sessionId, sessionId));
+    await tx.insert(tables).values(Array.from({ length: count }, (_, i) => ({ sessionId, number: i + 1 })));
+  });
 }
 
 /**

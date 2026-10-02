@@ -74,6 +74,10 @@ function Czech({ contact, discordAlerts }: Props) {
           systému do uplynutí {RETENTION_DAYS} dní od konání hraní. Potom se automaticky smažou.
         </li>
         <li>
+          Když si necháš poslat odkaz na „Moje hry“, uložíme na jeden den otisk e-mailu a IP adresy
+          (ne adresy samotné), abychom mohli omezit, kolik odkazů odchází.
+        </li>
+        <li>
           Místo e-mailu zůstane pseudonymní kód, díky kterému statistiky poznají stejného hráče a v „Mých
           hrách“ uvidíš i starší odehrané hry. E-mail se z kódu přečíst nedá, ze stejné adresy ale vždy
           vyjde stejný kód, takže jde pořád o osobní údaj.
@@ -183,6 +187,10 @@ function English({ contact, discordAlerts }: Props) {
           <strong>First name, last name, e-mail, phone and the IP fingerprint</strong> are kept from the
           moment you enter them until {RETENTION_DAYS} days after the game. Then they are deleted
           automatically.
+        </li>
+        <li>
+          When you ask for a &quot;My games&quot; link, we keep a fingerprint of the e-mail and of your
+          IP address (not the addresses themselves) for one day, to limit how many links go out.
         </li>
         <li>
           Your e-mail is replaced by a pseudonymous code so the stats can recognise the same player and

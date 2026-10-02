@@ -2,36 +2,37 @@ import { createSessionAction } from "@/app/actions/admin";
 import { SessionForm } from "@/components/admin/session-form";
 import { Card } from "@/components/ui";
 import { getDict } from "@/i18n/server";
+import { requireAdmin } from "@/lib/admin-auth";
 import { discordConfigured } from "@/lib/discord";
 import { getFormSuggestions } from "@/lib/form-suggestions";
 import { getLatestCreatedSession, getSessionWithCount } from "@/lib/queries";
 import { effectiveRegistrationState } from "@/lib/registration-state";
-import { dateToPragueLocal } from "@/lib/time";
+import { addPragueDays, dateToPragueLocal } from "@/lib/time";
+import { parseId } from "@/lib/validation";
 
 export default async function NewSessionPage({
   searchParams,
 }: {
   searchParams: Promise<{ from?: string }>;
 }) {
-  const { from } = await searchParams;
-  const fromId = Number(from);
+  await requireAdmin();
+  const fromId = parseId((await searchParams).from);
   const [{ t }, template, latest, suggestions] = await Promise.all([
     getDict(),
-    from && Number.isInteger(fromId) ? getSessionWithCount(fromId) : null,
+    fromId ? getSessionWithCount(fromId) : null,
     getLatestCreatedSession(),
     getFormSuggestions(),
   ]);
   const now = new Date();
   // duplicated session: same details, one week later – an older one moves to the next same weekday from today
-  const week = 7 * 864e5;
-  let shift = week;
-  while (template && template.startsAt.getTime() + shift < now.getTime()) shift += week;
+  let days = 7;
+  while (template && addPragueDays(template.startsAt, days) < now) days += 7;
   // new session: no date yet, the times of the last session created
   const times = (d: Date) => `T${dateToPragueLocal(d).split("T")[1]}`;
   const defaults = template
     ? {
-        startsAt: dateToPragueLocal(new Date(template.startsAt.getTime() + shift)),
-        endsAt: dateToPragueLocal(new Date(template.endsAt.getTime() + shift)),
+        startsAt: dateToPragueLocal(addPragueDays(template.startsAt, days)),
+        endsAt: dateToPragueLocal(addPragueDays(template.endsAt, days)),
         registrationState: effectiveRegistrationState(template),
       }
     : latest

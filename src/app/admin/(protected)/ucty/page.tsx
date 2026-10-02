@@ -1,18 +1,16 @@
-import { redirect } from "next/navigation";
 import { deleteAdminUserAction, revokeInviteAction } from "@/app/actions/admin";
 import { ActionButton } from "@/components/admin/action-button";
 import { InviteForm } from "@/components/admin/invite-form";
 import { ResetLinkButton } from "@/components/admin/password-forms";
 import { Button, Card } from "@/components/ui";
 import { getDict } from "@/i18n/server";
-import { getAdmin, hasRole } from "@/lib/admin-auth";
+import { requireAdmin } from "@/lib/admin-auth";
 import { INVITE_DAYS, listAdminUsers, listOpenInvites, RESET_DAYS } from "@/lib/admin-users";
 import { inviteUrl } from "@/lib/site";
 import { formatDate } from "@/lib/time";
 
 export default async function AccountsPage() {
-  const me = await getAdmin();
-  if (!hasRole(me, "admin")) redirect("/admin");
+  const me = await requireAdmin("admin");
   const [{ locale, t }, users, invites] = await Promise.all([getDict(), listAdminUsers(), listOpenInvites()]);
   const a = t.admin.accounts;
 

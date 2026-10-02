@@ -86,4 +86,21 @@ export function dateToPragueLocal(d: Date): string {
   return `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}`;
 }
 
+/** The same Prague wall-clock time `days` days later: a weekly 18:00 stays 18:00 across a daylight-saving change. */
+export function addPragueDays(d: Date, days: number): Date {
+  const [date, time] = dateToPragueLocal(d).split("T");
+  const [y, m, day] = date.split("-").map(Number);
+  const shifted = new Date(Date.UTC(y, m - 1, day + days)).toISOString().slice(0, 10);
+  return pragueLocalToDate(`${shifted}T${time}`) ?? new Date(d.getTime() + days * 864e5);
+}
+
+/** Calendar days from `from` to `to` in Prague time: 0 = the same day, 1 = the next day. */
+export function pragueDaysBetween(from: Date, to: Date) {
+  const day = (d: Date) => {
+    const [y, m, dd] = dateToPragueLocal(d).slice(0, 10).split("-").map(Number);
+    return Date.UTC(y, m - 1, dd) / 864e5;
+  };
+  return day(to) - day(from);
+}
+
 export const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;

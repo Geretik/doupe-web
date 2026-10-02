@@ -39,6 +39,7 @@ export async function promoteWaitlist(sessionId: number): Promise<Registration[]
     const now = new Date();
     const promoted: Registration[] = [];
     for (const { id } of next) {
+      // still waiting: the player may have cancelled since the select above (cancelling takes no session lock)
       const [row] = await tx
         .update(registrations)
         .set({
@@ -48,9 +49,9 @@ export async function promoteWaitlist(sessionId: number): Promise<Registration[]
           lastEmailAt: now,
           updatedAt: now,
         })
-        .where(eq(registrations.id, id))
+        .where(and(eq(registrations.id, id), eq(registrations.status, "waitlisted")))
         .returning();
-      promoted.push(row);
+      if (row) promoted.push(row);
     }
     return { session, promoted };
   });

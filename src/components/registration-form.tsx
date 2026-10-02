@@ -5,6 +5,7 @@ import { useActionState } from "react";
 import { registerAction, type RegisterResult } from "@/app/actions/registration";
 import type { ArrivalMode } from "@/db/schema";
 import type { Dict } from "@/i18n/dictionaries";
+import { keepValues } from "./keep-values";
 import { TimeSelect } from "./time-select";
 import { Alert, Button, Checkbox, Field, inputClass } from "./ui";
 
@@ -60,7 +61,7 @@ export function RegistrationForm({
   const fe = state.fieldErrors ?? {};
 
   return (
-    <form action={action} className="flex flex-col gap-4">
+    <form action={action} onSubmit={keepValues(action)} className="flex flex-col gap-4">
       {state.error && <Alert kind="error">{state.error}</Alert>}
       <Field label={t.nickname} name="nickname" errors={fe.nickname} hint={t.nicknameHint}>
         <input id="nickname" name="nickname" required className={inputClass} autoComplete="nickname" />

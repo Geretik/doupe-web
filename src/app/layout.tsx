@@ -33,7 +33,9 @@ export async function generateMetadata(): Promise<Metadata> {
       locale: locale === "cs" ? "cs_CZ" : "en_GB",
     },
     twitter: { card: "summary_large_image" },
-    appleWebApp: { capable: true, title: "DoUPě", statusBarStyle: "black-translucent" },
+    // "default", not "black-translucent": that one draws the page under the status bar, and the header
+    // (logo, language switch) would sit under the clock in the home-screen app
+    appleWebApp: { capable: true, title: "DoUPě", statusBarStyle: "default" },
   };
 }
 

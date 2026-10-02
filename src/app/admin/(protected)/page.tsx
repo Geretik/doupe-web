@@ -1,14 +1,18 @@
 import Link from "next/link";
+import { rotateFeedKeyAction } from "@/app/actions/admin";
+import { ActionButton } from "@/components/admin/action-button";
 import { SetupWarnings } from "@/components/admin/setup-warnings";
 import { Card } from "@/components/ui";
 import { getDict } from "@/i18n/server";
+import { requireAdmin } from "@/lib/admin-auth";
 import { listAllSessions } from "@/lib/queries";
 import { effectiveRegistrationState, scheduledOpening } from "@/lib/registration-state";
 import { formatDate, formatShortDate, formatTime } from "@/lib/time";
 import { orgFeedUrl } from "@/lib/org-feed";
 
 export default async function AdminHomePage() {
-  const [{ locale, t }, sessions] = await Promise.all([getDict(), listAllSessions()]);
+  const me = await requireAdmin();
+  const [{ locale, t }, sessions, feedUrl] = await Promise.all([getDict(), listAllSessions(), orgFeedUrl(me)]);
   const a = t.admin.list;
   const now = new Date();
   const upcoming = sessions.filter((s) => s.endsAt >= now);
@@ -65,12 +69,15 @@ export default async function AdminHomePage() {
           {past.map((s) => <Row key={s.id} s={s} />)}
         </section>
       )}
-      {orgFeedUrl() && (
-        <p className="text-sm text-muted">
-          <a href={orgFeedUrl()!} className="underline hover:text-accent">{a.orgCalendar}</a>
-          <span className="block text-xs">{a.orgCalendarHint}</span>
-          <code className="block select-all break-all text-xs">{orgFeedUrl()}</code>
-        </p>
+      {feedUrl && (
+        <div className="flex flex-col gap-1 text-sm text-muted">
+          <a href={feedUrl} className="underline hover:text-accent">{a.orgCalendar}</a>
+          <span className="text-xs">{a.orgCalendarHint}</span>
+          <code className="select-all break-all text-xs">{feedUrl}</code>
+          <span>
+            <ActionButton action={rotateFeedKeyAction} label={a.orgCalendarRotate} confirmText={a.orgCalendarRotateConfirm} />
+          </span>
+        </div>
       )}
     </div>
   );

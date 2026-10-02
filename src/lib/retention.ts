@@ -6,7 +6,7 @@ import { registrations, sessions } from "@/db/schema";
 /** Players' personal data is deleted this long after the session ended; privacyNote and email.retentionNote in dictionaries.ts say it too. */
 export const RETENTION_DAYS = 14;
 
-const ANON_SUFFIX = "@anonym.invalid";
+export const ANON_SUFFIX = "@anonym.invalid";
 const ERASED_PREFIX = "erased-";
 /** Shown instead of the nickname of a player erased at their request. */
 export const ERASED_NICKNAME = "(smazáno)";

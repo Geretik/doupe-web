@@ -1,33 +1,35 @@
 "use server";
 
 import { createHash } from "node:crypto";
-import { and, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, notLike, or, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { db } from "@/db";
-import { adminInvites, adminUsers, games, passwordResets, registrations, sessions, tables, type AdminRole, type AdminUser, type RegistrationState } from "@/db/schema";
+import { adminInvites, adminUsers, games, passwordResets, registrations, sessions, tables, type RegistrationState } from "@/db/schema";
 import {
   checkBootstrapPassword,
   clearAdminCookie,
-  getAdmin,
-  hasRole,
+  requireAdmin,
   setAdminCookie,
 } from "@/lib/admin-auth";
-import { countAdminUsers, createInvite, createPasswordReset, getOpenInvite, getOpenPasswordReset } from "@/lib/admin-users";
-import { clientIpHash } from "@/lib/client-ip";
-import { clearLoginFailures, LOGIN_WINDOW_MINUTES, loginBlocked, recordLoginFailure } from "@/lib/login-limit";
+import { countAdminUsers, createInvite, createPasswordReset, getOpenInvite, getOpenPasswordReset, RESET_EMAIL_HOURS } from "@/lib/admin-users";
+import { throttleLinkRequest } from "@/lib/link-throttle";
+import { LOGIN_WINDOW_MINUTES, startLoginAttempt } from "@/lib/login-limit";
+import { rotateFeedKey } from "@/lib/org-feed";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { announceSessionOnDiscord } from "@/lib/discord";
-import { sendBroadcastEmail, sendExistingRegistrationEmail, sendTableEmail } from "@/lib/email";
+import { sendBroadcastEmail, sendExistingRegistrationEmail, sendPasswordResetEmail, sendTableEmail } from "@/lib/email";
 import { autoAssign, createTables, listTables } from "@/lib/tables";
 import { sendDueReminders } from "@/lib/reminders";
 import { getDict } from "@/i18n/server";
 import { inviteUrl, passwordResetUrl } from "@/lib/site";
-import { pragueLocalToDate } from "@/lib/time";
+import { addPragueDays, pragueLocalToDate } from "@/lib/time";
 import {
   accountSchema,
   broadcastSchema,
   changePasswordSchema,
+  emailSchema,
   fieldErrorsOf,
   gameSchema,
   inviteSchema,
@@ -38,15 +40,10 @@ import {
   type FormState,
 } from "@/lib/validation";
 import { promoteWaitlist } from "@/lib/waitlist";
-import { erasedFields } from "@/lib/retention";
+import { ANON_SUFFIX, erasedFields, isErased, playerPseudonym } from "@/lib/retention";
 
-/** Signed-in organiser (any role); redirects to the login page otherwise. */
-async function requireAdmin(role: AdminRole = "organizer"): Promise<AdminUser> {
-  const user = await getAdmin();
-  if (!user) redirect("/admin/login");
-  if (!hasRole(user, role)) redirect("/admin");
-  return user;
-}
+/** Sessions are evenings: arrival and departure are picked as times of day, so a session must stay under a day. */
+const MAX_SESSION_HOURS = 24;
 
 export async function loginAction(
   _prev: FormState,
@@ -55,16 +52,13 @@ export async function loginAction(
   const { t } = await getDict();
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
-  const ipHash = await clientIpHash();
-  if (ipHash && (await loginBlocked(ipHash))) return { error: t.admin.errors.tooManyLogins(LOGIN_WINDOW_MINUTES) };
+  const attempt = await startLoginAttempt();
+  if (attempt.blocked) return { error: t.admin.errors.tooManyLogins(LOGIN_WINDOW_MINUTES) };
   const user = email ? await db.query.adminUsers.findFirst({ where: eq(adminUsers.email, email) }) : undefined;
   // verify against a dummy hash when the user is unknown so timing does not reveal valid e-mails
   const ok = await verifyPassword(password, user?.passwordHash ?? DUMMY_HASH);
-  if (!user || !ok) {
-    if (ipHash) await recordLoginFailure(ipHash);
-    return { error: t.admin.errors.wrongLogin };
-  }
-  if (ipHash) await clearLoginFailures(ipHash);
+  if (!user || !ok) return { error: t.admin.errors.wrongLogin };
+  await attempt.succeeded();
   await db.update(adminUsers).set({ lastLoginAt: new Date() }).where(eq(adminUsers.id, user.id));
   await setAdminCookie(user.id);
   redirect("/admin");
@@ -80,12 +74,18 @@ export async function setupFirstAdminAction(
   const { t } = await getDict();
   const e = t.admin.errors;
   if ((await countAdminUsers()) > 0) return { error: e.setupDone };
+  // the bootstrap password is as guessable as a login, so it shares the login limit
+  const attempt = await startLoginAttempt();
+  if (attempt.blocked) return { error: e.tooManyLogins(LOGIN_WINDOW_MINUTES) };
   const bootstrap = String(formData.get("bootstrapPassword") ?? "");
   if (!checkBootstrapPassword(bootstrap)) {
-    // say what arrived (length + short fingerprint, never the value) so a browser autofill or a stray space is visible
+    // Say what arrived (length + short fingerprint of the typed value) so a browser autofill or a stray
+    // space is visible; compare with `printf %s "$ADMIN_PASSWORD" | sha256sum | cut -c1-6`. Nothing about
+    // the server's password is shown – before the first account exists, anyone can open this page.
     const received = `${bootstrap.length} / ${createHash("sha256").update(bootstrap).digest("hex").slice(0, 6)}`;
     return { error: `${e.wrongBootstrap} (${e.received}: ${received})`, fieldErrors: { bootstrapPassword: [e.wrongBootstrap] } };
   }
+  await attempt.succeeded();
   const parsed = accountSchema(e).safeParse(Object.fromEntries(formData.entries()));
   if (!parsed.success) return { error: e.checkForm, fieldErrors: fieldErrorsOf(parsed.error) };
   const [user] = await db
@@ -167,14 +167,15 @@ export async function deleteAdminUserAction(id: number): Promise<SimpleResult> {
   if (id === me.id) return { message: t.admin.errors.cannotDeleteSelf };
   const target = await db.query.adminUsers.findFirst({ where: eq(adminUsers.id, id) });
   if (!target) return { ok: true };
-  if (target.role === "admin") {
-    const [{ c }] = await db
-      .select({ c: sql<number>`count(*)::int` })
-      .from(adminUsers)
-      .where(eq(adminUsers.role, "admin"));
-    if (c <= 1) return { message: t.admin.errors.cannotDeleteLastAdmin };
-  }
-  await db.delete(adminUsers).where(eq(adminUsers.id, id));
+  const deleted = await db.transaction(async (tx) => {
+    // Lock every administrator first: two administrators deleting each other at once must not both
+    // succeed and leave the club without one (the second waits, then sees the first one gone).
+    const admins = await tx.select({ id: adminUsers.id }).from(adminUsers).where(eq(adminUsers.role, "admin")).for("update");
+    if (target.role === "admin" && !admins.some((a) => a.id !== id)) return false;
+    await tx.delete(adminUsers).where(eq(adminUsers.id, id));
+    return true;
+  });
+  if (!deleted) return { message: t.admin.errors.cannotDeleteLastAdmin };
   revalidatePath("/admin/ucty");
   return { ok: true };
 }
@@ -189,15 +190,15 @@ export async function changePasswordAction(_prev: FormState, formData: FormData)
   const me = await requireAdmin();
   const { t } = await getDict();
   const e = t.admin.errors;
-  const ipHash = await clientIpHash();
-  if (ipHash && (await loginBlocked(ipHash))) return { error: e.tooManyLogins(LOGIN_WINDOW_MINUTES) };
   const parsed = changePasswordSchema(e).safeParse(Object.fromEntries(formData.entries()));
   if (!parsed.success) return { error: e.checkForm, fieldErrors: fieldErrorsOf(parsed.error) };
+  // the current password is as guessable as the login, so it counts towards the same limit
+  const attempt = await startLoginAttempt();
+  if (attempt.blocked) return { error: e.tooManyLogins(LOGIN_WINDOW_MINUTES) };
   if (!(await verifyPassword(parsed.data.currentPassword, me.passwordHash))) {
-    // the current password is as guessable as the login, so it counts towards the same limit
-    if (ipHash) await recordLoginFailure(ipHash);
     return { error: e.wrongCurrentPassword, fieldErrors: { currentPassword: [e.wrongCurrentPassword] } };
   }
+  await attempt.succeeded();
   await setPassword(me.id, parsed.data.password);
   // this device stays signed in with a fresh cookie
   await setAdminCookie(me.id);
@@ -213,6 +214,32 @@ export async function createPasswordResetAction(userId: number): Promise<ResetLi
   if (!target) return {};
   const reset = await createPasswordReset(target.id);
   return { ok: true, url: passwordResetUrl(reset.token) };
+}
+
+/**
+ * "Forgot password" on the login page: e-mails a one-time link to the account's address. Always answers
+ * the same and sends after the answer, so neither the text nor the timing tells whether an account exists.
+ */
+export async function requestPasswordResetAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const { locale, t } = await getDict();
+  const parsed = emailSchema(t.admin.errors).safeParse(formData.get("email"));
+  if (!parsed.success) return { error: t.admin.errors.checkForm, fieldErrors: { email: [t.admin.errors.invalidEmail] } };
+  const email = parsed.data;
+  const throttled = await throttleLinkRequest("admin_reset", email);
+  if (throttled === "network") return { error: t.errors.tooManyLinks };
+  if (!throttled) {
+    after(async () => {
+      const user = await db.query.adminUsers.findFirst({ where: eq(adminUsers.email, email) });
+      if (!user) return;
+      const reset = await createPasswordReset(user.id, RESET_EMAIL_HOURS * 3600_000);
+      try {
+        await sendPasswordResetEmail(user, passwordResetUrl(reset.token), locale);
+      } catch (e) {
+        console.error("Password reset e-mail failed", e);
+      }
+    });
+  }
+  return { ok: true };
 }
 
 /** Sets a new password from a reset link and logs that organiser in. */
@@ -255,6 +282,9 @@ async function parseSessionForm(formData: FormData) {
   if (!startsAt) return { error: { startsAt: [e.invalidStart] }, message: e.checkForm };
   if (!endsAt) return { error: { endsAt: [e.invalidEnd] }, message: e.checkForm };
   if (endsAt <= startsAt) return { error: { endsAt: [e.endAfterStart] }, message: e.checkForm };
+  if (endsAt.getTime() - startsAt.getTime() >= MAX_SESSION_HOURS * 3600_000) {
+    return { error: { endsAt: [e.sessionTooLong(MAX_SESSION_HOURS)] }, message: e.checkForm };
+  }
   const scripts = parseScripts(formData, e);
   if (scripts.error) return { error: { scripts: scripts.error }, message: e.checkForm };
   let registrationOpensAt: Date | null = null;
@@ -295,13 +325,14 @@ export async function createSessionAction(
   const weeks = repeat.success ? repeat.data.repeatWeeks : 0;
   const count = repeat.success && weeks > 0 ? repeat.data.repeatCount : 1;
   const rows = Array.from({ length: count }, (_, i) => {
-    const shift = i * weeks * 7 * 864e5;
+    // the same Prague time each week, also across a daylight-saving change
+    const days = i * weeks * 7;
     const opensAt = r.values.registrationOpensAt;
     return {
       ...r.values,
-      startsAt: new Date(r.values.startsAt.getTime() + shift),
-      endsAt: new Date(r.values.endsAt.getTime() + shift),
-      registrationOpensAt: opensAt && new Date(opensAt.getTime() + shift),
+      startsAt: addPragueDays(r.values.startsAt, days),
+      endsAt: addPragueDays(r.values.endsAt, days),
+      registrationOpensAt: opensAt && addPragueDays(opensAt, days),
     };
   });
   const [created] = await db.insert(sessions).values(rows).returning();
@@ -320,11 +351,15 @@ export async function updateSessionAction(
   await requireAdmin();
   const r = await parseSessionForm(formData);
   if (r.error) return { error: r.message, fieldErrors: r.error };
-  await db.update(sessions).set(r.values).where(eq(sessions.id, id));
+  const [before] = await db.select({ startsAt: sessions.startsAt }).from(sessions).where(eq(sessions.id, id));
+  if (!before) return { error: (await getDict()).t.admin.errors.noSession };
+  const moved = before.startsAt.getTime() !== r.values.startsAt.getTime();
+  // a moved session gets its reminders and "spots left" post again, for the new date
+  await db.update(sessions).set({ ...r.values, ...(moved ? { spotsPostedAt: null } : {}) }).where(eq(sessions.id, id));
+  if (moved) await db.update(registrations).set({ reminderSentAt: null }).where(eq(registrations.sessionId, id));
   // a bigger capacity may make room for waitlisted players
   await promoteWaitlist(id);
-  revalidatePath("/botc");
-  revalidatePath(`/botc/termin/${id}`);
+  revalidateSession(id);
   return { ok: true };
 }
 
@@ -343,10 +378,12 @@ function revalidateSession(sessionId: number) {
 
 export async function adminCancelRegistrationAction(registrationId: number) {
   await requireAdmin();
+  const now = new Date();
   const [row] = await db
     .update(registrations)
-    .set({ status: "cancelled", waitlistedAt: null, updatedAt: new Date() })
-    .where(eq(registrations.id, registrationId))
+    // the reason of an earlier cancellation by the player does not apply to this one
+    .set({ status: "cancelled", waitlistedAt: null, cancelledAt: now, cancelReason: null, tableId: null, updatedAt: now })
+    .where(and(eq(registrations.id, registrationId), inArray(registrations.status, ["confirmed", "waitlisted"])))
     .returning({ sessionId: registrations.sessionId });
   if (row) {
     await promoteWaitlist(row.sessionId);
@@ -365,20 +402,26 @@ export async function setRegistrationStateAction(sessionId: number, state: Regis
 }
 
 /**
- * Right to erasure on request: deletes everything personal in all the player's sign-ups (matched by
- * e-mail) and cancels the ones for sessions that are not over yet.
+ * Right to erasure on request: deletes everything personal in all the player's sign-ups and cancels the
+ * ones for sessions that are not over yet. Sign-ups are matched by e-mail – including the older ones
+ * whose e-mail the daily cron already replaced by the player's pseudonym.
  */
 export async function adminErasePlayerAction(registrationId: number): Promise<SimpleResult> {
   await requireAdmin();
   const { t } = await getDict();
   const reg = await db.query.registrations.findFirst({ where: eq(registrations.id, registrationId) });
   if (!reg) return { message: t.errors.regNotFound };
+  if (isErased(reg.email)) return { ok: true, message: t.admin.session.erased(0) };
   const now = new Date();
-  const rows = await db
+  // the same for the address and for its stand-in, so it also works from an already anonymised sign-up
+  const pseudonym = playerPseudonym(reg.email);
+  const candidates = await db
     .select({ id: registrations.id, email: registrations.email, status: registrations.status, sessionId: registrations.sessionId, endsAt: sessions.endsAt })
     .from(registrations)
     .innerJoin(sessions, eq(registrations.sessionId, sessions.id))
-    .where(eq(sql`lower(${registrations.email})`, reg.email.toLowerCase()));
+    // anonymised rows by their pseudonym; the rest (recent and upcoming sessions only) are compared below
+    .where(or(eq(registrations.email, pseudonym), notLike(registrations.email, `%${ANON_SUFFIX}`)));
+  const rows = candidates.filter((r) => r.email === pseudonym || playerPseudonym(r.email) === pseudonym);
   const freed = new Set<number>();
   for (const r of rows) {
     const active = r.status !== "cancelled" && r.endsAt >= now;
@@ -404,7 +447,9 @@ export async function adminRestoreRegistrationAction(registrationId: number) {
     const reg = await tx.query.registrations.findFirst({
       where: eq(registrations.id, registrationId),
     });
-    if (!reg) return null;
+    // only a cancelled one (a double click must not move the restored player to the end of the waitlist),
+    // and not one erased at the player's request
+    if (!reg || reg.status !== "cancelled" || isErased(reg.email)) return null;
     const [session] = await tx
       .select()
       .from(sessions)
@@ -424,9 +469,11 @@ export async function adminRestoreRegistrationAction(registrationId: number) {
       .set({
         status: full ? "waitlisted" : "confirmed",
         waitlistedAt: full ? now : null,
+        cancelledAt: null,
+        cancelReason: null,
         updatedAt: now,
       })
-      .where(eq(registrations.id, registrationId));
+      .where(and(eq(registrations.id, registrationId), eq(registrations.status, "cancelled")));
     return reg;
   });
   if (row) revalidateSession(row.sessionId);
@@ -520,6 +567,15 @@ export async function broadcastEmailAction(
 }
 
 export type SimpleResult = { ok?: boolean; message?: string };
+
+/** New secret link to the signed-in organiser's calendar feed; calendars subscribed to the old one stop updating. */
+export async function rotateFeedKeyAction(): Promise<SimpleResult> {
+  const me = await requireAdmin();
+  const { t } = await getDict();
+  await rotateFeedKey(me.id);
+  revalidatePath("/admin");
+  return { ok: true, message: t.admin.list.orgCalendarRotated };
+}
 
 export async function createTablesAction(sessionId: number, count: number) {
   await requireAdmin();

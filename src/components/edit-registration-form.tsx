@@ -8,6 +8,7 @@ import {
 import type { ArrivalMode, Registration } from "@/db/schema";
 import type { Dict } from "@/i18n/dictionaries";
 import type { FormState } from "@/lib/validation";
+import { keepValues } from "./keep-values";
 import { TimeSelect } from "./time-select";
 import { Alert, Button, Checkbox, Field, inputClass } from "./ui";
 
@@ -50,7 +51,7 @@ export function EditRegistrationForm({
 
   return (
     <div className="flex flex-col gap-6">
-      <form action={action} className="flex flex-col gap-4">
+      <form action={action} onSubmit={keepValues(action)} className="flex flex-col gap-4">
         {state.error && <Alert kind="error">{state.error}</Alert>}
         {state.ok && <Alert kind="success">{t.saved}</Alert>}
         {cancelState?.error && <Alert kind="error">{cancelState.error}</Alert>}

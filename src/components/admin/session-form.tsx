@@ -5,6 +5,7 @@ import { arrivalModes, gameLanguages, registrationStates, type RegistrationState
 import type { Dict } from "@/i18n/dictionaries";
 import type { FormSuggestions } from "@/lib/form-suggestions";
 import type { FormState } from "@/lib/validation";
+import { keepValues } from "../keep-values";
 import { Alert, Button, Checkbox, Field, inputClass } from "../ui";
 import { ScriptsFields } from "./scripts-fields";
 import { OpensAtField, SessionTimeFields } from "./session-time-fields";
@@ -36,7 +37,7 @@ export function SessionForm({
   const fe = state.fieldErrors ?? {};
   const regState = defaults?.registrationState ?? session?.registrationState ?? "open";
   return (
-    <form action={action} className="flex flex-col gap-4">
+    <form action={action} onSubmit={keepValues(action)} className="flex flex-col gap-4">
       {state.error && <Alert kind="error">{state.error}</Alert>}
       {state.ok && <Alert kind="success">{t.saved}</Alert>}
       <Field label={t.title} name="title" errors={fe.title}>

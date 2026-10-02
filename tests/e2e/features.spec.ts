@@ -131,7 +131,8 @@ test("calendar: per-session .ics, feed and Google link", async ({ page, request 
 });
 
 test("reminders: cron is protected, sends once per player within the window", async ({ request, page }) => {
-  const soon = await createSession({ title: "Zítra", capacity: 5, daysAhead: 1 });
+  // inside the 36 h window whatever the time of day the test runs
+  const soon = await createSession({ title: "Zítra", capacity: 5, startsAt: new Date(Date.now() + 12 * 36e5) });
   const later = await createSession({ title: "Za týden", capacity: 5, daysAhead: 7 });
   await register(page, soon, { nick: "S", email: "soon@example.com" });
   await register(page, later, { nick: "L", email: "later@example.com" });
@@ -177,6 +178,9 @@ test("admin: CSV export, attendance, broadcast e-mail, duplicate, stats, Discord
   const csvText = await csv.text();
   expect(csvText).toContain("Jméno;Příjmení;Přezdívka;E-mail;Telefon;Stav");
   expect(csvText).toContain("Petr;Novák;Péťa;petr@example.com;+420777123456;přihlášen");
+  // a typed value that Excel would run as a formula is turned into text (a phone number stays as it is)
+  await sql("update registrations set note = '=1+2' where email = 'q@example.com'");
+  expect(await (await page.request.get(`/admin/termin/${id}/export.csv`)).text()).toContain(";'=1+2;");
 
   // attendance toggle
   await page.goto(`/admin/termin/${id}`);
@@ -195,8 +199,8 @@ test("admin: CSV export, attendance, broadcast e-mail, duplicate, stats, Discord
   page.on("dialog", (d) => d.accept());
   await page.fill("#subject", "Změna místa");
   await page.fill("#message", "Hrajeme jinde.");
-  await page.click("button:has-text('Odeslat 2 přihlášeným')");
-  await expect(page.locator("main")).toContainText("Odesláno 2 e-mailů");
+  await page.click("button:has-text('Odeslat přihlášeným (2)')");
+  await expect(page.locator("main")).toContainText("Odeslané e-maily: 2");
   const after = await sql<{ m: Date }>("select max(last_email_at) m from registrations");
   expect(after[0].m.getTime()).toBeGreaterThan(before[0].m.getTime());
 
@@ -281,7 +285,6 @@ test("accounts: first-run wizard, invitation link, roles", async ({ page, browse
   // no account yet → /admin/login shows the setup wizard guarded by ADMIN_PASSWORD
   await page.goto("/admin/login");
   await expect(page.locator("h1")).toHaveText("Založení prvního účtu");
-  // the form is reset after every submit, so fill it completely each time
   const fillSetup = async (bootstrap: string, again: string) => {
     await page.fill("#bootstrapPassword", bootstrap);
     await page.fill("#nickname", "Šéf");
@@ -686,6 +689,22 @@ test("organisers' calendar feed is private and lists players; cron endpoint runs
   const ics = (await res.text()).replace(/\r\n[ \t]/g, "");
   expect(ics).toContain("Org feed večer");
   expect(ics).toContain("feeder@example.com");
+
+  // a leaked link can be replaced: the old one stops working
+  const pathOf = (u: string) => new URL(u).pathname + new URL(u).search;
+  page.once("dialog", (d) => d.accept());
+  await page.click("main button:has-text('Nový odkaz')");
+  await expect(page.locator("main")).toContainText("starý odkaz už nefunguje");
+  const newUrl = await page.locator("main code").last().textContent();
+  expect(newUrl).not.toBe(feedUrl);
+  expect((await anon.request.get(pathOf(feedUrl!))).status()).toBe(401);
+  expect((await anon.request.get(pathOf(newUrl!))).ok()).toBeTruthy();
+  // every organiser has their own link, and it goes with the account
+  const otherId = await createAdminUser({ email: "other@example.com", role: "organizer", nickname: "Jiný" });
+  await sql("update admin_users set feed_key = $1 where id = $2", ["0123456789abcdef0123456789abcdef", otherId]);
+  expect((await anon.request.get("/admin/kalendar.ics?key=0123456789abcdef0123456789abcdef")).ok()).toBeTruthy();
+  await sql("delete from admin_users where id = $1", [otherId]);
+  expect((await anon.request.get("/admin/kalendar.ics?key=0123456789abcdef0123456789abcdef")).status()).toBe(401);
   await anon.close();
 
   const cron = await page.request.get("/api/cron/reminders");
@@ -1003,6 +1022,7 @@ test("Blood on the Clocktower lives under /botc with its own menu; old addresses
     [`/termin/${id}?utm=qr`, `/botc/termin/${id}?utm=qr`],
     [`/termin/${id}/kalendar.ics`, `/botc/termin/${id}/kalendar.ics`],
     ["/r/abc123", "/botc/r/abc123"],
+    ["/termin", "/botc"],
     ["/moje-hry", "/botc/moje-hry"],
     ["/moje-hry/abc.def", "/botc/moje-hry/abc.def"],
     ["/archiv", "/botc/archiv"],
@@ -1017,6 +1037,8 @@ test("Blood on the Clocktower lives under /botc with its own menu; old addresses
   await page.goto(`/termin/${id}`);
   await expect(page).toHaveURL(new RegExp(`/botc/termin/${id}$`));
   await expect(page.locator("h1")).toContainText("Modulový večer");
+  // /r alone was never a page: no redirect to a missing one
+  expect((await page.request.get("/r", { maxRedirects: 0 })).status()).toBe(404);
   // subscribed calendars keep polling the feed at its old address
   expect((await page.request.get("/kalendar.ics", { maxRedirects: 0 })).status()).toBe(200);
 });
@@ -1053,10 +1075,16 @@ test("admin login: too many wrong passwords from one network are refused for a w
     await attacker.fill("#password", password);
     await attacker.click("main button[type=submit]");
   };
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < 9; i++) {
     await attempt("wrong");
     await expect(attacker.locator("main")).toContainText("Nesprávný e-mail nebo heslo");
   }
+  // a right password in between does not wipe the earlier failures (an organiser cannot reset the count with their own login)
+  await attempt(E2E.adminUserPassword);
+  await attacker.waitForURL(/\/admin$/);
+  await ctx.clearCookies();
+  await attempt("wrong");
+  await expect(attacker.locator("main")).toContainText("Nesprávný e-mail nebo heslo");
   // blocked now, even with the right password
   await attempt(E2E.adminUserPassword);
   await expect(attacker.locator("main")).toContainText("Příliš mnoho špatných pokusů");
@@ -1065,11 +1093,11 @@ test("admin login: too many wrong passwords from one network are refused for a w
   // other networks are not affected
   await adminLogin(page);
 
-  // once the failures are older than the window, the network can log in and starts from zero
+  // once the failures are older than the window, the network can log in again; a right password is not counted
   await sql("update login_failures set created_at = now() - interval '16 minutes'");
   await attempt(E2E.adminUserPassword);
   await attacker.waitForURL(/\/admin$/);
-  expect(await sql("select id from login_failures")).toHaveLength(0);
+  expect(await sql("select id from login_failures where created_at > now() - interval '15 minutes'")).toHaveLength(0);
   await ctx.close();
 });
 
@@ -1127,7 +1155,7 @@ test("admin: one-time new-password link for a forgotten password", async ({ brow
   const ctx = await browser.newContext();
   const org = await ctx.newPage();
   const res = await org.goto(path);
-  expect(res!.headers()["referrer-policy"]).toBe("no-referrer");
+  expect(res!.headers()["referrer-policy"]).toBe("strict-origin");
   await expect(org.locator("main")).toContainText("Zapomnětlivec (org@example.com)");
   await org.fill("#password", "remembered-password");
   await org.fill("#passwordAgain", "remembered-password");
@@ -1171,6 +1199,94 @@ test("security headers: no framing anywhere, no referrer from secret-link pages"
   expect(home.headers()["x-frame-options"]).toBe("DENY");
   expect(home.headers()["referrer-policy"]).toBe("strict-origin-when-cross-origin");
   const edit = await request.get("/r/some-token");
-  expect(edit.headers()["referrer-policy"]).toBe("no-referrer");
+  // only the origin, never the secret path; not "no-referrer" (forms would post with Origin: null)
+  expect(edit.headers()["referrer-policy"]).toBe("strict-origin");
   expect(edit.headers()["x-frame-options"]).toBe("DENY");
+});
+
+test("admin: forgotten password – a one-time link by e-mail, the same answer for unknown addresses", async ({ page }) => {
+  await createAdminUser();
+  await page.goto("/admin/login");
+  await page.click("main a:has-text('Zapomenuté heslo?')");
+  await expect(page).toHaveURL(/\/admin\/zapomenute-heslo$/);
+
+  // an unknown address gets the same answer and no link
+  await page.fill("#email", "nobody@example.com");
+  await page.click("main button[type=submit]");
+  await expect(page.locator("main")).toContainText("odkaz pro nové heslo je na cestě");
+
+  await page.goto("/admin/zapomenute-heslo");
+  await page.fill("#email", E2E.adminEmail.toUpperCase());
+  await page.click("main button[type=submit]");
+  await expect(page.locator("main")).toContainText("odkaz pro nové heslo je na cestě");
+  // the e-mail goes out after the answer
+  await expect.poll(async () => (await sql("select id from password_resets")).length).toBe(1);
+  const [reset] = await sql<{ token: string; valid_ms: number }>(
+    "select token, extract(epoch from expires_at - created_at) * 1000 as valid_ms from password_resets",
+  );
+  expect(Number(reset.valid_ms)).toBe(2 * 3600_000);
+
+  // asking again right away answers the same but sends nothing new
+  await page.goto("/admin/zapomenute-heslo");
+  await page.fill("#email", E2E.adminEmail);
+  await page.click("main button[type=submit]");
+  await expect(page.locator("main")).toContainText("odkaz pro nové heslo je na cestě");
+  expect(await sql("select token from password_resets")).toEqual([{ token: reset.token }]);
+
+  // the link sets a new password and logs in; the old password stops working
+  await page.goto(`/admin/nove-heslo/${reset.token}`);
+  await page.fill("#password", "brand-new-password-1");
+  await page.fill("#passwordAgain", "brand-new-password-1");
+  await page.click("main button[type=submit]");
+  await page.waitForURL(/\/admin$/);
+  await page.context().clearCookies();
+  await adminLogin(page, { email: E2E.adminEmail, password: "brand-new-password-1" });
+  // used up: the page offers a new one
+  await page.context().clearCookies();
+  await page.goto(`/admin/nove-heslo/${reset.token}`);
+  await expect(page.locator("main")).toContainText("Odkaz neplatí");
+  await expect(page.locator("main a:has-text('Poslat nový odkaz')")).toHaveAttribute("href", "/admin/zapomenute-heslo");
+});
+
+test("registration form keeps what was typed when the server refuses it; the honeypot saves nothing", async ({ page }) => {
+  const id = await createSession({ capacity: 5 });
+  await page.goto(`/botc/termin/${id}`);
+  await page.fill("#nickname", "Pepa");
+  await page.fill("#email", "pepa@example.com");
+  await page.fill("#phone", "123");
+  await page.selectOption("#arrivalTime", "19:30");
+  await page.fill("#note", "přijdu s kamarádem");
+  await page.click("main form button[type=submit]");
+  await expect(page.locator("main")).toContainText("Zadej platné telefonní číslo");
+  await expect(page.locator("#nickname")).toHaveValue("Pepa");
+  await expect(page.locator("#email")).toHaveValue("pepa@example.com");
+  await expect(page.locator("#arrivalTime")).toHaveValue("19:30");
+  await expect(page.locator("#note")).toHaveValue("přijdu s kamarádem");
+
+  // a bot filling the hidden field sees a success message, but nothing is saved
+  await page.fill("#phone", "");
+  await page.evaluate(() => ((document.getElementById("website") as HTMLInputElement).value = "https://spam.example"));
+  await page.click("main form button[type=submit]");
+  await expect(page.getByTestId("register-result")).toBeVisible();
+  expect(await sql("select id from registrations")).toHaveLength(0);
+});
+
+test("a weekly series keeps its Prague time across the end of daylight saving time", async ({ page }) => {
+  await adminLogin(page);
+  await page.goto("/admin/novy");
+  await page.fill("#title", "Podzimní série");
+  // summer time ends on Sunday 26 October 2031
+  await page.fill("#date", "2031-10-20");
+  await page.selectOption("#startTime", "19:00");
+  await page.selectOption("#endTime", "23:00");
+  await page.fill("#place", "Klubovna");
+  await page.selectOption("#repeatWeeks", "1");
+  await page.fill("#repeatCount", "2");
+  await page.click("button:has-text('Vytvořit termín')");
+  await page.waitForURL(/\/admin$/);
+  const rows = await sql<{ starts_at: Date }>("select starts_at from sessions where title = 'Podzimní série' order by starts_at");
+  expect(rows.map((r) => r.starts_at.toISOString())).toEqual([
+    "2031-10-20T17:00:00.000Z", // 19:00 CEST
+    "2031-10-27T18:00:00.000Z", // 19:00 CET
+  ]);
 });

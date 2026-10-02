@@ -32,15 +32,16 @@ export async function sendDueReminders(opts: { sessionId?: number; ignoreWindow?
   let sent = 0;
   let failed = 0;
   for (const { registration, session } of due) {
-    // claim first so two overlapping cron runs never send twice
+    // claim first so two overlapping cron runs never send twice; the fresh row skips a player who
+    // cancelled while the run was going and has their latest arrival and departure
     const [claimed] = await db
       .update(registrations)
       .set({ reminderSentAt: now, lastEmailAt: now })
-      .where(and(eq(registrations.id, registration.id), isNull(registrations.reminderSentAt)))
-      .returning({ id: registrations.id });
+      .where(and(eq(registrations.id, registration.id), eq(registrations.status, "confirmed"), isNull(registrations.reminderSentAt)))
+      .returning();
     if (!claimed) continue;
     try {
-      await sendReminderEmail(registration, session);
+      await sendReminderEmail(claimed, session);
       sent++;
     } catch (e) {
       console.error("Reminder could not be sent", e);

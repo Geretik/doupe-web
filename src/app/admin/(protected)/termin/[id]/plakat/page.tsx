@@ -2,10 +2,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PrintButton } from "@/components/admin/print-button";
 import { getDict } from "@/i18n/server";
+import { requireAdmin } from "@/lib/admin-auth";
 import { sessionUrl } from "@/lib/ics";
 import { getSessionWithCount } from "@/lib/queries";
 import { siteName } from "@/lib/site";
 import { formatRange } from "@/lib/time";
+import { parseId } from "@/lib/validation";
 
 export const dynamic = "force-dynamic";
 
@@ -13,9 +15,9 @@ const buttonClass = "rounded-md border border-border bg-card px-3 py-2 text-sm h
 
 /** Printable A4 poster with the session's details and a QR code to its sign-up page. */
 export default async function PosterPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const numId = Number(id);
-  if (!Number.isInteger(numId)) notFound();
+  await requireAdmin();
+  const numId = parseId((await params).id);
+  if (!numId) notFound();
   const [{ locale, t }, session] = await Promise.all([getDict(), getSessionWithCount(numId)]);
   if (!session) notFound();
   const p = t.admin.poster;

@@ -15,15 +15,15 @@ import { sessionUrl } from "@/lib/ics";
 import { isAdmin } from "@/lib/admin-auth";
 import { getSessionWithCount, listPublicPlayers } from "@/lib/queries";
 import { formatDate, formatRange, formatShortDate, formatTime } from "@/lib/time";
+import { parseId } from "@/lib/validation";
 import { effectiveRegistrationState, scheduledOpening } from "@/lib/registration-state";
 import { RefreshAt } from "@/components/refresh-at";
 
 export const dynamic = "force-dynamic";
 
 const loadSession = cache(async (id: string) => {
-  const numId = Number(id);
-  if (!Number.isInteger(numId)) return null;
-  return getSessionWithCount(numId);
+  const numId = parseId(id);
+  return numId ? getSessionWithCount(numId) : null;
 });
 
 export async function generateMetadata(
@@ -65,8 +65,8 @@ export default async function SessionPage({
   const past = session.endsAt < new Date();
   const regState = effectiveRegistrationState(session);
   const opensAt = scheduledOpening(session);
-  // the waitlist has priority: while anybody is queued, newcomers queue too
-  const full = free === 0 || session.waitlistedCount > 0;
+  // the waitlist has priority: while anybody is queued, newcomers queue too (freeSpots says 0 then)
+  const full = free === 0;
 
   return (
     <div className="flex flex-col gap-6">

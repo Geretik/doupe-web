@@ -7,8 +7,9 @@ import { EditPencil } from "./edit-pencil";
 import { ScriptLinks } from "./script-links";
 import { Card } from "./ui";
 
+/** Spots a newcomer can take: none while anybody is on the waitlist – the waitlist has priority. */
 export function freeSpots(s: SessionWithCount) {
-  return Math.max(0, s.capacity - s.confirmedCount);
+  return s.waitlistedCount > 0 ? 0 : Math.max(0, s.capacity - s.confirmedCount);
 }
 
 export function SessionCard({

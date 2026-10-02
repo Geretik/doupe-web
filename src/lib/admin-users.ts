@@ -4,8 +4,10 @@ import { db } from "@/db";
 import { adminInvites, adminUsers, passwordResets, type AdminRole } from "@/db/schema";
 
 export const INVITE_DAYS = 7;
-/** Keep in sync with scripts/reset-link.mjs */
+/** Links an administrator makes for someone. Keep in sync with scripts/reset-link.mjs */
 export const RESET_DAYS = 3;
+/** Links e-mailed from "forgot password" on the login page; admin.forgot.sent in dictionaries.ts says it too. */
+export const RESET_EMAIL_HOURS = 2;
 
 export async function countAdminUsers() {
   const [{ c }] = await db.select({ c: sql<number>`count(*)::int` }).from(adminUsers);
@@ -48,11 +50,11 @@ export async function getOpenInvite(token: string) {
 }
 
 /** A new one-time link for setting a password; older unused links for the account stop working. */
-export async function createPasswordReset(userId: number) {
+export async function createPasswordReset(userId: number, validForMs = RESET_DAYS * 864e5) {
   await db.delete(passwordResets).where(and(eq(passwordResets.userId, userId), isNull(passwordResets.usedAt)));
   const [reset] = await db
     .insert(passwordResets)
-    .values({ token: randomBytes(24).toString("base64url"), userId, expiresAt: new Date(Date.now() + RESET_DAYS * 864e5) })
+    .values({ token: randomBytes(24).toString("base64url"), userId, expiresAt: new Date(Date.now() + validForMs) })
     .returning();
   return reset;
 }

@@ -8,6 +8,9 @@ export const SITE_NAME = process.env.NEXT_PUBLIC_SITE_NAME ?? "DoUPě Olomouc";
 /** Official club name, the same in every language. */
 const CLUB_NAME = "Klub deskových her DoUPě Olomouc";
 
+/** Czech plural form for a count: 1 → one, 2–4 → few, anything else (0, 5+) → many. */
+const cz = (n: number, one: string, few: string, many: string) => (n === 1 ? one : n >= 2 && n <= 4 ? few : many);
+
 export const cs = {
   meta: {
     title: SITE_NAME,
@@ -133,6 +136,7 @@ export const cs = {
     timeFormat: "Čas zadej ve formátu HH:MM",
     timeOutOfRange: "Čas musí být v době konání termínu",
     rateLimited: "Z této sítě přišlo příliš mnoho registrací. Zkus to prosím za hodinu.",
+    tooManyLinks: "Z této sítě přišlo příliš mnoho žádostí o odkaz. Zkus to prosím za hodinu.",
     departureBeforeArrival: "Odchod musí být později než příchod",
   },
   notFound: { title: "Stránka nenalezena", home: "Na úvodní stránku" },
@@ -169,7 +173,9 @@ export const cs = {
     promotedSubject: (title: string) => `Uvolnilo se místo: ${title}`,
     promoted: "uvolnilo se místo a tvoje registrace na Blood on the Clocktower je potvrzená. Počítáme s tebou!",
     promotedCancelHint: "Pokud už nemůžeš přijít, registraci prosím co nejdřív zruš, aby místo dostal další náhradník.",
-    reminderSubject: (title: string) => `Připomínka: ${title} je už zítra`,
+    /** days = calendar days until the session (0 = today, 1 = tomorrow) */
+    reminderSubject: (title: string, days: number, date: string) =>
+      days <= 0 ? `Připomínka: ${title} je už dnes` : days === 1 ? `Připomínka: ${title} je už zítra` : `Připomínka: ${title} (${date})`,
     reminder: "připomínáme, že se blíží herní večer Blood on the Clocktower, na který jsi registrovaný/á.",
     reminderCancelHint: "Pokud nemůžeš přijít, registraci prosím zruš, aby místo dostal náhradník:",
     scripts: "Hrát se bude:",
@@ -179,15 +185,19 @@ export const cs = {
     tableMates: "U stolu s tebou budou:",
     broadcastFooter: (title: string, when: string) =>
       `Tuto zprávu posílají organizátoři všem přihlášeným na termín "${title}" (${when}) přes web ${SITE_NAME}. Svou registraci můžeš upravit nebo zrušit zde:`,
+    passwordResetSubject: `Nové heslo do adminu – ${SITE_NAME}`,
+    /** keep the validity in sync with RESET_EMAIL_HOURS in lib/admin-users.ts */
+    passwordResetBody: "někdo (nejspíš ty) požádal o nové heslo k tvému účtu organizátora. Nastavíš ho na tomto odkazu, který platí 2 hodiny a jde použít jednou:",
+    passwordResetIgnore: "Pokud jsi o nové heslo nežádal/a, e-mail ignoruj – současné heslo dál platí.",
   },
   archive: {
     title: "Archiv",
     subtitle: "Proběhlé herní večery a co se na nich hrálo.",
     empty: "Zatím žádný večer neproběhl.",
-    players: (n: number) => `${n} ${n === 1 ? "hráč" : n < 5 ? "hráči" : "hráčů"}`,
+    players: (n: number) => `${n} ${cz(n, "hráč", "hráči", "hráčů")}`,
     games: "Odehrané hry",
     winner: { good: "vyhrálo dobro", evil: "vyhrálo zlo" },
-    gamePlayers: (n: number) => `${n} hráčů`,
+    gamePlayers: (n: number) => `${n} ${cz(n, "hráč", "hráči", "hráčů")}`,
   },
   myGames: {
     nav: "Moje hry",
@@ -233,6 +243,18 @@ export const cs = {
       password: "Heslo",
       submit: "Přihlásit",
       checking: "Ověřuji…",
+      forgot: "Zapomenuté heslo?",
+    },
+    /** Plain strings only – passed to client components. */
+    forgot: {
+      title: "Zapomenuté heslo",
+      intro: "Zadej e-mail, kterým se přihlašuješ. Pošleme na něj odkaz pro nastavení nového hesla.",
+      email: "E-mail",
+      submit: "Poslat odkaz",
+      submitting: "Odesílám…",
+      /** keep the validity in sync with RESET_EMAIL_HOURS in lib/admin-users.ts */
+      sent: "Pokud k té adrese patří účet organizátora, odkaz pro nové heslo je na cestě. Platí 2 hodiny a jde použít jednou. Zkontroluj i spam.",
+      back: "Zpět na přihlášení",
     },
     /** Plain strings only – passed to client components. */
     setup: {
@@ -240,7 +262,6 @@ export const cs = {
       intro: "Zatím neexistuje žádný účet organizátora. Založ první účet správce; ochranou je heslo z nastavení serveru (ADMIN_PASSWORD).",
       bootstrapPassword: "Heslo ze serveru (ADMIN_PASSWORD)",
       bootstrapMissing: "Na serveru není nastavená proměnná ADMIN_PASSWORD (nebo ADMIN_SECRET). Doplň ji v nastavení projektu a nasaď znovu.",
-      bootstrapHint: "Heslo na serveru: počet znaků / otisk",
       nickname: "Přezdívka",
       email: "E-mail",
       emailHint: "Slouží k přihlášení.",
@@ -272,7 +293,8 @@ export const cs = {
       submit: "Uložit heslo a přihlásit",
       submitting: "Ukládám…",
       invalidTitle: "Odkaz neplatí",
-      invalidBody: "Odkaz na nové heslo je neplatný, už byl použitý nebo mu vypršela platnost. Požádej správce o nový.",
+      invalidBody: "Odkaz na nové heslo je neplatný, už byl použitý nebo mu vypršela platnost. Nový si nech poslat e-mailem, nebo požádej správce.",
+      requestNew: "Poslat nový odkaz",
     },
     /** Plain strings only – passed to client components. */
     invite: {
@@ -329,7 +351,10 @@ export const cs = {
       createNew: "Vypsat nový",
       past: "Proběhlé",
       orgCalendar: "📅 Kalendář pro organizátory (iCal)",
-      orgCalendarHint: "Soukromý odběr se všemi termíny včetně počtu hráčů, vypravěče a e-mailů. Odkaz nikomu neposílej.",
+      orgCalendarHint: "Tvůj soukromý odběr se všemi termíny včetně počtu hráčů, vypravěče a e-mailů. Odkaz nikomu neposílej; každý organizátor má vlastní.",
+      orgCalendarRotate: "Nový odkaz",
+      orgCalendarRotateConfirm: "Vytvořit nový odkaz ke kalendáři? Starý přestane fungovat a v kalendářové aplikaci bude potřeba odběr přidat znovu.",
+      orgCalendarRotated: "Hotovo, starý odkaz už nefunguje.",
       waitlistShort: (n: number) => `+${n} náhr.`,
       notOpenShort: "neotevřeno",
       pausedShort: "pozastaveno",
@@ -413,7 +438,7 @@ export const cs = {
       exportCsv: "Export CSV",
       sendReminder: (n: number) => `Poslat připomínku (${n})`,
       sendReminderConfirm: (n: number) =>
-        `Poslat připomínku ${n} přihlášeným, kteří ji ještě nedostali? Jinak odejde automaticky den před hrou.`,
+        `Poslat připomínku ${n} ${cz(n, "přihlášenému, který ji ještě nedostal", "přihlášeným, kteří ji ještě nedostali", "přihlášeným, kteří ji ještě nedostali")}? Jinak odejde automaticky den před hrou.`,
       sending: "Odesílám…",
       announceDiscord: "Oznámit na Discordu",
       announceDiscordConfirm: "Poslat oznámení termínu na Discord?",
@@ -455,7 +480,8 @@ export const cs = {
       erased: (n: number) => `Údaje smazány (registrací: ${n}).`,
       anonymizedInfo: (days: number) => `Jména, e-maily a telefony hráčů byly ${days} dní po termínu smazány. Přezdívky, docházka, poznámky a důvody odhlášení zůstaly.`,
       noConfirmation: "Potvrzovací e-mail neodešel, pošli hráči odkaz na úpravu ručně.",
-      noConfirmationCount: (n: number) => `⚠️ ${n} přihlášeným neodešel potvrzovací e-mail (ikona ⚠️ u přezdívky). Pošli jim odkaz na úpravu ručně.`,
+      noConfirmationCount: (n: number) =>
+        `⚠️ ${n} ${cz(n, "přihlášenému", "přihlášeným", "přihlášeným")} neodešel potvrzovací e-mail (ikona ⚠️ u přezdívky). Pošli ${n === 1 ? "mu" : "jim"} odkaz na úpravu ručně.`,
       waitlist: (n: number) => `Náhradníci (${n})`,
       waitlistHint: "V tomto pořadí dostanou uvolněné místo automaticky. „Potvrdit“ posune hráče mezi přihlášené i nad kapacitu.",
       confirm: "Potvrdit",
@@ -465,7 +491,7 @@ export const cs = {
       cancelReason: "důvod",
       tablesTitle: "Rozdělení ke stolům",
       tablesHint: "Při 14 a více hráčích se hraje u více stolů. Vytvoř stoly, nech je rozdělit automaticky (rovnoměrně, s vypravěčem u každého stolu) a případně dolaď ručně. Hráčům pak pošli e-mail, u kterého stolu sedí.",
-      tablesCreate: (n: number) => `Vytvořit ${n} stoly`,
+      tablesCreate: (n: number) => `Vytvořit ${n} ${cz(n, "stůl", "stoly", "stolů")}`,
       tablesAuto: "Rozdělit automaticky",
       tablesClear: "Zrušit stoly",
       tablesClearConfirm: "Zrušit všechny stoly a přiřazení?",
@@ -479,7 +505,7 @@ export const cs = {
       tableTooSmall: "málo hráčů (min. 7)",
       tableTooBig: "moc hráčů (max. 15)",
       tableNoStoryteller: "chybí vypravěč",
-      tableUnassigned: (n: number) => `${n} nepřiřazených`,
+      tableUnassigned: (n: number) => `${n} ${cz(n, "nepřiřazený", "nepřiřazení", "nepřiřazených")}`,
       tableColumn: "Stůl",
       gamesTitle: "Odehrané hry",
       gamesHint: "Zapiš, co se hrálo a kdo vyhrál. Zobrazí se v archivu a ve statistikách.",
@@ -504,15 +530,15 @@ export const cs = {
     broadcast: {
       confirm: "Odeslat e-mail všem přihlášeným?",
       /** {sent} / {failed} */
-      sent: "Odesláno {sent} e-mailů.",
-      sentFailed: "Odesláno {sent} e-mailů, {failed} selhalo.",
+      sent: "Odeslané e-maily: {sent}.",
+      sentFailed: "Odeslané e-maily: {sent}, nepodařilo se: {failed}.",
       subject: "Předmět",
       subjectPlaceholder: "Změna místa konání",
       message: "Zpráva",
       messageHint: "Každý hráč dostane e-mail zvlášť, s oslovením a odkazem na svou registraci v patičce.",
       includeWaitlist: "Poslat i náhradníkům ({n})",
       sending: "Odesílám…",
-      send: "Odeslat {n} přihlášeným",
+      send: "Odeslat přihlášeným ({n})",
     },
     stats: {
       title: "Statistiky",
@@ -568,7 +594,7 @@ export const cs = {
       wrongLogin: "Nesprávný e-mail nebo heslo.",
       tooManyLogins: (minutes: number) => `Příliš mnoho špatných pokusů o přihlášení z této sítě. Zkus to znovu za ${minutes} minut.`,
       wrongCurrentPassword: "Současné heslo nesouhlasí.",
-      resetInvalid: "Odkaz na nové heslo je neplatný, už byl použitý nebo mu vypršela platnost. Požádej správce o nový.",
+      resetInvalid: "Odkaz na nové heslo je neplatný, už byl použitý nebo mu vypršela platnost. Nový si nech poslat e-mailem, nebo požádej správce.",
       wrongBootstrap: "Heslo ze serveru nesouhlasí.",
       received: "přijato znaků / otisk",
       setupDone: "První účet už existuje, přihlas se.",
@@ -598,6 +624,7 @@ export const cs = {
       opensAtAfterEnd: "Registrace se musí otevřít před koncem termínu",
       invalidEnd: "Neplatný konec",
       endAfterStart: "Konec musí být po začátku",
+      sessionTooLong: (hours: number) => `Termín může trvat nejvýš ${hours} hodin (příchody a odchody se vybírají jako čas během dne)`,
       fillSubject: "Vyplň předmět",
       writeMessage: "Napiš zprávu",
       scriptUrl: (rows: string) =>
@@ -736,6 +763,7 @@ export const en: Dict = {
     timeFormat: "Use the HH:MM format",
     timeOutOfRange: "The time must be within the session",
     rateLimited: "Too many sign-ups from this network. Please try again in an hour.",
+    tooManyLinks: "Too many link requests from this network. Please try again in an hour.",
     departureBeforeArrival: "Departure must be later than arrival",
   },
   notFound: { title: "Page not found", home: "Back to the home page" },
@@ -770,7 +798,8 @@ export const en: Dict = {
     promotedSubject: (title) => `A spot opened up: ${title}`,
     promoted: "a spot has opened up and your sign-up for Blood on the Clocktower is now confirmed. We're counting on you!",
     promotedCancelHint: "If you can no longer come, please cancel as soon as possible so the next person on the waitlist gets the spot.",
-    reminderSubject: (title) => `Reminder: ${title} is tomorrow`,
+    reminderSubject: (title, days, date) =>
+      days <= 0 ? `Reminder: ${title} is today` : days === 1 ? `Reminder: ${title} is tomorrow` : `Reminder: ${title} (${date})`,
     reminder: "just a reminder that the Blood on the Clocktower game night you signed up for is coming up.",
     reminderCancelHint: "If you can't make it, please cancel so a waitlisted player can take your spot:",
     scripts: "We'll be playing:",
@@ -780,6 +809,9 @@ export const en: Dict = {
     tableMates: "At your table with you:",
     broadcastFooter: (title, when) =>
       `This message was sent by the ${SITE_NAME} organisers to everyone signed up for "${title}" (${when}). You can edit or cancel your sign-up here:`,
+    passwordResetSubject: `New admin password – ${SITE_NAME}`,
+    passwordResetBody: "someone (probably you) asked for a new password for your organiser account. Set it at this link, which is valid for 2 hours and works once:",
+    passwordResetIgnore: "If you did not ask for it, ignore this e-mail – your current password still works.",
   },
   archive: {
     title: "Archive",
@@ -788,7 +820,7 @@ export const en: Dict = {
     players: (n) => `${n} ${n === 1 ? "player" : "players"}`,
     games: "Games played",
     winner: { good: "good won", evil: "evil won" },
-    gamePlayers: (n) => `${n} players`,
+    gamePlayers: (n) => `${n} ${n === 1 ? "player" : "players"}`,
   },
   myGames: {
     nav: "My games",
@@ -833,13 +865,22 @@ export const en: Dict = {
       password: "Password",
       submit: "Log in",
       checking: "Checking…",
+      forgot: "Forgot your password?",
+    },
+    forgot: {
+      title: "Forgotten password",
+      intro: "Enter the e-mail you log in with. We will send it a link for setting a new password.",
+      email: "E-mail",
+      submit: "Send link",
+      submitting: "Sending…",
+      sent: "If an organiser account belongs to this address, a new-password link is on its way. It is valid for 2 hours and works once. Check your spam folder too.",
+      back: "Back to login",
     },
     setup: {
       title: "Create the first account",
       intro: "There is no organiser account yet. Create the first administrator account; it is protected by the server password (ADMIN_PASSWORD).",
       bootstrapPassword: "Server password (ADMIN_PASSWORD)",
       bootstrapMissing: "The ADMIN_PASSWORD (or ADMIN_SECRET) variable is not set on the server. Add it in the project settings and redeploy.",
-      bootstrapHint: "Server password: length / fingerprint",
       nickname: "Nickname",
       email: "E-mail",
       emailHint: "Used to log in.",
@@ -869,7 +910,8 @@ export const en: Dict = {
       submit: "Save password and log in",
       submitting: "Saving…",
       invalidTitle: "Link not valid",
-      invalidBody: "The new-password link is invalid, already used or expired. Ask an administrator for a new one.",
+      invalidBody: "The new-password link is invalid, already used or expired. Get a new one by e-mail, or ask an administrator.",
+      requestNew: "Send a new link",
     },
     invite: {
       title: "Create an organiser account",
@@ -925,7 +967,10 @@ export const en: Dict = {
       createNew: "Create one",
       past: "Past",
       orgCalendar: "📅 Organisers' calendar (iCal)",
-      orgCalendarHint: "Private feed with all sessions including player counts, storyteller and e-mails. Do not share the link.",
+      orgCalendarHint: "Your private feed with all sessions including player counts, storyteller and e-mails. Do not share the link; every organiser has their own.",
+      orgCalendarRotate: "New link",
+      orgCalendarRotateConfirm: "Create a new calendar link? The old one stops working and you will need to subscribe again in your calendar app.",
+      orgCalendarRotated: "Done, the old link no longer works.",
       waitlistShort: (n) => `+${n} waitlisted`,
       notOpenShort: "not open",
       pausedShort: "paused",
@@ -1006,7 +1051,7 @@ export const en: Dict = {
       exportCsv: "Export CSV",
       sendReminder: (n) => `Send reminder (${n})`,
       sendReminderConfirm: (n) =>
-        `Send the reminder to ${n} players who haven't received it yet? Otherwise it goes out automatically the day before the game.`,
+        `Send the reminder to ${n} ${n === 1 ? "player who hasn't" : "players who haven't"} received it yet? Otherwise it goes out automatically the day before the game.`,
       sending: "Sending…",
       announceDiscord: "Announce on Discord",
       announceDiscordConfirm: "Post the session announcement to Discord?",
@@ -1048,7 +1093,8 @@ export const en: Dict = {
       erased: (n) => `Data deleted (sign-ups: ${n}).`,
       anonymizedInfo: (days) => `Players' names, e-mails and phones were deleted ${days} days after the session. Nicknames, attendance, notes and cancel reasons are kept.`,
       noConfirmation: "The confirmation e-mail was not sent; send the player their edit link manually.",
-      noConfirmationCount: (n) => `⚠️ ${n} signed-up players did not receive the confirmation e-mail (⚠️ next to the nickname). Send them their edit link manually.`,
+      noConfirmationCount: (n) =>
+        `⚠️ ${n} signed-up ${n === 1 ? "player" : "players"} did not receive the confirmation e-mail (⚠️ next to the nickname). Send them their edit link manually.`,
       waitlist: (n) => `Waitlist (${n})`,
       waitlistHint: "Freed spots go to these players automatically in this order. “Confirm” moves a player to the signed-up list even beyond capacity.",
       confirm: "Confirm",
@@ -1095,15 +1141,15 @@ export const en: Dict = {
     },
     broadcast: {
       confirm: "Send the e-mail to everyone signed up?",
-      sent: "Sent {sent} e-mails.",
-      sentFailed: "Sent {sent} e-mails, {failed} failed.",
+      sent: "E-mails sent: {sent}.",
+      sentFailed: "E-mails sent: {sent}, failed: {failed}.",
       subject: "Subject",
       subjectPlaceholder: "Change of venue",
       message: "Message",
       messageHint: "Each player gets a separate e-mail with a greeting and a link to their sign-up in the footer.",
       includeWaitlist: "Also send to the waitlist ({n})",
       sending: "Sending…",
-      send: "Send to {n} players",
+      send: "Send to signed-up players ({n})",
     },
     stats: {
       title: "Statistics",
@@ -1158,7 +1204,7 @@ export const en: Dict = {
       wrongLogin: "Wrong e-mail or password.",
       tooManyLogins: (minutes) => `Too many failed logins from this network. Try again in ${minutes} minutes.`,
       wrongCurrentPassword: "The current password is wrong.",
-      resetInvalid: "The new-password link is invalid, already used or expired. Ask an administrator for a new one.",
+      resetInvalid: "The new-password link is invalid, already used or expired. Get a new one by e-mail, or ask an administrator.",
       wrongBootstrap: "The server password does not match.",
       received: "received length / fingerprint",
       setupDone: "The first account already exists, please log in.",
@@ -1188,6 +1234,7 @@ export const en: Dict = {
       opensAtAfterEnd: "Sign-ups must open before the session ends",
       invalidEnd: "Invalid end",
       endAfterStart: "The end must be after the start",
+      sessionTooLong: (hours) => `A session can last at most ${hours} hours (arrival and departure are picked as times of day)`,
       fillSubject: "Enter a subject",
       writeMessage: "Write a message",
       scriptUrl: (rows) => `Script no. ${rows} does not have a valid web address (e.g. https://botcscripts.com/…).`,

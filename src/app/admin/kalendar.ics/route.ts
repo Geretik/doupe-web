@@ -1,24 +1,18 @@
-import { timingSafeEqual } from "node:crypto";
 import { asc, gte } from "drizzle-orm";
 import { db } from "@/db";
 import { registrations, sessions, type Session } from "@/db/schema";
 import { isAdmin } from "@/lib/admin-auth";
 import { buildIcs, sessionUrl } from "@/lib/ics";
-import { orgFeedKey } from "@/lib/org-feed";
+import { feedKeyValid } from "@/lib/org-feed";
 import { shownEmail } from "@/lib/retention";
 import { siteName, siteUrl } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 
-function keyOk(req: Request) {
-  const expected = orgFeedKey();
-  const given = new URL(req.url).searchParams.get("key") ?? "";
-  return Boolean(expected) && given.length === expected!.length && timingSafeEqual(Buffer.from(given), Buffer.from(expected!));
-}
-
 /** Private iCal feed for organisers: every session with counts, storyteller and the players' e-mails. */
 export async function GET(req: Request) {
-  if (!keyOk(req) && !(await isAdmin())) return new Response("Unauthorized", { status: 401 });
+  const key = new URL(req.url).searchParams.get("key") ?? "";
+  if (!(await feedKeyValid(key)) && !(await isAdmin())) return new Response("Unauthorized", { status: 401 });
   const since = new Date(Date.now() - 90 * 864e5);
   const list = await db.query.sessions.findMany({
     where: gte(sessions.endsAt, since),

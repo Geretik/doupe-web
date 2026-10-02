@@ -1,8 +1,12 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHmac } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { cache } from "react";
 import { db } from "@/db";
 import { adminUsers, type AdminRole, type AdminUser } from "@/db/schema";
+import { safeEqual } from "./token";
+import { parseId } from "./validation";
 
 const COOKIE = "botc_admin";
 const MAX_AGE = 60 * 60 * 24 * 30; // 30 days
@@ -23,24 +27,21 @@ function parseCookie(value: string | undefined): { userId: number; issuedAt: num
   const [id, exp, sig] = value.split(".");
   if (!id || !exp || !sig) return null;
   const expected = sign(`${id}.${exp}`);
-  if (sig.length !== expected.length || !timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null;
+  if (!safeEqual(sig, expected)) return null;
   if (Number(exp) * 1000 < Date.now()) return null;
-  const userId = Number(id);
+  const userId = parseId(id);
   // every cookie lives MAX_AGE, so the expiry also tells when it was issued
-  return Number.isInteger(userId) ? { userId, issuedAt: Number(exp) - MAX_AGE } : null;
+  return userId ? { userId, issuedAt: Number(exp) - MAX_AGE } : null;
 }
 
 /** Bootstrap password from the environment; only used to create the very first account. */
 export function checkBootstrapPassword(input: string) {
   const password = process.env.ADMIN_PASSWORD;
-  if (!password) return false;
-  const a = Buffer.from(input);
-  const b = Buffer.from(password);
-  return a.length === b.length && timingSafeEqual(a, b);
+  return Boolean(password) && safeEqual(input, password!);
 }
 
-/** The signed-in organiser, or null. */
-export async function getAdmin(): Promise<AdminUser | null> {
+/** The signed-in organiser, or null. Looked up once per request (layout and page both ask). */
+export const getAdmin = cache(async (): Promise<AdminUser | null> => {
   if (!process.env.ADMIN_SECRET) return null;
   const cookie = parseCookie((await cookies()).get(COOKIE)?.value);
   if (!cookie) return null;
@@ -48,6 +49,18 @@ export async function getAdmin(): Promise<AdminUser | null> {
   if (!user) return null;
   // a password change or reset logs out every other device
   if (user.passwordChangedAt && cookie.issuedAt < Math.floor(user.passwordChangedAt.getTime() / 1000)) return null;
+  return user;
+});
+
+/**
+ * Signed-in organiser with at least `role`; anyone else goes to the login page (or to the admin home
+ * when the role is missing). Every protected page calls it itself: the layout's check does not stop
+ * a page from rendering, e.g. on client-side navigation.
+ */
+export async function requireAdmin(role: AdminRole = "organizer"): Promise<AdminUser> {
+  const user = await getAdmin();
+  if (!user) redirect("/admin/login");
+  if (!hasRole(user, role)) redirect("/admin");
   return user;
 }
 

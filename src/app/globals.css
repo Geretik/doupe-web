@@ -28,8 +28,10 @@
     --foreground: #f1e9dc;
     --card: #211b17;
     --muted: #a89c8e;
-    --accent: #c9394b;
-    --accent-foreground: #fff;
+    /* lighter than in light mode so error texts are readable (4.5:1 even inside an error box);
+       buttons in the accent colour then need dark text */
+    --accent: #e46a78;
+    --accent-foreground: #16120f;
     --border: #3a302a;
   }
 }

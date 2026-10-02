@@ -44,7 +44,8 @@ export function registrationSchema(t: Dict["errors"], rules: RegistrationRules) 
       .max(500)
       .transform((v) => (v === "" ? null : v))
       .optional(),
-    website: z.string().max(0).optional(), // honeypot
+    // honeypot: any value is accepted here, and the action then pretends success without saving
+    website: z.string().optional(),
   });
 }
 
@@ -135,6 +136,11 @@ function newPassword(t: Dict["admin"]["errors"]) {
   };
 }
 const samePasswords = (v: { password: string; passwordAgain: string }) => v.password === v.passwordAgain;
+
+/** An e-mail address typed into a form, lowercased like the stored ones. */
+export function emailSchema(t: { invalidEmail: string }) {
+  return z.string().trim().toLowerCase().email(t.invalidEmail).max(200);
+}
 
 /** Nickname + e-mail + password twice; shared by the first-account setup and invitation forms. */
 export function accountSchema(t: Dict["admin"]["errors"]) {
@@ -227,6 +233,12 @@ export function timeRangeErrors(
   if (times.departureTime && (d <= start || d > end)) errors.departureTime = [t.timeOutOfRange];
   if (!errors.arrivalTime && !errors.departureTime && d <= a) errors.departureTime = [t.departureBeforeArrival];
   return Object.keys(errors).length ? errors : null;
+}
+
+/** A database id from a URL or a form: a positive 32-bit integer, else null (unknown pages answer 404, not a database error). */
+export function parseId(value: unknown): number | null {
+  const n = typeof value === "number" ? value : typeof value === "string" && /^\d{1,10}$/.test(value) ? Number(value) : NaN;
+  return Number.isInteger(n) && n >= 1 && n <= 2_147_483_647 ? n : null;
 }
 
 export type FormState = {

@@ -1,19 +1,14 @@
-import { timingSafeEqual } from "node:crypto";
 import { isAdmin } from "@/lib/admin-auth";
 import { notifyOrganizers } from "@/lib/alerts";
 import { runDailyJobs } from "@/lib/cron";
+import { safeEqual } from "@/lib/token";
 
 export const dynamic = "force-dynamic";
 
 function bearerOk(req: Request) {
   const secret = process.env.CRON_SECRET;
   if (!secret) return false;
-  const header = req.headers.get("authorization") ?? "";
-  const expected = `Bearer ${secret}`;
-  return (
-    header.length === expected.length &&
-    timingSafeEqual(Buffer.from(header), Buffer.from(expected))
-  );
+  return safeEqual(req.headers.get("authorization") ?? "", `Bearer ${secret}`);
 }
 
 /**

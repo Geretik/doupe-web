@@ -2,6 +2,7 @@ import { type Page, expect } from "@playwright/test";
 import { Client } from "pg";
 import { E2E } from "../../playwright.config";
 import { hashPassword } from "../../src/lib/password";
+import { pragueLocalToDate } from "../../src/lib/time";
 
 export async function sql<T = Record<string, unknown>>(text: string, params: unknown[] = []): Promise<T[]> {
   const c = new Client(E2E.databaseUrl);
@@ -20,6 +21,7 @@ export async function resetDb() {
   await sql("delete from password_resets");
   await sql("delete from admin_users");
   await sql("delete from login_failures");
+  await sql("delete from link_requests");
   await sql("delete from job_runs");
 }
 
@@ -47,11 +49,14 @@ export async function createSession(
     arrivalMode: "times" | "late";
     phoneRequired: boolean;
     gameLanguage: "cs" | "en" | "both";
+    /** exact start instead of 19:00 Prague time `daysAhead` days from now */
+    startsAt: Date;
   }> = {},
 ) {
   const daysAhead = overrides.daysAhead ?? 7;
-  const start = new Date(Date.now() + daysAhead * 864e5);
-  start.setUTCHours(17, 0, 0, 0);
+  // 19:00–23:00 Prague time, in summer and in winter alike
+  const day = new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Prague" }).format(new Date(Date.now() + daysAhead * 864e5));
+  const start = overrides.startsAt ?? pragueLocalToDate(`${day}T19:00`)!;
   const end = new Date(start.getTime() + 4 * 36e5);
   const rows = await sql<{ id: number }>(
     "insert into sessions (title, starts_at, ends_at, place, capacity, note, scripts, arrival_mode, phone_required, game_language) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) returning id",

@@ -1,8 +1,10 @@
 import { ChangePasswordForm } from "@/components/admin/password-forms";
 import { Card } from "@/components/ui";
 import { getDict } from "@/i18n/server";
+import { requireAdmin } from "@/lib/admin-auth";
 
 export default async function ChangePasswordPage() {
+  await requireAdmin();
   const { t } = await getDict();
   const p = t.admin.password;
   return (

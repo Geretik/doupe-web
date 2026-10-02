@@ -27,10 +27,12 @@ import { GameForm } from "@/components/admin/game-form";
 import { PresenceChart } from "@/components/admin/presence-chart";
 import { TableSelect } from "@/components/admin/table-select";
 import { SessionForm } from "@/components/admin/session-form";
-import { Alert, Button, Card } from "@/components/ui";
+import { SubmitButton } from "@/components/admin/submit-button";
+import { Alert, Card } from "@/components/ui";
 import type { Registration } from "@/db/schema";
 import type { Dict } from "@/i18n/dictionaries";
 import { getDict } from "@/i18n/server";
+import { requireAdmin } from "@/lib/admin-auth";
 import { discordConfigured } from "@/lib/discord";
 import { getFormSuggestions } from "@/lib/form-suggestions";
 import { getSessionWithCount, listGamesForSession, listRegistrationsForSession } from "@/lib/queries";
@@ -39,8 +41,9 @@ import { countPendingReminders } from "@/lib/reminders";
 import { listTables, tableIssues, TABLE_MAX } from "@/lib/tables";
 import { dateToPragueLocal, formatDate, formatShortDate, formatTime } from "@/lib/time";
 import { effectiveRegistrationState, scheduledOpening } from "@/lib/registration-state";
-import { isAnonymized, RETENTION_DAYS, shownEmail } from "@/lib/retention";
+import { isAnonymized, isErased, RETENTION_DAYS, shownEmail } from "@/lib/retention";
 import { editUrl } from "@/lib/site";
+import { parseId } from "@/lib/validation";
 
 function Flags({ r, t }: { r: Registration; t: Dict["admin"]["session"] }) {
   return (
@@ -73,9 +76,9 @@ export default async function AdminSessionPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { id } = await params;
-  const numId = Number(id);
-  if (!Number.isInteger(numId)) notFound();
+  await requireAdmin();
+  const numId = parseId((await params).id);
+  if (!numId) notFound();
   const [{ locale, t: dict }, session, regs, pendingReminders, playedGames, sessionTables, suggestions] = await Promise.all([
     getDict(),
     getSessionWithCount(numId),
@@ -246,13 +249,13 @@ export default async function AdminSessionPage({
                           />
                         </span>
                       )}
-                      {!isAnonymized(r.email) && (
+                      {!isErased(r.email) && (
                         <span className="mr-3">
                           <EraseButton registrationId={r.id} t={t} />
                         </span>
                       )}
                       <form action={adminCancelRegistrationAction.bind(null, r.id)} className="inline">
-                        <Button type="submit" variant="danger">{t.cancel}</Button>
+                        <SubmitButton variant="danger">{t.cancel}</SubmitButton>
                       </form>
                     </td>
                   </tr>
@@ -296,12 +299,12 @@ export default async function AdminSessionPage({
                 </span>
                 <span className="flex gap-2">
                   <a href={editUrl(r.editToken)} className="self-center text-muted hover:underline" target="_blank" rel="noreferrer">{t.link}</a>
-                  {!isAnonymized(r.email) && <EraseButton registrationId={r.id} t={t} />}
+                  {!isErased(r.email) && <EraseButton registrationId={r.id} t={t} />}
                   <form action={adminConfirmWaitlistedAction.bind(null, r.id)}>
-                    <Button type="submit" variant="secondary">{t.confirm}</Button>
+                    <SubmitButton variant="secondary">{t.confirm}</SubmitButton>
                   </form>
                   <form action={adminCancelRegistrationAction.bind(null, r.id)}>
-                    <Button type="submit" variant="danger">{t.cancel}</Button>
+                    <SubmitButton variant="danger">{t.cancel}</SubmitButton>
                   </form>
                 </span>
               </li>
@@ -322,10 +325,12 @@ export default async function AdminSessionPage({
                   {r.cancelReason && <> · {t.cancelReason}: „{r.cancelReason}“</>}
                 </span>
                 <span className="flex gap-2">
-                  {!isAnonymized(r.email) && <EraseButton registrationId={r.id} t={t} />}
-                  <form action={adminRestoreRegistrationAction.bind(null, r.id)}>
-                    <Button type="submit" variant="secondary">{t.restore}</Button>
-                  </form>
+                  {!isErased(r.email) && <EraseButton registrationId={r.id} t={t} />}
+                  {!isErased(r.email) && (
+                    <form action={adminRestoreRegistrationAction.bind(null, r.id)}>
+                      <SubmitButton variant="secondary">{t.restore}</SubmitButton>
+                    </form>
+                  )}
                 </span>
               </li>
             ))}
@@ -340,13 +345,13 @@ export default async function AdminSessionPage({
           <div className="mb-4 flex flex-wrap items-center gap-2 text-sm">
             {[suggestedTables, suggestedTables + 1].map((n) => (
               <form key={n} action={createTablesAction.bind(null, session.id, n)}>
-                <Button type="submit" variant="secondary">{t.tablesCreate(n)}</Button>
+                <SubmitButton variant="secondary">{t.tablesCreate(n)}</SubmitButton>
               </form>
             ))}
             {sessionTables.length > 0 && (
               <>
                 <form action={autoAssignTablesAction.bind(null, session.id)}>
-                  <Button type="submit" variant="secondary">{t.tablesAuto}</Button>
+                  <SubmitButton variant="secondary">{t.tablesAuto}</SubmitButton>
                 </form>
                 <ActionButton
                   action={sendTablesEmailAction.bind(null, session.id)}
@@ -379,7 +384,7 @@ export default async function AdminSessionPage({
                         aria-label={t.tableStoryteller}
                         className="w-full rounded-md border border-border bg-card px-2 py-1 text-xs"
                       />
-                      <Button type="submit" variant="secondary">OK</Button>
+                      <SubmitButton variant="secondary">OK</SubmitButton>
                     </form>
                     <ul className="flex flex-col gap-0.5">
                       {tb.players.map((p) => (
@@ -410,7 +415,7 @@ export default async function AdminSessionPage({
                   {g.notes && <span className="text-muted"> · {g.notes}</span>}
                 </span>
                 <form action={deleteGameAction.bind(null, g.id)}>
-                  <Button type="submit" variant="danger">{t.gameDelete}</Button>
+                  <SubmitButton variant="danger">{t.gameDelete}</SubmitButton>
                 </form>
               </li>
             ))}

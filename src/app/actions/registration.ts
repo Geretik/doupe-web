@@ -1,8 +1,10 @@
 "use server";
 
 import { and, eq, inArray, sql } from "drizzle-orm";
+import { after } from "next/server";
 import { notifyOrganizers } from "@/lib/alerts";
 import { clientIpHash } from "@/lib/client-ip";
+import { throttleLinkRequest } from "@/lib/link-throttle";
 import { siteUrl } from "@/lib/site";
 import { formatRange, formatShortDate, formatTime } from "@/lib/time";
 import { db } from "@/db";
@@ -15,7 +17,9 @@ import {
 } from "@/lib/email";
 import { generateEditToken } from "@/lib/token";
 import {
+  emailSchema,
   fieldErrorsOf,
+  parseId,
   registrationEditSchema,
   registrationSchema,
   timeRangeErrors,
@@ -74,6 +78,8 @@ export async function registerAction(
   formData: FormData,
 ): Promise<RegisterResult> {
   const { locale, t } = await getDict();
+  // bound in a client component, so it comes from the browser like any other form value
+  if (parseId(sessionId) === null) return { error: t.errors.notFound };
   const s = await db.query.sessions.findFirst({ where: eq(sessions.id, sessionId) });
   if (!s) return { error: t.errors.notFound };
   const parsed = registrationSchema(t.errors, s).safeParse(
@@ -170,10 +176,11 @@ export async function registerAction(
 
       let registration;
       if (existing) {
-        // previously cancelled → re-activate with a fresh token
+        // previously cancelled → re-activate with a fresh token, as a new sign-up: not at the old table,
+        // without the old cancel reason, and counted for the network's limit and the sign-up order
         [registration] = await tx
           .update(registrations)
-          .set({ ...values, editToken: generateEditToken() })
+          .set({ ...values, editToken: generateEditToken(), cancelReason: null, cancelledAt: null, tableId: null, createdAt: now })
           .where(eq(registrations.id, existing.id))
           .returning();
       } else {
@@ -207,6 +214,8 @@ export async function registerAction(
         const emailFailed = await trySend(() =>
           sendExistingRegistrationEmail(result.registration, result.session),
         );
+        // nothing went out, so a retry must not hear "we sent it a moment ago"
+        if (emailFailed) await db.update(registrations).set({ lastEmailAt: null }).where(eq(registrations.id, result.registration.id));
         return { ok: true, outcome: "already_registered", emailFailed };
       }
       case "waitlisted": {
@@ -230,11 +239,11 @@ export async function registerAction(
   }
 }
 
-/** Lets an organiser re-trigger the confirmation later when sending failed. */
+/** Lets an organiser re-trigger the confirmation later when sending failed (and the player retry right away). */
 async function releaseConfirmationClaim(registrationId: number) {
   await db
     .update(registrations)
-    .set({ confirmationSentAt: null })
+    .set({ confirmationSentAt: null, lastEmailAt: null })
     .where(eq(registrations.id, registrationId));
 }
 
@@ -271,20 +280,26 @@ export async function updateRegistrationAction(
   return { ok: true };
 }
 
-/** Sends the "my games" magic link when the e-mail has any registration; always answers the same. */
+/**
+ * Sends the "my games" magic link when the e-mail has any registration. Always answers the same and
+ * sends after the answer, so neither the text nor the timing tells whether the address has sign-ups.
+ */
 export async function requestMyGamesLinkAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const { locale, t } = await getDict();
-  const email = String(formData.get("email") ?? "").trim().toLowerCase();
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return { error: t.errors.invalidEmail, fieldErrors: { email: [t.errors.invalidEmail] } };
-  const ipHash = await clientIpHash();
-  if (ipHash && (await recentSignupsFrom(ipHash)) >= RATE_LIMIT_PER_HOUR) return { error: t.errors.rateLimited };
-  const regs = await listRegistrationsByEmail(email);
-  if (regs.length > 0) {
-    try {
-      await sendMyGamesLinkEmail(email, `${siteUrl()}/botc/moje-hry/${createMyGamesToken(email)}`, locale);
-    } catch (e) {
-      console.error("My-games link e-mail failed", e);
-    }
+  const parsed = emailSchema(t.errors).safeParse(formData.get("email"));
+  if (!parsed.success) return { error: t.errors.invalidEmail, fieldErrors: { email: [t.errors.invalidEmail] } };
+  const email = parsed.data;
+  const throttled = await throttleLinkRequest("my_games", email);
+  if (throttled === "network") return { error: t.errors.tooManyLinks };
+  if (!throttled) {
+    after(async () => {
+      if ((await listRegistrationsByEmail(email)).length === 0) return;
+      try {
+        await sendMyGamesLinkEmail(email, `${siteUrl()}/botc/moje-hry/${createMyGamesToken(email)}`, locale);
+      } catch (e) {
+        console.error("My-games link e-mail failed", e);
+      }
+    });
   }
   return { ok: true };
 }
@@ -312,8 +327,10 @@ export async function cancelRegistrationAction(token: string, reason?: string): 
     .returning({ id: registrations.id, sessionId: registrations.sessionId, nickname: registrations.nickname });
   if (!updated) return { error: t.errors.regNotFound };
   const promoted = await promoteWaitlist(updated.sessionId);
-  const session = await db.query.sessions.findFirst({ where: eq(sessions.id, updated.sessionId) });
-  if (session && session.startsAt.getTime() - now.getTime() < LATE_CANCEL_HOURS * 3600_000 && session.startsAt > now) {
+  const session = current.session;
+  // a waitlisted player leaving frees no spot – nothing for the organisers to sort out
+  const late = session.startsAt.getTime() - now.getTime() < LATE_CANCEL_HOURS * 3600_000 && session.startsAt > now;
+  if (current.status === "confirmed" && late) {
     await notifyOrganizers(
       `Pozdní odhlášení: ${session.title}`,
       `${updated.nickname} se odhlásil/a z termínu „${session.title}“ (${formatRange(session.startsAt, session.endsAt, "cs")}), tedy méně než ${LATE_CANCEL_HOURS} h před hrou.` +
