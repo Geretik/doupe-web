@@ -660,6 +660,18 @@ export async function addGameAction(sessionId: number, _prev: FormState, formDat
   return { ok: true };
 }
 
+export async function updateGameAction(gameId: number, _prev: FormState, formData: FormData): Promise<FormState> {
+  await requireAdmin();
+  const { t } = await getDict();
+  const parsed = gameSchema(t.admin.errors).safeParse(Object.fromEntries(formData.entries()));
+  if (!parsed.success) return { error: t.admin.errors.checkForm, fieldErrors: fieldErrorsOf(parsed.error) };
+  const [row] = await db.update(games).set(parsed.data).where(eq(games.id, gameId)).returning({ sessionId: games.sessionId });
+  if (!row) return { error: t.admin.errors.noGame };
+  revalidatePath(`/admin/termin/${row.sessionId}`);
+  revalidatePath("/botc/archiv");
+  return { ok: true };
+}
+
 export async function deleteGameAction(gameId: number) {
   await requireAdmin();
   const [row] = await db.delete(games).where(eq(games.id, gameId)).returning({ sessionId: games.sessionId });

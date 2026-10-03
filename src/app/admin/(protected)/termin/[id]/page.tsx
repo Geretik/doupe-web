@@ -23,7 +23,7 @@ import { ActionButton } from "@/components/admin/action-button";
 import { AttendanceToggle } from "@/components/admin/attendance-toggle";
 import { BroadcastForm } from "@/components/admin/broadcast-form";
 import { DeleteSessionButton } from "@/components/admin/delete-session-button";
-import { GameForm } from "@/components/admin/game-form";
+import { GameForm, GameItem, type GameFormLabels } from "@/components/admin/game-form";
 import { PresenceChart } from "@/components/admin/presence-chart";
 import { TableSelect } from "@/components/admin/table-select";
 import { SessionForm } from "@/components/admin/session-form";
@@ -110,6 +110,21 @@ export default async function AdminSessionPage({
   const unassigned = sessionTables.length ? confirmed.filter((r) => !r.tableId).length : 0;
   const suggestedTables = Math.max(2, Math.ceil(confirmed.length / TABLE_MAX));
   const presence = presenceByHour(session, confirmed);
+  const gameLabels: GameFormLabels = {
+    gameScript: t.gameScript,
+    gameScriptCustom: t.gameScriptCustom,
+    gameWinner: t.gameWinner,
+    gameWinnerUnknown: t.gameWinnerUnknown,
+    gameWinnerGood: t.gameWinnerGood,
+    gameWinnerEvil: t.gameWinnerEvil,
+    gamePlayers: t.gamePlayers,
+    gameNotes: t.gameNotes,
+    gameAdd: t.gameAdd,
+    gameAdding: t.gameAdding,
+    gameSave: t.gameSave,
+    gameSaving: t.gameSaving,
+    gameCancel: t.gameCancel,
+  };
 
   return (
     <div className="flex flex-col gap-8">
@@ -406,7 +421,18 @@ export default async function AdminSessionPage({
         {playedGames.length > 0 && (
           <ol className="mb-4 flex flex-col gap-2 text-sm">
             {playedGames.map((g, i) => (
-              <li key={g.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border px-3 py-2">
+              <GameItem
+                key={g.id}
+                sessionId={session.id}
+                scripts={session.scripts}
+                game={g}
+                t={{ ...gameLabels, gameEdit: t.gameEdit }}
+                deleteButton={
+                  <form action={deleteGameAction.bind(null, g.id)}>
+                    <SubmitButton variant="danger">{t.gameDelete}</SubmitButton>
+                  </form>
+                }
+              >
                 <span>
                   <span className="mr-2 font-semibold text-muted">{i + 1}.</span>
                   {g.scriptUrl ? <a href={g.scriptUrl} className="hover:underline" target="_blank" rel="noreferrer">{g.scriptName}</a> : g.scriptName}
@@ -414,29 +440,11 @@ export default async function AdminSessionPage({
                   {g.players && <span className="text-muted"> · {dict.archive.gamePlayers(g.players)}</span>}
                   {g.notes && <span className="text-muted"> · {g.notes}</span>}
                 </span>
-                <form action={deleteGameAction.bind(null, g.id)}>
-                  <SubmitButton variant="danger">{t.gameDelete}</SubmitButton>
-                </form>
-              </li>
+              </GameItem>
             ))}
           </ol>
         )}
-        <GameForm
-          sessionId={session.id}
-          scripts={session.scripts}
-          t={{
-            gameScript: t.gameScript,
-            gameScriptCustom: t.gameScriptCustom,
-            gameWinner: t.gameWinner,
-            gameWinnerUnknown: t.gameWinnerUnknown,
-            gameWinnerGood: t.gameWinnerGood,
-            gameWinnerEvil: t.gameWinnerEvil,
-            gamePlayers: t.gamePlayers,
-            gameNotes: t.gameNotes,
-            gameAdd: t.gameAdd,
-            gameAdding: t.gameAdding,
-          }}
-        />
+        <GameForm sessionId={session.id} scripts={session.scripts} t={gameLabels} />
       </Card>
 
       {!past && (

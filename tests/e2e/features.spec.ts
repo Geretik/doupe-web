@@ -777,7 +777,7 @@ test("session form offers earlier places, storytellers and scripts; a known scri
   await expect(url).toHaveValue("https://example.com/vlastni.pdf");
 });
 
-test("recurring sessions, games record shown in archive and stats", async ({ page }) => {
+test("recurring sessions, games record (editable after saving) shown in archive and stats", async ({ page }) => {
   await adminLogin(page);
   await page.goto("/admin/novy");
   await page.fill("#title", "Úterky");
@@ -806,9 +806,35 @@ test("recurring sessions, games record shown in archive and stats", async ({ pag
   await page.click("button:has-text('Přidat hru')");
   await expect(page.locator("main")).toContainText("2.Bad Moon Rising");
 
+  // saved games can be edited; the script (picked with its link, or typed) stays as it was
+  const [tb, bmr] = await sql<{ id: number }>("select id from games where session_id=$1 order by id", [pastId]);
+  await page.locator("li", { hasText: "1.Trouble Brewing" }).getByRole("button", { name: "Upravit" }).click();
+  await expect(page.locator(`#game${tb.id}-players`)).toHaveValue("9");
+  await page.fill(`#game${tb.id}-players`, "10");
+  await page.fill(`#game${tb.id}-notes`, "Těsný konec");
+  await page.locator(`form:has(#game${tb.id}-players)`).getByRole("button", { name: "Uložit", exact: true }).click();
+  await expect(page.locator("main")).toContainText("1.Trouble Brewing · 😇 vyhrálo dobro · 10 hráčů · Těsný konec");
+  await expect(page.locator(`#game${tb.id}-players`)).toHaveCount(0);
+
+  await page.locator("li", { hasText: "2.Bad Moon Rising" }).getByRole("button", { name: "Upravit" }).click();
+  await expect(page.locator(`#game${bmr.id}-scriptPick`)).toHaveValue("Bad Moon Rising");
+  await expect(page.locator(`#game${bmr.id}-winner`)).toHaveValue("evil");
+  await page.fill(`#game${bmr.id}-notes`, "neuloží se");
+  await page.locator(`form:has(#game${bmr.id}-notes)`).getByRole("button", { name: "Zrušit", exact: true }).click();
+  await page.locator("li", { hasText: "2.Bad Moon Rising" }).getByRole("button", { name: "Upravit" }).click();
+  await expect(page.locator(`#game${bmr.id}-notes`)).toHaveValue("");
+  await page.fill(`#game${bmr.id}-players`, "7");
+  await page.selectOption(`#game${bmr.id}-winner`, "good");
+  await page.locator(`form:has(#game${bmr.id}-notes)`).getByRole("button", { name: "Uložit", exact: true }).click();
+  await expect(page.locator("main")).toContainText("2.Bad Moon Rising · 😇 vyhrálo dobro · 7 hráčů");
+  expect(await sql("select script_name, script_url, winner, players, notes from games where session_id=$1 order by id", [pastId])).toEqual([
+    { script_name: "Trouble Brewing", script_url: "https://botcscripts.com/tb", winner: "good", players: 10, notes: "Těsný konec" },
+    { script_name: "Bad Moon Rising", script_url: null, winner: "good", players: 7, notes: null },
+  ]);
+
   await page.goto("/botc/archiv");
-  await expect(page.locator("main")).toContainText("Trouble Brewing · 😇 vyhrálo dobro · 9 hráčů");
-  await expect(page.locator("main")).toContainText("Bad Moon Rising · 😈 vyhrálo zlo");
+  await expect(page.locator("main")).toContainText("Trouble Brewing · 😇 vyhrálo dobro · 10 hráčů");
+  await expect(page.locator("main")).toContainText("Bad Moon Rising · 😇 vyhrálo dobro · 7 hráčů");
 
   await page.goto("/admin/statistiky");
   await expect(page.locator("main")).toContainText("Her celkem2");
