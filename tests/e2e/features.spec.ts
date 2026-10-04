@@ -837,8 +837,8 @@ test("recurring sessions, games record (editable after saving) shown in archive 
   ]);
 
   await page.goto("/botc/archiv");
-  await expect(page.locator("main")).toContainText("Trouble Brewing · 😇 vyhrálo dobro · 10 hráčů");
-  await expect(page.locator("main")).toContainText("Bad Moon Rising · 😇 vyhrálo dobro · 7 hráčů");
+  await expect(page.locator("main")).toContainText("Hra 1 · Trouble Brewing · 10 hráčů😇 vyhrálo dobro");
+  await expect(page.locator("main")).toContainText("Hra 2 · Bad Moon Rising · 7 hráčů😇 vyhrálo dobro");
 
   await page.goto("/admin/statistiky");
   await expect(page.locator("main")).toContainText("Her celkem2");
@@ -1493,7 +1493,7 @@ test("who played what: a character or 'sat out' per player of each game, shown w
   await page.selectOption(`#game${game.id}-role-${ids.Cyril}`, { label: "🎩 Vypravěč" });
   await page.locator(`form:has(#game${game.id}-players)`).getByRole("button", { name: "Uložit", exact: true }).click();
   await expect(page.locator("main")).toContainText("Dan· Opilec");
-  await expect(page.locator("main")).toContainText("🎩Cyril· Vypravěč");
+  await expect(page.locator("main")).toContainText("🎩Vypravěč: Cyril");
   await expect(page.locator("main")).not.toContainText("Nehráli");
   expect(await sql("select registration_id, role from game_players where game_id=$1 order by registration_id", [game.id])).toEqual([
     { registration_id: ids.Anna, role: "washerwoman" },
@@ -1507,9 +1507,10 @@ test("who played what: a character or 'sat out' per player of each game, shown w
   const card = page.locator("li", { hasText: "Večer s rolemi" });
   // the signed-in organiser gets a pencil straight to the session's games
   await expect(card.getByTestId("edit-pencil")).toHaveAttribute("href", `/admin/termin/${id}#hry`);
-  await expect(card).toContainText("Anna· Pradlena");
-  await expect(card).toContainText("Bára· Čert");
-  await expect(card).toContainText("🎩Cyril· Vypravěč");
+  // each game in its own box: the storyteller, then the players by side
+  await expect(card).toContainText("Hra 1 · Trouble Brewing😇 vyhrálo dobro🎩Vypravěč: Cyril");
+  await expect(card).toContainText("Dobro 2Anna· PradlenaDan· Opilec");
+  await expect(card).toContainText("Zlo 1Bára· Čert");
   await expect(card.locator("img[src='/botc/roles/imp.webp']")).toBeVisible();
   await expect(page.locator("main")).toContainText("The Pandemonium Institute");
   await card.getByTestId("edit-pencil").click();

@@ -56,19 +56,29 @@ export default async function ArchivePage() {
                 )}
                 <ScriptLinks scripts={s.scripts} label={t.session.scripts(s.scripts.length)} />
                 {(played.get(s.id)?.length ?? 0) > 0 && (
-                  <ul className="mt-1 flex flex-col gap-1.5 text-sm">
-                    {played.get(s.id)!.map((g) => (
-                      <li key={g.id} className="flex flex-col gap-1">
-                        <span>
-                          <span aria-hidden className="mr-1.5">🎲</span>
-                          {g.scriptUrl ? <a href={g.scriptUrl} className="hover:underline" target="_blank" rel="noreferrer">{g.scriptName}</a> : g.scriptName}
-                          {g.winner && <span className="text-muted"> · {g.winner === "good" ? "😇" : "😈"} {t.archive.winner[g.winner]}</span>}
-                          {g.players && <span className="text-muted"> · {t.archive.gamePlayers(g.players)}</span>}
-                        </span>
-                        <GameRoster players={g.roster} locale={locale} storytellerLabel={t.session.storytellerLabel} />
+                  <ol className="mt-2 flex flex-col gap-3 text-sm">
+                    {played.get(s.id)!.map((g, i) => (
+                      <li key={g.id} className="flex flex-col gap-2 rounded-lg border border-border bg-background/60 p-3">
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                          <span>
+                            <span aria-hidden className="mr-1.5">🎲</span>
+                            <span className="font-semibold">{t.archive.gameNumber(i + 1)}</span>
+                            <span className="text-muted"> · </span>
+                            {g.scriptUrl ? <a href={g.scriptUrl} className="hover:underline" target="_blank" rel="noreferrer">{g.scriptName}</a> : g.scriptName}
+                            {g.players && <span className="text-muted"> · {t.archive.gamePlayers(g.players)}</span>}
+                          </span>
+                          {g.winner && (
+                            <span
+                              className={`ml-auto rounded-full px-2.5 py-0.5 text-xs font-semibold ${g.winner === "good" ? "bg-good/10 text-good" : "bg-accent/10 text-accent"}`}
+                            >
+                              {g.winner === "good" ? "😇" : "😈"} {t.archive.winner[g.winner]}
+                            </span>
+                          )}
+                        </div>
+                        <GameRoster players={g.roster} locale={locale} t={{ storyteller: t.session.storytellerLabel, sides: t.archive.sides }} />
                       </li>
                     ))}
-                  </ul>
+                  </ol>
                 )}
               </Card>
             </li>
