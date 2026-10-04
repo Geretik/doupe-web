@@ -76,9 +76,13 @@ test("waitlist: raising the capacity in admin promotes waitlisted players", asyn
   const [b] = await sql<{ status: string }>("select status from registrations where email='b@example.com'");
   expect(b.status).toBe("confirmed");
 
-  // admin override confirms beyond capacity
-  await page.click("li:has-text('c@example.com') button:has-text('Potvrdit')");
-  await expect(page.locator("main")).toContainText("Přihlášení (3 / 2)");
+  // the organiser seats a waitlisted player on a full session: one more spot, and the player is e-mailed
+  await page.click("li:has-text('c@example.com') button:has-text('Přidat na termín (+1 místo)')");
+  await expect(page.locator("main")).toContainText("Přihlášení (3 / 3)");
+  await expect(page.locator("main")).not.toContainText("Náhradníci");
+  const [c] = await sql<{ status: string; sent: boolean }>("select status, confirmation_sent_at is not null as sent from registrations where email='c@example.com'");
+  expect(c).toEqual({ status: "confirmed", sent: true });
+  expect(await sql("select capacity from sessions where id=$1", [id])).toEqual([{ capacity: 3 }]);
 });
 
 test("storyteller / newbie flags are stored and shown", async ({ page }) => {
@@ -1387,4 +1391,123 @@ test("playlist: an organiser pastes a table of songs, players see it folded away
   await page.goto(`/admin/novy?from=${id}`);
   await expect(page.getByTestId("playlist-preview")).toContainText("Darkest Hour");
   await expect(page.getByTestId("playlist-preview").locator("table a")).toHaveAttribute("href", "https://example.com/dark");
+});
+
+test("quick sign-up in admin: a nickname is enough, a full session gets one more spot, ahead of the waitlist", async ({ page }) => {
+  const id = await createSession({ capacity: 2 });
+  await register(page, id, { nick: "A", email: "qa@example.com" });
+  await register(page, id, { nick: "B", email: "qb@example.com" });
+  await register(page, id, { nick: "C", email: "qc@example.com" });
+  await adminLogin(page);
+  await page.goto(`/admin/termin/${id}`);
+  const main = page.locator("main");
+  await expect(main).toContainText("Náhradníci (1)");
+  await expect(main).toContainText("Termín je plný – s dalším hráčem se kapacita zvýší na 3.");
+  await expect(page.getByRole("button", { name: "Poslat připomínku (2)" })).toBeVisible();
+
+  // only the nickname: confirmed right away, the waitlisted player stays where they were
+  await page.fill("#quick-nickname", "Kolemjdoucí");
+  await page.click("button:has-text('Přidat hráče')");
+  await expect(main).toContainText("Kolemjdoucí je na termínu. Termín byl plný, kapacita je teď 3.");
+  await expect(main).toContainText("Přihlášení (3 / 3)");
+  await expect(main).toContainText("Náhradníci (1)");
+  await expect(page.locator("#quick-nickname")).toHaveValue("");
+  const [walkIn] = await sql<{ status: string; email: string; edit_token: string; confirmation_sent_at: Date | null }>(
+    "select status, email, edit_token, confirmation_sent_at from registrations where nickname='Kolemjdoucí'",
+  );
+  expect(walkIn.status).toBe("confirmed");
+  expect(walkIn.email).toMatch(/@bez-emailu\.invalid$/);
+  expect(walkIn.confirmation_sent_at).toBeNull();
+  expect(await sql("select status from registrations where email='qc@example.com'")).toEqual([{ status: "waitlisted" }]);
+  // no e-mail: none shown, no "confirmation not sent" warning, no reminder or broadcast to it
+  await expect(main).not.toContainText("bez-emailu");
+  await expect(main).not.toContainText("neodešel potvrzovací e-mail");
+  await expect(page.getByRole("button", { name: "Poslat připomínku (2)" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Odeslat přihlášeným (2)" })).toBeVisible();
+
+  // an e-mail already on the session is refused
+  await page.fill("#quick-nickname", "Áčko znovu");
+  await page.fill("#quick-email", "QA@example.com");
+  await page.click("button:has-text('Přidat hráče')");
+  await expect(main).toContainText("Hráč s tímto e-mailem už na termínu je.");
+  await expect(page.locator("#quick-nickname")).toHaveValue("Áčko znovu");
+
+  // with an e-mail and more details: the usual confirmation goes out
+  await page.fill("#quick-nickname", "Dora");
+  await page.fill("#quick-email", "qd@example.com");
+  await page.click("summary:has-text('Další údaje')");
+  await page.fill("#quick-firstName", "Dorota");
+  await page.check("#quick-isNewbie");
+  await page.click("button:has-text('Přidat hráče')");
+  await expect(main).toContainText("Dora je na termínu. Termín byl plný, kapacita je teď 4. Potvrzení odešlo e-mailem.");
+  await expect(main).toContainText("Přihlášení (4 / 4)");
+  const [dora] = await sql<{ first_name: string; is_newbie: boolean; status: string; sent: boolean }>(
+    "select first_name, is_newbie, status, confirmation_sent_at is not null as sent from registrations where email='qd@example.com'",
+  );
+  expect(dora).toEqual({ first_name: "Dorota", is_newbie: true, status: "confirmed", sent: true });
+
+  // the walk-in's own link works and shows no stand-in e-mail
+  await page.goto(`/botc/r/${walkIn.edit_token}`);
+  await expect(page.locator("#nickname")).toHaveValue("Kolemjdoucí");
+  await expect(page.locator("#email")).toHaveCount(0);
+  await expect(page.locator("main")).not.toContainText("bez-emailu");
+});
+
+test("who played what: a character or 'sat out' per player of each game, shown with icons in admin and the archive", async ({ page, request }) => {
+  const id = await createSession({ title: "Večer s rolemi", capacity: 10, daysAhead: -3 });
+  await sql("update sessions set scripts=$1 where id=$2", [JSON.stringify([{ name: "Trouble Brewing", url: "https://botcscripts.com/tb" }]), id]);
+  const ids: Record<string, number> = {};
+  for (const nick of ["Anna", "Bára", "Cyril", "Dan"]) {
+    const [r] = await sql<{ id: number }>(
+      "insert into registrations (session_id, nickname, email, edit_token) values ($1, $2, $3, $4) returning id",
+      [id, nick, `${nick.toLowerCase()}@example.com`, `roles-${nick}-${Date.now()}`],
+    );
+    ids[nick] = r.id;
+  }
+  await adminLogin(page);
+  await page.goto(`/admin/termin/${id}`);
+
+  // a new game: the roster is folded away; Trouble Brewing's characters come first, by team
+  await page.click("form:has(#scriptPick) summary:has-text('Kdo co hrál')");
+  const anna = page.locator(`#role-${ids.Anna}`);
+  expect(await anna.locator("optgroup").evaluateAll((gs) => gs.map((g) => (g as HTMLOptGroupElement).label))).toEqual([
+    "Měšťané", "Podivíni", "Přisluhovači", "Démoni", "Pocestní", "Ostatní postavy",
+  ]);
+  await anna.selectOption("washerwoman");
+  await expect(page.locator(`form:has(#scriptPick) img[src='/botc/roles/washerwoman.webp']`)).toBeVisible();
+  await page.selectOption(`#role-${ids["Bára"]}`, "imp");
+  await page.selectOption(`#role-${ids.Cyril}`, { label: "Nehrál/a" });
+  await page.selectOption("#winner", "good");
+  await page.click("button:has-text('Přidat hru')");
+  await expect(page.locator("main")).toContainText("Anna· Pradlena");
+  await expect(page.locator("main")).toContainText("Bára· Čert");
+  await expect(page.locator("main")).toContainText("Nehráli: Cyril");
+  // the add form is empty again, roster included
+  await expect(page.locator(`#role-${ids.Anna}`)).toHaveValue("");
+
+  // editing: the roster is open with what was entered; change one, clear another
+  const [game] = await sql<{ id: number }>("select id from games where session_id=$1", [id]);
+  await page.locator("li", { hasText: "1.Trouble Brewing" }).getByRole("button", { name: "Upravit" }).click();
+  await expect(page.locator(`#game${game.id}-role-${ids["Bára"]}`)).toHaveValue("imp");
+  await page.selectOption(`#game${game.id}-role-${ids.Dan}`, "drunk");
+  await page.selectOption(`#game${game.id}-role-${ids.Cyril}`, "");
+  await page.locator(`form:has(#game${game.id}-players)`).getByRole("button", { name: "Uložit", exact: true }).click();
+  await expect(page.locator("main")).toContainText("Dan· Opilec");
+  await expect(page.locator("main")).not.toContainText("Nehráli");
+  expect(await sql("select registration_id, role from game_players where game_id=$1 order by registration_id", [game.id])).toEqual([
+    { registration_id: ids.Anna, role: "washerwoman" },
+    { registration_id: ids["Bára"], role: "imp" },
+    { registration_id: ids.Dan, role: "drunk" },
+  ]);
+
+  // the public archive shows who played what, with the icons and their credit
+  await page.goto("/botc/archiv");
+  const card = page.locator("li", { hasText: "Večer s rolemi" });
+  await expect(card).toContainText("Anna· Pradlena");
+  await expect(card).toContainText("Bára· Čert");
+  await expect(card.locator("img[src='/botc/roles/imp.webp']")).toBeVisible();
+  await expect(page.locator("main")).toContainText("The Pandemonium Institute");
+  const icon = await request.get("/botc/roles/imp.webp");
+  expect(icon.status()).toBe(200);
+  expect(icon.headers()["content-type"]).toBe("image/webp");
 });

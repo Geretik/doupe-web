@@ -8,6 +8,8 @@ export const RETENTION_DAYS = 14;
 
 export const ANON_SUFFIX = "@anonym.invalid";
 const ERASED_PREFIX = "erased-";
+/** Stand-in e-mail of a player an organiser added without one (the column is required and unique per session). */
+export const NO_EMAIL_SUFFIX = "@bez-emailu.invalid";
 /** Shown instead of the nickname of a player erased at their request. */
 export const ERASED_NICKNAME = "(smazáno)";
 
@@ -32,9 +34,19 @@ export function isErased(email: string) {
   return email.startsWith(ERASED_PREFIX) && isAnonymized(email);
 }
 
-/** The e-mail to show organisers, or null once it has been deleted. */
+/** A unique stand-in e-mail for a player added without one; the daily cron anonymises it like any other. */
+export function noEmailAddress() {
+  return `walkin-${randomBytes(12).toString("hex")}${NO_EMAIL_SUFFIX}`;
+}
+
+/** A real address e-mails can go to: not deleted after the session, not a stand-in for a player without one. */
+export function hasEmail(email: string) {
+  return !isAnonymized(email) && !email.endsWith(NO_EMAIL_SUFFIX);
+}
+
+/** The e-mail to show organisers and players, or null once it has been deleted or there never was one. */
 export function shownEmail(email: string) {
-  return isAnonymized(email) ? null : email;
+  return hasEmail(email) ? email : null;
 }
 
 /** Column values that delete a registration's personal data; nickname, note and cancel reason stay. */

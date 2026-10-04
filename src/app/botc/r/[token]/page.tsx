@@ -5,6 +5,7 @@ import { getDict } from "@/i18n/server";
 import { CalendarLinks } from "@/components/calendar-links";
 import { getRegistrationByToken, waitlistPosition } from "@/lib/queries";
 import { formatDate, formatTime } from "@/lib/time";
+import { shownEmail } from "@/lib/retention";
 
 export const dynamic = "force-dynamic";
 
@@ -62,7 +63,8 @@ export default async function EditRegistrationPage({
               </div>
             )}
             <EditRegistrationForm
-            registration={reg}
+            // a player added by the organisers without an e-mail has only a stand-in one
+            registration={{ ...reg, email: shownEmail(reg.email) ?? "" }}
             defaultArrival={formatTime(s.startsAt, locale)}
             defaultDeparture={formatTime(s.endsAt, locale)}
             arrivalMode={s.arrivalMode}

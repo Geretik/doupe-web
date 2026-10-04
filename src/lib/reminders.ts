@@ -1,7 +1,8 @@
-import { and, eq, gt, isNull, lte, sql } from "drizzle-orm";
+import { and, eq, gt, isNull, lte, notLike, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { registrations, sessions } from "@/db/schema";
 import { sendReminderEmail } from "./email";
+import { NO_EMAIL_SUFFIX } from "./retention";
 
 /** Reminders go out to players of sessions starting within this many hours. */
 export const REMINDER_WINDOW_HOURS = 36;
@@ -18,6 +19,7 @@ export async function sendDueReminders(opts: { sessionId?: number; ignoreWindow?
   const conditions = [
     eq(registrations.status, "confirmed"),
     isNull(registrations.reminderSentAt),
+    notLike(registrations.email, `%${NO_EMAIL_SUFFIX}`),
     gt(sessions.startsAt, now),
   ];
   if (!opts.ignoreWindow) conditions.push(lte(sessions.startsAt, until));
@@ -65,6 +67,7 @@ export async function countPendingReminders(sessionId: number) {
         eq(registrations.sessionId, sessionId),
         eq(registrations.status, "confirmed"),
         isNull(registrations.reminderSentAt),
+        notLike(registrations.email, `%${NO_EMAIL_SUFFIX}`),
       ),
     );
   return c;

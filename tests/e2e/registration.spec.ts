@@ -198,6 +198,14 @@ test("admin: login, create/edit session with scripts, manage registrations, dele
   });
   await page.click("tr:has-text('p2@example.com') button:has-text('Odhlásit')");
   await expect(page.locator("main")).toContainText("Přihlášení (1 / 10)");
+  // restoring asks too, and says where the player goes
+  page.once("dialog", (d) => d.dismiss());
+  await page.click("li:has-text('p2@example.com') button:has-text('Obnovit')");
+  await expect(page.locator("main")).toContainText("Přihlášení (1 / 10)");
+  page.once("dialog", (d) => {
+    expect(d.message()).toBe("Vrátit hráče P2 na termín mezi přihlášené? Hráč o tom nedostane e-mail.");
+    void d.accept();
+  });
   await page.click("li:has-text('p2@example.com') button:has-text('Obnovit')");
   await expect(page.locator("main")).toContainText("Přihlášení (2 / 10)");
 

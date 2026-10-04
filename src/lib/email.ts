@@ -4,7 +4,7 @@ import { dictionaries, type Locale } from "@/i18n/dictionaries";
 import { googleCalendarUrl, sessionIcsUrl } from "./ics";
 import { formatRange, formatShortDate, formatTime, pragueDaysBetween } from "./time";
 import { greetingName } from "./names";
-import { isAnonymized } from "./retention";
+import { hasEmail } from "./retention";
 import { contactEmail, editUrl } from "./site";
 
 function escapeHtml(s: string) {
@@ -31,8 +31,8 @@ function paced<T>(fn: () => Promise<T>): Promise<T> {
 }
 
 async function send(to: string, subject: string, html: string, text: string) {
-  // the address was deleted after the session; sending would only bounce
-  if (isAnonymized(to)) return;
+  // the address was deleted after the session, or the player has none; sending would only bounce
+  if (!hasEmail(to)) return;
   const apiKey = process.env.RESEND_API_KEY;
   const from = fromAddress();
   if (!apiKey || !from) {

@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { db } from "@/db";
-import { adminInvites, adminUsers, games, passwordResets, registrations, sessions, tables, type RegistrationState } from "@/db/schema";
+import { adminInvites, adminUsers, gamePlayers, games, passwordResets, registrations, sessions, tables, type RegistrationState } from "@/db/schema";
 import {
   checkBootstrapPassword,
   clearAdminCookie,
@@ -19,11 +19,12 @@ import { LOGIN_WINDOW_MINUTES, startLoginAttempt } from "@/lib/login-limit";
 import { rotateFeedKey } from "@/lib/org-feed";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { announceSessionOnDiscord } from "@/lib/discord";
-import { sendBroadcastEmail, sendExistingRegistrationEmail, sendPasswordResetEmail, sendTableEmail } from "@/lib/email";
+import { sendBroadcastEmail, sendConfirmationEmail, sendExistingRegistrationEmail, sendPasswordResetEmail, sendPromotedEmail, sendTableEmail } from "@/lib/email";
 import { autoAssign, createTables, listTables } from "@/lib/tables";
 import { sendDueReminders } from "@/lib/reminders";
 import { getDict } from "@/i18n/server";
 import { inviteUrl, passwordResetUrl } from "@/lib/site";
+import { generateEditToken } from "@/lib/token";
 import { addPragueDays, pragueLocalToDate } from "@/lib/time";
 import {
   accountSchema,
@@ -36,12 +37,14 @@ import {
   newPasswordSchema,
   repeatSchema,
   parsePlaylist,
+  parseRoster,
   parseScripts,
+  quickRegistrationSchema,
   sessionSchema,
   type FormState,
 } from "@/lib/validation";
 import { promoteWaitlist } from "@/lib/waitlist";
-import { ANON_SUFFIX, erasedFields, isErased, playerPseudonym } from "@/lib/retention";
+import { ANON_SUFFIX, erasedFields, hasEmail, isErased, noEmailAddress, playerPseudonym } from "@/lib/retention";
 
 /** Sessions are evenings: arrival and departure are picked as times of day, so a session must stay under a day. */
 const MAX_SESSION_HOURS = 24;
@@ -483,15 +486,137 @@ export async function adminRestoreRegistrationAction(registrationId: number) {
   if (row) revalidateSession(row.sessionId);
 }
 
-/** Admin override: confirms a waitlisted player even beyond capacity. */
+type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+/**
+ * After an organiser seated a player beyond the free spots: raises the capacity to the number of confirmed
+ * players (one more spot), so nobody is over the limit and the waitlist keeps its place. Run it in the
+ * transaction that locked the session row. Returns the new capacity, or null when it did not change.
+ */
+async function fitCapacity(tx: Tx, sessionId: number, capacity: number) {
+  const [{ c }] = await tx
+    .select({ c: sql<number>`count(*)::int` })
+    .from(registrations)
+    .where(and(eq(registrations.sessionId, sessionId), eq(registrations.status, "confirmed")));
+  if (c <= capacity) return null;
+  await tx.update(sessions).set({ capacity: c }).where(eq(sessions.id, sessionId));
+  return c;
+}
+
+/** Seats a waitlisted player right away – one more spot when the session is full – and e-mails them as when a spot opens up. */
 export async function adminConfirmWaitlistedAction(registrationId: number) {
   await requireAdmin();
-  const [row] = await db
-    .update(registrations)
-    .set({ status: "confirmed", waitlistedAt: null, updatedAt: new Date() })
-    .where(and(eq(registrations.id, registrationId), eq(registrations.status, "waitlisted")))
-    .returning({ sessionId: registrations.sessionId });
-  if (row) revalidateSession(row.sessionId);
+  const result = await db.transaction(async (tx) => {
+    const reg = await tx.query.registrations.findFirst({ where: eq(registrations.id, registrationId) });
+    if (!reg) return null;
+    const [session] = await tx.select().from(sessions).where(eq(sessions.id, reg.sessionId)).for("update");
+    if (!session) return null;
+    const now = new Date();
+    const notify = session.endsAt > now && hasEmail(reg.email);
+    const [row] = await tx
+      .update(registrations)
+      .set({
+        status: "confirmed",
+        waitlistedAt: null,
+        updatedAt: now,
+        // claim the send – exactly one e-mail, as with an automatic promotion
+        ...(notify && { confirmationSentAt: now, lastEmailAt: now }),
+      })
+      .where(and(eq(registrations.id, registrationId), eq(registrations.status, "waitlisted")))
+      .returning();
+    if (!row) return null;
+    await fitCapacity(tx, session.id, session.capacity);
+    return { session, row, notify };
+  });
+  if (!result) return;
+  if (result.notify) {
+    try {
+      await sendPromotedEmail(result.row, result.session);
+    } catch (e) {
+      console.error("Promotion e-mail could not be sent", e);
+      await db.update(registrations).set({ confirmationSentAt: null }).where(eq(registrations.id, result.row.id));
+    }
+  }
+  revalidateSession(result.session.id);
+}
+
+export type QuickRegisterResult = FormState & { message?: string };
+
+/**
+ * An organiser adds a player on the spot (only the nickname is needed). The player is confirmed ahead of
+ * the waitlist; a full session gets one more spot. With an e-mail they get the usual confirmation.
+ */
+export async function adminQuickRegisterAction(
+  sessionId: number,
+  _prev: QuickRegisterResult,
+  formData: FormData,
+): Promise<QuickRegisterResult> {
+  await requireAdmin();
+  const { locale, t } = await getDict();
+  const e = t.admin.errors;
+  const parsed = quickRegistrationSchema(t.errors).safeParse(Object.fromEntries(formData.entries()));
+  if (!parsed.success) return { error: e.checkForm, fieldErrors: fieldErrorsOf(parsed.error) };
+  const { email, ...data } = parsed.data;
+
+  const result = await db.transaction(async (tx) => {
+    const [session] = await tx.select().from(sessions).where(eq(sessions.id, sessionId)).for("update");
+    if (!session) return { kind: "not_found" as const };
+    if (email) {
+      const existing = await tx.query.registrations.findFirst({
+        where: and(eq(registrations.sessionId, sessionId), eq(sql`lower(${registrations.email})`, email)),
+      });
+      if (existing) return { kind: "taken" as const, cancelled: existing.status === "cancelled" };
+    }
+    const now = new Date();
+    const notify = email !== null && session.endsAt > now;
+    const [registration] = await tx
+      .insert(registrations)
+      .values({
+        ...data,
+        note: data.note ?? null,
+        sessionId,
+        email: email ?? noEmailAddress(),
+        status: "confirmed",
+        locale,
+        // claim the confirmation send – exactly one e-mail
+        confirmationSentAt: notify ? now : null,
+        lastEmailAt: notify ? now : null,
+        editToken: generateEditToken(),
+      })
+      .returning();
+    const capacity = await fitCapacity(tx, sessionId, session.capacity);
+    return { kind: "created" as const, session, registration, capacity, notify };
+  });
+
+  if (result.kind === "not_found") return { error: e.noSession };
+  if (result.kind === "taken") {
+    return { error: e.checkForm, fieldErrors: { email: [result.cancelled ? e.quickEmailCancelled : e.quickEmailTaken] } };
+  }
+  let emailFailed = false;
+  if (result.notify) {
+    try {
+      await sendConfirmationEmail(result.registration, result.session);
+    } catch (err) {
+      console.error("Confirmation e-mail could not be sent", err);
+      emailFailed = true;
+      await db
+        .update(registrations)
+        .set({ confirmationSentAt: null, lastEmailAt: null })
+        .where(eq(registrations.id, result.registration.id));
+    }
+  }
+  revalidateSession(sessionId);
+  const s = t.admin.session;
+  return {
+    ok: true,
+    message: [
+      s.quickAdded(result.registration.nickname),
+      result.capacity !== null && s.quickCapacityRaised(result.capacity),
+      result.notify && (emailFailed ? s.quickEmailFailed : s.quickEmailSent),
+    ]
+      .filter(Boolean)
+      .join(" "),
+  };
 }
 
 /** Marks attendance: true = came, false = no-show, null = not marked. */
@@ -553,6 +678,7 @@ export async function broadcastEmailAction(
   let sent = 0;
   let failed = 0;
   for (const reg of recipients) {
+    if (!hasEmail(reg.email)) continue;
     try {
       await sendBroadcastEmail(reg, session, parsed.data.subject, parsed.data.message);
       sent++;
@@ -628,6 +754,7 @@ export async function sendTablesEmailAction(sessionId: number): Promise<SimpleRe
   let failed = 0;
   for (const table of list) {
     for (const reg of table.players) {
+      if (!hasEmail(reg.email)) continue;
       const mates = table.players.filter((p) => p.id !== reg.id).map((p) => p.nickname);
       try {
         await sendTableEmail(reg, session, table, mates);
@@ -649,12 +776,37 @@ export async function sendTablesEmailAction(sessionId: number): Promise<SimpleRe
   return { ok: failed === 0, message: t.admin.session.tablesSent(sent, failed) };
 }
 
+/**
+ * Stores who played what in a game. Only the players in the form are touched, and only players of the
+ * game's session count; an empty select removes what was entered for that player.
+ */
+async function saveRoster(tx: Tx, gameId: number, sessionId: number, roster: Map<number, string | null | undefined>) {
+  const ids = [...roster.keys()];
+  if (ids.length === 0) return;
+  const ofSession = await tx
+    .select({ id: registrations.id })
+    .from(registrations)
+    .where(and(eq(registrations.sessionId, sessionId), inArray(registrations.id, ids)));
+  await tx.delete(gamePlayers).where(and(eq(gamePlayers.gameId, gameId), inArray(gamePlayers.registrationId, ids)));
+  const rows = ofSession.flatMap(({ id }) => {
+    const role = roster.get(id);
+    return role === undefined ? [] : [{ gameId, registrationId: id, role }];
+  });
+  if (rows.length > 0) await tx.insert(gamePlayers).values(rows);
+}
+
 export async function addGameAction(sessionId: number, _prev: FormState, formData: FormData): Promise<FormState> {
   await requireAdmin();
   const { t } = await getDict();
   const parsed = gameSchema(t.admin.errors).safeParse(Object.fromEntries(formData.entries()));
-  if (!parsed.success) return { error: t.admin.errors.checkForm, fieldErrors: fieldErrorsOf(parsed.error) };
-  await db.insert(games).values({ sessionId, ...parsed.data });
+  const roster = parseRoster(formData);
+  if (!parsed.success || !roster) {
+    return { error: t.admin.errors.checkForm, fieldErrors: parsed.success ? undefined : fieldErrorsOf(parsed.error) };
+  }
+  await db.transaction(async (tx) => {
+    const [game] = await tx.insert(games).values({ sessionId, ...parsed.data }).returning({ id: games.id });
+    await saveRoster(tx, game.id, sessionId, roster);
+  });
   revalidatePath(`/admin/termin/${sessionId}`);
   revalidatePath("/botc/archiv");
   return { ok: true };
@@ -664,8 +816,15 @@ export async function updateGameAction(gameId: number, _prev: FormState, formDat
   await requireAdmin();
   const { t } = await getDict();
   const parsed = gameSchema(t.admin.errors).safeParse(Object.fromEntries(formData.entries()));
-  if (!parsed.success) return { error: t.admin.errors.checkForm, fieldErrors: fieldErrorsOf(parsed.error) };
-  const [row] = await db.update(games).set(parsed.data).where(eq(games.id, gameId)).returning({ sessionId: games.sessionId });
+  const roster = parseRoster(formData);
+  if (!parsed.success || !roster) {
+    return { error: t.admin.errors.checkForm, fieldErrors: parsed.success ? undefined : fieldErrorsOf(parsed.error) };
+  }
+  const row = await db.transaction(async (tx) => {
+    const [game] = await tx.update(games).set(parsed.data).where(eq(games.id, gameId)).returning({ sessionId: games.sessionId });
+    if (game) await saveRoster(tx, gameId, game.sessionId, roster);
+    return game;
+  });
   if (!row) return { error: t.admin.errors.noGame };
   revalidatePath(`/admin/termin/${row.sessionId}`);
   revalidatePath("/botc/archiv");

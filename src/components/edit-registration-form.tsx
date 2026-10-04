@@ -58,9 +58,11 @@ export function EditRegistrationForm({
         <Field label={t.nickname} name="nickname" errors={fe.nickname} hint={t.nicknameHintEdit}>
           <input id="nickname" name="nickname" required defaultValue={r.nickname} className={inputClass} />
         </Field>
-        <Field label={t.email} name="email">
-          <input id="email" value={r.email} disabled className={`${inputClass} opacity-60`} />
-        </Field>
+        {r.email && (
+          <Field label={t.email} name="email">
+            <input id="email" value={r.email} disabled className={`${inputClass} opacity-60`} />
+          </Field>
+        )}
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label={`${t.firstName} (${t.optional})`} name="firstName" errors={fe.firstName}>
             <input id="firstName" name="firstName" defaultValue={r.firstName ?? ""} className={inputClass} />

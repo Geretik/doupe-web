@@ -120,16 +120,27 @@ export async function listPublicPlayers(
     );
 }
 
+/** Each game with who played what: registration id, nickname and character (null = sat the game out). */
+const withPlayers = {
+  roster: {
+    columns: { registrationId: true, role: true },
+    with: { registration: { columns: { nickname: true } } },
+  },
+} as const;
+
+export type GameWithPlayers = Awaited<ReturnType<typeof listGamesForSession>>[number];
+
 export async function listGamesForSession(sessionId: number) {
-  return db.query.games.findMany({ where: eq(games.sessionId, sessionId), orderBy: [asc(games.createdAt)] });
+  return db.query.games.findMany({ where: eq(games.sessionId, sessionId), orderBy: [asc(games.createdAt)], with: withPlayers });
 }
 
 /** Games of many sessions at once, keyed by session id (archive). */
 export async function gamesBySession(sessionIds: number[]) {
-  if (sessionIds.length === 0) return new Map<number, (typeof games.$inferSelect)[]>();
+  if (sessionIds.length === 0) return new Map<number, GameWithPlayers[]>();
   const rows = await db.query.games.findMany({
     where: inArray(games.sessionId, sessionIds),
     orderBy: [asc(games.createdAt)],
+    with: withPlayers,
   });
   const map = new Map<number, typeof rows>();
   for (const g of rows) map.set(g.sessionId, [...(map.get(g.sessionId) ?? []), g]);

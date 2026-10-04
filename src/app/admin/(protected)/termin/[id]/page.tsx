@@ -23,8 +23,10 @@ import { ActionButton } from "@/components/admin/action-button";
 import { AttendanceToggle } from "@/components/admin/attendance-toggle";
 import { BroadcastForm } from "@/components/admin/broadcast-form";
 import { DeleteSessionButton } from "@/components/admin/delete-session-button";
-import { GameForm, GameItem, type GameFormLabels } from "@/components/admin/game-form";
+import { GameForm, GameItem, type GameFormLabels, type RosterPlayer } from "@/components/admin/game-form";
+import { GameRoster } from "@/components/game-roster";
 import { PresenceChart } from "@/components/admin/presence-chart";
+import { QuickRegistrationForm } from "@/components/admin/quick-registration-form";
 import { TableSelect } from "@/components/admin/table-select";
 import { SessionForm } from "@/components/admin/session-form";
 import { SubmitButton } from "@/components/admin/submit-button";
@@ -41,7 +43,7 @@ import { countPendingReminders } from "@/lib/reminders";
 import { listTables, tableIssues, TABLE_MAX } from "@/lib/tables";
 import { dateToPragueLocal, formatDate, formatShortDate, formatTime } from "@/lib/time";
 import { effectiveRegistrationState, scheduledOpening } from "@/lib/registration-state";
-import { isAnonymized, isErased, RETENTION_DAYS, shownEmail } from "@/lib/retention";
+import { hasEmail, isErased, RETENTION_DAYS, shownEmail } from "@/lib/retention";
 import { editUrl } from "@/lib/site";
 import { parseId } from "@/lib/validation";
 
@@ -50,7 +52,7 @@ function Flags({ r, t }: { r: Registration; t: Dict["admin"]["session"] }) {
     <>
       {r.canStorytell && <span title={t.storyteller} aria-label={t.storyteller}> 🎩</span>}
       {r.isNewbie && <span title={t.newbie} aria-label={t.newbie}> 🌱</span>}
-      {r.status !== "cancelled" && !r.confirmationSentAt && (
+      {r.status !== "cancelled" && !r.confirmationSentAt && hasEmail(r.email) && (
         <span title={t.noConfirmation} aria-label={t.noConfirmation}> ⚠️</span>
       )}
       {r.note && <span title={`${t.playerNote}: ${r.note}`} aria-label={t.playerNote}> 📝</span>}
@@ -105,7 +107,8 @@ export default async function AdminSessionPage({
   const newbies = confirmed.filter((r) => r.isNewbie).length;
   const attended = confirmed.filter((r) => r.attended === true).length;
   const noShow = confirmed.filter((r) => r.attended === false).length;
-  const unconfirmed = confirmed.filter((r) => !r.confirmationSentAt).length;
+  const unconfirmed = confirmed.filter((r) => !r.confirmationSentAt && hasEmail(r.email)).length;
+  const full = confirmed.length >= session.capacity;
   const tableOptions = sessionTables.map((tb) => ({ id: tb.id, label: t.table(tb.number) }));
   const unassigned = sessionTables.length ? confirmed.filter((r) => !r.tableId).length : 0;
   const suggestedTables = Math.max(2, Math.ceil(confirmed.length / TABLE_MAX));
@@ -124,7 +127,22 @@ export default async function AdminSessionPage({
     gameSave: t.gameSave,
     gameSaving: t.gameSaving,
     gameCancel: t.gameCancel,
+    rosterTitle: t.rosterTitle,
+    rosterHint: t.rosterHint,
+    rosterNobody: t.rosterNobody,
+    roleUnknown: t.roleUnknown,
+    roleSatOut: t.roleSatOut,
+    roleOther: t.roleOther,
+    roleTeams: t.roleTeams,
   };
+  // who can get a character: the signed-up players, and anyone already entered in a game (even if they cancelled since)
+  const rosterPlayers = new Map<number, RosterPlayer>(confirmed.map((r) => [r.id, { id: r.id, nickname: r.nickname }]));
+  for (const g of playedGames) {
+    for (const p of g.roster) {
+      if (!rosterPlayers.has(p.registrationId)) rosterPlayers.set(p.registrationId, { id: p.registrationId, nickname: p.registration.nickname });
+    }
+  }
+  const roster = [...rosterPlayers.values()].sort((a, b) => a.nickname.localeCompare(b.nickname, locale));
 
   return (
     <div className="flex flex-col gap-8">
@@ -211,6 +229,29 @@ export default async function AdminSessionPage({
         {dataDeleted && (
           <Alert kind="info">{t.anonymizedInfo(RETENTION_DAYS)}</Alert>
         )}
+        <Card>
+          <h3 className="mb-1 font-semibold">{t.quickTitle}</h3>
+          <QuickRegistrationForm
+            sessionId={session.id}
+            t={{
+              hint: t.quickHint,
+              full: full ? t.quickFull(confirmed.length + 1) : null,
+              nickname: t.nickname,
+              email: t.email,
+              emailHint: t.quickEmailHint,
+              phone: t.phone,
+              optional: dict.form.optional,
+              more: t.quickMore,
+              firstName: dict.form.firstName,
+              lastName: dict.form.lastName,
+              note: t.playerNote,
+              storyteller: t.storyteller,
+              newbie: t.newbie,
+              submit: t.quickSubmit,
+              submitting: t.quickSubmitting,
+            }}
+          />
+        </Card>
         {confirmed.length === 0 && <p className="text-muted">{t.nobody}</p>}
         {confirmed.length > 0 && (
           <div className="overflow-x-auto rounded-xl border border-border bg-card">
@@ -253,7 +294,7 @@ export default async function AdminSessionPage({
                     )}
                     <td className="p-3 text-right whitespace-nowrap">
                       <a href={editUrl(r.editToken)} className="mr-3 text-muted hover:underline" target="_blank" rel="noreferrer">{t.link}</a>
-                      {!isAnonymized(r.email) && (
+                      {hasEmail(r.email) && (
                         <span className="mr-3">
                           <ActionButton
                             action={adminResendLinkAction.bind(null, r.id)}
@@ -316,7 +357,7 @@ export default async function AdminSessionPage({
                   <a href={editUrl(r.editToken)} className="self-center text-muted hover:underline" target="_blank" rel="noreferrer">{t.link}</a>
                   {!isErased(r.email) && <EraseButton registrationId={r.id} t={t} />}
                   <form action={adminConfirmWaitlistedAction.bind(null, r.id)}>
-                    <SubmitButton variant="secondary">{t.confirm}</SubmitButton>
+                    <SubmitButton variant="secondary">{full ? t.confirmFull : t.confirm}</SubmitButton>
                   </form>
                   <form action={adminCancelRegistrationAction.bind(null, r.id)}>
                     <SubmitButton variant="danger" confirmText={t.cancelConfirm(r.nickname)}>{t.cancel}</SubmitButton>
@@ -343,7 +384,7 @@ export default async function AdminSessionPage({
                   {!isErased(r.email) && <EraseButton registrationId={r.id} t={t} />}
                   {!isErased(r.email) && (
                     <form action={adminRestoreRegistrationAction.bind(null, r.id)}>
-                      <SubmitButton variant="secondary">{t.restore}</SubmitButton>
+                      <SubmitButton variant="secondary" confirmText={t.restoreConfirm(r.nickname, full || waitlisted.length > 0)}>{t.restore}</SubmitButton>
                     </form>
                   )}
                 </span>
@@ -370,7 +411,7 @@ export default async function AdminSessionPage({
                 </form>
                 <ActionButton
                   action={sendTablesEmailAction.bind(null, session.id)}
-                  label={t.tablesSend(confirmed.length - unassigned)}
+                  label={t.tablesSend(confirmed.filter((r) => r.tableId && hasEmail(r.email)).length)}
                   pendingLabel={t.sending}
                   confirmText={t.tablesSendConfirm}
                   variant="primary"
@@ -425,7 +466,17 @@ export default async function AdminSessionPage({
                 key={g.id}
                 sessionId={session.id}
                 scripts={session.scripts}
-                game={g}
+                roster={roster}
+                locale={locale}
+                game={{
+                  id: g.id,
+                  scriptName: g.scriptName,
+                  scriptUrl: g.scriptUrl,
+                  winner: g.winner,
+                  players: g.players,
+                  notes: g.notes,
+                  roster: g.roster.map((p) => ({ registrationId: p.registrationId, role: p.role })),
+                }}
                 t={{ ...gameLabels, gameEdit: t.gameEdit }}
                 deleteButton={
                   <form action={deleteGameAction.bind(null, g.id)}>
@@ -433,18 +484,21 @@ export default async function AdminSessionPage({
                   </form>
                 }
               >
-                <span>
-                  <span className="mr-2 font-semibold text-muted">{i + 1}.</span>
-                  {g.scriptUrl ? <a href={g.scriptUrl} className="hover:underline" target="_blank" rel="noreferrer">{g.scriptName}</a> : g.scriptName}
-                  {g.winner && <> · {g.winner === "good" ? "😇" : "😈"} {dict.archive.winner[g.winner]}</>}
-                  {g.players && <span className="text-muted"> · {dict.archive.gamePlayers(g.players)}</span>}
-                  {g.notes && <span className="text-muted"> · {g.notes}</span>}
-                </span>
+                <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                  <span>
+                    <span className="mr-2 font-semibold text-muted">{i + 1}.</span>
+                    {g.scriptUrl ? <a href={g.scriptUrl} className="hover:underline" target="_blank" rel="noreferrer">{g.scriptName}</a> : g.scriptName}
+                    {g.winner && <> · {g.winner === "good" ? "😇" : "😈"} {dict.archive.winner[g.winner]}</>}
+                    {g.players && <span className="text-muted"> · {dict.archive.gamePlayers(g.players)}</span>}
+                    {g.notes && <span className="text-muted"> · {g.notes}</span>}
+                  </span>
+                  <GameRoster players={g.roster} locale={locale} satOutLabel={dict.archive.satOut} />
+                </div>
               </GameItem>
             ))}
           </ol>
         )}
-        <GameForm sessionId={session.id} scripts={session.scripts} t={gameLabels} />
+        <GameForm sessionId={session.id} scripts={session.scripts} roster={roster} locale={locale} t={gameLabels} />
       </Card>
 
       {!past && (
@@ -453,8 +507,8 @@ export default async function AdminSessionPage({
           <p className="mb-4 text-sm text-muted">{t.broadcastHint}</p>
           <BroadcastForm
             sessionId={session.id}
-            confirmedCount={confirmed.length}
-            waitlistedCount={waitlisted.length}
+            confirmedCount={confirmed.filter((r) => hasEmail(r.email)).length}
+            waitlistedCount={waitlisted.filter((r) => hasEmail(r.email)).length}
             t={dict.admin.broadcast}
           />
         </Card>

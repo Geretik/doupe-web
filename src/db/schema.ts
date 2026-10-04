@@ -169,8 +169,34 @@ export const games = pgTable("games", {
 
 export type Game = typeof games.$inferSelect;
 
-export const gamesRelations = relations(games, ({ one }) => ({
+/** Who played what in a recorded game: a player of the session and their character, or that they sat it out. */
+export const gamePlayers = pgTable(
+  "game_players",
+  {
+    id: serial("id").primaryKey(),
+    gameId: integer("game_id")
+      .notNull()
+      .references(() => games.id, { onDelete: "cascade" }),
+    registrationId: integer("registration_id")
+      .notNull()
+      .references(() => registrations.id, { onDelete: "cascade" }),
+    /** Character id from src/lib/botc-roles.ts ("washerwoman"); null = did not play this game */
+    role: text("role"),
+  },
+  (t) => [uniqueIndex("game_players_game_registration_idx").on(t.gameId, t.registrationId)],
+);
+
+export type GamePlayer = typeof gamePlayers.$inferSelect;
+
+export const gamesRelations = relations(games, ({ one, many }) => ({
   session: one(sessions, { fields: [games.sessionId], references: [sessions.id] }),
+  // "players" is the column with the number of players
+  roster: many(gamePlayers),
+}));
+
+export const gamePlayersRelations = relations(gamePlayers, ({ one }) => ({
+  game: one(games, { fields: [gamePlayers.gameId], references: [games.id] }),
+  registration: one(registrations, { fields: [gamePlayers.registrationId], references: [registrations.id] }),
 }));
 
 export const sessionsRelations = relations(sessions, ({ many }) => ({

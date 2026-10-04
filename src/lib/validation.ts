@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { adminRoles, arrivalModes, gameLanguages, gameWinners, registrationStates, type ArrivalMode } from "@/db/schema";
 import type { Dict } from "@/i18n/dictionaries";
+import { findRole, SAT_OUT } from "./botc-roles";
 import { PASSWORD_MIN_LENGTH } from "./password";
 import { formatTime, TIME_RE } from "./time";
 
@@ -47,6 +48,38 @@ export function registrationSchema(t: Dict["errors"], rules: RegistrationRules) 
     // honeypot: any value is accepted here, and the action then pretends success without saving
     website: z.string().optional(),
   });
+}
+
+/** An organiser adding a player on the spot: only the nickname is required, an empty e-mail becomes null. */
+export function quickRegistrationSchema(t: Dict["errors"]) {
+  return registrationSchema(t, { arrivalMode: "times", phoneRequired: false })
+    .pick({ nickname: true, firstName: true, lastName: true, phone: true, canStorytell: true, isNewbie: true, note: true })
+    .extend({
+      email: z
+        .string()
+        .optional()
+        .transform((v) => (v ?? "").trim().toLowerCase())
+        .pipe(z.union([z.literal(""), z.string().email(t.invalidEmail).max(200)]))
+        .transform((v) => (v === "" ? null : v)),
+    });
+}
+
+/**
+ * The "role:<registration id>" selects of the game form, by registration id: a character id, null when the
+ * player sat the game out, undefined when it was left empty. Null when a value is not one of those.
+ */
+export function parseRoster(formData: FormData): Map<number, string | null | undefined> | null {
+  const roster = new Map<number, string | null | undefined>();
+  for (const [key, value] of formData.entries()) {
+    if (!key.startsWith("role:")) continue;
+    const id = parseId(key.slice("role:".length));
+    if (id === null || typeof value !== "string") return null;
+    if (value === "") roster.set(id, undefined);
+    else if (value === SAT_OUT) roster.set(id, null);
+    else if (findRole(value)) roster.set(id, value);
+    else return null;
+  }
+  return roster;
 }
 
 /** Optional free-text field: empty string becomes null. */
