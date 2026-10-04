@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { adminRoles, arrivalModes, gameLanguages, gameWinners, registrationStates, type ArrivalMode } from "@/db/schema";
 import type { Dict } from "@/i18n/dictionaries";
-import { findRole, SAT_OUT } from "./botc-roles";
+import { findRole, SAT_OUT, STORYTELLER } from "./botc-roles";
 import { PASSWORD_MIN_LENGTH } from "./password";
 import { formatTime, TIME_RE } from "./time";
 
@@ -65,8 +65,8 @@ export function quickRegistrationSchema(t: Dict["errors"]) {
 }
 
 /**
- * The "role:<registration id>" selects of the game form, by registration id: a character id, null when the
- * player sat the game out, undefined when it was left empty. Null when a value is not one of those.
+ * The "role:<registration id>" selects of the game form, by registration id: a character id or STORYTELLER,
+ * null when the player sat the game out, undefined when it was left empty. Null when a value is not one of those.
  */
 export function parseRoster(formData: FormData): Map<number, string | null | undefined> | null {
   const roster = new Map<number, string | null | undefined>();
@@ -76,7 +76,7 @@ export function parseRoster(formData: FormData): Map<number, string | null | und
     if (id === null || typeof value !== "string") return null;
     if (value === "") roster.set(id, undefined);
     else if (value === SAT_OUT) roster.set(id, null);
-    else if (findRole(value)) roster.set(id, value);
+    else if (value === STORYTELLER || findRole(value)) roster.set(id, value);
     else return null;
   }
   return roster;

@@ -173,6 +173,8 @@ export const botcRoles: readonly BotcRole[] = [
 
 /** Value of the game form's character select for a player who did not play that game. */
 export const SAT_OUT = "__out";
+/** Stored instead of a character for a player who ran the game; no character has this id. */
+export const STORYTELLER = "storyteller";
 
 const byId = new Map(botcRoles.map((r) => [r.id, r]));
 

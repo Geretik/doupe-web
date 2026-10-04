@@ -1485,18 +1485,20 @@ test("who played what: a character or 'sat out' per player of each game, shown w
   // the add form is empty again, roster included
   await expect(page.locator(`#role-${ids.Anna}`)).toHaveValue("");
 
-  // editing: the roster is open with what was entered; change one, clear another
+  // editing: the roster is open with what was entered; Dan gets a character, Cyril ran the game
   const [game] = await sql<{ id: number }>("select id from games where session_id=$1", [id]);
   await page.locator("li", { hasText: "1.Trouble Brewing" }).getByRole("button", { name: "Upravit" }).click();
   await expect(page.locator(`#game${game.id}-role-${ids["Bára"]}`)).toHaveValue("imp");
   await page.selectOption(`#game${game.id}-role-${ids.Dan}`, "drunk");
-  await page.selectOption(`#game${game.id}-role-${ids.Cyril}`, "");
+  await page.selectOption(`#game${game.id}-role-${ids.Cyril}`, { label: "🎩 Vypravěč" });
   await page.locator(`form:has(#game${game.id}-players)`).getByRole("button", { name: "Uložit", exact: true }).click();
   await expect(page.locator("main")).toContainText("Dan· Opilec");
+  await expect(page.locator("main")).toContainText("🎩Cyril· Vypravěč");
   await expect(page.locator("main")).not.toContainText("Nehráli");
   expect(await sql("select registration_id, role from game_players where game_id=$1 order by registration_id", [game.id])).toEqual([
     { registration_id: ids.Anna, role: "washerwoman" },
     { registration_id: ids["Bára"], role: "imp" },
+    { registration_id: ids.Cyril, role: "storyteller" },
     { registration_id: ids.Dan, role: "drunk" },
   ]);
 
@@ -1505,6 +1507,7 @@ test("who played what: a character or 'sat out' per player of each game, shown w
   const card = page.locator("li", { hasText: "Večer s rolemi" });
   await expect(card).toContainText("Anna· Pradlena");
   await expect(card).toContainText("Bára· Čert");
+  await expect(card).toContainText("🎩Cyril· Vypravěč");
   await expect(card.locator("img[src='/botc/roles/imp.webp']")).toBeVisible();
   await expect(page.locator("main")).toContainText("The Pandemonium Institute");
   const icon = await request.get("/botc/roles/imp.webp");

@@ -12,6 +12,7 @@ import {
   roleName,
   roleTeams,
   SAT_OUT,
+  STORYTELLER,
   type BotcRole,
   type RoleEdition,
   type RoleTeam,
@@ -39,6 +40,7 @@ export type GameFormLabels = {
   rosterNobody: string;
   roleUnknown: string;
   roleSatOut: string;
+  roleStoryteller: string;
   roleOther: string;
   roleTeams: Record<RoleTeam, string>;
 };
@@ -221,11 +223,12 @@ function RoleSelect({
     <div className="flex items-center gap-2">
       <span className="flex h-7 w-7 shrink-0 items-center justify-center" aria-hidden>
         {/* eslint-disable-next-line @next/next/no-img-element -- tiny pre-sized WebP from public/, no optimisation needed */}
-        {role ? <img src={roleIcon(role.id)} alt="" width={28} height={28} /> : value === SAT_OUT ? "💤" : null}
+        {role ? <img src={roleIcon(role.id)} alt="" width={28} height={28} /> : value === STORYTELLER ? "🎩" : value === SAT_OUT ? "💤" : null}
       </span>
       <label htmlFor={id} className="w-24 shrink-0 truncate" title={nickname}>{nickname}</label>
       <select id={id} name={name} value={value} onChange={(e) => setValue(e.target.value)} className={`${inputClass} min-w-0 flex-1`}>
         <option value="">{t.roleUnknown}</option>
+        <option value={STORYTELLER}>{t.roleStoryteller}</option>
         <option value={SAT_OUT}>{t.roleSatOut}</option>
         {groups.map((g) => (
           <optgroup key={g.label} label={g.label}>

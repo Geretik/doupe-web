@@ -180,7 +180,7 @@ export const gamePlayers = pgTable(
     registrationId: integer("registration_id")
       .notNull()
       .references(() => registrations.id, { onDelete: "cascade" }),
-    /** Character id from src/lib/botc-roles.ts ("washerwoman"); null = did not play this game */
+    /** Character id from src/lib/botc-roles.ts ("washerwoman") or "storyteller"; null = did not play this game */
     role: text("role"),
   },
   (t) => [uniqueIndex("game_players_game_registration_idx").on(t.gameId, t.registrationId)],

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { GameRoster } from "@/components/game-roster";
+import { findRole } from "@/lib/botc-roles";
 import { ScriptLinks } from "@/components/script-links";
 import { Card } from "@/components/ui";
 import { getDict } from "@/i18n/server";
@@ -17,7 +18,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function ArchivePage() {
   const [sessions, { locale, t }] = await Promise.all([listPastSessions(), getDict()]);
   const played = await gamesBySession(sessions.map((s) => s.id));
-  const anyRoster = [...played.values()].some((list) => list.some((g) => g.roster.some((p) => p.role)));
+  const anyIcon = [...played.values()].some((list) => list.some((g) => g.roster.some((p) => findRole(p.role))));
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -59,7 +60,7 @@ export default async function ArchivePage() {
                           {g.winner && <span className="text-muted"> · {g.winner === "good" ? "😇" : "😈"} {t.archive.winner[g.winner]}</span>}
                           {g.players && <span className="text-muted"> · {t.archive.gamePlayers(g.players)}</span>}
                         </span>
-                        <GameRoster players={g.roster} locale={locale} />
+                        <GameRoster players={g.roster} locale={locale} storytellerLabel={t.session.storytellerLabel} />
                       </li>
                     ))}
                   </ul>
@@ -69,7 +70,7 @@ export default async function ArchivePage() {
           ))}
         </ol>
       )}
-      {anyRoster && <p className="text-xs text-muted">{t.archive.iconsCredit}</p>}
+      {anyIcon && <p className="text-xs text-muted">{t.archive.iconsCredit}</p>}
       <Link href="/botc" className="text-sm text-muted hover:underline">{t.session.back}</Link>
     </div>
   );
