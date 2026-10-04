@@ -304,6 +304,25 @@ export const linkRequests = pgTable(
   ],
 );
 
+/**
+ * Texts of the public pages edited in the admin (lib/site-content). Every change adds a row, so earlier versions
+ * stay as history; the newest row of a block and language is shown. `body` null = back to the text in the code.
+ */
+export const siteTexts = pgTable(
+  "site_texts",
+  {
+    id: serial("id").primaryKey(),
+    /** Block id from lib/site-content-defaults.ts, e.g. "klub.body" */
+    key: text("key").notNull(),
+    locale: text("locale", { enum: ["cs", "en"] }).notNull(),
+    /** Markdown (or plain text for one-line blocks); null = the default from the code */
+    body: text("body"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    createdBy: integer("created_by").references(() => adminUsers.id, { onDelete: "set null" }),
+  },
+  (t) => [index("site_texts_key_locale_idx").on(t.key, t.locale, t.id)],
+);
+
 /** When a recurring job last finished; the admin warns when the daily cron stops running (lib/job-runs). */
 export const jobRuns = pgTable("job_runs", {
   name: text("name").primaryKey(),

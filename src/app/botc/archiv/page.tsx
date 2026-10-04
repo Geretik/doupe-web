@@ -37,7 +37,7 @@ export default async function ArchivePage() {
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <h2 className="flex flex-wrap items-center gap-2 text-lg font-semibold">
                     {s.title}
-                    {admin && <EditPencil sessionId={s.id} section="hry" title={t.archive.editPencil} />}
+                    {admin && <EditPencil href={`/admin/termin/${s.id}#hry`} title={t.archive.editPencil} />}
                   </h2>
                   <span className="text-sm text-muted">{t.archive.players(s.confirmedCount)}</span>
                 </div>

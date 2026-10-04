@@ -1557,3 +1557,113 @@ test("who played what: a character or 'sat out' per player of each game, shown w
   expect(icon.status()).toBe(200);
   expect(icon.headers()["content-type"]).toBe("image/webp");
 });
+
+test("admin menu groups the sections and marks the current page", async ({ page }) => {
+  const id = await createSession({ title: "Menu večer" });
+  await adminLogin(page);
+  const current = page.locator("main nav a[aria-current=page]");
+  await expect(current).toHaveText("Termíny");
+  await page.goto(`/admin/termin/${id}`);
+  await expect(current).toHaveText("Termíny");
+  await page.click("main nav a:has-text('Statistiky')");
+  await expect(current).toHaveText("Statistiky");
+  await page.click("main nav a:has-text('Texty webu')");
+  await expect(page).toHaveURL(/\/admin\/web$/);
+  await expect(current).toHaveText("Texty webu");
+  await page.click("main nav a:has-text('Účty')");
+  await expect(current).toHaveText("Účty");
+  await page.click("main nav a:has-text('Nový termín')");
+  await expect(current).toHaveText("+ Nový termín");
+});
+
+test("site texts: an organiser edits the club page in the admin, with history, conflicts and the original text", async ({ page, browser }) => {
+  await createAdminUser({ email: "org@example.com", password: "org-password-123", nickname: "Organizátorka", role: "organizer" });
+  await adminLogin(page, { email: "org@example.com", password: "org-password-123" });
+
+  // the pencil on the public page leads to the page's texts in the language shown
+  await page.goto("/");
+  await page.getByTestId("edit-pencil").click();
+  await expect(page).toHaveURL(/\/admin\/web\/klub\?lang=cs$/);
+  await expect(page.locator("main nav a[aria-current=page]")).toHaveText("Texty webu");
+  await expect(page.locator("#text-klub-intro")).toHaveValue("Kdy a kde hrajeme, jak se přihlásit na hry a jak to u nás chodí.");
+
+  // another admin has the same page open
+  const other = await browser.newContext({ locale: "cs-CZ" });
+  const p2 = await other.newPage();
+  await adminLogin(p2);
+  await p2.goto("/admin/web/klub");
+
+  // a one-line text and a formatted one (typed into the editor)
+  await page.fill("#text-klub-intro", "Hrajeme deskovky každé úterý a čtvrtek.");
+  const discordText = page.locator("section[aria-labelledby=text-klub-discordText-label] [contenteditable=true]");
+  await discordText.click();
+  await page.keyboard.press("Control+End");
+  await page.keyboard.type(" Přidej se!");
+  await page.click("main button:has-text('Uložit')");
+  await expect(page.getByRole("status")).toHaveText("Uloženo, na webu už je nová verze.");
+  await expect(page.locator("section[aria-labelledby=text-klub-intro-label]")).toContainText("upraveno");
+  await expect(page.locator("section[aria-labelledby=text-klub-intro-label]")).toContainText("Organizátorka");
+
+  await page.goto("/");
+  await expect(page.locator("main")).toContainText("Hrajeme deskovky každé úterý a čtvrtek.");
+  await expect(page.locator("main")).toContainText("Zatím se přes něj přihlašuješ i na klubová hraní. Přidej se!");
+  await expect(page.locator("meta[name=description]")).toHaveAttribute("content", "Hrajeme deskovky každé úterý a čtvrtek.");
+  // the other language keeps its own texts
+  await page.click("header button:has-text('English')");
+  await expect(page.locator("main")).toContainText("A board game club in Olomouc");
+  await page.click("header button:has-text('Česky')");
+
+  // the other admin started from the old version: nothing of theirs is saved, what they typed stays
+  await p2.fill("#text-klub-intro", "Úplně jiný podnadpis");
+  await p2.click("main button:has-text('Uložit')");
+  await expect(p2.locator("main")).toContainText("Text „Podnadpis“ mezitím uložil/a Organizátorka. Nic se neuložilo");
+  await expect(p2.locator("#text-klub-intro")).toHaveValue("Úplně jiný podnadpis");
+  await other.close();
+
+  // a second version, then the first one comes back from the history
+  await page.goto("/admin/web/klub");
+  await page.fill("#text-klub-intro", "Druhá verze podnadpisu");
+  await page.click("main button:has-text('Uložit')");
+  await expect(page.getByRole("status")).toHaveText("Uloženo, na webu už je nová verze.");
+  const intro = page.locator("section[aria-labelledby=text-klub-intro-label]");
+  await intro.locator("summary:has-text('Historie (2)')").click();
+  page.once("dialog", (d) => d.accept());
+  await intro.locator("li", { hasText: "Hrajeme deskovky" }).locator("button:has-text('Vrátit tuto verzi')").click();
+  await expect(page.getByRole("status")).toHaveText("Hotovo, text je vrácený.");
+  await expect(page.locator("#text-klub-intro")).toHaveValue("Hrajeme deskovky každé úterý a čtvrtek.");
+
+  // back to the text from the code; every step stays in the history
+  page.once("dialog", (d) => d.accept());
+  await page.locator("section[aria-labelledby=text-klub-intro-label] button:has-text('Vrátit původní text')").click();
+  await expect(page.getByRole("status")).toHaveText("Hotovo, text je vrácený.");
+  await expect(page.locator("#text-klub-intro")).toHaveValue("Kdy a kde hrajeme, jak se přihlásit na hry a jak to u nás chodí.");
+  await expect(page.locator("section[aria-labelledby=text-klub-intro-label] summary")).toHaveText("Historie (4)");
+  // saving without changes adds nothing
+  await page.click("main button:has-text('Uložit')");
+  await expect(page.getByRole("status")).toHaveText("Nic se nezměnilo.");
+  expect((await sql("select id from site_texts where key='klub.intro'")).length).toBe(4);
+
+  await page.goto("/admin/web");
+  await expect(page.locator("main a", { hasText: "/botc/o-hre" })).toContainText("Zatím původní texty");
+  await expect(page.locator("main a", { hasText: "Úvodní stránka webu" })).toContainText("Organizátorka");
+});
+
+test("site texts: HTML, scripts, images and javascript: links from the admin never reach the page", async ({ page }) => {
+  await sql("insert into site_texts (key, locale, body) values ('o-hre.body', 'cs', $1)", [
+    "## Nadpis z adminu\n\n<script>window.hacked = 1</script>\n\n<b onclick=\"x()\">tučně</b> [odkaz](javascript:alert(1)) ![obrázek](https://example.com/x.png)\n\n- 🎲 Hrajeme\n- 🍕 Jíme\n\n[Termíny](/botc) a [web](https://example.com)",
+  ]);
+  await page.goto("/botc/o-hre");
+  await expect(page.locator("main h2").first()).toHaveText("Nadpis z adminu");
+  expect(await page.evaluate(() => (window as unknown as { hacked?: number }).hacked)).toBeUndefined();
+  await expect(page.locator("main script")).toHaveCount(0);
+  await expect(page.locator("main b")).toHaveCount(0);
+  await expect(page.locator("main img")).toHaveCount(0);
+  await expect(page.locator("main article a:text-is('odkaz')")).not.toHaveAttribute("href", /javascript/);
+  // emoji are the bullets; links to this site stay in the tab, others open a new one
+  await expect(page.locator("main ul", { hasText: "Hrajeme" })).not.toHaveClass(/list-disc/);
+  await expect(page.locator("main article a:text-is('Termíny')")).not.toHaveAttribute("target");
+  await expect(page.locator("main article a:text-is('web')")).toHaveAttribute("target", "_blank");
+  // the English page is untouched
+  await page.click("header button:has-text('English')");
+  await expect(page.locator("main h2").first()).toHaveText("What is Blood on the Clocktower");
+});

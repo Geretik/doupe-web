@@ -176,7 +176,9 @@ test("admin: login, create/edit session with scripts, manage registrations, dele
 
   // pencil visible for admin on public pages, script link shown
   await page.goto("/botc");
-  await expect(page.getByTestId("edit-pencil")).toHaveCount(1);
+  // one to the session, one next to the heading to the page's intro text
+  await expect(page.getByTestId("edit-pencil")).toHaveCount(2);
+  await expect(page.locator(`[data-testid=edit-pencil][href="/admin/termin/${s.id}"]`)).toHaveCount(1);
   await expect(page.locator("main")).toContainText("Trouble Brewing");
   await expect(page.locator("main")).toContainText("🎩");
   await expect(page.locator("main")).toContainText("Vypravěč: Honza");

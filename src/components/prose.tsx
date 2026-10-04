@@ -1,4 +1,4 @@
-/** Headings, paragraphs and lists for the long-form text pages (O hře, Klub). */
+/** Headings, paragraphs and lists for the long-form text pages (ochrana údajů) and the texts edited in the admin (components/markdown). */
 export function H2({ children }: { children: React.ReactNode }) {
   return <h2 className="mt-10 text-2xl font-bold tracking-tight first:mt-0">{children}</h2>;
 }

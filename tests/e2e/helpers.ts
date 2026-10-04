@@ -23,6 +23,7 @@ export async function resetDb() {
   await sql("delete from login_failures");
   await sql("delete from link_requests");
   await sql("delete from job_runs");
+  await sql("delete from site_texts");
 }
 
 /** Inserts an organiser account straight into the database (no invitation needed). */

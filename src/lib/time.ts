@@ -25,6 +25,11 @@ export function formatShortDate(d: Date, locale: Locale = "cs") {
   return fmt(locale, locale === "cs" ? { weekday: "short", day: "numeric", month: "numeric" } : { weekday: "short", day: "numeric", month: "short" }).format(d);
 }
 
+/** "3. 10. 2026 14:05" / "3 Oct 2026, 14:05" – when something was changed */
+export function formatStamp(d: Date, locale: Locale = "cs") {
+  return fmt(locale, { day: "numeric", month: locale === "cs" ? "numeric" : "short", year: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(d);
+}
+
 export function formatTime(d: Date, locale: Locale = "cs") {
   return fmt(locale, { hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(d);
 }
