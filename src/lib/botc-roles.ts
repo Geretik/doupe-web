@@ -180,16 +180,24 @@ export const STORYTELLER = "storyteller";
 export const BLUFF_COUNT = 3;
 export const bluffTeams: readonly RoleTeam[] = ["townsfolk", "outsider"];
 
-/** Characters who are told they are someone else, and the teams that someone can be from. */
-const believedTeams: Partial<Record<string, readonly RoleTeam[]>> = {
-  drunk: ["townsfolk"],
-  lunatic: ["demon"],
-  marionette: ["townsfolk", "outsider"],
+/**
+ * Characters tied to a second one, and the teams it can be from: who a Drunk, Lunatic or Marionette
+ * thinks they are ("as"), which in-play Townsfolk the Pixie learns ("knows"), whose ability the Philosopher or
+ * the Apprentice (a Townsfolk's when good, a Minion's when evil) takes.
+ */
+export type LinkedKind = "as" | "knows" | "ability";
+const linkedRoles: Partial<Record<string, { kind: LinkedKind; teams: readonly RoleTeam[] }>> = {
+  drunk: { kind: "as", teams: ["townsfolk"] },
+  lunatic: { kind: "as", teams: ["demon"] },
+  marionette: { kind: "as", teams: ["townsfolk", "outsider"] },
+  pixie: { kind: "knows", teams: ["townsfolk"] },
+  philosopher: { kind: "ability", teams: ["townsfolk", "outsider"] },
+  apprentice: { kind: "ability", teams: ["townsfolk", "minion"] },
 };
 
-/** The teams the character's "thinks they are" can be from, or undefined when the character has none. */
-export function believedTeamsOf(roleId: string | null | undefined) {
-  return roleId ? believedTeams[roleId] : undefined;
+/** The second character a character is tied to, or undefined when it has none. */
+export function linkedRoleOf(roleId: string | null | undefined) {
+  return roleId ? linkedRoles[roleId] : undefined;
 }
 
 const byId = new Map(botcRoles.map((r) => [r.id, r]));

@@ -5,18 +5,19 @@ import { addGameAction, updateGameAction } from "@/app/actions/admin";
 import type { Game, ScriptLink } from "@/db/schema";
 import type { Locale } from "@/i18n/dictionaries";
 import {
-  believedTeamsOf,
   BLUFF_COUNT,
   bluffTeams,
   botcRoles,
   editionOfScript,
   findRole,
+  linkedRoleOf,
   roleIcon,
   roleName,
   roleTeams,
   SAT_OUT,
   STORYTELLER,
   type BotcRole,
+  type LinkedKind,
   type RoleEdition,
   type RoleTeam,
 } from "@/lib/botc-roles";
@@ -43,8 +44,8 @@ export type GameFormLabels = {
   rosterNobody: string;
   roleUnknown: string;
   roleSatOut: string;
-  believedLabel: string;
-  believedHint: string;
+  linkedLabel: Record<LinkedKind, string>;
+  linkedHint: Record<LinkedKind, string>;
   bluffsTitle: string;
   bluffsHint: string;
   roleStoryteller: string;
@@ -272,7 +273,7 @@ function BluffSelect({
   );
 }
 
-/** A player's character; a Drunk, Lunatic or Marionette also gets a select for who they thought they were. */
+/** A player's character; a Drunk, Lunatic, Marionette, Pixie, Philosopher or Apprentice also gets a select for the character tied to it. */
 function RoleSelect({
   registrationId,
   nickname,
@@ -294,7 +295,8 @@ function RoleSelect({
   const [believed, setBelieved] = useState(entered?.believedRole ?? "");
   const role = findRole(value);
   const believedRole = findRole(believed);
-  const teams = believedTeamsOf(value);
+  const linked = linkedRoleOf(value);
+  const teams = linked?.teams;
   const roleId = id(`role-${registrationId}`);
   const believedId = id(`believed-${registrationId}`);
   return (
@@ -317,9 +319,9 @@ function RoleSelect({
             </optgroup>
           ))}
         </select>
-        {teams && (
+        {linked && teams && (
           <div className="flex items-center gap-2">
-            <label htmlFor={believedId} className="shrink-0 text-xs text-muted" title={t.believedHint}>{t.believedLabel}</label>
+            <label htmlFor={believedId} className="shrink-0 text-xs text-muted" title={t.linkedHint[linked.kind]}>{t.linkedLabel[linked.kind]}</label>
             <span className="flex h-6 w-6 shrink-0 items-center justify-center" aria-hidden>
               {/* eslint-disable-next-line @next/next/no-img-element -- tiny pre-sized WebP from public/, no optimisation needed */}
               {believedRole && <img src={roleIcon(believedRole.id)} alt="" width={24} height={24} />}
@@ -329,7 +331,7 @@ function RoleSelect({
               name={`believed:${registrationId}`}
               value={believed}
               onChange={(e) => setBelieved(e.target.value)}
-              title={t.believedHint}
+              title={t.linkedHint[linked.kind]}
               className={`${inputClass} min-w-0 flex-1 py-1 text-sm`}
             >
               <option value="">{t.roleUnknown}</option>

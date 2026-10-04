@@ -184,7 +184,7 @@ export const gamePlayers = pgTable(
       .references(() => registrations.id, { onDelete: "cascade" }),
     /** Character id from src/lib/botc-roles.ts ("washerwoman") or "storyteller"; null = did not play this game */
     role: text("role"),
-    /** The character a Drunk, Lunatic or Marionette was told they were (null = not entered) */
+    /** The character tied to `role`: who a Drunk, Lunatic or Marionette thought they were, which Townsfolk the Pixie learned, whose ability the Philosopher or Apprentice took (null = not entered) */
     believedRole: text("believed_role"),
   },
   (t) => [uniqueIndex("game_players_game_registration_idx").on(t.gameId, t.registrationId)],

@@ -1,13 +1,13 @@
 import type { Locale } from "@/i18n/dictionaries";
-import { findRole, roleIcon, roleName, roleSide, roleTeams, STORYTELLER, type BotcRole } from "@/lib/botc-roles";
+import { findRole, linkedRoleOf, roleIcon, roleName, roleSide, roleTeams, STORYTELLER, type BotcRole, type LinkedKind } from "@/lib/botc-roles";
 
 export type RosterEntry = { registrationId: number; role: string | null; believedRole: string | null; registration: { nickname: string } };
 
 export type RosterLabels = {
   storyteller: string;
   sides: { good: string; evil: string; travellers: string; bluffs: string };
-  /** "as Monk" – who a Drunk, Lunatic or Marionette thought they were */
-  believedAs: (name: string) => string;
+  /** "as Monk" – who a Drunk, Lunatic or Marionette thought they were; "knows: Monk" – the Pixie's Townsfolk; "ability: Monk" – the Philosopher's or Apprentice's pick */
+  linked: Record<LinkedKind, (name: string) => string>;
   /** With it, also who sat the game out (admin) */
   satOut?: string;
 };
@@ -68,6 +68,7 @@ export function GameRoster({
                 <ul className="flex flex-wrap gap-1.5">
                   {r.players.map(({ registrationId, role, believedRole, registration }) => {
                     const believed = findRole(believedRole);
+                    const kind = linkedRoleOf(role.id)?.kind;
                     return (
                       <li key={registrationId} className={chip}>
                         {/* eslint-disable-next-line @next/next/no-img-element -- tiny pre-sized WebP from public/, no optimisation needed */}
@@ -75,7 +76,7 @@ export function GameRoster({
                         <span className="font-medium">{registration.nickname}</span>
                         <span className={roleSide(role.team) === "evil" ? "text-accent" : "text-muted"}>
                           · {roleName(role, locale)}
-                          {believed && <> ({t.believedAs(roleName(believed, locale))})</>}
+                          {believed && kind && <> ({t.linked[kind](roleName(believed, locale))})</>}
                         </span>
                       </li>
                     );

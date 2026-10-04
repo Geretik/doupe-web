@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { adminRoles, arrivalModes, gameLanguages, gameWinners, registrationStates, type ArrivalMode } from "@/db/schema";
 import type { Dict } from "@/i18n/dictionaries";
-import { believedTeamsOf, BLUFF_COUNT, bluffTeams, findRole, SAT_OUT, STORYTELLER } from "./botc-roles";
+import { BLUFF_COUNT, bluffTeams, findRole, linkedRoleOf, SAT_OUT, STORYTELLER } from "./botc-roles";
 import { PASSWORD_MIN_LENGTH } from "./password";
 import { formatTime, TIME_RE } from "./time";
 
@@ -80,12 +80,12 @@ export function parseBluffs(formData: FormData): string[] | null | undefined {
   return bluffs.length > 0 ? bluffs : null;
 }
 
-/** What the game form says about one player: their character (null = sat the game out) and who a Drunk & co. thought they were. */
+/** What the game form says about one player: their character (null = sat the game out) and the one tied to it (Drunk, Pixie…). */
 export type RosterValue = { role: string | null; believedRole: string | null };
 
 /**
  * The "role:<registration id>" selects of the game form, by registration id: a character id or STORYTELLER
- * (with "believed:<registration id>" for a Drunk, Lunatic or Marionette), role null when the player sat the
+ * (with "believed:<registration id>" for a Drunk, Lunatic, Marionette, Pixie, Philosopher or Apprentice), role null when the player sat the
  * game out, undefined when it was left empty. Null when a value is not one of those.
  */
 export function parseRoster(formData: FormData): Map<number, RosterValue | undefined> | null {
@@ -98,7 +98,7 @@ export function parseRoster(formData: FormData): Map<number, RosterValue | undef
     else if (value === SAT_OUT) roster.set(id, { role: null, believedRole: null });
     else if (value === STORYTELLER) roster.set(id, { role: value, believedRole: null });
     else if (findRole(value)) {
-      const teams = believedTeamsOf(value);
+      const teams = linkedRoleOf(value)?.teams;
       const believed = teams ? String(formData.get(`believed:${id}`) ?? "") : "";
       const believedRole = findRole(believed);
       if (believed !== "" && !(believedRole && teams?.includes(believedRole.team))) return null;

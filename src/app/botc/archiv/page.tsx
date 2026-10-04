@@ -75,7 +75,7 @@ export default async function ArchivePage() {
                             </span>
                           )}
                         </div>
-                        <GameRoster players={g.roster} bluffs={g.demonBluffs} locale={locale} t={{ storyteller: t.session.storytellerLabel, sides: t.archive.sides, believedAs: t.archive.believedAs }} />
+                        <GameRoster players={g.roster} bluffs={g.demonBluffs} locale={locale} t={{ storyteller: t.session.storytellerLabel, sides: t.archive.sides, linked: t.archive.linked }} />
                       </li>
                     ))}
                   </ol>

@@ -132,10 +132,10 @@ export default async function AdminSessionPage({
     rosterNobody: t.rosterNobody,
     roleUnknown: t.roleUnknown,
     roleSatOut: t.roleSatOut,
-    believedLabel: t.believedLabel,
+    linkedLabel: t.linkedLabel,
     bluffsTitle: t.bluffsTitle,
     bluffsHint: t.bluffsHint,
-    believedHint: t.believedHint,
+    linkedHint: t.linkedHint,
     roleStoryteller: t.roleStoryteller,
     roleOther: t.roleOther,
     roleTeams: t.roleTeams,
@@ -498,7 +498,7 @@ export default async function AdminSessionPage({
                     {g.players && <span className="text-muted"> · {dict.archive.gamePlayers(g.players)}</span>}
                     {g.notes && <span className="text-muted"> · {g.notes}</span>}
                   </span>
-                  <GameRoster players={g.roster} bluffs={g.demonBluffs} locale={locale} t={{ storyteller: dict.session.storytellerLabel, sides: dict.archive.sides, believedAs: dict.archive.believedAs, satOut: dict.archive.satOut }} />
+                  <GameRoster players={g.roster} bluffs={g.demonBluffs} locale={locale} t={{ storyteller: dict.session.storytellerLabel, sides: dict.archive.sides, linked: dict.archive.linked, satOut: dict.archive.satOut }} />
                 </div>
               </GameItem>
             ))}

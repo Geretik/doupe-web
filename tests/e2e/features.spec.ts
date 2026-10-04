@@ -1457,7 +1457,7 @@ test("who played what: a character or 'sat out' per player of each game, shown w
   const id = await createSession({ title: "Večer s rolemi", capacity: 10, daysAhead: -3 });
   await sql("update sessions set scripts=$1 where id=$2", [JSON.stringify([{ name: "Trouble Brewing", url: "https://botcscripts.com/tb" }]), id]);
   const ids: Record<string, number> = {};
-  for (const nick of ["Anna", "Bára", "Cyril", "Dan"]) {
+  for (const nick of ["Anna", "Bára", "Cyril", "Dan", "Eva", "Filip", "Gita"]) {
     const [r] = await sql<{ id: number }>(
       "insert into registrations (session_id, nickname, email, edit_token) values ($1, $2, $3, $4) returning id",
       [id, nick, `${nick.toLowerCase()}@example.com`, `roles-${nick}-${Date.now()}`],
@@ -1495,6 +1495,21 @@ test("who played what: a character or 'sat out' per player of each game, shown w
   expect(await believed.locator("optgroup").evaluateAll((gs) => gs.map((g) => (g as HTMLOptGroupElement).label))).toEqual(["Měšťané", "Ostatní postavy"]);
   await believed.selectOption("monk");
   await expect(page.locator(`#game${game.id}-believed-${ids["Bára"]}`)).toHaveCount(0);
+  // the Pixie gets the in-play Townsfolk she learned
+  await page.selectOption(`#game${game.id}-role-${ids.Eva}`, "pixie");
+  await expect(page.locator(`label[for=game${game.id}-believed-${ids.Eva}]`)).toHaveText("zná");
+  await page.selectOption(`#game${game.id}-believed-${ids.Eva}`, "chef");
+  // the Philosopher gets whose ability he took – a good character
+  await page.selectOption(`#game${game.id}-role-${ids.Filip}`, "philosopher");
+  await expect(page.locator(`label[for=game${game.id}-believed-${ids.Filip}]`)).toHaveText("schopnost");
+  await expect(page.locator(`#game${game.id}-believed-${ids.Filip} option[value=imp]`)).toHaveCount(0);
+  await page.selectOption(`#game${game.id}-believed-${ids.Filip}`, "monk");
+  // the Apprentice takes a Townsfolk's or a Minion's ability
+  await page.selectOption(`#game${game.id}-role-${ids.Gita}`, "apprentice");
+  expect(await page.locator(`#game${game.id}-believed-${ids.Gita} optgroup`).evaluateAll((gs) => gs.map((g) => (g as HTMLOptGroupElement).label))).toEqual([
+    "Měšťané", "Přisluhovači", "Ostatní postavy",
+  ]);
+  await page.selectOption(`#game${game.id}-believed-${ids.Gita}`, "baron");
   await page.selectOption(`#game${game.id}-role-${ids.Cyril}`, { label: "🎩 Vypravěč" });
   // the Demon's bluffs: good characters only
   await expect(page.locator(`#game${game.id}-bluff1 option[value=imp]`)).toHaveCount(0);
@@ -1511,6 +1526,9 @@ test("who played what: a character or 'sat out' per player of each game, shown w
     { registration_id: ids["Bára"], role: "imp", believed_role: null },
     { registration_id: ids.Cyril, role: "storyteller", believed_role: null },
     { registration_id: ids.Dan, role: "drunk", believed_role: "monk" },
+    { registration_id: ids.Eva, role: "pixie", believed_role: "chef" },
+    { registration_id: ids.Filip, role: "philosopher", believed_role: "monk" },
+    { registration_id: ids.Gita, role: "apprentice", believed_role: "baron" },
   ]);
 
   // the public archive shows who played what, with the icons and their credit
@@ -1520,8 +1538,9 @@ test("who played what: a character or 'sat out' per player of each game, shown w
   await expect(card.getByTestId("edit-pencil")).toHaveAttribute("href", `/admin/termin/${id}#hry`);
   // each game in its own box: the storyteller, then the players by side
   await expect(card).toContainText("Hra 1 · Trouble Brewing😇 vyhrálo dobro🎩Vypravěč: Cyril");
-  await expect(card).toContainText("Dobro 2Anna· PradlenaDan· Opilec (jako Mnich)");
+  await expect(card).toContainText("Dobro 4Anna· PradlenaEva· Víla (zná: Kuchař)Filip· Filozof (schopnost: Mnich)Dan· Opilec (jako Mnich)");
   await expect(card).toContainText("Zlo 1Bára· Čert");
+  await expect(card).toContainText("Pocestní 1Gita· Učedník (schopnost: Baron)");
   await expect(card).toContainText("BluffyKuchařEmpatSvětec");
   await expect(card.locator("img[src='/botc/roles/saint.webp']")).toBeVisible();
   await expect(card.locator("img[src='/botc/roles/imp.webp']")).toBeVisible();
