@@ -176,6 +176,22 @@ export const SAT_OUT = "__out";
 /** Stored instead of a character for a player who ran the game; no character has this id. */
 export const STORYTELLER = "storyteller";
 
+/** Demon bluffs are good characters that are not in play; the Demon usually gets three. */
+export const BLUFF_COUNT = 3;
+export const bluffTeams: readonly RoleTeam[] = ["townsfolk", "outsider"];
+
+/** Characters who are told they are someone else, and the teams that someone can be from. */
+const believedTeams: Partial<Record<string, readonly RoleTeam[]>> = {
+  drunk: ["townsfolk"],
+  lunatic: ["demon"],
+  marionette: ["townsfolk", "outsider"],
+};
+
+/** The teams the character's "thinks they are" can be from, or undefined when the character has none. */
+export function believedTeamsOf(roleId: string | null | undefined) {
+  return roleId ? believedTeams[roleId] : undefined;
+}
+
 const byId = new Map(botcRoles.map((r) => [r.id, r]));
 
 export function findRole(id: string | null | undefined) {

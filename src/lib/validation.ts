@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { adminRoles, arrivalModes, gameLanguages, gameWinners, registrationStates, type ArrivalMode } from "@/db/schema";
 import type { Dict } from "@/i18n/dictionaries";
-import { findRole, SAT_OUT, STORYTELLER } from "./botc-roles";
+import { believedTeamsOf, BLUFF_COUNT, bluffTeams, findRole, SAT_OUT, STORYTELLER } from "./botc-roles";
 import { PASSWORD_MIN_LENGTH } from "./password";
 import { formatTime, TIME_RE } from "./time";
 
@@ -65,19 +65,45 @@ export function quickRegistrationSchema(t: Dict["errors"]) {
 }
 
 /**
- * The "role:<registration id>" selects of the game form, by registration id: a character id or STORYTELLER,
- * null when the player sat the game out, undefined when it was left empty. Null when a value is not one of those.
+ * The game form's "bluff1"…"bluff3" selects: good character ids without repeats, null when none was picked.
+ * Undefined when a value is not a good character.
  */
-export function parseRoster(formData: FormData): Map<number, string | null | undefined> | null {
-  const roster = new Map<number, string | null | undefined>();
+export function parseBluffs(formData: FormData): string[] | null | undefined {
+  const bluffs: string[] = [];
+  for (let i = 1; i <= BLUFF_COUNT; i++) {
+    const value = String(formData.get(`bluff${i}`) ?? "");
+    if (value === "") continue;
+    const role = findRole(value);
+    if (!role || !bluffTeams.includes(role.team)) return undefined;
+    if (!bluffs.includes(role.id)) bluffs.push(role.id);
+  }
+  return bluffs.length > 0 ? bluffs : null;
+}
+
+/** What the game form says about one player: their character (null = sat the game out) and who a Drunk & co. thought they were. */
+export type RosterValue = { role: string | null; believedRole: string | null };
+
+/**
+ * The "role:<registration id>" selects of the game form, by registration id: a character id or STORYTELLER
+ * (with "believed:<registration id>" for a Drunk, Lunatic or Marionette), role null when the player sat the
+ * game out, undefined when it was left empty. Null when a value is not one of those.
+ */
+export function parseRoster(formData: FormData): Map<number, RosterValue | undefined> | null {
+  const roster = new Map<number, RosterValue | undefined>();
   for (const [key, value] of formData.entries()) {
     if (!key.startsWith("role:")) continue;
     const id = parseId(key.slice("role:".length));
     if (id === null || typeof value !== "string") return null;
     if (value === "") roster.set(id, undefined);
-    else if (value === SAT_OUT) roster.set(id, null);
-    else if (value === STORYTELLER || findRole(value)) roster.set(id, value);
-    else return null;
+    else if (value === SAT_OUT) roster.set(id, { role: null, believedRole: null });
+    else if (value === STORYTELLER) roster.set(id, { role: value, believedRole: null });
+    else if (findRole(value)) {
+      const teams = believedTeamsOf(value);
+      const believed = teams ? String(formData.get(`believed:${id}`) ?? "") : "";
+      const believedRole = findRole(believed);
+      if (believed !== "" && !(believedRole && teams?.includes(believedRole.team))) return null;
+      roster.set(id, { role: value, believedRole: believedRole?.id ?? null });
+    } else return null;
   }
   return roster;
 }

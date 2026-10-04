@@ -123,7 +123,7 @@ export async function listPublicPlayers(
 /** Each game with who played what: registration id, nickname and character (null = sat the game out). */
 const withPlayers = {
   roster: {
-    columns: { registrationId: true, role: true },
+    columns: { registrationId: true, role: true, believedRole: true },
     with: { registration: { columns: { nickname: true } } },
   },
 } as const;

@@ -1490,16 +1490,27 @@ test("who played what: a character or 'sat out' per player of each game, shown w
   await page.locator("li", { hasText: "1.Trouble Brewing" }).getByRole("button", { name: "Upravit" }).click();
   await expect(page.locator(`#game${game.id}-role-${ids["Bára"]}`)).toHaveValue("imp");
   await page.selectOption(`#game${game.id}-role-${ids.Dan}`, "drunk");
+  // the Drunk also gets who they thought they were – a Townsfolk, the script's first
+  const believed = page.locator(`#game${game.id}-believed-${ids.Dan}`);
+  expect(await believed.locator("optgroup").evaluateAll((gs) => gs.map((g) => (g as HTMLOptGroupElement).label))).toEqual(["Měšťané", "Ostatní postavy"]);
+  await believed.selectOption("monk");
+  await expect(page.locator(`#game${game.id}-believed-${ids["Bára"]}`)).toHaveCount(0);
   await page.selectOption(`#game${game.id}-role-${ids.Cyril}`, { label: "🎩 Vypravěč" });
+  // the Demon's bluffs: good characters only
+  await expect(page.locator(`#game${game.id}-bluff1 option[value=imp]`)).toHaveCount(0);
+  await page.selectOption(`#game${game.id}-bluff1`, "chef");
+  await page.selectOption(`#game${game.id}-bluff2`, "empath");
+  await page.selectOption(`#game${game.id}-bluff3`, "saint");
   await page.locator(`form:has(#game${game.id}-players)`).getByRole("button", { name: "Uložit", exact: true }).click();
-  await expect(page.locator("main")).toContainText("Dan· Opilec");
+  await expect(page.locator("main")).toContainText("Dan· Opilec (jako Mnich)");
   await expect(page.locator("main")).toContainText("🎩Vypravěč: Cyril");
   await expect(page.locator("main")).not.toContainText("Nehráli");
-  expect(await sql("select registration_id, role from game_players where game_id=$1 order by registration_id", [game.id])).toEqual([
-    { registration_id: ids.Anna, role: "washerwoman" },
-    { registration_id: ids["Bára"], role: "imp" },
-    { registration_id: ids.Cyril, role: "storyteller" },
-    { registration_id: ids.Dan, role: "drunk" },
+  expect(await sql("select demon_bluffs from games where id=$1", [game.id])).toEqual([{ demon_bluffs: ["chef", "empath", "saint"] }]);
+  expect(await sql("select registration_id, role, believed_role from game_players where game_id=$1 order by registration_id", [game.id])).toEqual([
+    { registration_id: ids.Anna, role: "washerwoman", believed_role: null },
+    { registration_id: ids["Bára"], role: "imp", believed_role: null },
+    { registration_id: ids.Cyril, role: "storyteller", believed_role: null },
+    { registration_id: ids.Dan, role: "drunk", believed_role: "monk" },
   ]);
 
   // the public archive shows who played what, with the icons and their credit
@@ -1509,8 +1520,10 @@ test("who played what: a character or 'sat out' per player of each game, shown w
   await expect(card.getByTestId("edit-pencil")).toHaveAttribute("href", `/admin/termin/${id}#hry`);
   // each game in its own box: the storyteller, then the players by side
   await expect(card).toContainText("Hra 1 · Trouble Brewing😇 vyhrálo dobro🎩Vypravěč: Cyril");
-  await expect(card).toContainText("Dobro 2Anna· PradlenaDan· Opilec");
+  await expect(card).toContainText("Dobro 2Anna· PradlenaDan· Opilec (jako Mnich)");
   await expect(card).toContainText("Zlo 1Bára· Čert");
+  await expect(card).toContainText("BluffyKuchařEmpatSvětec");
+  await expect(card.locator("img[src='/botc/roles/saint.webp']")).toBeVisible();
   await expect(card.locator("img[src='/botc/roles/imp.webp']")).toBeVisible();
   await expect(page.locator("main")).toContainText("The Pandemonium Institute");
   await card.getByTestId("edit-pencil").click();

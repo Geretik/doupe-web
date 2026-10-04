@@ -5,6 +5,9 @@ import { addGameAction, updateGameAction } from "@/app/actions/admin";
 import type { Game, ScriptLink } from "@/db/schema";
 import type { Locale } from "@/i18n/dictionaries";
 import {
+  believedTeamsOf,
+  BLUFF_COUNT,
+  bluffTeams,
   botcRoles,
   editionOfScript,
   findRole,
@@ -40,6 +43,10 @@ export type GameFormLabels = {
   rosterNobody: string;
   roleUnknown: string;
   roleSatOut: string;
+  believedLabel: string;
+  believedHint: string;
+  bluffsTitle: string;
+  bluffsHint: string;
   roleStoryteller: string;
   roleOther: string;
   roleTeams: Record<RoleTeam, string>;
@@ -49,9 +56,11 @@ export type GameFormLabels = {
 export type RosterPlayer = { id: number; nickname: string };
 
 /** The game's own fields and who played what in it (role null = sat it out). */
-type EditedGame = Pick<Game, "id" | "scriptName" | "scriptUrl" | "winner" | "players" | "notes"> & {
-  roster: { registrationId: number; role: string | null }[];
+type EditedGame = Pick<Game, "id" | "scriptName" | "scriptUrl" | "winner" | "players" | "notes" | "demonBluffs"> & {
+  roster: RosterEntered[];
 };
+
+type RosterEntered = { registrationId: number; role: string | null; believedRole: string | null };
 
 /**
  * Records one played game, or edits `game` when given; the script can be picked from the session's list or typed.
@@ -136,6 +145,7 @@ export function GameForm({
         key={added}
         roster={roster}
         entered={game?.roster ?? []}
+        bluffs={game?.demonBluffs ?? []}
         edition={editionOfScript(pick === "__custom" ? "" : pick)}
         locale={locale}
         id={id}
@@ -169,22 +179,28 @@ function roleGroups(edition: RoleEdition | null, locale: Locale, t: GameFormLabe
 function RosterFields({
   roster,
   entered,
+  bluffs,
   edition,
   locale,
   id,
   t,
 }: {
   roster: RosterPlayer[];
-  entered: { registrationId: number; role: string | null }[];
+  entered: RosterEntered[];
+  bluffs: string[];
   edition: RoleEdition | null;
   locale: Locale;
   id: (name: string) => string;
   t: GameFormLabels;
 }) {
   const groups = useMemo(() => roleGroups(edition, locale, t), [edition, locale, t]);
-  const initial = new Map(entered.map((e) => [e.registrationId, e.role ?? SAT_OUT]));
+  const goodGroups = useMemo(
+    () => groups.map((g) => ({ ...g, roles: g.roles.filter((r) => bluffTeams.includes(r.team)) })).filter((g) => g.roles.length > 0),
+    [groups],
+  );
+  const initial = new Map(entered.map((e) => [e.registrationId, e]));
   return (
-    <details open={entered.length > 0} className="rounded-md border border-border px-3 py-2 text-sm">
+    <details open={entered.length > 0 || bluffs.length > 0} className="rounded-md border border-border px-3 py-2 text-sm">
       <summary className="cursor-pointer font-medium">{t.rosterTitle}</summary>
       <p className="mt-1 mb-3 text-xs text-muted">{t.rosterHint}</p>
       {roster.length === 0 ? (
@@ -192,18 +208,36 @@ function RosterFields({
       ) : (
         <div className="grid gap-2 sm:grid-cols-2">
           {roster.map((p) => (
-            <RoleSelect key={p.id} id={id(`role-${p.id}`)} name={`role:${p.id}`} nickname={p.nickname} defaultValue={initial.get(p.id) ?? ""} groups={groups} locale={locale} t={t} />
+            <RoleSelect
+              key={p.id}
+              registrationId={p.id}
+              nickname={p.nickname}
+              entered={initial.get(p.id)}
+              groups={groups}
+              locale={locale}
+              id={id}
+              t={t}
+            />
           ))}
         </div>
       )}
+      <div className="mt-3 border-t border-border pt-3 pb-1">
+        <p className="font-medium">{t.bluffsTitle}</p>
+        <p className="mb-2 text-xs text-muted">{t.bluffsHint}</p>
+        <div className="grid gap-2 sm:grid-cols-3">
+          {Array.from({ length: BLUFF_COUNT }, (_, i) => (
+            <BluffSelect key={i} id={id(`bluff${i + 1}`)} name={`bluff${i + 1}`} defaultValue={bluffs[i] ?? ""} groups={goodGroups} locale={locale} t={t} />
+          ))}
+        </div>
+      </div>
     </details>
   );
 }
 
-function RoleSelect({
+/** One of the Demon's bluffs: a good character, with its icon. */
+function BluffSelect({
   id,
   name,
-  nickname,
   defaultValue,
   groups,
   locale,
@@ -211,7 +245,6 @@ function RoleSelect({
 }: {
   id: string;
   name: string;
-  nickname: string;
   defaultValue: string;
   groups: { label: string; roles: BotcRole[] }[];
   locale: Locale;
@@ -223,13 +256,10 @@ function RoleSelect({
     <div className="flex items-center gap-2">
       <span className="flex h-7 w-7 shrink-0 items-center justify-center" aria-hidden>
         {/* eslint-disable-next-line @next/next/no-img-element -- tiny pre-sized WebP from public/, no optimisation needed */}
-        {role ? <img src={roleIcon(role.id)} alt="" width={28} height={28} /> : value === STORYTELLER ? "🎩" : value === SAT_OUT ? "💤" : null}
+        {role && <img src={roleIcon(role.id)} alt="" width={28} height={28} />}
       </span>
-      <label htmlFor={id} className="w-24 shrink-0 truncate" title={nickname}>{nickname}</label>
-      <select id={id} name={name} value={value} onChange={(e) => setValue(e.target.value)} className={`${inputClass} min-w-0 flex-1`}>
+      <select id={id} name={name} value={value} onChange={(e) => setValue(e.target.value)} aria-label={t.bluffsTitle} className={`${inputClass} min-w-0 flex-1`}>
         <option value="">{t.roleUnknown}</option>
-        <option value={STORYTELLER}>{t.roleStoryteller}</option>
-        <option value={SAT_OUT}>{t.roleSatOut}</option>
         {groups.map((g) => (
           <optgroup key={g.label} label={g.label}>
             {g.roles.map((r) => (
@@ -238,6 +268,85 @@ function RoleSelect({
           </optgroup>
         ))}
       </select>
+    </div>
+  );
+}
+
+/** A player's character; a Drunk, Lunatic or Marionette also gets a select for who they thought they were. */
+function RoleSelect({
+  registrationId,
+  nickname,
+  entered,
+  groups,
+  locale,
+  id,
+  t,
+}: {
+  registrationId: number;
+  nickname: string;
+  entered: RosterEntered | undefined;
+  groups: { label: string; roles: BotcRole[] }[];
+  locale: Locale;
+  id: (name: string) => string;
+  t: GameFormLabels;
+}) {
+  const [value, setValue] = useState(entered ? (entered.role ?? SAT_OUT) : "");
+  const [believed, setBelieved] = useState(entered?.believedRole ?? "");
+  const role = findRole(value);
+  const believedRole = findRole(believed);
+  const teams = believedTeamsOf(value);
+  const roleId = id(`role-${registrationId}`);
+  const believedId = id(`believed-${registrationId}`);
+  return (
+    <div className="flex items-start gap-2">
+      <span className="flex h-[38px] w-7 shrink-0 items-center justify-center" aria-hidden>
+        {/* eslint-disable-next-line @next/next/no-img-element -- tiny pre-sized WebP from public/, no optimisation needed */}
+        {role ? <img src={roleIcon(role.id)} alt="" width={28} height={28} /> : value === STORYTELLER ? "🎩" : value === SAT_OUT ? "💤" : null}
+      </span>
+      <label htmlFor={roleId} className="w-24 shrink-0 truncate leading-[38px]" title={nickname}>{nickname}</label>
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <select id={roleId} name={`role:${registrationId}`} value={value} onChange={(e) => setValue(e.target.value)} className={`${inputClass} min-w-0`}>
+          <option value="">{t.roleUnknown}</option>
+          <option value={STORYTELLER}>{t.roleStoryteller}</option>
+          <option value={SAT_OUT}>{t.roleSatOut}</option>
+          {groups.map((g) => (
+            <optgroup key={g.label} label={g.label}>
+              {g.roles.map((r) => (
+                <option key={r.id} value={r.id}>{roleName(r, locale)}</option>
+              ))}
+            </optgroup>
+          ))}
+        </select>
+        {teams && (
+          <div className="flex items-center gap-2">
+            <label htmlFor={believedId} className="shrink-0 text-xs text-muted" title={t.believedHint}>{t.believedLabel}</label>
+            <span className="flex h-6 w-6 shrink-0 items-center justify-center" aria-hidden>
+              {/* eslint-disable-next-line @next/next/no-img-element -- tiny pre-sized WebP from public/, no optimisation needed */}
+              {believedRole && <img src={roleIcon(believedRole.id)} alt="" width={24} height={24} />}
+            </span>
+            <select
+              id={believedId}
+              name={`believed:${registrationId}`}
+              value={believed}
+              onChange={(e) => setBelieved(e.target.value)}
+              title={t.believedHint}
+              className={`${inputClass} min-w-0 flex-1 py-1 text-sm`}
+            >
+              <option value="">{t.roleUnknown}</option>
+              {groups.map((g) => {
+                const roles = g.roles.filter((r) => teams.includes(r.team));
+                return roles.length === 0 ? null : (
+                  <optgroup key={g.label} label={g.label}>
+                    {roles.map((r) => (
+                      <option key={r.id} value={r.id}>{roleName(r, locale)}</option>
+                    ))}
+                  </optgroup>
+                );
+              })}
+            </select>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

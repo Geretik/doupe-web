@@ -37,8 +37,10 @@ import {
   newPasswordSchema,
   repeatSchema,
   parsePlaylist,
+  parseBluffs,
   parseRoster,
   parseScripts,
+  type RosterValue,
   quickRegistrationSchema,
   sessionSchema,
   type FormState,
@@ -780,7 +782,7 @@ export async function sendTablesEmailAction(sessionId: number): Promise<SimpleRe
  * Stores who played what in a game. Only the players in the form are touched, and only players of the
  * game's session count; an empty select removes what was entered for that player.
  */
-async function saveRoster(tx: Tx, gameId: number, sessionId: number, roster: Map<number, string | null | undefined>) {
+async function saveRoster(tx: Tx, gameId: number, sessionId: number, roster: Map<number, RosterValue | undefined>) {
   const ids = [...roster.keys()];
   if (ids.length === 0) return;
   const ofSession = await tx
@@ -789,8 +791,8 @@ async function saveRoster(tx: Tx, gameId: number, sessionId: number, roster: Map
     .where(and(eq(registrations.sessionId, sessionId), inArray(registrations.id, ids)));
   await tx.delete(gamePlayers).where(and(eq(gamePlayers.gameId, gameId), inArray(gamePlayers.registrationId, ids)));
   const rows = ofSession.flatMap(({ id }) => {
-    const role = roster.get(id);
-    return role === undefined ? [] : [{ gameId, registrationId: id, role }];
+    const value = roster.get(id);
+    return value === undefined ? [] : [{ gameId, registrationId: id, ...value }];
   });
   if (rows.length > 0) await tx.insert(gamePlayers).values(rows);
 }
@@ -800,11 +802,12 @@ export async function addGameAction(sessionId: number, _prev: FormState, formDat
   const { t } = await getDict();
   const parsed = gameSchema(t.admin.errors).safeParse(Object.fromEntries(formData.entries()));
   const roster = parseRoster(formData);
-  if (!parsed.success || !roster) {
+  const demonBluffs = parseBluffs(formData);
+  if (!parsed.success || !roster || demonBluffs === undefined) {
     return { error: t.admin.errors.checkForm, fieldErrors: parsed.success ? undefined : fieldErrorsOf(parsed.error) };
   }
   await db.transaction(async (tx) => {
-    const [game] = await tx.insert(games).values({ sessionId, ...parsed.data }).returning({ id: games.id });
+    const [game] = await tx.insert(games).values({ sessionId, ...parsed.data, demonBluffs }).returning({ id: games.id });
     await saveRoster(tx, game.id, sessionId, roster);
   });
   revalidatePath(`/admin/termin/${sessionId}`);
@@ -817,11 +820,16 @@ export async function updateGameAction(gameId: number, _prev: FormState, formDat
   const { t } = await getDict();
   const parsed = gameSchema(t.admin.errors).safeParse(Object.fromEntries(formData.entries()));
   const roster = parseRoster(formData);
-  if (!parsed.success || !roster) {
+  const demonBluffs = parseBluffs(formData);
+  if (!parsed.success || !roster || demonBluffs === undefined) {
     return { error: t.admin.errors.checkForm, fieldErrors: parsed.success ? undefined : fieldErrorsOf(parsed.error) };
   }
   const row = await db.transaction(async (tx) => {
-    const [game] = await tx.update(games).set(parsed.data).where(eq(games.id, gameId)).returning({ sessionId: games.sessionId });
+    const [game] = await tx
+      .update(games)
+      .set({ ...parsed.data, demonBluffs })
+      .where(eq(games.id, gameId))
+      .returning({ sessionId: games.sessionId });
     if (game) await saveRoster(tx, gameId, game.sessionId, roster);
     return game;
   });

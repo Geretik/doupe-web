@@ -20,7 +20,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function ArchivePage() {
   const [sessions, admin, { locale, t }] = await Promise.all([listPastSessions(), isAdmin(), getDict()]);
   const played = await gamesBySession(sessions.map((s) => s.id));
-  const anyIcon = [...played.values()].some((list) => list.some((g) => g.roster.some((p) => findRole(p.role))));
+  const anyIcon = [...played.values()].some((list) => list.some((g) => g.demonBluffs?.length || g.roster.some((p) => findRole(p.role))));
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -75,7 +75,7 @@ export default async function ArchivePage() {
                             </span>
                           )}
                         </div>
-                        <GameRoster players={g.roster} locale={locale} t={{ storyteller: t.session.storytellerLabel, sides: t.archive.sides }} />
+                        <GameRoster players={g.roster} bluffs={g.demonBluffs} locale={locale} t={{ storyteller: t.session.storytellerLabel, sides: t.archive.sides, believedAs: t.archive.believedAs }} />
                       </li>
                     ))}
                   </ol>

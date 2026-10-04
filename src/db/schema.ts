@@ -164,6 +164,8 @@ export const games = pgTable("games", {
   /** Number of players at the table (optional) */
   players: integer("players"),
   notes: text("notes"),
+  /** Not-in-play good characters the Demon was shown (character ids, up to 3); null = not entered */
+  demonBluffs: jsonb("demon_bluffs").$type<string[]>(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -182,6 +184,8 @@ export const gamePlayers = pgTable(
       .references(() => registrations.id, { onDelete: "cascade" }),
     /** Character id from src/lib/botc-roles.ts ("washerwoman") or "storyteller"; null = did not play this game */
     role: text("role"),
+    /** The character a Drunk, Lunatic or Marionette was told they were (null = not entered) */
+    believedRole: text("believed_role"),
   },
   (t) => [uniqueIndex("game_players_game_registration_idx").on(t.gameId, t.registrationId)],
 );

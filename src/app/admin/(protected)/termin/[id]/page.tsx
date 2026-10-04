@@ -132,6 +132,10 @@ export default async function AdminSessionPage({
     rosterNobody: t.rosterNobody,
     roleUnknown: t.roleUnknown,
     roleSatOut: t.roleSatOut,
+    believedLabel: t.believedLabel,
+    bluffsTitle: t.bluffsTitle,
+    bluffsHint: t.bluffsHint,
+    believedHint: t.believedHint,
     roleStoryteller: t.roleStoryteller,
     roleOther: t.roleOther,
     roleTeams: t.roleTeams,
@@ -476,7 +480,8 @@ export default async function AdminSessionPage({
                   winner: g.winner,
                   players: g.players,
                   notes: g.notes,
-                  roster: g.roster.map((p) => ({ registrationId: p.registrationId, role: p.role })),
+                  demonBluffs: g.demonBluffs,
+                  roster: g.roster.map((p) => ({ registrationId: p.registrationId, role: p.role, believedRole: p.believedRole })),
                 }}
                 t={{ ...gameLabels, gameEdit: t.gameEdit }}
                 deleteButton={
@@ -493,7 +498,7 @@ export default async function AdminSessionPage({
                     {g.players && <span className="text-muted"> · {dict.archive.gamePlayers(g.players)}</span>}
                     {g.notes && <span className="text-muted"> · {g.notes}</span>}
                   </span>
-                  <GameRoster players={g.roster} locale={locale} t={{ storyteller: dict.session.storytellerLabel, sides: dict.archive.sides, satOut: dict.archive.satOut }} />
+                  <GameRoster players={g.roster} bluffs={g.demonBluffs} locale={locale} t={{ storyteller: dict.session.storytellerLabel, sides: dict.archive.sides, believedAs: dict.archive.believedAs, satOut: dict.archive.satOut }} />
                 </div>
               </GameItem>
             ))}
