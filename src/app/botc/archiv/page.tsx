@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { EditPencil } from "@/components/edit-pencil";
 import { GameRoster } from "@/components/game-roster";
 import { findRole } from "@/lib/botc-roles";
 import { ScriptLinks } from "@/components/script-links";
 import { Card } from "@/components/ui";
 import { getDict } from "@/i18n/server";
+import { isAdmin } from "@/lib/admin-auth";
 import { gamesBySession, listPastSessions } from "@/lib/queries";
 import { formatDate } from "@/lib/time";
 
@@ -16,7 +18,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function ArchivePage() {
-  const [sessions, { locale, t }] = await Promise.all([listPastSessions(), getDict()]);
+  const [sessions, admin, { locale, t }] = await Promise.all([listPastSessions(), isAdmin(), getDict()]);
   const played = await gamesBySession(sessions.map((s) => s.id));
   const anyIcon = [...played.values()].some((list) => list.some((g) => g.roster.some((p) => findRole(p.role))));
   return (
@@ -33,7 +35,10 @@ export default async function ArchivePage() {
             <li key={s.id}>
               <Card className="flex flex-col gap-1">
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <h2 className="text-lg font-semibold">{s.title}</h2>
+                  <h2 className="flex flex-wrap items-center gap-2 text-lg font-semibold">
+                    {s.title}
+                    {admin && <EditPencil sessionId={s.id} section="hry" title={t.archive.editPencil} />}
+                  </h2>
                   <span className="text-sm text-muted">{t.archive.players(s.confirmedCount)}</span>
                 </div>
                 <p className="text-sm">

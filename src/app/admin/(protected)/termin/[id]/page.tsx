@@ -456,7 +456,7 @@ export default async function AdminSessionPage({
         </Card>
       )}
 
-      <Card>
+      <Card id="hry" className="scroll-mt-4">
         <h2 className="mb-1 text-lg font-semibold">🎲 {t.gamesTitle}</h2>
         <p className="mb-4 text-sm text-muted">{t.gamesHint}</p>
         {playedGames.length === 0 && <p className="mb-4 text-sm text-muted">{t.gamesNone}</p>}

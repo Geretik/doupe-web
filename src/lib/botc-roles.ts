@@ -3,8 +3,8 @@ import type { Locale } from "@/i18n/dictionaries";
 /**
  * Characters a player can have in a game – no Fabled or Loric, those belong to the Storyteller.
  * Ids as in the official script tool; Czech names from the club's script tool (boardgames, roles.cs.overrides.ts).
- * Icons: public/botc/roles/<id>.webp, the playtest character art collected in github.com/tomozbot/botc-icons
- * (© The Pandemonium Institute), cropped and shrunk to 64 px.
+ * Icons: public/botc/roles/<id>.webp, the official character icons from wiki.bloodontheclocktower.com that the
+ * club's script tool shows too (© The Pandemonium Institute), cropped and shrunk to 64 px.
  */
 export const roleTeams = ["townsfolk", "outsider", "minion", "demon", "traveller"] as const;
 export type RoleTeam = (typeof roleTeams)[number];

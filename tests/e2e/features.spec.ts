@@ -1505,11 +1505,21 @@ test("who played what: a character or 'sat out' per player of each game, shown w
   // the public archive shows who played what, with the icons and their credit
   await page.goto("/botc/archiv");
   const card = page.locator("li", { hasText: "Večer s rolemi" });
+  // the signed-in organiser gets a pencil straight to the session's games
+  await expect(card.getByTestId("edit-pencil")).toHaveAttribute("href", `/admin/termin/${id}#hry`);
   await expect(card).toContainText("Anna· Pradlena");
   await expect(card).toContainText("Bára· Čert");
   await expect(card).toContainText("🎩Cyril· Vypravěč");
   await expect(card.locator("img[src='/botc/roles/imp.webp']")).toBeVisible();
   await expect(page.locator("main")).toContainText("The Pandemonium Institute");
+  await card.getByTestId("edit-pencil").click();
+  await page.waitForURL(`**/admin/termin/${id}#hry`);
+  await expect(page.locator("#hry")).toBeInViewport();
+  // players see no pencil
+  await page.context().clearCookies();
+  await page.goto("/botc/archiv");
+  await expect(page.locator("li", { hasText: "Večer s rolemi" })).toContainText("Anna· Pradlena");
+  await expect(page.getByTestId("edit-pencil")).toHaveCount(0);
   const icon = await request.get("/botc/roles/imp.webp");
   expect(icon.status()).toBe(200);
   expect(icon.headers()["content-type"]).toBe("image/webp");

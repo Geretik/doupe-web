@@ -1,18 +1,20 @@
 import Link from "next/link";
 
-/** Small pencil link to the admin edit page, rendered only for logged-in admins. */
+/** Small pencil link to the admin edit page, rendered only for logged-in admins; `section` jumps to a part of it. */
 export function EditPencil({
   sessionId,
   title,
+  section,
   className = "",
 }: {
   sessionId: number;
   title: string;
+  section?: "hry";
   className?: string;
 }) {
   return (
     <Link
-      href={`/admin/termin/${sessionId}`}
+      href={`/admin/termin/${sessionId}${section ? `#${section}` : ""}`}
       title={title}
       aria-label={title}
       data-testid="edit-pencil"

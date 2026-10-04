@@ -202,7 +202,8 @@ export const cs = {
     winner: { good: "vyhrálo dobro", evil: "vyhrálo zlo" },
     gamePlayers: (n: number) => `${n} ${cz(n, "hráč", "hráči", "hráčů")}`,
     satOut: "Nehráli",
-    iconsCredit: "Ikony postav: playtest art © The Pandemonium Institute, ze sbírky tomozbot/botc-icons.",
+    editPencil: "Upravit odehrané hry (admin)",
+    iconsCredit: "Ikony postav © The Pandemonium Institute, z oficiální wiki Blood on the Clocktower.",
   },
   myGames: {
     nav: "Moje hry",
@@ -873,7 +874,8 @@ export const en: Dict = {
     winner: { good: "good won", evil: "evil won" },
     gamePlayers: (n) => `${n} ${n === 1 ? "player" : "players"}`,
     satOut: "Sat out",
-    iconsCredit: "Character icons: playtest art © The Pandemonium Institute, from the tomozbot/botc-icons collection.",
+    editPencil: "Edit games played (admin)",
+    iconsCredit: "Character icons © The Pandemonium Institute, from the official Blood on the Clocktower wiki.",
   },
   myGames: {
     nav: "My games",
