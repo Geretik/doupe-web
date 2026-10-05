@@ -32,7 +32,7 @@ import { SessionForm } from "@/components/admin/session-form";
 import { SubmitButton } from "@/components/admin/submit-button";
 import { Alert, Card } from "@/components/ui";
 import type { Registration } from "@/db/schema";
-import type { Dict } from "@/i18n/dictionaries";
+import type { Dict, Locale } from "@/i18n/dictionaries";
 import { getDict } from "@/i18n/server";
 import { requireAdmin } from "@/lib/admin-auth";
 import { discordConfigured } from "@/lib/discord";
@@ -43,7 +43,8 @@ import { countPendingReminders } from "@/lib/reminders";
 import { listTables, tableIssues, TABLE_MAX } from "@/lib/tables";
 import { dateToPragueLocal, formatDate, formatShortDate, formatTime } from "@/lib/time";
 import { effectiveRegistrationState, scheduledOpening } from "@/lib/registration-state";
-import { hasEmail, isErased, RETENTION_DAYS, shownEmail } from "@/lib/retention";
+import { hasEmail, isErased, playerPseudonym, RETENTION_DAYS, shownEmail } from "@/lib/retention";
+import { storytellerStats, type StorytellerStats } from "@/lib/stats";
 import { editUrl } from "@/lib/site";
 import { parseId } from "@/lib/validation";
 
@@ -57,6 +58,16 @@ function Flags({ r, t }: { r: Registration; t: Dict["admin"]["session"] }) {
       )}
       {r.note && <span title={`${t.playerNote}: ${r.note}`} aria-label={t.playerNote}> 📝</span>}
     </>
+  );
+}
+
+/** How often the player ran a game before, so storytelling can be shared fairly; for those who did or are willing to. */
+function Storytold({ stats, willing, locale, t }: { stats?: StorytellerStats; willing: boolean; locale: Locale; t: Dict["admin"]["session"] }) {
+  if (!stats && !willing) return null;
+  return (
+    <span className="block text-xs text-muted">
+      {stats ? t.storytold(stats.nights, formatShortDate(stats.lastAt, locale)) : t.neverStorytold}
+    </span>
   );
 }
 
@@ -81,7 +92,7 @@ export default async function AdminSessionPage({
   await requireAdmin();
   const numId = parseId((await params).id);
   if (!numId) notFound();
-  const [{ locale, t: dict }, session, regs, pendingReminders, playedGames, sessionTables, suggestions] = await Promise.all([
+  const [{ locale, t: dict }, session, regs, pendingReminders, playedGames, sessionTables, suggestions, storytellers] = await Promise.all([
     getDict(),
     getSessionWithCount(numId),
     listRegistrationsForSession(numId),
@@ -89,6 +100,7 @@ export default async function AdminSessionPage({
     listGamesForSession(numId),
     listTables(numId),
     getFormSuggestions(),
+    storytellerStats(),
   ]);
   if (!session) notFound();
   const t = dict.admin.session;
@@ -103,7 +115,7 @@ export default async function AdminSessionPage({
   const opensAt = scheduledOpening(session);
   /** the daily cron has deleted the players' names, e-mails and phones */
   const dataDeleted = session.endsAt < new Date(new Date().getTime() - RETENTION_DAYS * 864e5);
-  const storytellers = confirmed.filter((r) => r.canStorytell).length;
+  const willingStorytellers = confirmed.filter((r) => r.canStorytell).length;
   const newbies = confirmed.filter((r) => r.isNewbie).length;
   const attended = confirmed.filter((r) => r.attended === true).length;
   const noShow = confirmed.filter((r) => r.attended === false).length;
@@ -148,6 +160,8 @@ export default async function AdminSessionPage({
     }
   }
   const roster = [...rosterPlayers.values()].sort((a, b) => a.nickname.localeCompare(b.nickname, locale));
+  const storytold = new Map(storytellers.map((st) => [st.key, st]));
+  const storytoldBy = (r: Registration) => (isErased(r.email) ? undefined : storytold.get(playerPseudonym(r.email)));
 
   return (
     <div className="flex flex-col gap-8">
@@ -227,7 +241,7 @@ export default async function AdminSessionPage({
       <section className="flex flex-col gap-3">
         <h2 className="text-lg font-semibold">{t.registered(confirmed.length, session.capacity)}</h2>
         <p className="text-sm text-muted">
-          {t.summary(storytellers, newbies)}
+          {t.summary(willingStorytellers, newbies)}
           {(attended > 0 || noShow > 0) && t.attendanceSummary(attended, noShow)}
         </p>
         {unconfirmed > 0 && <Alert kind="error">{t.noConfirmationCount(unconfirmed)}</Alert>}
@@ -278,7 +292,10 @@ export default async function AdminSessionPage({
                 {confirmed.map((r) => (
                   <tr key={r.id} className="border-b border-border last:border-0">
                     <td className="p-3 whitespace-nowrap">{fullName(r) ?? <span className="text-muted">–</span>}</td>
-                    <td className="p-3 whitespace-nowrap">{r.nickname}<Flags r={r} t={t} /></td>
+                    <td className="p-3 whitespace-nowrap">
+                      {r.nickname}<Flags r={r} t={t} />
+                      <Storytold stats={storytoldBy(r)} willing={r.canStorytell} locale={locale} t={t} />
+                    </td>
                     <td className="p-3 whitespace-nowrap">{shownEmail(r.email) ? <a href={`mailto:${r.email}`} className="hover:underline">{r.email}</a> : <span className="text-muted">–</span>}</td>
                     <td className="p-3 whitespace-nowrap">{r.phone ? <a href={`tel:${r.phone}`} className="hover:underline">{r.phone}</a> : <span className="text-muted">–</span>}</td>
                     {session.arrivalMode === "late" ? (

@@ -1,6 +1,7 @@
 import { and, desc, eq, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { games, registrations, sessions } from "@/db/schema";
+import { gamePlayers, games, registrations, sessions } from "@/db/schema";
+import { STORYTELLER } from "./botc-roles";
 import { isErased, playerPseudonym, shownEmail } from "./retention";
 
 export type PastSessionStats = {
@@ -86,6 +87,68 @@ export async function regulars(limit = 20): Promise<Regular[]> {
   return [...byPlayer.values()]
     .sort((a, b) => b.sessions - a.sessions || b.lastAt.getTime() - a.lastAt.getTime())
     .slice(0, limit);
+}
+
+export type StorytellerStats = {
+  /** The player's e-mail pseudonym, as in regulars() */
+  key: string;
+  nickname: string;
+  nights: number;
+  games: number;
+  lastAt: Date;
+  /** Games they ran that good or evil won */
+  good: number;
+  evil: number;
+  /** Most run first */
+  scripts: { name: string; count: number }[];
+};
+
+/**
+ * Who ran the recorded games (🎩 in a game's roster), grouped by the player's e-mail pseudonym like regulars(),
+ * most nights first. The session's storyteller text does not count: it only says who was meant to run the night.
+ */
+export async function storytellerStats(): Promise<StorytellerStats[]> {
+  const rows = await db
+    .select({
+      email: registrations.email,
+      nickname: registrations.nickname,
+      sessionId: games.sessionId,
+      startsAt: sessions.startsAt,
+      scriptName: games.scriptName,
+      winner: games.winner,
+    })
+    .from(gamePlayers)
+    .innerJoin(games, eq(gamePlayers.gameId, games.id))
+    .innerJoin(sessions, eq(games.sessionId, sessions.id))
+    .innerJoin(registrations, eq(gamePlayers.registrationId, registrations.id))
+    .where(eq(gamePlayers.role, STORYTELLER))
+    .orderBy(desc(sessions.startsAt));
+  const byPlayer = new Map<string, { stats: StorytellerStats; nights: Set<number>; scripts: Map<string, number> }>();
+  for (const r of rows) {
+    if (isErased(r.email)) continue;
+    const key = playerPseudonym(r.email);
+    let p = byPlayer.get(key);
+    if (!p) {
+      // newest first: the first row has the player's current nickname and their last night
+      p = {
+        stats: { key, nickname: r.nickname, nights: 0, games: 0, lastAt: r.startsAt, good: 0, evil: 0, scripts: [] },
+        nights: new Set(),
+        scripts: new Map(),
+      };
+      byPlayer.set(key, p);
+    }
+    p.nights.add(r.sessionId);
+    p.stats.games++;
+    if (r.winner) p.stats[r.winner]++;
+    p.scripts.set(r.scriptName, (p.scripts.get(r.scriptName) ?? 0) + 1);
+  }
+  return [...byPlayer.values()]
+    .map(({ stats, nights, scripts }) => ({
+      ...stats,
+      nights: nights.size,
+      scripts: [...scripts].map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count),
+    }))
+    .sort((a, b) => b.nights - a.nights || b.lastAt.getTime() - a.lastAt.getTime());
 }
 
 export type GameStats = {

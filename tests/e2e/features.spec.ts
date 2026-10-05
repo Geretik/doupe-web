@@ -1612,6 +1612,47 @@ test("who played what: a character or 'sat out' per player of each game, shown w
   expect(icon.headers()["content-type"]).toBe("image/webp");
 });
 
+test("storytellers: how often each one ran a game, from the games' rosters, in admin and the stats", async ({ page }) => {
+  const first = await createSession({ title: "Starší večer", daysAhead: -10 });
+  const second = await createSession({ title: "Minulý večer", daysAhead: -3 });
+  const next = await createSession({ title: "Příští večer", capacity: 10 });
+  const signUp = async (session: number, nickname: string, canStorytell = false) =>
+    (await sql<{ id: number }>(
+      "insert into registrations (session_id, nickname, email, edit_token, can_storytell) values ($1, $2, $3, $4, $5) returning id",
+      [session, nickname, `${nickname.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase()}@example.com`, `st-${session}-${nickname}`, canStorytell],
+    ))[0].id;
+  const game = async (session: number, script: string, winner: "good" | "evil", storytellers: number[]) => {
+    const [{ id }] = await sql<{ id: number }>("insert into games (session_id, script_name, winner) values ($1, $2, $3) returning id", [session, script, winner]);
+    for (const r of storytellers) await sql("insert into game_players (game_id, registration_id, role) values ($1, $2, 'storyteller')", [id, r]);
+  };
+  const honza1 = await signUp(first, "Honza");
+  const honza2 = await signUp(second, "Honza");
+  const petra2 = await signUp(second, "Petra");
+  await game(first, "Trouble Brewing", "good", [honza1]);
+  await game(first, "Trouble Brewing", "evil", [honza1]);
+  // two storytellers ran one game together
+  await game(second, "Bad Moon Rising", "good", [honza2, petra2]);
+  // the session's storyteller text only says who was meant to run it; it does not count
+  await sql("update sessions set storyteller = 'Petra' where id = $1", [next]);
+  await signUp(next, "Honza", true);
+  await signUp(next, "Nováček", true);
+  await signUp(next, "Hráč");
+
+  await adminLogin(page);
+  await page.goto(`/admin/termin/${next}`);
+  await expect(page.locator("tr:has-text('honza@example.com')")).toContainText(/🎩 vyprávěl\/a 2× · naposledy \S+ \d+\. \d+\./);
+  await expect(page.locator("tr:has-text('novacek@example.com')")).toContainText("🎩 zatím nevyprávěl/a");
+  await expect(page.locator("tr:has-text('hrac@example.com')")).not.toContainText("vyprávěl");
+
+  await page.goto("/admin/statistiky");
+  const rows = page.locator("section:has(h2:has-text('Vypravěči')) tbody tr");
+  await expect(rows).toHaveCount(2);
+  await expect(rows.nth(0).locator("td")).toHaveText([
+    "Honza", "2", "3", /\d{4}$/, "2 / 1", "Trouble Brewing 2×, Bad Moon Rising 1×",
+  ]);
+  await expect(rows.nth(1).locator("td")).toHaveText(["Petra", "1", "1", /\d{4}$/, "1 / 0", "Bad Moon Rising 1×"]);
+});
+
 test("admin menu groups the sections and marks the current page", async ({ page }) => {
   const id = await createSession({ title: "Menu večer" });
   await adminLogin(page);

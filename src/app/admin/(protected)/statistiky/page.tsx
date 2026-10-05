@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Card } from "@/components/ui";
 import { getDict } from "@/i18n/server";
 import { requireAdmin } from "@/lib/admin-auth";
-import { gameStats, pastSessionStats, regulars, totals } from "@/lib/stats";
+import { gameStats, pastSessionStats, regulars, storytellerStats, totals } from "@/lib/stats";
 import { formatDate } from "@/lib/time";
 
 function pct(v: number | null) {
@@ -11,7 +11,14 @@ function pct(v: number | null) {
 
 export default async function StatsPage() {
   await requireAdmin();
-  const [{ locale, t }, sums, past, top, g] = await Promise.all([getDict(), totals(), pastSessionStats(), regulars(), gameStats()]);
+  const [{ locale, t }, sums, past, top, g, storytellers] = await Promise.all([
+    getDict(),
+    totals(),
+    pastSessionStats(),
+    regulars(),
+    gameStats(),
+    storytellerStats(),
+  ]);
   const s = t.admin.stats;
 
   const tiles: [string, string | number][] = [
@@ -95,6 +102,40 @@ export default async function StatsPage() {
                     <td className="p-3">{row.name}</td>
                     <td className="p-3 text-right">{row.played}</td>
                     <td className="p-3 text-right">{row.good} / {row.evil}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-lg font-semibold">🎩 {s.storytellersHeading}</h2>
+        <p className="text-sm text-muted">{s.storytellersHint}</p>
+        {storytellers.length === 0 && <p className="text-muted">{s.storytellersNone}</p>}
+        {storytellers.length > 0 && (
+          <div className="overflow-x-auto rounded-xl border border-border bg-card">
+            <table className="w-full text-sm">
+              <thead className="text-left text-muted">
+                <tr className="border-b border-border">
+                  <th className="p-3">{s.nickname}</th>
+                  <th className="p-3 text-right">{s.sessions}</th>
+                  <th className="p-3 text-right">{s.games}</th>
+                  <th className="p-3">{s.lastAt}</th>
+                  <th className="p-3 text-right">{s.wonInGames}</th>
+                  <th className="p-3">{s.scripts}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {storytellers.map((r) => (
+                  <tr key={r.key} className="border-b border-border last:border-0">
+                    <td className="p-3">{r.nickname}</td>
+                    <td className="p-3 text-right">{r.nights}</td>
+                    <td className="p-3 text-right">{r.games}</td>
+                    <td className="p-3 whitespace-nowrap">{formatDate(r.lastAt, locale)}</td>
+                    <td className="p-3 text-right">{r.good} / {r.evil}</td>
+                    <td className="p-3 text-muted">{r.scripts.slice(0, 3).map((sc) => `${sc.name} ${sc.count}×`).join(", ")}</td>
                   </tr>
                 ))}
               </tbody>
