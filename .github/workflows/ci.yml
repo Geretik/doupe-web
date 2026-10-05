@@ -65,20 +65,23 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      - name: Pull Vercel project settings
+        run: npx vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+      # the build does not touch the database, so it runs first: the old code then meets the new
+      # schema only while the deploy itself runs, not during the whole build
+      - name: Build
+        run: npx vercel build --prod --token="$VERCEL_TOKEN"
       - name: Apply database schema
         # drizzle-kit exits 0 even when it stops at a question it cannot ask here (e.g. a unique constraint
-        # on a table with rows), so check its output: never deploy code the database is not ready for
+        # on a table with rows) or when a statement fails ("error: …"), so check its output: never deploy
+        # code the database is not ready for
         run: |
           npx drizzle-kit push --force 2>&1 | tee drizzle-push.log
-          if grep -qE "^Error|Interactive prompts require" drizzle-push.log; then
+          if grep -qiE "^error|Interactive prompts require" drizzle-push.log; then
             echo "::error::drizzle-kit push did not apply the schema, not deploying"
             exit 1
           fi
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      - name: Pull Vercel project settings
-        run: npx vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
-      - name: Build
-        run: npx vercel build --prod --token="$VERCEL_TOKEN"
       - name: Deploy
         run: npx vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"
