@@ -866,6 +866,60 @@ test("my games: magic link lists the player's sign-ups", async ({ page }) => {
   await expect(page.locator("main")).toContainText("Odkaz je neplatný");
 });
 
+test("my games: the player's stats, and the nights they came to with who played what", async ({ page }) => {
+  const first = await createSession({ title: "První večer", daysAhead: -10 });
+  const second = await createSession({ title: "Druhý večer", daysAhead: -3 });
+  const missed = await createSession({ title: "Zmeškaný večer", daysAhead: -6 });
+  const signUp = async (session: number, nickname: string, email: string, attended: boolean | null = null) =>
+    (await sql<{ id: number }>(
+      "insert into registrations (session_id, nickname, email, edit_token, attended) values ($1, $2, $3, $4, $5) returning id",
+      [session, nickname, email, `tok-${session}-${nickname}`, attended],
+    ))[0].id;
+  const me1 = await signUp(first, "Já", "hrac@example.com");
+  const neighbour = await signUp(first, "Soused", "soused@example.com");
+  const me2 = await signUp(second, "Já", "hrac@example.com");
+  await signUp(missed, "Já", "hrac@example.com", false);
+  const game = async (session: number, script: string, winner: "good" | "evil", roster: [number, string][]) => {
+    const [{ id }] = await sql<{ id: number }>("insert into games (session_id, script_name, winner) values ($1, $2, $3) returning id", [session, script, winner]);
+    for (const [registrationId, role] of roster) {
+      await sql("insert into game_players (game_id, registration_id, role) values ($1, $2, $3)", [id, registrationId, role]);
+    }
+  };
+  // a win as the Chef, a loss as the Imp, then a night as the storyteller
+  await game(first, "Trouble Brewing", "good", [[me1, "chef"], [neighbour, "imp"]]);
+  await game(first, "Trouble Brewing", "good", [[me1, "imp"], [neighbour, "chef"]]);
+  await game(second, "Bad Moon Rising", "evil", [[me2, "storyteller"]]);
+
+  process.env.ADMIN_SECRET = "e2e-secret"; // same as the e2e server, so the token verifies
+  await page.goto(`/botc/moje-hry/${createMyGamesToken("hrac@example.com")}`);
+  const stats = page.getByTestId("my-stats");
+  // the no-show night does not count
+  await expect(stats).toContainText(/Hraješ s námi od \d+\. \p{L}+ \d{4}\./u);
+  await expect(stats).toContainText("Herní večery2");
+  await expect(stats).toContainText("Odehrané hry2");
+  await expect(stats).toContainText("Výhry1 / 250 %");
+  await expect(stats).toContainText("Jako vypravěč1");
+  await expect(stats).toContainText("😇 Za dobro: 1 hra · 1 výhra");
+  await expect(stats).toContainText("😈 Za zlo: 1 hra · 0 výher");
+  await expect(stats).toContainText("Kuchař1×");
+  await expect(stats).toContainText("Čert1×");
+  await expect(stats).toContainText("Scripty: Trouble Brewing 2×");
+
+  // newest night first and unfolded; the older one unfolds to the games as in the archive
+  const nights = page.locator("main details");
+  await expect(nights).toHaveCount(2);
+  await expect(nights.nth(0)).toHaveAttribute("open", "");
+  await expect(nights.nth(0)).toContainText("Druhý večer");
+  await expect(nights.nth(0)).toContainText("Hrál/a jsi: Vypravěč");
+  await expect(nights.nth(1)).toContainText("Hrál/a jsi: Kuchař, Čert");
+  await nights.nth(1).locator("summary").click();
+  await expect(nights.nth(1)).toContainText("Hra 2 · Trouble Brewing😇 vyhrálo dobro");
+  await expect(nights.nth(1).getByText("Soused")).toHaveCount(2);
+  // the player's own chips stand out
+  await expect(nights.nth(1).locator("span.font-bold", { hasText: "Já" })).toHaveCount(2);
+  await expect(page.locator("main")).not.toContainText("Zmeškaný večer");
+});
+
 test("tables: create, auto-assign with a storyteller per table, manual move, e-mail", async ({ page }) => {
   const id = await createSession({ title: "Velký večer", capacity: 20 });
   for (let i = 1; i <= 4; i++) {

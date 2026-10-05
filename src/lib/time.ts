@@ -20,6 +20,11 @@ export function formatDate(d: Date, locale: Locale = "cs") {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
+/** "5. září 2026" / "5 September 2026" – a date inside a sentence */
+export function formatDay(d: Date, locale: Locale = "cs") {
+  return fmt(locale, { day: "numeric", month: "long", year: "numeric" }).format(d);
+}
+
 /** "pá 9. 10." / "Fri 9 Oct" – for badges and inside sentences */
 export function formatShortDate(d: Date, locale: Locale = "cs") {
   return fmt(locale, locale === "cs" ? { weekday: "short", day: "numeric", month: "numeric" } : { weekday: "short", day: "numeric", month: "short" }).format(d);

@@ -14,22 +14,25 @@ export type RosterLabels = {
 
 type Played = Omit<RosterEntry, "role"> & { role: BotcRole };
 
-const chip = "inline-flex items-center gap-1 rounded-full border border-border bg-card py-0.5 pr-2.5 pl-1 text-xs";
+const chip = "inline-flex items-center gap-1 rounded-full border bg-card py-0.5 pr-2.5 pl-1 text-xs";
 
 /**
  * Who ran a game and who played which character: storytellers on one line, then the players as chips
  * (icon, nickname, character) in rows for good, evil and travellers, and the Demon's bluffs.
+ * `me` – the viewing player's registrations, whose chip stands out ("my games").
  */
 export function GameRoster({
   players,
   bluffs,
   locale,
   t,
+  me,
 }: {
   players: RosterEntry[];
   bluffs?: string[] | null;
   locale: Locale;
   t: RosterLabels;
+  me?: ReadonlySet<number>;
 }) {
   const collator = new Intl.Collator(locale);
   const byNickname = (a: Pick<RosterEntry, "registration">, b: Pick<RosterEntry, "registration">) =>
@@ -54,7 +57,13 @@ export function GameRoster({
       {storytellers.length > 0 && (
         <p className="text-sm">
           <span aria-hidden className="mr-1.5">🎩</span>
-          <span className="text-muted">{t.storyteller}:</span> {storytellers.map((p) => p.registration.nickname).join(", ")}
+          <span className="text-muted">{t.storyteller}:</span>{" "}
+          {storytellers.map((p, i) => (
+            <span key={p.registrationId}>
+              {i > 0 && ", "}
+              {me?.has(p.registrationId) ? <strong>{p.registration.nickname}</strong> : p.registration.nickname}
+            </span>
+          ))}
         </p>
       )}
       {rows.length + bluffRoles.length > 0 && (
@@ -69,11 +78,12 @@ export function GameRoster({
                   {r.players.map(({ registrationId, role, believedRole, registration }) => {
                     const believed = findRole(believedRole);
                     const kind = linkedRoleOf(role.id)?.kind;
+                    const mine = me?.has(registrationId);
                     return (
-                      <li key={registrationId} className={chip}>
+                      <li key={registrationId} className={`${chip} ${mine ? "border-foreground/60 ring-1 ring-foreground/25" : "border-border"}`}>
                         {/* eslint-disable-next-line @next/next/no-img-element -- tiny pre-sized WebP from public/, no optimisation needed */}
                         <img src={roleIcon(role.id)} alt="" width={22} height={22} className="h-[22px] w-[22px]" />
-                        <span className="font-medium">{registration.nickname}</span>
+                        <span className={mine ? "font-bold" : "font-medium"}>{registration.nickname}</span>
                         <span className={roleSide(role.team) === "evil" ? "text-accent" : "text-muted"}>
                           · {roleName(role, locale)}
                           {believed && kind && <> ({t.linked[kind](roleName(believed, locale))})</>}
@@ -91,7 +101,7 @@ export function GameRoster({
               <dd>
                 <ul className="flex flex-wrap gap-1.5">
                   {bluffRoles.map((role) => (
-                    <li key={role.id} className={`${chip} border-dashed`}>
+                    <li key={role.id} className={`${chip} border-dashed border-border`}>
                       {/* eslint-disable-next-line @next/next/no-img-element -- tiny pre-sized WebP from public/, no optimisation needed */}
                       <img src={roleIcon(role.id)} alt="" width={22} height={22} className="h-[22px] w-[22px] opacity-80" />
                       <span className="text-muted">{roleName(role, locale)}</span>

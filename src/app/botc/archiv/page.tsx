@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { EditPencil } from "@/components/edit-pencil";
-import { GameRoster } from "@/components/game-roster";
+import { GameCard } from "@/components/game-card";
 import { findRole } from "@/lib/botc-roles";
 import { ScriptLinks } from "@/components/script-links";
 import { Card } from "@/components/ui";
@@ -58,25 +58,7 @@ export default async function ArchivePage() {
                 {(played.get(s.id)?.length ?? 0) > 0 && (
                   <ol className="mt-2 flex flex-col gap-3 text-sm">
                     {played.get(s.id)!.map((g, i) => (
-                      <li key={g.id} className="flex flex-col gap-2 rounded-lg border border-border bg-background/60 p-3">
-                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                          <span>
-                            <span aria-hidden className="mr-1.5">🎲</span>
-                            <span className="font-semibold">{t.archive.gameNumber(i + 1)}</span>
-                            <span className="text-muted"> · </span>
-                            {g.scriptUrl ? <a href={g.scriptUrl} className="hover:underline" target="_blank" rel="noreferrer">{g.scriptName}</a> : g.scriptName}
-                            {g.players && <span className="text-muted"> · {t.archive.gamePlayers(g.players)}</span>}
-                          </span>
-                          {g.winner && (
-                            <span
-                              className={`ml-auto rounded-full px-2.5 py-0.5 text-xs font-semibold ${g.winner === "good" ? "bg-good/10 text-good" : "bg-accent/10 text-accent"}`}
-                            >
-                              {g.winner === "good" ? "😇" : "😈"} {t.archive.winner[g.winner]}
-                            </span>
-                          )}
-                        </div>
-                        <GameRoster players={g.roster} bluffs={g.demonBluffs} locale={locale} t={{ storyteller: t.session.storytellerLabel, sides: t.archive.sides, linked: t.archive.linked }} />
-                      </li>
+                      <GameCard key={g.id} game={g} number={i + 1} locale={locale} t={t} />
                     ))}
                   </ol>
                 )}
