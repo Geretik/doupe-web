@@ -59,7 +59,7 @@ function Storytold({ stats, willing, locale, t }: { stats?: StorytellerStats; wi
   if (!stats && !willing) return null;
   return (
     <span className="block text-xs text-muted">
-      {stats ? t.storytold(stats.nights, formatShortDate(stats.lastAt, locale)) : t.neverStorytold}
+      {stats ? t.storytold(stats.games, formatShortDate(stats.lastAt, locale)) : t.neverStorytold}
     </span>
   );
 }

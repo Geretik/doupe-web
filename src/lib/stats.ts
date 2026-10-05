@@ -105,7 +105,8 @@ export type StorytellerStats = {
 
 /**
  * Who ran the recorded games (🎩 in a game's roster), grouped by the player's e-mail pseudonym like regulars(),
- * most nights first. The session's storyteller text does not count: it only says who was meant to run the night.
+ * most games first (storytellers take turns during a night, so games say more than nights).
+ * The session's storyteller text does not count: it only says who was meant to run the night.
  */
 export async function storytellerStats(): Promise<StorytellerStats[]> {
   const rows = await db
@@ -148,7 +149,7 @@ export async function storytellerStats(): Promise<StorytellerStats[]> {
       nights: nights.size,
       scripts: [...scripts].map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count),
     }))
-    .sort((a, b) => b.nights - a.nights || b.lastAt.getTime() - a.lastAt.getTime());
+    .sort((a, b) => b.games - a.games || b.lastAt.getTime() - a.lastAt.getTime());
 }
 
 export type GameStats = {

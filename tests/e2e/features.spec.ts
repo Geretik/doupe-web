@@ -1608,7 +1608,7 @@ test("storytellers: how often each one ran a game, from the games' rosters, in a
 
   await adminLogin(page);
   await page.goto(`/admin/termin/${next}`);
-  await expect(page.locator("tr:has-text('honza@example.com')")).toContainText(/🎩 vyprávěl\/a 2× · naposledy \S+ \d+\. \d+\./);
+  await expect(page.locator("tr:has-text('honza@example.com')")).toContainText(/🎩 vyprávěl\/a 3 hry · naposledy \S+ \d+\. \d+\./);
   await expect(page.locator("tr:has-text('novacek@example.com')")).toContainText("🎩 zatím nevyprávěl/a");
   await expect(page.locator("tr:has-text('hrac@example.com')")).not.toContainText("vyprávěl");
 
