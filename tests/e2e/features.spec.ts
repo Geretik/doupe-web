@@ -1475,6 +1475,92 @@ test("quick sign-up in admin: a nickname is enough, a full session gets one more
   await expect(page.locator("main")).not.toContainText("bez-emailu");
 });
 
+test("organiser edits a player with the pencil, also after the session; deleted data stays deleted", async ({ page, request }) => {
+  const upcoming = await createSession({ title: "Příští večer", capacity: 5 });
+  const past = await createSession({ title: "Nedávný večer", daysAhead: -3 });
+  const old = await createSession({ title: "Dávný večer", daysAhead: -20 });
+  const insert = async (sessionId: number, nickname: string, email: string) => {
+    const [r] = await sql<{ id: number }>(
+      "insert into registrations (session_id, nickname, email, edit_token, confirmation_sent_at) values ($1, $2, $3, $4, $5) returning id",
+      // walk-ins added without an e-mail never got a confirmation
+      [sessionId, nickname, email, `edit-${sessionId}-${nickname}`, email.endsWith("@bez-emailu.invalid") ? null : new Date()],
+    );
+    return r.id;
+  };
+  const main = page.locator("main");
+  const form = page.getByTestId("edit-player-form");
+
+  // before the session: an e-mail of another player is refused; a new address gets the confirmation
+  const walkIn = await insert(upcoming, "Kolemjdoucí", "walkin-a@bez-emailu.invalid");
+  await insert(upcoming, "Bára", "bara@example.com");
+  await adminLogin(page);
+  await page.goto(`/admin/termin/${upcoming}`);
+  await page.getByRole("button", { name: "Upravit údaje hráče Kolemjdoucí" }).click();
+  await expect(form).toContainText("Na nový e-mail přijde potvrzení");
+  await expect(page.locator(`#player${walkIn}-email`)).toHaveValue("");
+  await page.fill(`#player${walkIn}-nickname`, "Karel");
+  await page.fill(`#player${walkIn}-email`, "BARA@example.com");
+  await form.getByRole("button", { name: "Uložit" }).click();
+  await expect(form).toContainText("Hráč s tímto e-mailem už na termínu je.");
+  await expect(page.locator(`#player${walkIn}-nickname`)).toHaveValue("Karel");
+  await page.fill(`#player${walkIn}-email`, "karel@example.com");
+  await page.fill(`#player${walkIn}-phone`, "+420 777 111 222");
+  await page.selectOption(`#player${walkIn}-arrivalTime`, "20:00");
+  await page.check(`#player${walkIn}-isNewbie`);
+  await form.getByRole("button", { name: "Uložit" }).click();
+  await expect(main).toContainText("Karel: potvrzení odešlo na nový e-mail.");
+  await expect(form).toHaveCount(0);
+  const row = main.locator("tr", { hasText: "karel@example.com" });
+  await expect(row).toContainText("Karel 🌱");
+  await expect(row).toContainText("+420777111222");
+  await expect(row).toContainText("20:00");
+  expect(
+    await sql("select nickname, email, phone, arrival_time, is_newbie, confirmation_sent_at is not null as sent from registrations where id=$1", [walkIn]),
+  ).toEqual([{ nickname: "Karel", email: "karel@example.com", phone: "+420777111222", arrival_time: "20:00", is_newbie: true, sent: true }]);
+
+  // after the session: everything can still be changed, nothing is e-mailed and no "confirmation not sent" warning
+  const recent = await insert(past, "Honza", "walkin-b@bez-emailu.invalid");
+  await page.goto(`/admin/termin/${past}`);
+  await page.getByRole("button", { name: "Upravit údaje hráče Honza" }).click();
+  await expect(form).not.toContainText("Na nový e-mail přijde potvrzení");
+  await page.fill(`#player${recent}-nickname`, "Honzík");
+  await page.fill(`#player${recent}-email`, "honza@example.com");
+  await page.fill(`#player${recent}-firstName`, "Jan");
+  await page.check(`#player${recent}-canStorytell`);
+  await form.getByRole("button", { name: "Uložit" }).click();
+  await expect(form).toHaveCount(0);
+  const pastRow = main.locator("tr", { hasText: "honza@example.com" });
+  await expect(pastRow).toContainText("Honzík 🎩");
+  await expect(pastRow).toContainText("Jan");
+  await expect(main).not.toContainText("potvrzení odešlo");
+  await expect(main).not.toContainText("neodešel potvrzovací e-mail");
+  expect(await sql("select confirmation_sent_at from registrations where id=$1", [recent])).toEqual([{ confirmation_sent_at: null }]);
+
+  // 14 days after: name and phone stay deleted; a typed e-mail is kept only as the player's pseudonym, for the stats
+  const older = await insert(old, "Kolemjdoucí", "walkin-c@bez-emailu.invalid");
+  await request.get("/api/cron/reminders", { headers: { authorization: "Bearer e2e-cron" } });
+  const [{ email: before }] = await sql<{ email: string }>("select email from registrations where id=$1", [older]);
+  expect(before).toMatch(/@anonym\.invalid$/);
+  await page.goto(`/admin/termin/${old}`);
+  await page.getByRole("button", { name: "Upravit údaje hráče Kolemjdoucí" }).click();
+  await expect(form).toContainText("Zadaný e-mail se neuloží");
+  await expect(page.locator(`#player${older}-firstName`)).toHaveCount(0);
+  await expect(page.locator(`#player${older}-phone`)).toHaveCount(0);
+  await expect(page.locator(`#player${older}-email`)).toHaveValue("");
+  await page.fill(`#player${older}-email`, "honza@example.com");
+  await form.getByRole("button", { name: "Uložit" }).click();
+  await expect(form).toHaveCount(0);
+  await expect(main).not.toContainText("honza@example.com");
+  const [{ email: after }] = await sql<{ email: string }>("select email from registrations where id=$1", [older]);
+  expect(after).toMatch(/^[0-9a-f]{24}@anonym\.invalid$/);
+  expect(after).not.toBe(before);
+  await page.goto("/admin/statistiky");
+  const stats = page.locator("main tr:has-text('Honzík')");
+  await expect(stats).toHaveCount(1);
+  await expect(stats.locator("td").nth(1)).toHaveText("honza@example.com");
+  await expect(stats.locator("td").nth(2)).toHaveText("2");
+});
+
 test("who played what: a character or 'sat out' per player of each game, shown with icons in admin and the archive", async ({ page, request }) => {
   const id = await createSession({ title: "Večer s rolemi", capacity: 10, daysAhead: -3 });
   await sql("update sessions set scripts=$1 where id=$2", [JSON.stringify([{ name: "Trouble Brewing", url: "https://botcscripts.com/tb" }]), id]);

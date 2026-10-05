@@ -626,6 +626,16 @@ export const cs = {
       quickCapacityRaised: (n: number) => `Termín byl plný, kapacita je teď ${n}.`,
       quickEmailSent: "Potvrzení odešlo e-mailem.",
       quickEmailFailed: "Potvrzovací e-mail se nepodařilo poslat – pošli hráči odkaz ručně (✉️).",
+      editPlayer: (nickname: string) => `Upravit údaje hráče ${nickname}`,
+      editPlayerSave: "Uložit",
+      editPlayerSaving: "Ukládám…",
+      editPlayerClose: "Zrušit",
+      editPlayerEmailHint: "Na nový e-mail přijde potvrzení s odkazem na registraci. Prázdné = bez e-mailu.",
+      editPlayerDeletedHint: (days: number) =>
+        `Jméno, e-mail a telefon jsou ${days} dní po termínu smazané. Zadaný e-mail se neuloží, jen podle něj statistiky poznají, že jde o stejného hráče.`,
+      arrivesLate: "Přijde později",
+      playerEmailSent: (nickname: string) => `${nickname}: potvrzení odešlo na nový e-mail.`,
+      playerEmailFailed: (nickname: string) => `${nickname}: potvrzení na nový e-mail se nepodařilo poslat – pošli hráči odkaz ručně (✉️).`,
       cancelled: (n: number) => `Odhlášení (${n})`,
       restore: "Obnovit",
       restoreConfirm: (nickname: string, toWaitlist: boolean) =>
@@ -1354,6 +1364,16 @@ export const en: Dict = {
       quickCapacityRaised: (n) => `The session was full, the capacity is now ${n}.`,
       quickEmailSent: "The confirmation was e-mailed.",
       quickEmailFailed: "The confirmation e-mail could not be sent – send the player their link manually (✉️).",
+      editPlayer: (nickname) => `Edit ${nickname}'s details`,
+      editPlayerSave: "Save",
+      editPlayerSaving: "Saving…",
+      editPlayerClose: "Cancel",
+      editPlayerEmailHint: "A new address gets the confirmation with the link to the sign-up. Empty = no e-mail.",
+      editPlayerDeletedHint: (days) =>
+        `Name, e-mail and phone were deleted ${days} days after the session. A typed e-mail is not stored; it only lets the stats tell it is the same player.`,
+      arrivesLate: "Arrives later",
+      playerEmailSent: (nickname) => `${nickname}: the confirmation went to the new address.`,
+      playerEmailFailed: (nickname) => `${nickname}: the confirmation to the new address could not be sent – send the player their link manually (✉️).`,
       cancelled: (n) => `Cancelled (${n})`,
       restore: "Restore",
       restoreConfirm: (nickname, toWaitlist) =>

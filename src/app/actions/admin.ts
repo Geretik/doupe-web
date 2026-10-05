@@ -1,7 +1,7 @@
 "use server";
 
 import { createHash } from "node:crypto";
-import { and, eq, inArray, isNull, notLike, or, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, ne, notLike, or, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
@@ -27,6 +27,7 @@ import { generateEditToken } from "@/lib/token";
 import { addPragueDays, pragueLocalToDate } from "@/lib/time";
 import {
   accountSchema,
+  adminRegistrationEditSchema,
   broadcastSchema,
   changePasswordSchema,
   emailSchema,
@@ -42,10 +43,11 @@ import {
   type RosterValue,
   quickRegistrationSchema,
   sessionSchema,
+  timeRangeErrors,
   type FormState,
 } from "@/lib/validation";
 import { promoteWaitlist } from "@/lib/waitlist";
-import { ANON_SUFFIX, erasedFields, hasEmail, isErased, noEmailAddress, playerPseudonym } from "@/lib/retention";
+import { ANON_SUFFIX, erasedFields, hasEmail, isAnonymized, isErased, noEmailAddress, playerPseudonym } from "@/lib/retention";
 
 /** Sessions are evenings: arrival and departure are picked as times of day, so a session must stay under a day. */
 const MAX_SESSION_HOURS = 24;
@@ -618,6 +620,101 @@ export async function adminQuickRegisterAction(
       .filter(Boolean)
       .join(" "),
   };
+}
+
+export type EditPlayerResult = FormState & { message?: string };
+
+/**
+ * An organiser edits a player's sign-up – also after the session, e.g. a nickname typed wrong on the spot or
+ * the e-mail of a walk-in. Once the personal data was deleted, name and phone stay empty and a typed e-mail
+ * is stored only as the player's pseudonym, so the stats can tell it is the same player. A new address of a
+ * player of an upcoming session gets the confirmation; nothing else is e-mailed.
+ */
+export async function adminUpdateRegistrationAction(
+  registrationId: number,
+  _prev: EditPlayerResult,
+  formData: FormData,
+): Promise<EditPlayerResult> {
+  await requireAdmin();
+  const { t } = await getDict();
+  const e = t.admin.errors;
+  const current = await db.query.registrations.findFirst({
+    where: eq(registrations.id, registrationId),
+    with: { session: true },
+  });
+  // erased at the player's request: nothing personal may come back
+  if (!current || isErased(current.email)) return { error: t.errors.regNotFound };
+  const { session } = current;
+  const parsed = adminRegistrationEditSchema(t.errors, session.arrivalMode).safeParse(Object.fromEntries(formData.entries()));
+  if (!parsed.success) return { error: e.checkForm, fieldErrors: fieldErrorsOf(parsed.error) };
+  const { email: typed, ...data } = parsed.data;
+  const timeErrors = timeRangeErrors(data, session, t.errors);
+  if (timeErrors) return { error: e.checkForm, fieldErrors: timeErrors };
+  const deleted = isAnonymized(current.email);
+  // an emptied e-mail becomes a stand-in, like a walk-in's; a walk-in left without one keeps theirs
+  const wanted = deleted
+    ? typed ? playerPseudonym(typed) : current.email
+    : (typed ?? (hasEmail(current.email) ? noEmailAddress() : current.email));
+  // the same address in other letter case is no new address
+  const emailChanged = wanted !== current.email.toLowerCase();
+  const email = emailChanged ? wanted : current.email;
+  const now = new Date();
+  const notify = emailChanged && hasEmail(email) && session.endsAt > now && current.status !== "cancelled";
+
+  const result = await db.transaction(async (tx) => {
+    // the lock keeps a quick sign-up or another edit from taking the same e-mail meanwhile
+    await tx.select({ id: sessions.id }).from(sessions).where(eq(sessions.id, session.id)).for("update");
+    if (emailChanged) {
+      const taken = await tx.query.registrations.findFirst({
+        where: and(
+          eq(registrations.sessionId, session.id),
+          eq(sql`lower(${registrations.email})`, email),
+          ne(registrations.id, current.id),
+        ),
+      });
+      if (taken) return { kind: "taken" as const, cancelled: taken.status === "cancelled" };
+    }
+    const [row] = await tx
+      .update(registrations)
+      .set({
+        nickname: data.nickname,
+        email,
+        ...(!deleted && { firstName: data.firstName ?? null, lastName: data.lastName ?? null, phone: data.phone }),
+        arrivalTime: data.arrivalTime,
+        departureTime: data.departureTime,
+        arrivesLate: data.arrivesLate,
+        canStorytell: data.canStorytell,
+        isNewbie: data.isNewbie,
+        note: data.note ?? null,
+        // claim the confirmation to the new address – exactly one e-mail
+        ...(notify && { confirmationSentAt: now, lastEmailAt: now }),
+        updatedAt: now,
+      })
+      .where(eq(registrations.id, current.id))
+      .returning();
+    return { kind: "saved" as const, row };
+  });
+
+  if (result.kind === "taken") {
+    return { error: e.checkForm, fieldErrors: { email: [result.cancelled ? e.quickEmailCancelled : e.quickEmailTaken] } };
+  }
+  let emailFailed = false;
+  if (notify) {
+    try {
+      if (result.row.status === "waitlisted") await sendExistingRegistrationEmail(result.row, session);
+      else await sendConfirmationEmail(result.row, session);
+    } catch (err) {
+      console.error("Confirmation e-mail could not be sent", err);
+      emailFailed = true;
+      await db.update(registrations).set({ confirmationSentAt: null, lastEmailAt: null }).where(eq(registrations.id, current.id));
+    }
+  }
+  revalidateSession(session.id);
+  // nicknames show in the archive's rosters
+  revalidatePath("/botc/archiv");
+  const s = t.admin.session;
+  if (!notify) return { ok: true };
+  return { ok: true, message: (emailFailed ? s.playerEmailFailed : s.playerEmailSent)(result.row.nickname) };
 }
 
 /** Marks attendance: true = came, false = no-show, null = not marked. */

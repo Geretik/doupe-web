@@ -50,18 +50,28 @@ export function registrationSchema(t: Dict["errors"], rules: RegistrationRules) 
   });
 }
 
+/** E-mail an organiser may leave empty (null). */
+function optionalEmail(t: Dict["errors"]) {
+  return z
+    .string()
+    .optional()
+    .transform((v) => (v ?? "").trim().toLowerCase())
+    .pipe(z.union([z.literal(""), z.string().email(t.invalidEmail).max(200)]))
+    .transform((v) => (v === "" ? null : v));
+}
+
 /** An organiser adding a player on the spot: only the nickname is required, an empty e-mail becomes null. */
 export function quickRegistrationSchema(t: Dict["errors"]) {
   return registrationSchema(t, { arrivalMode: "times", phoneRequired: false })
     .pick({ nickname: true, firstName: true, lastName: true, phone: true, canStorytell: true, isNewbie: true, note: true })
-    .extend({
-      email: z
-        .string()
-        .optional()
-        .transform((v) => (v ?? "").trim().toLowerCase())
-        .pipe(z.union([z.literal(""), z.string().email(t.invalidEmail).max(200)]))
-        .transform((v) => (v === "" ? null : v)),
-    });
+    .extend({ email: optionalEmail(t) });
+}
+
+/** An organiser editing a player's sign-up (also after the session): like the player's own edit, but the e-mail and phone may be empty. */
+export function adminRegistrationEditSchema(t: Dict["errors"], arrivalMode: ArrivalMode) {
+  return registrationSchema(t, { arrivalMode, phoneRequired: false })
+    .omit({ website: true })
+    .extend({ email: optionalEmail(t) });
 }
 
 /**

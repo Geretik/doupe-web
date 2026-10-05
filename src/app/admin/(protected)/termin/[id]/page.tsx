@@ -18,6 +18,7 @@ import { ActionButton } from "@/components/admin/action-button";
 import { AttendanceToggle } from "@/components/admin/attendance-toggle";
 import { BroadcastForm } from "@/components/admin/broadcast-form";
 import { DeleteSessionButton } from "@/components/admin/delete-session-button";
+import { EditablePlayerItem, EditablePlayerRow, type EditPlayerLabels, type EditPlayerProps } from "@/components/admin/edit-player";
 import { GameForm, GameItem, type GameFormLabels, type RosterPlayer } from "@/components/admin/game-form";
 import { GameRoster } from "@/components/game-roster";
 import { PresenceChart } from "@/components/admin/presence-chart";
@@ -36,17 +37,18 @@ import { presenceByHour } from "@/lib/presence";
 import { countPendingReminders } from "@/lib/reminders";
 import { dateToPragueLocal, formatDate, formatShortDate, formatTime } from "@/lib/time";
 import { effectiveRegistrationState, scheduledOpening } from "@/lib/registration-state";
-import { hasEmail, isErased, playerPseudonym, RETENTION_DAYS, shownEmail } from "@/lib/retention";
+import { hasEmail, isAnonymized, isErased, playerPseudonym, RETENTION_DAYS, shownEmail } from "@/lib/retention";
 import { storytellerStats, type StorytellerStats } from "@/lib/stats";
 import { editUrl } from "@/lib/site";
 import { parseId } from "@/lib/validation";
 
-function Flags({ r, t }: { r: Registration; t: Dict["admin"]["session"] }) {
+function Flags({ r, past, t }: { r: Registration; past: boolean; t: Dict["admin"]["session"] }) {
   return (
     <>
       {r.canStorytell && <span title={t.storyteller} aria-label={t.storyteller}> 🎩</span>}
       {r.isNewbie && <span title={t.newbie} aria-label={t.newbie}> 🌱</span>}
-      {r.status !== "cancelled" && !r.confirmationSentAt && hasEmail(r.email) && (
+      {/* after the game a missing confirmation does not matter any more */}
+      {!past && r.status !== "cancelled" && !r.confirmationSentAt && hasEmail(r.email) && (
         <span title={t.noConfirmation} aria-label={t.noConfirmation}> ⚠️</span>
       )}
       {r.note && <span title={`${t.playerNote}: ${r.note}`} aria-label={t.playerNote}> 📝</span>}
@@ -111,7 +113,7 @@ export default async function AdminSessionPage({
   const newbies = confirmed.filter((r) => r.isNewbie).length;
   const attended = confirmed.filter((r) => r.attended === true).length;
   const noShow = confirmed.filter((r) => r.attended === false).length;
-  const unconfirmed = confirmed.filter((r) => !r.confirmationSentAt && hasEmail(r.email)).length;
+  const unconfirmed = past ? 0 : confirmed.filter((r) => !r.confirmationSentAt && hasEmail(r.email)).length;
   const full = confirmed.length >= session.capacity;
   const presence = presenceByHour(session, confirmed);
   const gameLabels: GameFormLabels = {
@@ -149,6 +151,55 @@ export default async function AdminSessionPage({
     }
   }
   const roster = [...rosterPlayers.values()].sort((a, b) => a.nickname.localeCompare(b.nickname, locale));
+  const sessionStart = formatTime(session.startsAt, locale);
+  const sessionEnd = formatTime(session.endsAt, locale);
+  const playerLabels: Omit<EditPlayerLabels, "edit"> = {
+    nickname: t.nickname,
+    email: t.email,
+    optional: dict.form.optional,
+    firstName: dict.form.firstName,
+    lastName: dict.form.lastName,
+    phone: t.phone,
+    arrival: t.arrival,
+    departure: t.departure,
+    arrivalDefault: dict.form.arrivalDefault,
+    departureDefault: dict.form.departureDefault,
+    arrivesLate: t.arrivesLate,
+    storyteller: t.storyteller,
+    newbie: t.newbie,
+    note: t.playerNote,
+    save: t.editPlayerSave,
+    saving: t.editPlayerSaving,
+    close: t.editPlayerClose,
+  };
+  /** Props of a player's edit form (the pencil); none for one erased at their request. */
+  const editProps = (r: Registration): EditPlayerProps | null => {
+    if (isErased(r.email)) return null;
+    const deleted = isAnonymized(r.email);
+    return {
+      player: {
+        id: r.id,
+        nickname: r.nickname,
+        email: shownEmail(r.email) ?? "",
+        firstName: r.firstName,
+        lastName: r.lastName,
+        phone: r.phone,
+        arrivalTime: r.arrivalTime,
+        departureTime: r.departureTime,
+        arrivesLate: r.arrivesLate,
+        canStorytell: r.canStorytell,
+        isNewbie: r.isNewbie,
+        note: r.note,
+      },
+      arrivalMode: session.arrivalMode,
+      start: sessionStart,
+      end: sessionEnd,
+      deleted,
+      emailHint: deleted ? t.editPlayerDeletedHint(RETENTION_DAYS) : past ? undefined : t.editPlayerEmailHint,
+      t: { ...playerLabels, edit: t.editPlayer(r.nickname) },
+    };
+  };
+  const columns = session.arrivalMode === "times" ? 8 : 7;
   const storytold = new Map(storytellers.map((st) => [st.key, st]));
   const storytoldBy = (r: Registration) => (isErased(r.email) ? undefined : storytold.get(playerPseudonym(r.email)));
 
@@ -262,7 +313,7 @@ export default async function AdminSessionPage({
         </Card>
         {confirmed.length === 0 && <p className="text-muted">{t.nobody}</p>}
         {confirmed.length > 0 && (
-          <div className="overflow-x-auto rounded-xl border border-border bg-card">
+          <div className="@container overflow-x-auto rounded-xl border border-border bg-card">
             <table className="w-full text-sm">
               <thead className="text-left text-muted">
                 <tr className="border-b border-border">
@@ -277,27 +328,31 @@ export default async function AdminSessionPage({
                 </tr>
               </thead>
               <tbody>
-                {confirmed.map((r) => (
-                  <tr key={r.id} className="border-b border-border last:border-0">
-                    <td className="p-3 whitespace-nowrap">{fullName(r) ?? <span className="text-muted">–</span>}</td>
-                    <td className="p-3 whitespace-nowrap">
-                      {r.nickname}<Flags r={r} t={t} />
-                      <Storytold stats={storytoldBy(r)} willing={r.canStorytell} locale={locale} t={t} />
-                    </td>
-                    <td className="p-3 whitespace-nowrap">{shownEmail(r.email) ? <a href={`mailto:${r.email}`} className="hover:underline">{r.email}</a> : <span className="text-muted">–</span>}</td>
-                    <td className="p-3 whitespace-nowrap">{r.phone ? <a href={`tel:${r.phone}`} className="hover:underline">{r.phone}</a> : <span className="text-muted">–</span>}</td>
-                    {session.arrivalMode === "late" ? (
-                      <td className="p-3 whitespace-nowrap">{r.arrivesLate ? <strong>{t.late}</strong> : <span className="text-muted">{t.fromStart}</span>}</td>
-                    ) : (
-                      <>
-                        <td className="p-3 whitespace-nowrap">{r.arrivalTime ?? formatTime(session.startsAt, locale)}</td>
-                        <td className="p-3 whitespace-nowrap">{r.departureTime ?? formatTime(session.endsAt, locale)}</td>
-                      </>
-                    )}
-                    <td className="p-3">
-                      <AttendanceToggle registrationId={r.id} attended={r.attended} labels={{ came: t.came, noShow: t.noShow }} />
-                    </td>
-                    <td className="p-3 text-right whitespace-nowrap">
+                {confirmed.map((r) => {
+                  const cells = (
+                    <>
+                      <td className="p-3 whitespace-nowrap">{fullName(r) ?? <span className="text-muted">–</span>}</td>
+                      <td className="p-3 whitespace-nowrap">
+                        {r.nickname}<Flags r={r} past={past} t={t} />
+                        <Storytold stats={storytoldBy(r)} willing={r.canStorytell} locale={locale} t={t} />
+                      </td>
+                      <td className="p-3 whitespace-nowrap">{shownEmail(r.email) ? <a href={`mailto:${r.email}`} className="hover:underline">{r.email}</a> : <span className="text-muted">–</span>}</td>
+                      <td className="p-3 whitespace-nowrap">{r.phone ? <a href={`tel:${r.phone}`} className="hover:underline">{r.phone}</a> : <span className="text-muted">–</span>}</td>
+                      {session.arrivalMode === "late" ? (
+                        <td className="p-3 whitespace-nowrap">{r.arrivesLate ? <strong>{t.late}</strong> : <span className="text-muted">{t.fromStart}</span>}</td>
+                      ) : (
+                        <>
+                          <td className="p-3 whitespace-nowrap">{r.arrivalTime ?? sessionStart}</td>
+                          <td className="p-3 whitespace-nowrap">{r.departureTime ?? sessionEnd}</td>
+                        </>
+                      )}
+                      <td className="p-3">
+                        <AttendanceToggle registrationId={r.id} attended={r.attended} labels={{ came: t.came, noShow: t.noShow }} />
+                      </td>
+                    </>
+                  );
+                  const actions = (
+                    <>
                       <a href={editUrl(r.editToken)} className="mr-3 text-muted hover:underline" target="_blank" rel="noreferrer">{t.link}</a>
                       {hasEmail(r.email) && (
                         <span className="mr-3">
@@ -318,12 +373,13 @@ export default async function AdminSessionPage({
                       <form action={adminCancelRegistrationAction.bind(null, r.id)} className="inline">
                         <SubmitButton variant="danger" confirmText={t.cancelConfirm(r.nickname)}>{t.cancel}</SubmitButton>
                       </form>
-                    </td>
-                  </tr>
-                ))}
+                    </>
+                  );
+                  return <EditablePlayerRow key={r.id} cells={cells} actions={actions} columns={columns} edit={editProps(r)} />;
+                })}
                 {confirmed.some((r) => r.note) && (
                   <tr className="bg-border/20 text-xs text-muted">
-                    <td colSpan={8} className="p-3">
+                    <td colSpan={columns} className="p-3">
                       <strong>{t.playerNote}:</strong>{" "}
                       {confirmed.filter((r) => r.note).map((r) => `${r.nickname}: „${r.note}“`).join(" · ")}
                     </td>
@@ -353,22 +409,27 @@ export default async function AdminSessionPage({
           <p className="text-sm text-muted">{t.waitlistHint}</p>
           <ol className="flex flex-col gap-2 text-sm">
             {waitlisted.map((r, i) => (
-              <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-card px-3 py-2">
+              <EditablePlayerItem
+                key={r.id}
+                edit={editProps(r)}
+                actions={
+                  <>
+                    <a href={editUrl(r.editToken)} className="self-center text-muted hover:underline" target="_blank" rel="noreferrer">{t.link}</a>
+                    {!isErased(r.email) && <EraseButton registrationId={r.id} t={t} />}
+                    <form action={adminConfirmWaitlistedAction.bind(null, r.id)}>
+                      <SubmitButton variant="secondary">{full ? t.confirmFull : t.confirm}</SubmitButton>
+                    </form>
+                    <form action={adminCancelRegistrationAction.bind(null, r.id)}>
+                      <SubmitButton variant="danger" confirmText={t.cancelConfirm(r.nickname)}>{t.cancel}</SubmitButton>
+                    </form>
+                  </>
+                }
+              >
                 <span>
                   <span className="mr-2 font-semibold text-muted">{i + 1}.</span>
-                  {fullName(r) ? `${fullName(r)} (${r.nickname}` : `(${r.nickname}`}<Flags r={r} t={t} />){shownEmail(r.email) && <> · {r.email}</>}{r.phone && <> · <a href={`tel:${r.phone}`} className="hover:underline">{r.phone}</a></>}
+                  {fullName(r) ? `${fullName(r)} (${r.nickname}` : `(${r.nickname}`}<Flags r={r} past={past} t={t} />){shownEmail(r.email) && <> · {r.email}</>}{r.phone && <> · <a href={`tel:${r.phone}`} className="hover:underline">{r.phone}</a></>}
                 </span>
-                <span className="flex gap-2">
-                  <a href={editUrl(r.editToken)} className="self-center text-muted hover:underline" target="_blank" rel="noreferrer">{t.link}</a>
-                  {!isErased(r.email) && <EraseButton registrationId={r.id} t={t} />}
-                  <form action={adminConfirmWaitlistedAction.bind(null, r.id)}>
-                    <SubmitButton variant="secondary">{full ? t.confirmFull : t.confirm}</SubmitButton>
-                  </form>
-                  <form action={adminCancelRegistrationAction.bind(null, r.id)}>
-                    <SubmitButton variant="danger" confirmText={t.cancelConfirm(r.nickname)}>{t.cancel}</SubmitButton>
-                  </form>
-                </span>
-              </li>
+              </EditablePlayerItem>
             ))}
           </ol>
         </section>
