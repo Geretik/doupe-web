@@ -52,9 +52,11 @@ export async function getOpenInvite(token: string) {
 /** A new one-time link for setting a password; older unused links for the account stop working. */
 export async function createPasswordReset(userId: number, validForMs = RESET_DAYS * 864e5) {
   await db.delete(passwordResets).where(and(eq(passwordResets.userId, userId), isNull(passwordResets.usedAt)));
+  // both times from one clock: with the database's now() as created_at the link was valid a millisecond less now and then
+  const createdAt = new Date();
   const [reset] = await db
     .insert(passwordResets)
-    .values({ token: randomBytes(24).toString("base64url"), userId, expiresAt: new Date(Date.now() + validForMs) })
+    .values({ token: randomBytes(24).toString("base64url"), userId, createdAt, expiresAt: new Date(createdAt.getTime() + validForMs) })
     .returning();
   return reset;
 }
