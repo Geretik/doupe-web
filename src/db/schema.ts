@@ -69,20 +69,6 @@ export type PlaylistTrack = {
   links: { label: string; url: string }[];
 };
 
-/**
- * No longer used: the table assignment was removed. Dropped in a later deploy, separately from
- * registrations.table_id – drizzle-kit fails when it drops both at once.
- */
-export const tables = pgTable("tables", {
-  id: serial("id").primaryKey(),
-  sessionId: integer("session_id")
-    .notNull()
-    .references(() => sessions.id, { onDelete: "cascade" }),
-  number: integer("number").notNull(),
-  storyteller: text("storyteller"),
-  notifiedAt: timestamp("notified_at", { withTimezone: true }),
-});
-
 export const registrations = pgTable(
   "registrations",
   {
