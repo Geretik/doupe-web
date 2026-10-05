@@ -1,6 +1,6 @@
-import { desc, eq, isNotNull } from "drizzle-orm";
+import { desc } from "drizzle-orm";
 import { db } from "@/db";
-import { adminUsers, games, sessions, tables, type ScriptLink } from "@/db/schema";
+import { adminUsers, games, sessions, type ScriptLink } from "@/db/schema";
 
 /** Values used before, offered in the session form so organisers pick instead of typing. Most recent first. */
 export type FormSuggestions = {
@@ -26,17 +26,10 @@ function unique(values: (string | null)[]) {
 }
 
 export async function getFormSuggestions(): Promise<FormSuggestions> {
-  const [recent, tableStorytellers, played, organisers] = await Promise.all([
+  const [recent, played, organisers] = await Promise.all([
     db
       .select({ place: sessions.place, storyteller: sessions.storyteller, scripts: sessions.scripts })
       .from(sessions)
-      .orderBy(desc(sessions.startsAt))
-      .limit(300),
-    db
-      .select({ storyteller: tables.storyteller })
-      .from(tables)
-      .innerJoin(sessions, eq(tables.sessionId, sessions.id))
-      .where(isNotNull(tables.storyteller))
       .orderBy(desc(sessions.startsAt))
       .limit(300),
     db
@@ -63,7 +56,6 @@ export async function getFormSuggestions(): Promise<FormSuggestions> {
     places: unique(recent.map((r) => r.place)).slice(0, 30),
     storytellers: unique([
       ...recent.map((r) => r.storyteller),
-      ...tableStorytellers.map((r) => r.storyteller),
       ...organisers.map((r) => r.nickname),
     ]).slice(0, 50),
     scripts: [...scripts.values()].slice(0, 100),

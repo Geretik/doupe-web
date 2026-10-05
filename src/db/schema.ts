@@ -69,21 +69,19 @@ export type PlaylistTrack = {
   links: { label: string; url: string }[];
 };
 
-/** Tables of one evening when there are too many players for a single game (7–15 per table). */
+/**
+ * No longer used: the table assignment was removed. Dropped in a later deploy, separately from
+ * registrations.table_id – drizzle-kit fails when it drops both at once.
+ */
 export const tables = pgTable("tables", {
   id: serial("id").primaryKey(),
   sessionId: integer("session_id")
     .notNull()
     .references(() => sessions.id, { onDelete: "cascade" }),
-  /** 1-based number shown to players ("Stůl 2") */
   number: integer("number").notNull(),
-  /** Optional: who runs this table (free text, may differ from the session's storyteller) */
   storyteller: text("storyteller"),
-  /** Set once the "you sit at table N" e-mails went out */
   notifiedAt: timestamp("notified_at", { withTimezone: true }),
 });
-
-export type Table = typeof tables.$inferSelect;
 
 export const registrations = pgTable(
   "registrations",
@@ -121,8 +119,6 @@ export const registrations = pgTable(
     cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
     /** Salted hash of the client IP, only for rate limiting sign-ups */
     ipHash: text("ip_hash"),
-    /** Table the player sits at (null = not assigned / single table) */
-    tableId: integer("table_id").references(() => tables.id, { onDelete: "set null" }),
     /** Attendance marked by the organiser after the session; null = not marked */
     attended: boolean("attended"),
     /** Set when the "tomorrow is game night" reminder was sent – sent at most once */
@@ -206,12 +202,6 @@ export const gamePlayersRelations = relations(gamePlayers, ({ one }) => ({
 export const sessionsRelations = relations(sessions, ({ many }) => ({
   registrations: many(registrations),
   games: many(games),
-  tables: many(tables),
-}));
-
-export const tablesRelations = relations(tables, ({ one, many }) => ({
-  session: one(sessions, { fields: [tables.sessionId], references: [sessions.id] }),
-  registrations: many(registrations),
 }));
 
 export const registrationsRelations = relations(registrations, ({ one }) => ({
@@ -219,7 +209,6 @@ export const registrationsRelations = relations(registrations, ({ one }) => ({
     fields: [registrations.sessionId],
     references: [sessions.id],
   }),
-  table: one(tables, { fields: [registrations.tableId], references: [tables.id] }),
 }));
 
 export const adminRoles = ["admin", "organizer"] as const;

@@ -176,11 +176,11 @@ export async function registerAction(
 
       let registration;
       if (existing) {
-        // previously cancelled → re-activate with a fresh token, as a new sign-up: not at the old table,
-        // without the old cancel reason, and counted for the network's limit and the sign-up order
+        // previously cancelled → re-activate with a fresh token, as a new sign-up: without the old cancel
+        // reason, and counted for the network's limit and the sign-up order
         [registration] = await tx
           .update(registrations)
-          .set({ ...values, editToken: generateEditToken(), cancelReason: null, cancelledAt: null, tableId: null, createdAt: now })
+          .set({ ...values, editToken: generateEditToken(), cancelReason: null, cancelledAt: null, createdAt: now })
           .where(eq(registrations.id, existing.id))
           .returning();
       } else {

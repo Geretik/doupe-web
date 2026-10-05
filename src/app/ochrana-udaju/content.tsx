@@ -45,7 +45,7 @@ function Czech({ contact, discordAlerts }: Props) {
         </li>
         <li>
           <strong>Čas příchodu a odchodu, zda umíš vyprávět, zda jsi nováček, poznámka pro organizátory
-          a důvod odhlášení</strong> – kvůli plánování stolů a průběhu večera.
+          a důvod odhlášení</strong> – kvůli plánování průběhu večera.
         </li>
         <li>
           <strong>Docházka</strong> – po hraní organizátoři zaznamenají, kdo přišel, kvůli statistikám klubu.
@@ -158,7 +158,7 @@ function English({ contact, discordAlerts }: Props) {
         </li>
         <li>
           <strong>Arrival and departure time, whether you can storytell, whether you are new, your note
-          for the organisers and your cancel reason</strong> – to plan the tables and the evening.
+          for the organisers and your cancel reason</strong> – to plan the evening.
         </li>
         <li>
           <strong>Attendance</strong> – after the game the organisers note who came, for the club&apos;s stats.

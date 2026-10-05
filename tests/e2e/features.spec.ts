@@ -920,38 +920,6 @@ test("my games: the player's stats, and the nights they came to with who played 
   await expect(page.locator("main")).not.toContainText("Zmeškaný večer");
 });
 
-test("tables: create, auto-assign with a storyteller per table, manual move, e-mail", async ({ page }) => {
-  const id = await createSession({ title: "Velký večer", capacity: 20 });
-  for (let i = 1; i <= 4; i++) {
-    await sql(
-      "insert into registrations (session_id, first_name, last_name, nickname, email, status, can_storytell, edit_token) values ($1,'P',$2,$3,$4,'confirmed',$5,$6)",
-      [id, `L${i}`, `Hráč${i}`, `t${i}@example.com`, i <= 2, `tok-${i}-${id}`],
-    );
-  }
-  await adminLogin(page);
-  await page.goto(`/admin/termin/${id}`);
-  await page.click("button:has-text('Vytvořit 2 stoly')");
-  await expect(page.locator("main")).toContainText("Stůl 1 · 2");
-  await expect(page.locator("main")).toContainText("Stůl 2 · 2");
-  // both willing storytellers ended up on different tables
-  const byTable = await sql<{ number: number; storytellers: number }>(
-    "select t.number, count(*) filter (where r.can_storytell)::int as storytellers from tables t join registrations r on r.table_id=t.id where t.session_id=$1 group by t.number order by t.number",
-    [id],
-  );
-  expect(byTable.map((r) => r.storytellers)).toEqual([1, 1]);
-  await expect(page.locator("main")).toContainText("málo hráčů (min. 7)");
-
-  // move one player by hand
-  const t2 = await sql<{ id: number }>("select id from tables where session_id=$1 and number=2", [id]);
-  await page.selectOption("tr:has-text('t1@example.com') select", String(t2[0].id));
-  await expect(page.locator("main")).toContainText("Stůl 2 · 3");
-
-  page.once("dialog", (d) => d.accept());
-  await page.click("button:has-text('Poslat rozdělení e-mailem (4)')");
-  await expect(page.locator("main")).toContainText("Rozdělení odesláno 4×");
-  await expect(page.locator("main")).toContainText("e-maily odeslány");
-});
-
 test("phone is optional but validated, normalised and shown only to organisers; hourly presence overview", async ({ page }) => {
   const id = await createSession({ capacity: 5 });
   // invalid phone → validation error, nothing saved

@@ -58,32 +58,6 @@ async function send(to: string, subject: string, html: string, text: string) {
   }
 }
 
-/** "You sit at table N" with the table mates' nicknames. */
-export async function sendTableEmail(reg: Registration, session: Session, table: { number: number; storyteller: string | null }, mates: string[]) {
-  const locale = localeOf(reg);
-  const t = dictionaries[locale].email;
-  const edit = editBlock(t, reg);
-  const st = table.storyteller ?? session.storyteller;
-  const text = `${t.hi(greetingName(reg))}
-
-${t.tableBody(table.number)}${st ? ` ${t.tableStoryteller(st)}` : ""}
-${mates.length ? `\n${t.tableMates} ${mates.join(", ")}\n` : ""}
-${t.session}: ${session.title}
-${t.when}: ${formatRange(session.startsAt, session.endsAt, locale)}
-${t.where}: ${session.place}
-
-${edit.text}
-
-${t.seeYou}`;
-  const html = `<p>${escapeHtml(t.hi(greetingName(reg)))}</p>
-<p>${escapeHtml(t.tableBody(table.number))}${st ? ` ${escapeHtml(t.tableStoryteller(st))}` : ""}</p>
-${mates.length ? `<p>${escapeHtml(t.tableMates)} ${escapeHtml(mates.join(", "))}</p>` : ""}
-<p>${escapeHtml(session.title)} · ${escapeHtml(formatRange(session.startsAt, session.endsAt, locale))} · ${escapeHtml(session.place)}</p>
-${edit.html}
-<p>${t.seeYou}</p>`;
-  await send(reg.email, t.tableSubject(session.title, table.number), html, text);
-}
-
 /** Magic link to the player's overview of their sign-ups. */
 export async function sendMyGamesLinkEmail(email: string, url: string, locale: Locale) {
   const t = dictionaries[locale];
