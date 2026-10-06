@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { saveScriptAction } from "@/app/actions/draft";
-import { OptionChips, sideClass, sortByShownName } from "@/components/draft/role-chips";
+import { sideClass, sortByShownName, TeamRows } from "@/components/draft/role-chips";
 import { DraftScriptForm } from "@/components/draft/script-form";
-import { byTeam } from "@/components/draft/view";
+import { splitByGroup } from "@/components/draft/team-section";
 import { Card } from "@/components/ui";
 import { db } from "@/db";
 import { getDict } from "@/i18n/server";
@@ -32,9 +32,9 @@ export default async function DraftScriptPage({ params }: { params: Promise<{ id
   if (!pool) notFound();
   const owner = pool.memberId === null ? d.sharedPoolTitle : rows.members.find((m) => m.id === pool.memberId)?.nickname ?? "?";
   const editable = script.createdBy === me.id;
-  const groups = byTeam(sortByShownName(pool.roleIds, locale), (r) => r).map((g) => ({
-    key: g.team,
-    label: t.admin.session.roleTeams[g.team],
+  const groups = splitByGroup(sortByShownName(pool.roleIds, locale), (r) => [r]).map((g) => ({
+    group: g.group,
+    label: g.group === "bundles" ? d.bundles : t.admin.session.roleTeams[g.group],
     roles: g.items.map((roleId) => {
       const role = findRole(roleId);
       return { id: roleId, name: role ? roleName(role, locale) : roleId, className: sideClass(roleId) };
@@ -44,10 +44,10 @@ export default async function DraftScriptPage({ params }: { params: Promise<{ id
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
-        <Link href={`/admin/drafty/session/${rows.session.id}`} className="text-sm text-muted hover:underline">{d.backToSession}</Link>
+        <Link href={`/admin/drafty/${rows.draft.id}`} className="text-sm text-muted hover:underline">{d.backToDraft}</Link>
         <h1 className="text-2xl font-bold">{script.name}</h1>
         <p className="text-sm text-muted">
-          {d.scriptTitle}: {rows.draft.name} – {rows.session.name} · {d.scriptFrom(owner)}
+          {d.scriptTitle}: {rows.draft.name} · {d.scriptFrom(owner)}
         </p>
         <span className="flex flex-wrap gap-2">
           <a href={scriptToolLink(script)} target="_blank" rel="noopener noreferrer" className={pill}>{d.openInTool}</a>
@@ -66,7 +66,7 @@ export default async function DraftScriptPage({ params }: { params: Promise<{ id
       ) : (
         <Card className="flex flex-col gap-3">
           <p className="text-sm text-muted">{d.scriptReadOnly}</p>
-          <OptionChips roleIds={sortByShownName(script.roleIds, locale)} locale={locale} />
+          <TeamRows roleIds={script.roleIds} locale={locale} labels={t.admin.session.roleTeams} />
         </Card>
       )}
     </div>

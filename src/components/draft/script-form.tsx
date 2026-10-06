@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import type { MessageState } from "@/app/actions/draft";
 import { keepValues } from "../keep-values";
 import { Alert, Button, Field, inputClass } from "../ui";
+import { TeamSection, type GroupKey } from "./team-section";
 
 /**
  * A script from a draft pool: name, author and which of the pool's characters it has. Only the pool's characters
@@ -17,7 +18,7 @@ export function DraftScriptForm({
 }: {
   action: (prev: MessageState, formData: FormData) => Promise<MessageState>;
   initial: { name: string; author: string; roleIds: string[]; version: number };
-  groups: { key: string; label: string; roles: { id: string; name: string; className: string }[] }[];
+  groups: { group: GroupKey; label: string; roles: { id: string; name: string; className: string }[] }[];
   t: { name: string; author: string; roles: string; rolesHint: string; save: string; saving: string };
 }) {
   const [state, formAction, pending] = useActionState(action, {});
@@ -40,8 +41,7 @@ export function DraftScriptForm({
         <legend className="text-sm font-medium">{t.roles}</legend>
         <p className="text-xs text-muted">{t.rolesHint}</p>
         {groups.map((g) => (
-          <div key={g.key} className="flex flex-col gap-1">
-            <span className="text-xs font-semibold tracking-wide text-muted uppercase">{g.label}</span>
+          <TeamSection key={g.group} group={g.group} label={g.label} count={g.roles.length}>
             <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 sm:grid-cols-3 lg:grid-cols-4">
               {g.roles.map((r) => (
                 <label key={r.id} className="flex items-center gap-1.5 text-sm">
@@ -52,7 +52,7 @@ export function DraftScriptForm({
                 </label>
               ))}
             </div>
-          </div>
+          </TeamSection>
         ))}
       </fieldset>
       <div>

@@ -14,7 +14,6 @@ import {
   type AdminUser,
   type DraftEventType,
   type DraftModeId,
-  type DraftModeSettings,
   type DraftRoleSource,
   type DraftSessionMember,
 } from "@/db/schema";
@@ -48,7 +47,6 @@ export type DraftError =
   | "doesNotFit"
   | "notReady"
   | "ownerFixed"
-  | "modeNotAllowed"
   /** the script was saved elsewhere since the page was opened */
   | "conflict"
   | "outsidePool"
@@ -143,54 +141,30 @@ async function setSeats(tx: Tx, members: DraftSessionMember[], order: DraftSessi
 
 // ─── Drafts ──────────────────────────────────────────────────────────────────
 
+/** A draft's settings: what is offered and how it is played. */
 export type DraftInput = {
   name: string;
   note: string | null;
   roleSource: DraftRoleSource;
   bundles: string[][];
-  modes: DraftModeId[];
-  modeDefaults: DraftModeSettings;
+  mode: DraftModeId;
+  config: ModeConfig;
 };
 
-/** Any account may set up a Draft and becomes its owner. */
-export async function createDraft(user: AdminUser, input: DraftInput) {
-  const [draft] = await db.insert(drafts).values({ ...input, ownerId: user.id }).returning();
-  return draft;
-}
-
-/** Changes reach only sessions that have not started: a started one keeps what it got at the start. */
-export async function updateDraft(user: AdminUser, draftId: number, input: DraftInput): Promise<Result> {
-  const draft = await db.query.drafts.findFirst({ where: eq(drafts.id, draftId) });
-  if (!draft) return fail("notFound");
-  if (!isDraftManager(user, draft)) return fail("forbidden");
-  await db.update(drafts).set({ ...input, updatedAt: new Date() }).where(eq(drafts.id, draftId));
-  return { ok: true };
-}
-
-/** Deletes the Draft with all its sessions, picks and scripts. */
-export async function deleteDraft(user: AdminUser, draftId: number): Promise<Result> {
-  const draft = await db.query.drafts.findFirst({ where: eq(drafts.id, draftId) });
-  if (!draft) return fail("notFound");
-  if (!isDraftManager(user, draft)) return fail("forbidden");
-  await db.delete(drafts).where(eq(drafts.id, draftId));
-  return { ok: true };
-}
-
-// ─── Preparing a session ─────────────────────────────────────────────────────
-
-export type SessionSettings = { name: string; mode: DraftModeId; config: ModeConfig };
-
-/** A new session of the Draft; its creator is its owner, drafting and accepted, and invites the others. */
-export async function createSession(user: AdminUser, draftId: number, settings: SessionSettings, locale: Locale): Promise<Result<{ sessionId: number }>> {
-  const draft = await db.query.drafts.findFirst({ where: eq(drafts.id, draftId) });
-  if (!draft) return fail("notFound");
-  if (!isDraftManager(user, draft)) return fail("forbidden");
-  if (!draft.modes.includes(settings.mode)) return fail("modeNotAllowed");
+/**
+ * Any account may set up a draft. It becomes its owner – drafting and accepted – and invites the others; the
+ * setup (drafts) and the run (draft_sessions) are created together, one to one.
+ */
+export async function createDraft(user: AdminUser, input: DraftInput, locale: Locale): Promise<{ draftId: number }> {
   return db.transaction(async (tx) => {
     const now = new Date();
+    const [draft] = await tx
+      .insert(drafts)
+      .values({ name: input.name, note: input.note, roleSource: input.roleSource, bundles: input.bundles, ownerId: user.id })
+      .returning();
     const [session] = await tx
       .insert(draftSessions)
-      .values({ draftId, name: settings.name, mode: settings.mode, modeConfig: settings.config, createdBy: user.id })
+      .values({ draftId: draft.id, name: input.name, mode: input.mode, modeConfig: input.config, createdBy: user.id })
       .returning();
     await tx.insert(draftSessionMembers).values({
       sessionId: session.id,
@@ -204,20 +178,36 @@ export async function createSession(user: AdminUser, draftId: number, settings: 
       invitedBy: user.id,
       respondedAt: now,
     });
-    return { ok: true as const, sessionId: session.id };
+    return { draftId: draft.id };
   });
 }
 
-export async function updateSessionSettings(user: AdminUser, sessionId: number, settings: SessionSettings): Promise<Result> {
+/** Changes the settings until the start; then what is offered is the draft's own copy and stays as it was. */
+export async function updateDraft(user: AdminUser, sessionId: number, input: DraftInput): Promise<Result> {
   return preparing(sessionId, user, async (tx, rows) => {
-    if (!rows.draft.modes.includes(settings.mode)) return fail("modeNotAllowed");
+    const now = new Date();
+    await tx
+      .update(drafts)
+      .set({ name: input.name, note: input.note, roleSource: input.roleSource, bundles: input.bundles, updatedAt: now })
+      .where(eq(drafts.id, rows.draft.id));
     await tx
       .update(draftSessions)
-      .set({ name: settings.name, mode: settings.mode, modeConfig: settings.config, updatedAt: new Date() })
+      .set({ name: input.name, mode: input.mode, modeConfig: input.config, updatedAt: now })
       .where(eq(draftSessions.id, sessionId));
     return { ok: true };
   });
 }
+
+/** Deletes the draft with its picks, pools and scripts – its owner or an administrator. */
+export async function deleteDraft(user: AdminUser, draftId: number): Promise<Result> {
+  const draft = await db.query.drafts.findFirst({ where: eq(drafts.id, draftId) });
+  if (!draft) return fail("notFound");
+  if (!isDraftManager(user, draft)) return fail("forbidden");
+  await db.delete(drafts).where(eq(drafts.id, draftId));
+  return { ok: true };
+}
+
+// ─── Preparing ───────────────────────────────────────────────────────────────
 
 export type InviteInput = { userIds: number[]; role: "organizer" | "participant"; drafts: boolean };
 
@@ -465,7 +455,7 @@ export async function createScript(user: AdminUser, sessionId: number, poolId: n
       sessionId,
       poolId,
       createdBy: user.id,
-      name: [rows.draft.name, rows.session.name, owner?.nickname].filter(Boolean).join(" – "),
+      name: [rows.draft.name, owner?.nickname].filter(Boolean).join(" – "),
       author: user.nickname,
       roleIds: sortRoleIds(pool.roleIds),
     })
@@ -502,12 +492,12 @@ export async function saveScript(user: AdminUser, scriptId: number, input: Scrip
 }
 
 /** Its author deletes a script, or the Draft's owner or an administrator. */
-export async function deleteScript(user: AdminUser, scriptId: number): Promise<Result<{ sessionId: number }>> {
+export async function deleteScript(user: AdminUser, scriptId: number): Promise<Result<{ draftId: number }>> {
   const script = await db.query.draftScripts.findFirst({ where: eq(draftScripts.id, scriptId) });
   if (!script) return fail("notFound");
   const rows = await loadSessionRows(db, script.sessionId);
   if (!rows) return fail("notFound");
   if (script.createdBy !== user.id && !isDraftManager(user, rows.draft)) return fail("forbidden");
   await db.delete(draftScripts).where(eq(draftScripts.id, scriptId));
-  return { ok: true, sessionId: script.sessionId };
+  return { ok: true, draftId: rows.draft.id };
 }

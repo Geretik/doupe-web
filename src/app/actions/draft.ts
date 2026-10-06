@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { draftModeIds, type DraftModeSettings, type DraftRoleSource } from "@/db/schema";
+import type { DraftRoleSource } from "@/db/schema";
 import type { Dict } from "@/i18n/dictionaries";
 import { getDict } from "@/i18n/server";
 import { requireAdmin } from "@/lib/admin-auth";
@@ -29,7 +29,6 @@ function errorText(t: DraftT, error: service.DraftError) {
 function revalidateDrafts() {
   revalidatePath("/admin", "layout");
 }
-
 
 function text(formData: FormData, name: string) {
   return String(formData.get(name) ?? "").trim();
@@ -70,39 +69,35 @@ function parseDraftForm(formData: FormData, t: DraftT): { values?: service.Draft
   }
   if (bundleErrors.length) fieldErrors.bundles = [...new Set(bundleErrors)];
 
-  const modes = draftModeIds.filter((m) => formData.getAll("modes").includes(m));
-  if (!modes.length) fieldErrors.modes = [e.noModes];
-
-  const modeDefaults: DraftModeSettings = {};
-  for (const id of draftModeIds) {
-    const mode = draftModes[id];
-    const { config, invalid } = parseModeConfig(mode, formData);
-    for (const f of invalid) fieldErrors[`${id}.${f.key}`] = [e.number(f.min, f.max)];
-    modeDefaults[id] = config;
-  }
+  const modeId = String(formData.get("mode") ?? "");
+  if (!isDraftMode(modeId)) return { fieldErrors: { ...fieldErrors, mode: [e.checkForm] } };
+  const { config, invalid } = parseModeConfig(draftModes[modeId], formData);
+  for (const f of invalid) fieldErrors[`${modeId}.${f.key}`] = [e.number(f.min, f.max)];
 
   if (Object.keys(fieldErrors).length) return { fieldErrors };
-  return { values: { name, note, roleSource, bundles: bundles.map(sortRoleIds), modes, modeDefaults } };
+  return { values: { name, note, roleSource, bundles: bundles.map(sortRoleIds), mode: modeId, config } };
 }
 
+/** A new draft, owned by whoever sets it up; they invite the others on its page. */
 export async function createDraftAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const me = await requireAdmin();
-  const { t } = await getDict();
+  const { locale, t } = await getDict();
   const parsed = parseDraftForm(formData, t.draft);
   if (!parsed.values) return { error: t.draft.errors.checkForm, fieldErrors: parsed.fieldErrors };
-  const draft = await service.createDraft(me, parsed.values);
+  const { draftId } = await service.createDraft(me, parsed.values, locale);
   revalidateDrafts();
-  redirect(`/admin/drafty/${draft.id}`);
+  redirect(`/admin/drafty/${draftId}`);
 }
 
 export type MessageState = FormState & { message?: string };
 
-export async function updateDraftAction(draftId: number, _prev: MessageState, formData: FormData): Promise<MessageState> {
+/** The draft's settings while it is being prepared; `sessionId` is its run, which the change locks. */
+export async function updateDraftAction(sessionId: number, _prev: MessageState, formData: FormData): Promise<MessageState> {
   const me = await requireAdmin();
   const { t } = await getDict();
   const parsed = parseDraftForm(formData, t.draft);
   if (!parsed.values) return { error: t.draft.errors.checkForm, fieldErrors: parsed.fieldErrors };
-  const r = await service.updateDraft(me, draftId, parsed.values);
+  const r = await service.updateDraft(me, sessionId, parsed.values);
   if (!r.ok) return { error: errorText(t.draft, r.error) };
   revalidateDrafts();
   return { ok: true, message: t.draft.form.saved };
@@ -117,42 +112,7 @@ export async function deleteDraftAction(draftId: number): Promise<SimpleResult> 
   redirect("/admin/drafty");
 }
 
-// ─── Sessions ────────────────────────────────────────────────────────────────
-
-function parseSessionSettings(formData: FormData, t: DraftT): { values?: service.SessionSettings; fieldErrors?: Record<string, string[]> } {
-  const fieldErrors: Record<string, string[]> = {};
-  const name = text(formData, "name").slice(0, MAX_NAME);
-  if (!name) fieldErrors.name = [t.errors.fillName];
-  const modeId = String(formData.get("mode") ?? "");
-  if (!isDraftMode(modeId)) return { fieldErrors: { ...fieldErrors, mode: [t.errors.modeNotAllowed] } };
-  const mode = draftModes[modeId];
-  const { config, invalid } = parseModeConfig(mode, formData);
-  for (const f of invalid) fieldErrors[`${modeId}.${f.key}`] = [t.errors.number(f.min, f.max)];
-  if (Object.keys(fieldErrors).length) return { fieldErrors };
-  return { values: { name, mode: modeId, config } };
-}
-
-export async function createSessionAction(draftId: number, _prev: FormState, formData: FormData): Promise<FormState> {
-  const me = await requireAdmin();
-  const { locale, t } = await getDict();
-  const parsed = parseSessionSettings(formData, t.draft);
-  if (!parsed.values) return { error: t.draft.errors.checkForm, fieldErrors: parsed.fieldErrors };
-  const r = await service.createSession(me, draftId, parsed.values, locale);
-  if (!r.ok) return { error: errorText(t.draft, r.error) };
-  revalidateDrafts();
-  redirect(`/admin/drafty/session/${r.sessionId}`);
-}
-
-export async function updateSessionSettingsAction(sessionId: number, _prev: MessageState, formData: FormData): Promise<MessageState> {
-  const me = await requireAdmin();
-  const { t } = await getDict();
-  const parsed = parseSessionSettings(formData, t.draft);
-  if (!parsed.values) return { error: t.draft.errors.checkForm, fieldErrors: parsed.fieldErrors };
-  const r = await service.updateSessionSettings(me, sessionId, parsed.values);
-  if (!r.ok) return { error: errorText(t.draft, r.error) };
-  revalidateDrafts();
-  return { ok: true, message: t.draft.settingsSaved };
-}
+// ─── Preparing ───────────────────────────────────────────────────────────────
 
 export async function inviteMembersAction(sessionId: number, _prev: MessageState, formData: FormData): Promise<MessageState> {
   const me = await requireAdmin();
@@ -199,11 +159,11 @@ export async function shuffleOrderAction(sessionId: number): Promise<SimpleResul
   return sessionChange((me) => service.shuffleOrder(me, sessionId));
 }
 
-export async function startSessionAction(sessionId: number): Promise<SimpleResult> {
+export async function startDraftAction(sessionId: number): Promise<SimpleResult> {
   return sessionChange((me) => service.startSession(me, sessionId), true);
 }
 
-export async function cancelSessionAction(sessionId: number): Promise<SimpleResult> {
+export async function cancelDraftAction(sessionId: number): Promise<SimpleResult> {
   return sessionChange((me) => service.cancelSession(me, sessionId), true);
 }
 
@@ -269,5 +229,5 @@ export async function deleteScriptAction(scriptId: number): Promise<SimpleResult
   const r = await service.deleteScript(me, scriptId);
   if (!r.ok) return { message: errorText(t.draft, r.error) };
   revalidateDrafts();
-  redirect(`/admin/drafty/session/${r.sessionId}`);
+  redirect(`/admin/drafty/${r.draftId}`);
 }

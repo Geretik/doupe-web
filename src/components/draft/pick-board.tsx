@@ -5,9 +5,10 @@ import type { PickState } from "@/app/actions/draft";
 import type { Locale } from "@/i18n/dictionaries";
 import { Alert, Button } from "../ui";
 import { OptionChips } from "./role-chips";
+import { TeamSection, type GroupKey } from "./team-section";
 
 export type BoardOption = { id: number; roleIds: string[]; label: string; fits: boolean };
-export type BoardGroup = { key: string; label: string; options: BoardOption[] };
+export type BoardGroup = { group: GroupKey; label: string; options: BoardOption[] };
 
 /**
  * What is left to pick. On turn, clicking an option only selects it; the pick is saved by "Confirm pick", so a
@@ -27,7 +28,7 @@ export function PickBoard({
   onTurn: boolean;
   groups: BoardGroup[];
   locale: Locale;
-  t: { choose: string; confirm: string; back: string; picking: string; selected: string; doesNotFit: string; bundle: string };
+  t: { choose: string; confirm: string; back: string; picking: string; selected: string; doesNotFit: string };
 }) {
   const [state, formAction, pending] = useActionState(action, {});
   // a selection belongs to the pick it was made for; a new pick number starts with none
@@ -36,7 +37,7 @@ export function PickBoard({
   const selected = groups.flatMap((g) => g.options).find((o) => o.id === selectedId);
 
   return (
-    <div className="flex flex-col gap-4" data-testid="pick-board">
+    <div className="flex flex-col gap-3" data-testid="pick-board">
       {state.error && <Alert kind="error">{state.error}</Alert>}
       {state.ok && state.message && <Alert kind="success">{state.message}</Alert>}
       {onTurn && selected && (
@@ -57,10 +58,7 @@ export function PickBoard({
         </form>
       )}
       {groups.map((g) => (
-        <section key={g.key} className="flex flex-col gap-1.5">
-          <h3 className="text-xs font-semibold tracking-wide text-muted uppercase">
-            {g.label} <span className="font-normal opacity-70">{g.options.length}</span>
-          </h3>
+        <TeamSection key={g.group} group={g.group} label={g.label} count={g.options.length}>
           <ul className="flex flex-wrap gap-1.5">
             {g.options.map((o) => {
               const active = onTurn && o.fits;
@@ -91,7 +89,7 @@ export function PickBoard({
               );
             })}
           </ul>
-        </section>
+        </TeamSection>
       ))}
     </div>
   );

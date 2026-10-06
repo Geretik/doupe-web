@@ -33,9 +33,9 @@ export function passwordResetUrl(token: string) {
   return `${siteUrl()}/admin/nove-heslo/${token}`;
 }
 
-/** A draft session in the admin; the link of the draft e-mails. */
-export function draftSessionUrl(sessionId: number) {
-  return `${siteUrl()}/admin/drafty/session/${sessionId}`;
+/** A draft in the admin; the link of the draft e-mails. */
+export function draftUrl(draftId: number) {
+  return `${siteUrl()}/admin/drafty/${draftId}`;
 }
 
 /**

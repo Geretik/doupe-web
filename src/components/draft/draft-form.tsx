@@ -2,14 +2,15 @@
 
 import { useActionState, useMemo, useState } from "react";
 import type { MessageState } from "@/app/actions/draft";
-import type { DraftModeId, DraftModeSettings, DraftRoleSource } from "@/db/schema";
+import type { DraftModeId, DraftRoleSource } from "@/db/schema";
 import { plural, type PluralForms } from "@/i18n/plural";
 import type { RoleEdition, RoleTeam } from "@/lib/botc-roles";
 import { roleIdsFromScriptJson } from "@/lib/draft/roles";
 import { keepValues } from "../keep-values";
 import { Alert, Button, Field, inputClass } from "../ui";
+import { TeamSection } from "./team-section";
 
-export type RoleItem = { id: string; team: RoleTeam; edition: RoleEdition; name: string };
+export type RoleItem = { id: string; team: RoleTeam; edition: RoleEdition; name: string; className: string };
 export type ModeInfo = {
   id: DraftModeId;
   name: string;
@@ -36,8 +37,7 @@ export type DraftFormLabels = {
   selected: string;
   bundles: string;
   bundlesHint: string;
-  modes: string;
-  defaults: string;
+  mode: string;
   submit: string;
   saving: string;
   offered: PluralForms;
@@ -48,11 +48,11 @@ export type DraftFormInitial = {
   note: string;
   roleSource: DraftRoleSource;
   bundlesText: string;
-  modes: DraftModeId[];
-  modeDefaults: DraftModeSettings;
+  mode: DraftModeId;
+  config: Record<string, number>;
 };
 
-/** Setting up or changing a Draft: what is offered, bundles, modes and their defaults. */
+/** Setting up a draft or changing it before the start: the mode and its numbers, what is offered, bundles. */
 export function DraftForm({
   action,
   initial,
@@ -82,6 +82,8 @@ export function DraftForm({
   const [manual, setManual] = useState<Set<string>>(new Set(src.kind === "manual" ? src.roleIds : []));
   const [importText, setImportText] = useState("");
   const [importResult, setImportResult] = useState<"done" | "failed" | null>(null);
+  const [modeId, setModeId] = useState<DraftModeId>(initial.mode);
+  const mode = modes.find((m) => m.id === modeId);
   const errors = state.fieldErrors ?? {};
 
   const offeredCount = useMemo(
@@ -118,6 +120,30 @@ export function DraftForm({
         <Field label={`${t.note} (${t.optional})`} name="note">
           <input id="note" name="note" maxLength={1000} defaultValue={initial.note} className={inputClass} />
         </Field>
+        <Field label={t.mode} name="mode" hint={mode?.description} errors={errors.mode}>
+          <select id="mode" name="mode" value={modeId} onChange={(e) => setModeId(e.target.value as DraftModeId)} className={inputClass}>
+            {modes.map((m) => (
+              <option key={m.id} value={m.id}>{m.name}</option>
+            ))}
+          </select>
+        </Field>
+        {mode?.fields.map((f) => {
+          const name = `${mode.id}.${f.key}`;
+          return (
+            <Field key={name} label={f.label} name={name} errors={errors[name]}>
+              <input
+                id={name}
+                name={name}
+                type="number"
+                min={f.min}
+                max={f.max}
+                required
+                defaultValue={modeId === initial.mode ? (initial.config[f.key] ?? f.default) : f.default}
+                className={inputClass}
+              />
+            </Field>
+          );
+        })}
       </div>
 
       <fieldset className="flex flex-col gap-3">
@@ -197,21 +223,26 @@ export function DraftForm({
               const ofTeam = roles.filter((r) => r.team === team.id);
               const count = ofTeam.filter((r) => manual.has(r.id)).length;
               return (
-                <fieldset key={team.id} className="flex flex-col gap-1">
-                  <legend className="flex w-full items-center gap-3 text-sm font-medium">
-                    {team.label}
-                    <span className="text-xs font-normal text-muted">{count} / {ofTeam.length} {t.selected}</span>
-                    <button type="button" className="text-xs font-normal underline" onClick={() => setManual(new Set([...manual, ...ofTeam.map((r) => r.id)]))}>
-                      {t.all}
-                    </button>
-                    <button
-                      type="button"
-                      className="text-xs font-normal underline"
-                      onClick={() => setManual(new Set([...manual].filter((id) => !ofTeam.some((r) => r.id === id))))}
-                    >
-                      {t.none}
-                    </button>
-                  </legend>
+                <TeamSection
+                  key={team.id}
+                  group={team.id}
+                  label={team.label}
+                  count={`${count} / ${ofTeam.length} ${t.selected}`}
+                  actions={
+                    <>
+                      <button type="button" className="underline" onClick={() => setManual(new Set([...manual, ...ofTeam.map((r) => r.id)]))}>
+                        {t.all}
+                      </button>
+                      <button
+                        type="button"
+                        className="underline"
+                        onClick={() => setManual(new Set([...manual].filter((id) => !ofTeam.some((r) => r.id === id))))}
+                      >
+                        {t.none}
+                      </button>
+                    </>
+                  }
+                >
                   <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 sm:grid-cols-3 lg:grid-cols-4">
                     {ofTeam.map((r) => (
                       <label key={r.id} className="flex items-center gap-1.5 text-sm">
@@ -225,11 +256,11 @@ export function DraftForm({
                         />
                         {/* eslint-disable-next-line @next/next/no-img-element -- tiny pre-sized WebP from public/, no optimisation needed */}
                         <img src={`/botc/roles/${r.id}.webp`} alt="" width={20} height={20} className="h-5 w-5" />
-                        {r.name}
+                        <span className={r.className}>{r.name}</span>
                       </label>
                     ))}
                   </div>
-                </fieldset>
+                </TeamSection>
               );
             })}
             {errors.roles?.map((m) => <p key={m} className="text-xs text-accent">{m}</p>)}
@@ -241,45 +272,6 @@ export function DraftForm({
       <Field label={t.bundles} name="bundles" hint={t.bundlesHint} errors={errors.bundles}>
         <textarea id="bundles" name="bundles" rows={3} defaultValue={initial.bundlesText} className={`${inputClass} font-mono text-sm`} />
       </Field>
-
-      <fieldset className="flex flex-col gap-2">
-        <legend className="mb-1 text-sm font-medium">{t.modes}</legend>
-        {modes.map((m) => (
-          <label key={m.id} className="flex items-start gap-3 text-sm">
-            <input type="checkbox" name="modes" value={m.id} defaultChecked={initial.modes.includes(m.id)} className="mt-0.5 h-4 w-4 accent-accent" />
-            <span className="flex flex-col">
-              <span className="font-medium">{m.name}</span>
-              <span className="text-xs text-muted">{m.description}</span>
-            </span>
-          </label>
-        ))}
-        {errors.modes?.map((m) => <p key={m} className="text-xs text-accent">{m}</p>)}
-      </fieldset>
-
-      <fieldset className="flex flex-col gap-2">
-        <legend className="mb-1 text-sm font-medium">{t.defaults}</legend>
-        <div className="grid gap-4 sm:grid-cols-2">
-          {modes.flatMap((m) =>
-            m.fields.map((f) => {
-              const name = `${m.id}.${f.key}`;
-              return (
-                <Field key={name} label={`${m.name}: ${f.label}`} name={name} errors={errors[name]}>
-                  <input
-                    id={name}
-                    name={name}
-                    type="number"
-                    min={f.min}
-                    max={f.max}
-                    required
-                    defaultValue={initial.modeDefaults[m.id]?.[f.key] ?? f.default}
-                    className={inputClass}
-                  />
-                </Field>
-              );
-            }),
-          )}
-        </div>
-      </fieldset>
 
       <div>
         <Button type="submit" disabled={pending}>{pending ? t.saving : t.submit}</Button>

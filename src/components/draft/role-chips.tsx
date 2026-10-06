@@ -1,5 +1,6 @@
 import type { Locale } from "@/i18n/dictionaries";
-import { findRole, roleIcon, roleName, roleSide, roleTeams } from "@/lib/botc-roles";
+import { findRole, roleIcon, roleName, roleSide, roleTeams, type RoleTeam } from "@/lib/botc-roles";
+import { groupHeadingClass, splitByGroup } from "./team-section";
 
 const chip = "inline-flex items-center gap-1 rounded-full border border-border bg-card py-0.5 pr-2.5 pl-1 text-xs";
 
@@ -58,4 +59,23 @@ export function sortByShownName(roleIds: string[], locale: Locale) {
     const y = key(b);
     return x.team - y.team || collator.compare(x.name, y.name);
   });
+}
+
+/** A pool's characters in one row per team, the team's name in its colour in front. */
+export function TeamRows({ roleIds, locale, labels }: { roleIds: string[]; locale: Locale; labels: Record<RoleTeam, string> }) {
+  const groups = splitByGroup(sortByShownName(roleIds, locale), (id) => [id]);
+  return (
+    <div className="flex flex-col divide-y divide-border">
+      {groups.map((g) => (
+        <div key={g.group} className="flex flex-wrap items-center gap-1.5 py-1.5 first:pt-0 last:pb-0" data-team={g.group}>
+          <span className={`w-28 shrink-0 text-xs font-semibold tracking-wide uppercase ${groupHeadingClass(g.group)}`}>
+            {g.group === "bundles" ? "" : labels[g.group]} <span className="font-normal opacity-70">{g.items.length}</span>
+          </span>
+          {g.items.map((id) => (
+            <RoleChip key={id} roleId={id} locale={locale} />
+          ))}
+        </div>
+      ))}
+    </div>
+  );
 }

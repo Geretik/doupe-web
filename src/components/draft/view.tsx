@@ -1,18 +1,18 @@
-import type { Draft, DraftModeId, DraftSession } from "@/db/schema";
+import type { Draft, DraftSession } from "@/db/schema";
 import type { Dict, Locale } from "@/i18n/dictionaries";
-import { botcRoles, findRole, roleName, roleTeams, type RoleTeam } from "@/lib/botc-roles";
-import { draftModes } from "@/lib/draft/modes";
+import { botcRoles, findRole, roleName, roleTeams } from "@/lib/botc-roles";
+import { draftModes, normalizeModeConfig } from "@/lib/draft/modes";
 import { DEFAULT_BUNDLES, defaultDraftTeams, roleEditions } from "@/lib/draft/roles";
 import type { PrepState } from "@/lib/draft/state";
 import type { DraftFormInitial, DraftFormLabels, ModeInfo, RoleItem } from "./draft-form";
+import { sideClass } from "./role-chips";
 
-/** Labels and settings of modes for the forms (client components get plain data). */
-export function modeInfos(t: Dict, ids: readonly DraftModeId[] = Object.keys(draftModes) as DraftModeId[]): ModeInfo[] {
-  return ids.map((id) => {
-    const m = draftModes[id];
-    const labels = t.draft.modes[id];
+/** Labels and settings of all modes for the draft form (client components get plain data). */
+export function modeInfos(t: Dict): ModeInfo[] {
+  return Object.values(draftModes).map((m) => {
+    const labels = t.draft.modes[m.id];
     return {
-      id,
+      id: m.id,
       name: labels.name,
       description: labels.description,
       fields: m.fields.map((f) => ({ ...f, label: labels.fields[f.key] ?? f.key })),
@@ -25,24 +25,17 @@ export function modeSummary(t: Dict, session: Pick<DraftSession, "mode" | "modeC
   return `${t.draft.modes[session.mode].name} · ${t.draft.modeSummary[session.mode](session.modeConfig)}`;
 }
 
-/** Every character for the manual pick of a Draft form, by team and by the name shown. */
+/** Every character for the manual pick of the draft form, by team and by the name shown. */
 export function roleItems(locale: Locale): RoleItem[] {
   const collator = new Intl.Collator(locale);
   return botcRoles
-    .map((r) => ({ id: r.id, team: r.team, edition: r.edition, name: roleName(r, locale) }))
+    .map((r) => ({ id: r.id, team: r.team, edition: r.edition, name: roleName(r, locale), className: sideClass(r.id) }))
     .sort((a, b) => roleTeams.indexOf(a.team) - roleTeams.indexOf(b.team) || collator.compare(a.name, b.name));
-}
-
-/** Characters split by team, in team order; empty teams left out. */
-export function byTeam<T>(items: T[], roleId: (item: T) => string): { team: RoleTeam; items: T[] }[] {
-  return roleTeams
-    .map((team) => ({ team, items: items.filter((i) => findRole(roleId(i))?.team === team) }))
-    .filter((g) => g.items.length > 0);
 }
 
 const badgeBase = "inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium whitespace-nowrap";
 
-/** Status of a session; "preparing" told apart as being set up / waiting for players / ready. */
+/** Status of a draft; "preparing" told apart as being set up / waiting for players / ready. */
 export function StatusBadge({ t, status, prepState }: { t: Dict; status: DraftSession["status"]; prepState?: PrepState }) {
   const label = status === "preparing" && prepState ? t.draft.prepState[prepState] : t.draft.status[status];
   const cls =
@@ -59,7 +52,7 @@ export function YourTurnBadge({ t }: { t: Dict }) {
   return <span className={`${badgeBase} border-accent bg-accent text-accent-foreground`}>{t.draft.yourTurn}</span>;
 }
 
-/** Everything the Draft form shows besides its values. */
+/** Everything the draft form shows besides its values. */
 export function draftFormProps(t: Dict, locale: Locale, submit: string) {
   const labels: DraftFormLabels = { ...t.draft.form, submit, offered: t.draft.offered };
   return {
@@ -76,16 +69,16 @@ export function bundlesText(bundles: readonly (readonly string[])[]) {
   return bundles.map((b) => b.map((id) => findRole(id)?.en ?? id).join(" + ")).join("\n");
 }
 
-/** The Draft form's values: those of the Draft, or the defaults of a new one. */
-export function draftFormInitial(draft?: Draft): DraftFormInitial {
+/** The draft form's values: those of a draft being prepared, or the defaults of a new one. */
+export function draftFormInitial(draft?: { setup: Draft; run: DraftSession }): DraftFormInitial {
   if (draft) {
     return {
-      name: draft.name,
-      note: draft.note ?? "",
-      roleSource: draft.roleSource,
-      bundlesText: bundlesText(draft.bundles),
-      modes: draft.modes,
-      modeDefaults: draft.modeDefaults,
+      name: draft.setup.name,
+      note: draft.setup.note ?? "",
+      roleSource: draft.setup.roleSource,
+      bundlesText: bundlesText(draft.setup.bundles),
+      mode: draft.run.mode,
+      config: draft.run.modeConfig,
     };
   }
   return {
@@ -93,7 +86,7 @@ export function draftFormInitial(draft?: Draft): DraftFormInitial {
     note: "",
     roleSource: { kind: "filter", editions: [...roleEditions], teams: [...defaultDraftTeams] },
     bundlesText: bundlesText(DEFAULT_BUNDLES),
-    modes: Object.keys(draftModes) as DraftModeId[],
-    modeDefaults: {},
+    mode: "personal",
+    config: normalizeModeConfig(draftModes.personal),
   };
 }

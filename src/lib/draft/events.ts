@@ -4,7 +4,7 @@ import { db } from "@/db";
 import { adminUsers, draftEvents, draftSessionMembers, draftSessions, drafts, type DraftEvent, type DraftMemberRole, type DraftSession } from "@/db/schema";
 import { dictionaries, type Locale } from "@/i18n/dictionaries";
 import { sendLinkEmail } from "../email";
-import { draftSessionUrl } from "../site";
+import { draftUrl } from "../site";
 
 /*
  * Notifications of the drafts. The service writes an event (draft_events) in the same transaction as the change
@@ -48,16 +48,15 @@ const emailNotifier: DraftNotifier = {
     for (const r of recipients) {
       const t = dictionaries[r.locale];
       const e = t.draft.email;
-      const label = e.sessionLabel(draftName, session.name);
-      const url = draftSessionUrl(session.id);
+      const url = draftUrl(session.draftId);
       const message =
         event.type === "invited"
-          ? { subject: e.inviteSubject(label), body: e.inviteBody(inviter ?? "?", label, t.draft.memberRoles[r.role]) }
+          ? { subject: e.inviteSubject(draftName), body: e.inviteBody(inviter ?? "?", draftName, t.draft.memberRoles[r.role]) }
           : event.type === "turn"
-            ? { subject: e.turnSubject(label), body: e.turnBody(label, event.pickNumber ?? session.pickNumber, TURN_REMINDER_HOURS) }
+            ? { subject: e.turnSubject(draftName), body: e.turnBody(draftName, event.pickNumber ?? session.pickNumber, TURN_REMINDER_HOURS) }
             : event.type === "completed"
-              ? { subject: e.completedSubject(label), body: e.completedBody(label) }
-              : { subject: e.cancelledSubject(label), body: e.cancelledBody(label) };
+              ? { subject: e.completedSubject(draftName), body: e.completedBody(draftName) }
+              : { subject: e.cancelledSubject(draftName), body: e.cancelledBody(draftName) };
       try {
         await sendLinkEmail(r.email, message.subject, t.email.hi(r.nickname), message.body, url);
       } catch (err) {

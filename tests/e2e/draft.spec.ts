@@ -94,9 +94,34 @@ async function pick(page: Page, option: string) {
   await page.click("button:has-text('Potvrdit pick')");
 }
 
-async function sessionIdFromUrl(page: Page) {
-  await page.waitForURL(/\/admin\/drafty\/session\/\d+$/);
-  return Number(page.url().split("/").pop());
+/** The draft on the page, and its run (draft_sessions), which the events and picks belong to. */
+async function draftFromUrl(page: Page) {
+  await page.waitForURL(/\/admin\/drafty\/\d+$/);
+  const draftId = Number(page.url().split("/").pop());
+  const [{ id: sessionId }] = await sql<{ id: number }>("select id from draft_sessions where draft_id=$1", [draftId]);
+  return { draftId, sessionId };
+}
+
+const SCRIPT = [{ id: "_meta", name: "Test" }, "washerwoman", "librarian", "investigator", "chef", "empath", "choirboy", "king", "huntsman", "damsel", "imp", "poisoner", "drunk"];
+
+/** Sets up a draft through the form: hand-picked characters from a script's JSON, a mode and its size. */
+async function newDraft(page: Page, name: string, mode: "personal" | "shared", size: string, roles: unknown[] = SCRIPT) {
+  await page.goto("/admin/drafty/novy");
+  await page.fill("#name", name);
+  await page.selectOption("#mode", mode);
+  await page.fill(mode === "personal" ? "[id='personal.rolesPerParticipant']" : "[id='shared.targetRoles']", size);
+  await page.check("text=Ruční výběr");
+  await page.click("summary:has-text('Načíst postavy ze scriptu')");
+  await page.fill("textarea[aria-label='Načíst postavy ze scriptu']", JSON.stringify(roles));
+  await page.click("button:has-text('Načíst')");
+  await page.click("button:has-text('Vytvořit draft')");
+  return draftFromUrl(page);
+}
+
+async function invite(page: Page, nickname: string) {
+  await page.check(`[data-testid=draft-invite] label:has-text('${nickname}') input`);
+  await page.click("[data-testid=draft-invite] button:has-text('Pozvat')");
+  await expect(page.locator("main")).toContainText(`Pozváno: ${nickname}`);
 }
 
 test("draft: invitations, snake turns over days, a race of two tabs, bundles, completion and a script from the pool", async ({ page, browser }) => {
@@ -105,34 +130,27 @@ test("draft: invitations, snake turns over days, a race of two tabs, bundles, co
   await account("Charlie", "charlie@example.com");
   await adminLogin(page, { email: "alice@example.com", password: PASSWORD });
 
-  // a Draft with characters taken from a script's JSON; the two default bundles
+  // a draft is set up in one go: mode, size, characters (from a script's JSON) and the two default bundles
   await page.goto("/admin/drafty");
   await page.click("text=+ Nový draft");
   await page.fill("#name", "Podzimní draft");
+  await expect(page.locator("#mode")).toHaveValue("personal");
+  await page.fill("[id='personal.rolesPerParticipant']", "3");
   await page.check("text=Ruční výběr");
   await page.click("summary:has-text('Načíst postavy ze scriptu')");
-  await page.fill(
-    "textarea[aria-label='Načíst postavy ze scriptu']",
-    JSON.stringify([{ id: "_meta", name: "Test" }, "washerwoman", "librarian", "investigator", "chef", "empath", "choirboy", "king", "huntsman", "damsel", "imp", "poisoner", "drunk"]),
-  );
+  await page.fill("textarea[aria-label='Načíst postavy ze scriptu']", JSON.stringify(SCRIPT));
   await page.click("button:has-text('Načíst')");
   await expect(page.getByTestId("offered-count")).toHaveText("Nabízí se 12 postav.");
   await expect(page.locator("#bundles")).toHaveValue("Choirboy + King\nHuntsman + Damsel");
   await page.click("button:has-text('Vytvořit draft')");
-  await page.waitForURL(/\/admin\/drafty\/\d+$/);
-  await expect(page.locator("main")).toContainText("Nabízí se 12 postav.");
-
-  // a session: Personal Pool, 3 characters each
-  await page.fill("#session-name", "Session A");
-  await page.fill("[id='session-personal.rolesPerParticipant']", "3");
-  await page.click("button:has-text('Vytvořit session')");
-  const sessionId = await sessionIdFromUrl(page);
+  const { draftId, sessionId } = await draftFromUrl(page);
+  await expect(page.locator("h1")).toContainText("Podzimní draft");
+  await expect(page.locator("main")).toContainText("Personal Pool · 3 role na hráče");
   await expect(page.getByTestId("start-checks")).toContainText("Draftujících: 1 – potřeba aspoň 2");
+  await expect(page.getByTestId("start-checks")).toContainText("✅Nabídka: 12 postav");
 
-  // invitations are per session: Bob is invited, Charlie is not
-  await page.check("[data-testid=draft-invite] label:has-text('Bob') input");
-  await page.click("[data-testid=draft-invite] button:has-text('Pozvat')");
-  await expect(page.locator("main")).toContainText("Pozváno: Bob");
+  // Bob is invited, Charlie is not
+  await invite(page, "Bob");
   await expect(page.getByTestId("member-Bob")).toContainText("pozvánka odeslaná");
   await expect(page.getByTestId("start-checks")).toContainText("Ještě neodpověděli: Bob");
   await expect(page.locator("h1")).toContainText("Čeká se na hráče");
@@ -141,21 +159,23 @@ test("draft: invitations, snake turns over days, a race of two tabs, bundles, co
     .poll(async () => sql("select type, dispatched_at is not null as sent from draft_events where session_id=$1", [sessionId]))
     .toEqual([{ type: "invited", sent: true }]);
 
-  // Charlie is not a member: the session does not exist for him
+  // Charlie is not a member: the draft does not exist for him
   const charlie = await loginAs(browser, "charlie@example.com");
-  const notFound = await charlie.goto(`/admin/drafty/session/${sessionId}`);
+  const notFound = await charlie.goto(`/admin/drafty/${draftId}`);
   expect(notFound?.status()).toBe(404);
+  await charlie.goto("/admin/drafty");
+  await expect(charlie.getByTestId("drafts")).not.toContainText("Podzimní draft");
 
   // Bob sees the invitation in the menu and accepts it
   const bob = await loginAs(browser, "bob@example.com");
   await expect(bob.getByTestId("draft-badge")).toHaveText("1");
   await bob.click("main nav >> text=Drafty");
-  await expect(bob.getByTestId("my-sessions")).toContainText("Pozvánka čeká na tvou odpověď");
-  await bob.click("[data-testid=my-sessions] a");
+  await expect(bob.getByTestId("drafts")).toContainText("Pozvánka čeká na tvou odpověď");
+  await bob.click("[data-testid=drafts] a");
   await bob.click("#invitation button:has-text('Přijmout')");
   await expect(bob.getByTestId("member-Bob")).toContainText("přijal/a");
 
-  // Alice starts it; from now on the order is fixed
+  // Alice starts it; from now on the order and the settings are fixed
   await page.reload();
   await expect(page.locator("h1")).toContainText("Připraveno ke startu");
   page.once("dialog", (d) => d.accept());
@@ -164,6 +184,11 @@ test("draft: invitations, snake turns over days, a race of two tabs, bundles, co
   await expect(page.locator("#turn")).toContainText("Pick č. 1");
   await expect(page.locator("#turn")).toContainText("Tvůj pool: 0 / 3");
   await expect(page.getByTestId("order")).toHaveText(/1\. Alice.*2\. Bob/);
+  await expect(page.locator("button:has-text('Uložit nastavení')")).toHaveCount(0);
+  // every team in a box of its own; the bundles first
+  await expect(page.locator('[data-testid=pick-board] [data-team=demon] [data-option="imp"]')).toHaveCount(1);
+  await expect(page.locator('[data-testid=pick-board] [data-team=outsider] [data-option="drunk"]')).toHaveCount(1);
+  await expect(page.locator("[data-testid=pick-board] [data-team]").first()).toHaveAttribute("data-team", "bundles");
 
   // pick 1: Alice. Selecting is not picking – only the confirmation saves it
   await page.click('[data-testid=pick-board] button[data-option="washerwoman"]');
@@ -190,20 +215,22 @@ test("draft: invitations, snake turns over days, a race of two tabs, bundles, co
     { pick_number: 1, sent: true, recipients: 0, later: false },
     { pick_number: 2, sent: true, recipients: 1, later: false },
   ]);
-  await page.goto(`/admin/drafty/session/${sessionId}`);
+  await page.goto(`/admin/drafty/${draftId}`);
 
   // nobody needs to be online: Bob comes back later, the server knows where the draft is
   await bob.goto("/admin/drafty");
   await expect(bob.getByTestId("draft-badge")).toHaveText("1");
-  await expect(bob.getByTestId("my-sessions")).toContainText("JSI NA TAHU");
+  await expect(bob.getByTestId("drafts")).toContainText("JSI NA TAHU");
+  // the address from the e-mails sent before drafts and sessions became one leads to the draft
   await bob.goto(`/admin/drafty/session/${sessionId}`);
+  await expect(bob).toHaveURL(new RegExp(`/admin/drafty/${draftId}$`));
   await expect(bob.locator("#turn")).toContainText("Pick č. 2");
-  // Washerwoman is gone for everybody in this session
+  // Washerwoman is gone for everybody in this draft
   await expect(bob.locator('[data-testid=pick-board] [data-option="washerwoman"]')).toHaveCount(0);
 
   // pick 2 from two tabs at once: exactly one gets through, the other is told the draft moved on
   const bob2 = await bob.context().newPage();
-  await bob2.goto(`/admin/drafty/session/${sessionId}`);
+  await bob2.goto(`/admin/drafty/${draftId}`);
   await bob.click('[data-testid=pick-board] button[data-option="imp"]');
   await bob2.click('[data-testid=pick-board] button[data-option="poisoner"]');
   await Promise.all([bob.click("button:has-text('Potvrdit pick')"), bob2.click("button:has-text('Potvrdit pick')")]);
@@ -235,10 +262,11 @@ test("draft: invitations, snake turns over days, a race of two tabs, bundles, co
   await expect(page.locator('[data-testid=pick-board] span[data-option="choirboy+king"]')).toHaveCount(1);
   await pick(page, "chef");
 
-  // all pools full: over, locked, every pick in the history
+  // all pools full: over, locked, every pick in the history; the pools split by team
   await expect(page.locator("h1")).toContainText("Dokončeno");
   await expect(page.getByTestId("pools")).toContainText("Alice3 / 3");
   await expect(page.getByTestId("pools")).toContainText("Bob3 / 3");
+  await expect(page.locator("[data-testid=pools] [data-team=outsider]")).toContainText("Kráska");
   await expect(page.getByTestId("history").locator("tbody tr")).toHaveCount(5);
   expect(await sql("select status, current_member_id, pick_number from draft_sessions where id=$1", [sessionId])).toEqual([
     { status: "completed", current_member_id: null, pick_number: 6 },
@@ -262,6 +290,7 @@ test("draft: invitations, snake turns over days, a race of two tabs, bundles, co
   await page.click("button:has-text('Vytvořit script')");
   await page.waitForURL(/\/admin\/drafty\/script\/\d+$/);
   const scriptId = Number(page.url().split("/").pop());
+  await expect(page.locator("#name")).toHaveValue("Podzimní draft – Alice");
   await expect(page.getByTestId("script-form").locator("input[name=role]")).toHaveCount(3);
   await page.uncheck("[data-testid=script-form] input[value=chef]");
   await page.fill("#name", "Alicin script");
@@ -284,72 +313,67 @@ test("draft: invitations, snake turns over days, a race of two tabs, bundles, co
   expect(toolLink).toMatch(/^https:\/\/botcscript\.app\/\?script=/);
   const json = await page.request.get(`/admin/drafty/script/${scriptId}/script.json`);
   expect(await json.json()).toEqual([{ id: "_meta", name: "Alicin script", author: "Alice" }, "librarian", "washerwoman"]);
+  await page.click("text=← Zpět na draft");
+  await expect(page).toHaveURL(new RegExp(`/admin/drafty/${draftId}$`));
 
   // Bob sees Alice's script but cannot edit it; he cannot make one from her pool
   await bob.goto(`/admin/drafty/script/${scriptId}`);
   await expect(bob.locator("main")).toContainText("Upravit ho může jen jeho autor.");
   await expect(bob.getByTestId("script-form")).toHaveCount(0);
-  await bob.goto(`/admin/drafty/session/${sessionId}`);
+  await bob.goto(`/admin/drafty/${draftId}`);
   await expect(bob.locator("button:has-text('Vytvořit script')")).toHaveCount(1);
   await charlie.context().close();
   await bob.context().close();
 });
 
-test("draft: sessions of one Draft are independent – own members, picks, snapshot – and Shared Pool ends at its size", async ({ page, browser }) => {
-  const alice = await account("Alice", "alice@example.com", "admin");
+test("draft: two drafts are independent – own members, picks, snapshot – settings change until the start, Shared Pool ends at its size", async ({ page, browser }) => {
+  await account("Alice", "alice@example.com", "admin");
   const bobId = await account("Bob", "bob@example.com");
   const charlieId = await account("Charlie", "charlie@example.com");
-  const [{ id: draftId }] = await sql<{ id: number }>(
-    `insert into drafts (name, owner_id, role_source, bundles, modes, mode_defaults)
-     values ('Páteční draft', $1, $2, '[]', '["personal","shared"]', '{}') returning id`,
-    [alice, JSON.stringify({ kind: "manual", roleIds: ["washerwoman", "chef", "empath", "monk", "imp", "poisoner"] })],
-  );
   await adminLogin(page, { email: "alice@example.com", password: PASSWORD });
+  const roles = ["washerwoman", "chef", "empath", "monk", "imp", "poisoner"];
 
-  const newSession = async (name: string, mode: "personal" | "shared", size: string, invite: string) => {
-    await page.goto(`/admin/drafty/${draftId}`);
-    await page.fill("#session-name", name);
-    await page.selectOption("#session-mode", mode);
-    await page.fill(mode === "personal" ? "[id='session-personal.rolesPerParticipant']" : "[id='session-shared.targetRoles']", size);
-    await page.click("button:has-text('Vytvořit session')");
-    const id = await sessionIdFromUrl(page);
-    await page.check(`[data-testid=draft-invite] label:has-text('${invite}') input`);
-    await page.click("[data-testid=draft-invite] button:has-text('Pozvat')");
-    await expect(page.locator("main")).toContainText(`Pozváno: ${invite}`);
-    return id;
-  };
-  const s1 = await newSession("Shared", "shared", "3", "Bob");
-  const s2 = await newSession("Personal", "personal", "1", "Charlie");
+  const shared = await newDraft(page, "Páteční shared", "shared", "3", roles);
+  await invite(page, "Bob");
+  const personal = await newDraft(page, "Páteční personal", "personal", "2", roles);
+  await invite(page, "Charlie");
+  // the settings change until the start: 1 character each instead of 2
+  await expect(page.locator("main")).toContainText("2 role na hráče");
+  await page.fill("[id='personal.rolesPerParticipant']", "1");
+  await page.click("button:has-text('Uložit nastavení')");
+  await expect(page.locator("main")).toContainText("Uloženo.");
+  await page.reload();
+  await expect(page.locator("main")).toContainText("1 role na hráče");
   await sql("update draft_session_members set status='accepted' where user_id = any($1)", [[bobId, charlieId]]);
 
-  // Bob is in session 1 only: the Draft shows him just that one, session 2 does not exist for him
+  // Bob is in the first draft only: the list shows him just that one, the other does not exist for him
   const bob = await loginAs(browser, "bob@example.com");
-  await bob.goto(`/admin/drafty/${draftId}`);
-  await expect(bob.getByTestId("draft-sessions")).toContainText("Shared");
-  await expect(bob.getByTestId("draft-sessions")).not.toContainText("Personal");
-  expect((await bob.goto(`/admin/drafty/session/${s2}`))?.status()).toBe(404);
+  await bob.goto("/admin/drafty");
+  await expect(bob.getByTestId("drafts")).toContainText("Páteční shared");
+  await expect(bob.getByTestId("drafts")).not.toContainText("Páteční personal");
+  expect((await bob.goto(`/admin/drafty/${personal.draftId}`))?.status()).toBe(404);
 
-  for (const id of [s1, s2]) {
-    await page.goto(`/admin/drafty/session/${id}`);
-    page.once("dialog", (d) => d.accept());
+  for (const d of [shared, personal]) {
+    await page.goto(`/admin/drafty/${d.draftId}`);
+    page.once("dialog", (dialog) => dialog.accept());
     await page.click("button:has-text('Spustit draft')");
     await expect(page.locator("#turn")).toContainText("JSI NA TAHU");
   }
-  // a later change of the Draft does not reach sessions that already started
-  await sql("update drafts set role_source=$1 where id=$2", [JSON.stringify({ kind: "manual", roleIds: ["washerwoman"] }), draftId]);
+  // a later change of the setup does not reach a draft that already started
+  await sql("update drafts set role_source=$1", [JSON.stringify({ kind: "manual", roleIds: ["washerwoman"] })]);
 
-  // the Imp picked in session 1 is still there in session 2
-  await page.goto(`/admin/drafty/session/${s1}`);
+  // the Imp picked in the first draft is still there in the second
+  await page.goto(`/admin/drafty/${shared.draftId}`);
   await expect(page.locator("#turn")).toContainText("Společný pool: 0 / 3");
   await pick(page, "imp");
   await expect(page.locator("#turn")).toContainText("Čeká se na Bob");
-  await page.goto(`/admin/drafty/session/${s2}`);
+  await page.goto(`/admin/drafty/${personal.draftId}`);
   await expect(page.locator('[data-testid=pick-board] button[data-option="imp"]')).toHaveCount(1);
   await pick(page, "imp");
   await expect(page.locator("#turn")).toContainText("Čeká se na Charlie");
 
   // Bob picks twice (end of the row) and the shared pool is full: over
-  await bob.goto(`/admin/drafty/session/${s1}`);
+  await bob.goto(`/admin/drafty/${shared.draftId}`);
   await pick(bob, "chef");
   await expect(bob.locator("#turn")).toContainText("Společný pool: 2 / 3");
   await pick(bob, "monk");
@@ -363,14 +387,14 @@ test("draft: sessions of one Draft are independent – own members, picks, snaps
   await expect(bob.getByTestId("pools")).toContainText("Shared pool3 / 3");
   await expect(bob.getByTestId("history")).toContainText("Monk");
   await bob.goto("/admin/drafty");
-  await expect(bob.getByTestId("my-sessions")).toContainText("3 / 3 roles");
+  await expect(bob.getByTestId("drafts")).toContainText("3 / 3 roles");
 
-  // session 2 goes on on its own
+  // the second draft goes on on its own
   await page.reload();
   await expect(page.locator("h1")).toContainText("Probíhá");
   expect(await sql("select session_id, count(*)::int as c from draft_picks group by session_id order by session_id")).toEqual([
-    { session_id: s1, c: 3 },
-    { session_id: s2, c: 1 },
+    { session_id: shared.sessionId, c: 3 },
+    { session_id: personal.sessionId, c: 1 },
   ]);
   await bob.context().close();
 });

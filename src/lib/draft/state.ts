@@ -82,7 +82,6 @@ export function memberCanPick(rows: SessionRows, rt: Runtime, memberId: number) 
 export type StartCheck =
   | { kind: "drafters"; ok: boolean; count: number; min: number }
   | { kind: "accepted"; ok: boolean; pending: string[] }
-  | { kind: "mode"; ok: boolean }
   | { kind: "roles"; ok: boolean; problem: ModeProblem | null; offered: number }
   | { kind: "bundles"; ok: true; incomplete: OptionsResult["incompleteBundles"] };
 
@@ -98,8 +97,8 @@ export type StartReview = {
 };
 
 /**
- * The conditions for starting: enough drafters, all of them accepted, the mode allowed by the Draft, enough
- * characters for the mode. Incomplete bundles do not stop the start, they are only pointed out.
+ * The conditions for starting: enough drafters, all of them accepted, enough characters for the mode.
+ * Incomplete bundles do not stop the start, they are only pointed out.
  */
 export function startReview(rows: SessionRows): StartReview {
   const { session, draft, members } = rows;
@@ -112,7 +111,6 @@ export function startReview(rows: SessionRows): StartReview {
   const checks: StartCheck[] = [
     { kind: "drafters", ok: order.length >= mode.minDrafters, count: order.length, min: mode.minDrafters },
     { kind: "accepted", ok: pending.length === 0, pending: pending.map((m) => m.nickname) },
-    { kind: "mode", ok: draft.modes.includes(session.mode) },
     { kind: "roles", ok: problems.length === 0, problem: problems[0] ?? null, offered },
   ];
   if (offer.incompleteBundles.length) checks.push({ kind: "bundles", ok: true, incomplete: offer.incompleteBundles });
@@ -128,8 +126,10 @@ export type SessionAccess = {
   view: boolean;
   /** Invite, order, settings, start – owner and organizers who accepted */
   manage: boolean;
-  /** Cancel – managers, and the Draft's owner and administrators as a way out of a stuck session */
+  /** Cancel – managers, and the draft's owner and administrators as a way out of a stuck draft */
   cancel: boolean;
+  /** Delete with everything in it – the draft's owner and administrators */
+  remove: boolean;
   /** Takes part in the picks */
   drafter: boolean;
 };
@@ -148,6 +148,7 @@ export function sessionAccess(user: AdminUser, draft: Draft, members: DraftSessi
     view: draftManager || (member !== null && member.status !== "declined"),
     manage,
     cancel: manage || draftManager,
+    remove: draftManager,
     drafter: accepted && member.drafts,
   };
 }

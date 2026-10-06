@@ -325,10 +325,10 @@ export const jobRuns = pgTable("job_runs", {
 });
 
 /*
- * Drafts (lib/draft): an organiser sets up a Draft – which characters are offered, which of them are drafted
- * together as one bundle, which modes may be played – and runs any number of independent Draft Sessions under
- * it. Everything that changes while drafting (whose turn, picks, pools, scripts) belongs to a session, never to
- * the Draft: a Draft can have several sessions running at once.
+ * Drafts (lib/draft). A draft is one draft as people see it: the row in `drafts` holds its setup – which
+ * characters are offered, which of them are drafted together as one bundle – and its one row in
+ * `draft_sessions` holds the run: mode, members, turn, picks, pools, scripts. Created together, one to one
+ * (until October 2026 a Draft could have several sessions; the tables stayed so that nothing had to move).
  */
 
 export const draftModeIds = ["personal", "shared"] as const;
@@ -354,9 +354,11 @@ export const drafts = pgTable("drafts", {
   roleSource: jsonb("role_source").$type<DraftRoleSource>().notNull(),
   /** Characters drafted only together, as one pick, e.g. [["choirboy", "king"], ["huntsman", "damsel"]] */
   bundles: jsonb("bundles").$type<string[][]>().notNull().default([]),
-  /** Modes a session of this Draft may be played in */
-  modes: jsonb("modes").$type<DraftModeId[]>().notNull(),
-  /** What a new session starts with */
+  /**
+   * No longer used: the mode is the session's (draft_sessions.mode). Left in the schema for one deploy – the
+   * code still running during a deploy selects every column – and can be dropped by the next one.
+   */
+  modes: jsonb("modes").$type<DraftModeId[]>().notNull().default([]),
   modeDefaults: jsonb("mode_defaults").$type<DraftModeSettings>().notNull().default({}),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -377,6 +379,7 @@ export const draftSessions = pgTable(
     draftId: integer("draft_id")
       .notNull()
       .references(() => drafts.id, { onDelete: "cascade" }),
+    /** The draft's name, kept the same as drafts.name */
     name: text("name").notNull(),
     mode: text("mode", { enum: draftModeIds }).notNull(),
     /** Settings of the mode, e.g. { rolesPerParticipant: 15 }; fixed once the session starts */
@@ -401,17 +404,14 @@ export const draftSessions = pgTable(
   (t) => [index("draft_sessions_draft_idx").on(t.draftId)],
 );
 
-/** owner = created the session; organizer = may prepare, start and cancel it too; participant = drafts only. */
+/** owner = created the draft; organizer = may prepare, start and cancel it too; participant = drafts only. */
 export const draftMemberRoles = ["owner", "organizer", "participant"] as const;
 export type DraftMemberRole = (typeof draftMemberRoles)[number];
 
 export const draftInviteStatuses = ["invited", "accepted", "declined"] as const;
 export type DraftInviteStatus = (typeof draftInviteStatuses)[number];
 
-/**
- * Who belongs to a session. Every session has its own members: being in another session of the same Draft,
- * owning the Draft or being an administrator does not make anyone a member.
- */
+/** Who belongs to a draft. Only those invited (and the owner): being an administrator does not make anyone a member. */
 export const draftSessionMembers = pgTable(
   "draft_session_members",
   {
