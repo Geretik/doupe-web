@@ -318,6 +318,25 @@ export const siteTexts = pgTable(
   (t) => [index("site_texts_key_locale_idx").on(t.key, t.locale, t.id)],
 );
 
+/**
+ * The club's library of Blood on the Clocktower scripts (admin → Scripty, lib/scripts): JSON files in the official
+ * script format that every account sees; the session form offers them with a link to the script tool.
+ */
+export const scripts = pgTable("scripts", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  author: text("author"),
+  /** The script's JSON with `name` and `author` written into its "_meta"; downloaded as it is */
+  json: text("json").notNull(),
+  /** The characters of `json` this site knows (lib/botc-roles), for showing them; Fabled and homebrew are only in `json` */
+  roleIds: jsonb("role_ids").$type<string[]>().notNull(),
+  createdBy: integer("created_by").references(() => adminUsers.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type LibraryScript = typeof scripts.$inferSelect;
+
 /** When a recurring job last finished; the admin warns when the daily cron stops running (lib/job-runs). */
 export const jobRuns = pgTable("job_runs", {
   name: text("name").primaryKey(),

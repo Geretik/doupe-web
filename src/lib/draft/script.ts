@@ -14,7 +14,12 @@ export function scriptJson(script: Pick<DraftScript, "name" | "author" | "roleId
 }
 
 export function scriptToolLink(script: Pick<DraftScript, "name" | "author" | "roleIds">) {
-  const encoded = gzipSync(Buffer.from(JSON.stringify(scriptJson(script)), "utf8")).toString("base64");
+  return scriptToolLinkForJson(scriptJson(script));
+}
+
+/** The script tool opening any script in the official format, e.g. one from the club's library (lib/scripts). */
+export function scriptToolLinkForJson(json: unknown[]) {
+  const encoded = gzipSync(Buffer.from(JSON.stringify(json), "utf8")).toString("base64");
   return `${scriptToolUrl()}/?${new URLSearchParams({ script: encoded })}`;
 }
 

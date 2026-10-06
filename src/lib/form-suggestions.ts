@@ -1,12 +1,13 @@
 import { desc } from "drizzle-orm";
 import { db } from "@/db";
 import { adminUsers, games, sessions, type ScriptLink } from "@/db/schema";
+import { libraryScriptLinks } from "./scripts";
 
 /** Values used before, offered in the session form so organisers pick instead of typing. Most recent first. */
 export type FormSuggestions = {
   places: string[];
   storytellers: string[];
-  /** Scripts from earlier sessions and recorded games; picking a name fills in its link */
+  /** Scripts of the library (with a link to the script tool), then from earlier sessions and recorded games; picking a name fills in its link */
   scripts: ScriptLink[];
 };
 
@@ -26,7 +27,8 @@ function unique(values: (string | null)[]) {
 }
 
 export async function getFormSuggestions(): Promise<FormSuggestions> {
-  const [recent, played, organisers] = await Promise.all([
+  const [library, recent, played, organisers] = await Promise.all([
+    libraryScriptLinks(),
     db
       .select({ place: sessions.place, storyteller: sessions.storyteller, scripts: sessions.scripts })
       .from(sessions)
@@ -40,9 +42,9 @@ export async function getFormSuggestions(): Promise<FormSuggestions> {
     db.select({ nickname: adminUsers.nickname }).from(adminUsers).orderBy(adminUsers.nickname),
   ]);
 
-  // one entry per script name; a link from any earlier use is kept
+  // one entry per script name; the library's link comes first, otherwise a link from any earlier use is kept
   const scripts = new Map<string, ScriptLink>();
-  for (const s of [...recent.flatMap((r) => r.scripts), ...played]) {
+  for (const s of [...library, ...recent.flatMap((r) => r.scripts), ...played]) {
     const name = s.name.trim();
     const url = s.url?.trim() ?? "";
     const k = norm(name);
@@ -58,6 +60,6 @@ export async function getFormSuggestions(): Promise<FormSuggestions> {
       ...recent.map((r) => r.storyteller),
       ...organisers.map((r) => r.nickname),
     ]).slice(0, 50),
-    scripts: [...scripts.values()].slice(0, 100),
+    scripts: [...scripts.values()].slice(0, 100 + library.length),
   };
 }

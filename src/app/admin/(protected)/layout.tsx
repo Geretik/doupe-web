@@ -49,6 +49,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                 </span>
               )}
             </NavLink>
+            <NavLink href="/admin/scripty" prefixes={["/admin/scripty"]} className={linkClass}>{n.scripts}</NavLink>
           </div>
           <div className="flex items-center gap-1 whitespace-nowrap sm:border-l sm:border-border sm:pl-2">
             <span className={groupClass}>{n.club}</span>
