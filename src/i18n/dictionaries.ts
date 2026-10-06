@@ -1,3 +1,5 @@
+import { draftCs, draftEn } from "./draft";
+
 export const locales = ["cs", "en"] as const;
 export type Locale = (typeof locales)[number];
 export const defaultLocale: Locale = "cs";
@@ -268,6 +270,7 @@ export const cs = {
     title: "Ochrana osobních údajů",
     subtitle: "Jaké údaje při registraci sbíráme, k čemu je potřebujeme, kdo k nim má přístup a kdy je smažeme.",
   },
+  draft: draftCs,
   admin: {
     nav: {
       label: "Admin",
@@ -275,6 +278,9 @@ export const cs = {
       sessions: "Termíny",
       newSession: "+ Nový termín",
       stats: "Statistiky",
+      drafts: "Drafty",
+      draftsAttention: (turns: number, invites: number) =>
+        [turns && `na tahu: ${turns}`, invites && `pozvánky: ${invites}`].filter(Boolean).join(", "),
       club: "Klub",
       web: "Texty webu",
       accounts: "Účty",
@@ -1090,6 +1096,7 @@ export const en: Dict = {
     title: "Privacy",
     subtitle: "What we collect when you sign up, what we need it for, who can see it and when we delete it.",
   },
+  draft: draftEn,
   admin: {
     nav: {
       label: "Admin",
@@ -1097,6 +1104,8 @@ export const en: Dict = {
       sessions: "Sessions",
       newSession: "+ New session",
       stats: "Statistics",
+      drafts: "Drafts",
+      draftsAttention: (turns, invites) => [turns && `your turn: ${turns}`, invites && `invitations: ${invites}`].filter(Boolean).join(", "),
       club: "Club",
       web: "Site texts",
       accounts: "Accounts",

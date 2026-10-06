@@ -83,6 +83,13 @@ ${t.passwordResetIgnore}`;
   await send(user.email, t.passwordResetSubject, html, text);
 }
 
+/** A short notification with a link, e.g. a draft turn (lib/draft/events): greeting, one paragraph, the link. */
+export async function sendLinkEmail(to: string, subject: string, greeting: string, body: string, url: string) {
+  const text = `${greeting}\n\n${body}\n${url}`;
+  const html = `<p>${escapeHtml(greeting)}</p>\n<p>${escapeHtml(body)}</p>\n<p><a href="${escapeHtml(url)}">${escapeHtml(url)}</a></p>`;
+  await send(to, subject, html, text);
+}
+
 /** Plain-text message, used for organiser alerts. */
 export async function sendPlainEmail(to: string, subject: string, text: string) {
   await send(to, subject, `<p style="white-space:pre-line">${escapeHtml(text)}</p>`, text);

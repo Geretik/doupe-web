@@ -10,6 +10,7 @@ import {
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
+import type { RoleEdition, RoleTeam } from "../lib/botc-roles";
 
 export const cities = ["olomouc", "praha"] as const;
 export type City = (typeof cities)[number];
@@ -322,6 +323,251 @@ export const jobRuns = pgTable("job_runs", {
   name: text("name").primaryKey(),
   finishedAt: timestamp("finished_at", { withTimezone: true }).notNull(),
 });
+
+/*
+ * Drafts (lib/draft): an organiser sets up a Draft – which characters are offered, which of them are drafted
+ * together as one bundle, which modes may be played – and runs any number of independent Draft Sessions under
+ * it. Everything that changes while drafting (whose turn, picks, pools, scripts) belongs to a session, never to
+ * the Draft: a Draft can have several sessions running at once.
+ */
+
+export const draftModeIds = ["personal", "shared"] as const;
+export type DraftModeId = (typeof draftModeIds)[number];
+
+/**
+ * Which characters a Draft offers: those of the chosen editions and teams, or a hand-picked list
+ * (character ids from lib/botc-roles, e.g. "washerwoman").
+ */
+export type DraftRoleSource =
+  | { kind: "filter"; editions: RoleEdition[]; teams: RoleTeam[] }
+  | { kind: "manual"; roleIds: string[] };
+
+/** Settings of each mode by mode id, e.g. { personal: { rolesPerParticipant: 15 } } – see lib/draft/modes. */
+export type DraftModeSettings = Partial<Record<DraftModeId, Record<string, number>>>;
+
+export const drafts = pgTable("drafts", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  /** Who set it up; manages it together with administrators. Null once the account is deleted. */
+  ownerId: integer("owner_id").references(() => adminUsers.id, { onDelete: "set null" }),
+  note: text("note"),
+  roleSource: jsonb("role_source").$type<DraftRoleSource>().notNull(),
+  /** Characters drafted only together, as one pick, e.g. [["choirboy", "king"], ["huntsman", "damsel"]] */
+  bundles: jsonb("bundles").$type<string[][]>().notNull().default([]),
+  /** Modes a session of this Draft may be played in */
+  modes: jsonb("modes").$type<DraftModeId[]>().notNull(),
+  /** What a new session starts with */
+  modeDefaults: jsonb("mode_defaults").$type<DraftModeSettings>().notNull().default({}),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
+ * Stored states of a session. "Waiting for players" and "ready" are not stored: they follow from the
+ * members and the settings while it is "preparing" (lib/draft/state), so they cannot go stale when
+ * somebody declines.
+ */
+export const draftSessionStatuses = ["preparing", "active", "completed", "cancelled"] as const;
+export type DraftSessionStatus = (typeof draftSessionStatuses)[number];
+
+export const draftSessions = pgTable(
+  "draft_sessions",
+  {
+    id: serial("id").primaryKey(),
+    draftId: integer("draft_id")
+      .notNull()
+      .references(() => drafts.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    mode: text("mode", { enum: draftModeIds }).notNull(),
+    /** Settings of the mode, e.g. { rolesPerParticipant: 15 }; fixed once the session starts */
+    modeConfig: jsonb("mode_config").$type<Record<string, number>>().notNull(),
+    status: text("status", { enum: draftSessionStatuses }).notNull().default("preparing"),
+    /**
+     * The turn, saved after every pick – the draft goes on where it stopped whenever someone comes back.
+     * pickNumber = number of the next pick (1, 2, …); seat = place in the order (0-based) of the drafter on
+     * turn; direction = 1 forwards, -1 backwards (snake); currentMemberId = the member on that seat.
+     */
+    pickNumber: integer("pick_number").notNull().default(1),
+    seat: integer("seat"),
+    direction: integer("direction").notNull().default(1),
+    currentMemberId: integer("current_member_id"),
+    createdBy: integer("created_by").references(() => adminUsers.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("draft_sessions_draft_idx").on(t.draftId)],
+);
+
+/** owner = created the session; organizer = may prepare, start and cancel it too; participant = drafts only. */
+export const draftMemberRoles = ["owner", "organizer", "participant"] as const;
+export type DraftMemberRole = (typeof draftMemberRoles)[number];
+
+export const draftInviteStatuses = ["invited", "accepted", "declined"] as const;
+export type DraftInviteStatus = (typeof draftInviteStatuses)[number];
+
+/**
+ * Who belongs to a session. Every session has its own members: being in another session of the same Draft,
+ * owning the Draft or being an administrator does not make anyone a member.
+ */
+export const draftSessionMembers = pgTable(
+  "draft_session_members",
+  {
+    id: serial("id").primaryKey(),
+    sessionId: integer("session_id")
+      .notNull()
+      .references(() => draftSessions.id, { onDelete: "cascade" }),
+    /** Null once the account is deleted; the row stays for the history */
+    userId: integer("user_id").references(() => adminUsers.id, { onDelete: "set null" }),
+    /** The account's nickname when invited, shown once the account is gone */
+    nickname: text("nickname").notNull(),
+    role: text("role", { enum: draftMemberRoles }).notNull().default("participant"),
+    /** Takes part in the picks; participants always, owners and organizers when they want to */
+    drafts: boolean("drafts").notNull().default(true),
+    status: text("status", { enum: draftInviteStatuses }).notNull().default("invited"),
+    /** Place in the draft order (0-based) of a drafting member; null for the others */
+    seat: integer("seat"),
+    /** Language of the e-mails to this member: the inviter's, then the member's own once they answer */
+    locale: text("locale", { enum: ["cs", "en"] }).notNull().default("cs"),
+    invitedBy: integer("invited_by").references(() => adminUsers.id, { onDelete: "set null" }),
+    invitedAt: timestamp("invited_at", { withTimezone: true }).notNull().defaultNow(),
+    respondedAt: timestamp("responded_at", { withTimezone: true }),
+  },
+  (t) => [
+    uniqueIndex("draft_session_members_session_user_idx").on(t.sessionId, t.userId),
+    index("draft_session_members_user_idx").on(t.userId),
+  ],
+);
+
+/**
+ * What can be picked in a session, fixed when it starts (later changes of the Draft do not reach it).
+ * One row = one pick: a single character, or a bundle of characters drafted together.
+ */
+export const draftSessionOptions = pgTable(
+  "draft_session_options",
+  {
+    id: serial("id").primaryKey(),
+    sessionId: integer("session_id")
+      .notNull()
+      .references(() => draftSessions.id, { onDelete: "cascade" }),
+    position: integer("position").notNull(),
+    roleIds: jsonb("role_ids").$type<string[]>().notNull(),
+  },
+  (t) => [index("draft_session_options_session_idx").on(t.sessionId)],
+);
+
+/** Where picks go: one pool per drafter (personal mode) or one for everybody (shared mode, memberId null). */
+export const draftPools = pgTable(
+  "draft_pools",
+  {
+    id: serial("id").primaryKey(),
+    sessionId: integer("session_id")
+      .notNull()
+      .references(() => draftSessions.id, { onDelete: "cascade" }),
+    memberId: integer("member_id").references(() => draftSessionMembers.id, { onDelete: "cascade" }),
+    /** How many characters the pool takes */
+    target: integer("target").notNull(),
+  },
+  (t) => [index("draft_pools_session_idx").on(t.sessionId)],
+);
+
+/**
+ * Every pick, in order; the session can be replayed from them. The unique indexes are the database's own
+ * guard against two picks at once: one pick per number and each option at most once per session.
+ */
+export const draftPicks = pgTable(
+  "draft_picks",
+  {
+    id: serial("id").primaryKey(),
+    sessionId: integer("session_id")
+      .notNull()
+      .references(() => draftSessions.id, { onDelete: "cascade" }),
+    pickNumber: integer("pick_number").notNull(),
+    memberId: integer("member_id")
+      .notNull()
+      .references(() => draftSessionMembers.id, { onDelete: "cascade" }),
+    optionId: integer("option_id")
+      .notNull()
+      .references(() => draftSessionOptions.id, { onDelete: "cascade" }),
+    poolId: integer("pool_id")
+      .notNull()
+      .references(() => draftPools.id, { onDelete: "cascade" }),
+    /** The characters the pick added, copied from the option */
+    roleIds: jsonb("role_ids").$type<string[]>().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("draft_picks_session_number_idx").on(t.sessionId, t.pickNumber),
+    uniqueIndex("draft_picks_session_option_idx").on(t.sessionId, t.optionId),
+  ],
+);
+
+/** A script made from a pool of a finished session; only characters of that pool (checked on every save). */
+export const draftScripts = pgTable(
+  "draft_scripts",
+  {
+    id: serial("id").primaryKey(),
+    sessionId: integer("session_id")
+      .notNull()
+      .references(() => draftSessions.id, { onDelete: "cascade" }),
+    poolId: integer("pool_id")
+      .notNull()
+      .references(() => draftPools.id, { onDelete: "cascade" }),
+    createdBy: integer("created_by").references(() => adminUsers.id, { onDelete: "set null" }),
+    name: text("name").notNull(),
+    author: text("author"),
+    /** Character ids in script order */
+    roleIds: jsonb("role_ids").$type<string[]>().notNull(),
+    /** Raised on every save; a save from a page with an older version is refused instead of overwriting */
+    version: integer("version").notNull().default(1),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("draft_scripts_session_idx").on(t.sessionId)],
+);
+
+export const draftEventTypes = ["invited", "turn", "completed", "cancelled"] as const;
+export type DraftEventType = (typeof draftEventTypes)[number];
+
+/**
+ * What happened in a session that someone should hear about (lib/draft/events). Written in the same
+ * transaction as the change itself, sent once due (e-mail now; Discord or more later); the daily cron
+ * retries what failed.
+ */
+export const draftEvents = pgTable(
+  "draft_events",
+  {
+    id: serial("id").primaryKey(),
+    sessionId: integer("session_id")
+      .notNull()
+      .references(() => draftSessions.id, { onDelete: "cascade" }),
+    type: text("type", { enum: draftEventTypes }).notNull(),
+    /** Whom it is about: the invited member, the member now on turn; null = all members */
+    memberId: integer("member_id").references(() => draftSessionMembers.id, { onDelete: "cascade" }),
+    /** Pick number for "turn" */
+    pickNumber: integer("pick_number"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    /** Not sent before this: a turn only once the drafter has let it wait a day (TURN_REMINDER_HOURS) */
+    dueAt: timestamp("due_at", { withTimezone: true }).notNull().defaultNow(),
+    /** Claimed or sent; null = still to send */
+    dispatchedAt: timestamp("dispatched_at", { withTimezone: true }),
+    /** How many people it went to; 0 = nobody any more (the drafter picked in time, the invitation was answered) */
+    recipients: integer("recipients"),
+    attempts: integer("attempts").notNull().default(0),
+  },
+  (t) => [index("draft_events_pending_idx").on(t.dispatchedAt, t.dueAt)],
+);
+
+export type Draft = typeof drafts.$inferSelect;
+export type DraftSession = typeof draftSessions.$inferSelect;
+export type DraftSessionMember = typeof draftSessionMembers.$inferSelect;
+export type DraftSessionOption = typeof draftSessionOptions.$inferSelect;
+export type DraftPool = typeof draftPools.$inferSelect;
+export type DraftPick = typeof draftPicks.$inferSelect;
+export type DraftScript = typeof draftScripts.$inferSelect;
+export type DraftEvent = typeof draftEvents.$inferSelect;
 
 export type AdminUser = typeof adminUsers.$inferSelect;
 export type AdminInvite = typeof adminInvites.$inferSelect;

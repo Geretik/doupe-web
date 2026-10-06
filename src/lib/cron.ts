@@ -2,6 +2,7 @@ import { and, eq, gt, gte, isNull, lte, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { registrations, sessions } from "@/db/schema";
 import { notifyOrganizers } from "./alerts";
+import { dispatchDraftEvents } from "./draft/events";
 import { postDiscordMessage, spotsLeftEnabled, spotsLeftMessage } from "./discord";
 import { recordDailyRun } from "./job-runs";
 import { deleteOldLinkRequests } from "./link-throttle";
@@ -101,8 +102,13 @@ export async function runDailyJobs() {
     console.error("Waitlist promotion failed", e);
     return { promoted: 0 };
   });
+  // draft notifications that could not be sent right after the change
+  const draftNotices = await dispatchDraftEvents().catch((e) => {
+    console.error("Draft notifications failed", e);
+    return { sent: 0, failed: 0 };
+  });
   await deleteOldLoginFailures().catch((e) => console.error("Deleting old login failures failed", e));
   await deleteOldLinkRequests().catch((e) => console.error("Deleting old link requests failed", e));
   await recordDailyRun();
-  return { reminders, spots, retention, waitlists };
+  return { reminders, spots, retention, waitlists, draftNotices };
 }

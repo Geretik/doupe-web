@@ -32,3 +32,16 @@ export function inviteUrl(token: string) {
 export function passwordResetUrl(token: string) {
   return `${siteUrl()}/admin/nove-heslo/${token}`;
 }
+
+/** A draft session in the admin; the link of the draft e-mails. */
+export function draftSessionUrl(sessionId: number) {
+  return `${siteUrl()}/admin/drafty/session/${sessionId}`;
+}
+
+/**
+ * The club's script tool (BoardGames, botcscript.app), which opens a script from `?script=<gzip + base64 JSON>`:
+ * scripts made from a draft are printed and translated there. SCRIPT_TOOL_URL points it elsewhere.
+ */
+export function scriptToolUrl() {
+  return (process.env.SCRIPT_TOOL_URL?.trim() || "https://botcscript.app").replace(/\/$/, "");
+}
