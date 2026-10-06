@@ -5,6 +5,7 @@ import { googleCalendarUrl, sessionIcsUrl } from "./ics";
 import { formatRange, formatShortDate, formatTime, pragueDaysBetween } from "./time";
 import { greetingName } from "./names";
 import { hasEmail } from "./retention";
+import { scriptPollOpen } from "./script-poll";
 import { contactEmail, editUrl } from "./site";
 
 function escapeHtml(s: string) {
@@ -144,6 +145,17 @@ function editBlock(t: EmailDict, reg: Registration) {
   };
 }
 
+/** Invitation to the script vote while it runs; the vote is on the player's edit page. */
+function pollBlock(t: EmailDict, reg: Registration, session: Session) {
+  if (!scriptPollOpen(session)) return { text: "", html: "" };
+  const link = editUrl(reg.editToken);
+  const names = session.scriptPoll.map((o) => o.name).join(", ");
+  return {
+    text: `🗳️ ${t.pollText(names)}\n${link}\n\n`,
+    html: `<p>🗳️ ${escapeHtml(t.pollHtmlBefore(names))}<a href="${link}">${t.pollHtmlLink}</a>.</p>\n`,
+  };
+}
+
 export async function sendConfirmationEmail(reg: Registration, session: Session) {
   const locale = localeOf(reg);
   const t = dictionaries[locale].email;
@@ -151,6 +163,7 @@ export async function sendConfirmationEmail(reg: Registration, session: Session)
   const cal = calendarBlock(t, session);
   const edit = editBlock(t, reg);
   const retention = retentionBlock(t);
+  const poll = pollBlock(t, reg, session);
 
   const text = `${t.hi(greetingName(reg))}
 
@@ -158,7 +171,7 @@ ${t.confirmed}
 
 ${d.text}
 
-${cal.text}
+${poll.text}${cal.text}
 
 ${edit.text}
 
@@ -169,7 +182,7 @@ ${retention.text}`;
   const html = `<p>${escapeHtml(t.hi(greetingName(reg)))}</p>
 <p>${escapeHtml(t.confirmed)}</p>
 ${d.html}
-${cal.html}
+${poll.html}${cal.html}
 ${edit.html}
 <p>${t.seeYou}</p>
 ${retention.html}`;
@@ -183,6 +196,7 @@ export async function sendWaitlistEmail(reg: Registration, session: Session, pos
   const d = detailsTable(t, reg, session, locale);
   const edit = editBlock(t, reg);
   const retention = retentionBlock(t);
+  const poll = pollBlock(t, reg, session);
 
   const text = `${t.hi(greetingName(reg))}
 
@@ -190,14 +204,14 @@ ${t.waitlisted(position)}
 
 ${d.text}
 
-${edit.text}
+${poll.text}${edit.text}
 
 ${retention.text}`;
 
   const html = `<p>${escapeHtml(t.hi(greetingName(reg)))}</p>
 <p>${escapeHtml(t.waitlisted(position))}</p>
 ${d.html}
-${edit.html}
+${poll.html}${edit.html}
 ${retention.html}`;
 
   await send(reg.email, t.waitlistSubject(session.title), html, text);
@@ -248,6 +262,7 @@ export async function sendReminderEmail(reg: Registration, session: Session) {
           .join(", ")}</p>`,
       }
     : { text: "", html: "" };
+  const poll = pollBlock(t, reg, session);
 
   const text = `${t.hi(greetingName(reg))}
 
@@ -255,7 +270,7 @@ ${t.reminder}
 
 ${d.text}
 
-${scripts.text}${t.reminderCancelHint}
+${scripts.text}${poll.text}${t.reminderCancelHint}
 ${edit.text}
 
 ${cal.text}
@@ -266,7 +281,7 @@ ${t.seeYou}`;
 <p>${escapeHtml(t.reminder)}</p>
 ${d.html}
 ${scripts.html}
-<p>${escapeHtml(t.reminderCancelHint)}</p>
+${poll.html}<p>${escapeHtml(t.reminderCancelHint)}</p>
 ${edit.html}
 ${cal.html}
 <p>${t.seeYou}</p>`;

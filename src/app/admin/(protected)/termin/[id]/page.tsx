@@ -12,6 +12,7 @@ import {
   deleteSessionAction,
   sendRemindersNowAction,
   setRegistrationStateAction,
+  setScriptPollClosedAction,
   updateSessionAction,
 } from "@/app/actions/admin";
 import { ActionButton } from "@/components/admin/action-button";
@@ -28,6 +29,7 @@ import { SubmitButton } from "@/components/admin/submit-button";
 import { Alert, Card } from "@/components/ui";
 import type { Registration } from "@/db/schema";
 import type { Dict, Locale } from "@/i18n/dictionaries";
+import { plural } from "@/i18n/plural";
 import { getDict } from "@/i18n/server";
 import { requireAdmin } from "@/lib/admin-auth";
 import { discordConfigured } from "@/lib/discord";
@@ -39,6 +41,7 @@ import { dateToPragueLocal, formatDate, formatShortDate, formatTime } from "@/li
 import { effectiveRegistrationState, scheduledOpening } from "@/lib/registration-state";
 import { hasEmail, isAnonymized, isErased, playerPseudonym, RETENTION_DAYS, shownEmail } from "@/lib/retention";
 import { storytellerStats, type StorytellerStats } from "@/lib/stats";
+import { byVotes, scriptPollOpen, scriptPollResults } from "@/lib/script-poll";
 import { editUrl } from "@/lib/site";
 import { parseId } from "@/lib/validation";
 
@@ -98,6 +101,7 @@ export default async function AdminSessionPage({
   ]);
   if (!session) notFound();
   const t = dict.admin.session;
+  const poll = session.scriptPoll.length ? await scriptPollResults(session) : null;
 
   const confirmed = regs.filter((r) => r.status === "confirmed");
   const waitlisted = regs
@@ -458,6 +462,40 @@ export default async function AdminSessionPage({
             ))}
           </ul>
         </section>
+      )}
+
+      {poll && (
+        <Card id="hlasovani" className="scroll-mt-4">
+          <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-lg font-semibold">🗳️ {t.pollTitle}</h2>
+            {session.startsAt > new Date() && (
+              <ActionButton
+                action={setScriptPollClosedAction.bind(null, session.id, !session.scriptPollClosedAt)}
+                label={session.scriptPollClosedAt ? t.pollReopen : t.pollClose}
+                pendingLabel="…"
+              />
+            )}
+          </div>
+          <p className="mb-3 text-sm text-muted">
+            {scriptPollOpen(session) ? t.pollOpenInfo : session.startsAt > new Date() ? t.pollClosedInfo : t.pollEndedInfo}{" "}
+            {t.pollVoters(poll.voters, confirmed.length + waitlisted.length)}
+          </p>
+          <ol className="flex flex-col gap-3 text-sm">
+            {byVotes(poll.options).map((o) => (
+              <li key={o.name} className="flex flex-col gap-1">
+                <span className="flex flex-wrap justify-between gap-2">
+                  {o.url ? <a href={o.url} className="font-medium hover:underline" target="_blank" rel="noreferrer">{o.name}</a> : <span className="font-medium">{o.name}</span>}
+                  <span className="text-muted tabular-nums">{plural(dict.poll.votes, o.voters.length)}</span>
+                </span>
+                <span className="h-2 overflow-hidden rounded bg-border/40" aria-hidden>
+                  <span className="block h-full rounded bg-accent/70" style={{ width: `${poll.voters ? (100 * o.voters.length) / poll.voters : 0}%` }} />
+                </span>
+                {o.voters.length > 0 && <span className="text-xs text-muted">{o.voters.join(", ")}</span>}
+              </li>
+            ))}
+          </ol>
+          {scriptPollOpen(session) && <p className="mt-3 text-xs text-muted">{t.pollNotifyHint}</p>}
+        </Card>
       )}
 
       <Card id="hry" className="scroll-mt-4">

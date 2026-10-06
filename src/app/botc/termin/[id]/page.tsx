@@ -9,12 +9,14 @@ import { Playlist } from "@/components/playlist";
 import { RegistrationForm } from "@/components/registration-form";
 import { ShareButton } from "@/components/share-button";
 import { ScriptLinks } from "@/components/script-links";
+import { ScriptPollSummary } from "@/components/script-poll-summary";
 import { freeSpots } from "@/components/session-card";
 import { Alert, Card } from "@/components/ui";
 import { getDict } from "@/i18n/server";
 import { sessionUrl } from "@/lib/ics";
 import { isAdmin } from "@/lib/admin-auth";
 import { getSessionWithCount, listPublicPlayers } from "@/lib/queries";
+import { scriptPollOpen, scriptPollResults } from "@/lib/script-poll";
 import { formatDate, formatRange, formatShortDate, formatTime } from "@/lib/time";
 import { parseId } from "@/lib/validation";
 import { effectiveRegistrationState, scheduledOpening } from "@/lib/registration-state";
@@ -55,15 +57,17 @@ export default async function SessionPage({
   const { id } = await params;
   const session = await loadSession(id);
   if (!session) notFound();
-  const [players, waitlist, admin, { locale, t }] = await Promise.all([
+  const past = session.endsAt < new Date();
+  const [players, waitlist, admin, { locale, t }, poll] = await Promise.all([
     listPublicPlayers(session.id, "confirmed"),
     listPublicPlayers(session.id, "waitlisted"),
     isAdmin(),
     getDict(),
+    // what is played is in the archive afterwards
+    past ? null : scriptPollResults(session),
   ]);
 
   const free = freeSpots(session);
-  const past = session.endsAt < new Date();
   const regState = effectiveRegistrationState(session);
   const opensAt = scheduledOpening(session);
   // the waitlist has priority: while anybody is queued, newcomers queue too (freeSpots says 0 then)
@@ -106,6 +110,7 @@ export default async function SessionPage({
           </p>
         )}
         <ScriptLinks scripts={session.scripts} label={t.session.scripts(session.scripts.length)} className="mt-2" />
+        {poll && <ScriptPollSummary options={poll.options} open={scriptPollOpen(session)} t={t.poll} className="mt-2" />}
         <Playlist tracks={session.playlist} t={t.session} className="mt-2" />
         {!past && <CalendarLinks session={session} t={t} className="mt-2" />}
         {!past && (

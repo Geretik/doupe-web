@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { EditRegistrationForm } from "@/components/edit-registration-form";
+import { ScriptVoteForm } from "@/components/script-vote-form";
 import { Alert, Card } from "@/components/ui";
 import { getDict } from "@/i18n/server";
 import { CalendarLinks } from "@/components/calendar-links";
 import { getRegistrationByToken, waitlistPosition } from "@/lib/queries";
 import { formatDate, formatTime } from "@/lib/time";
 import { shownEmail } from "@/lib/retention";
+import { scriptPollOpen, scriptPollResults, votesOf } from "@/lib/script-poll";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +32,9 @@ export default async function EditRegistrationPage({
   const s = reg.session;
   const past = s.endsAt < new Date();
   const position = reg.status === "waitlisted" ? await waitlistPosition(reg) : null;
+  // the vote is for the players of an upcoming session
+  const showPoll = s.scriptPoll.length > 0 && reg.status !== "cancelled" && !past;
+  const [poll, mine] = showPoll ? await Promise.all([scriptPollResults(s), votesOf(reg.id)]) : [null, []];
 
   return (
     <div className="flex flex-col gap-6">
@@ -47,6 +52,17 @@ export default async function EditRegistrationPage({
         </p>
         {!past && reg.status === "confirmed" && <CalendarLinks session={s} t={t} className="mt-2" />}
       </div>
+      {poll && (
+        <Card>
+          <ScriptVoteForm
+            token={reg.editToken}
+            options={poll.options.map((o) => ({ name: o.name, url: o.url, votes: o.voters.length }))}
+            mine={mine}
+            open={scriptPollOpen(s)}
+            t={t.poll}
+          />
+        </Card>
+      )}
       <Card>
         {reg.status === "cancelled" ? (
           <Alert kind="info">

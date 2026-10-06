@@ -54,6 +54,10 @@ export const sessions = pgTable("sessions", {
   scripts: jsonb("scripts").$type<ScriptLink[]>().notNull().default([]),
   /** Music for the evening, shown to players on the session page (folded away); pasted in as a table in the admin */
   playlist: jsonb("playlist").$type<PlaylistTrack[]>().notNull().default([]),
+  /** Scripts the signed-up players vote on through their edit link (the link may be empty); [] = no vote */
+  scriptPoll: jsonb("script_poll").$type<ScriptLink[]>().notNull().default([]),
+  /** Set when an organiser ended the vote early; it ends at the start of the session anyway */
+  scriptPollClosedAt: timestamp("script_poll_closed_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -129,6 +133,21 @@ export const registrations = pgTable(
       sql`lower(${t.email})`,
     ),
   ],
+);
+
+/** One player's vote for one script of the session's poll; a player may vote for several. */
+export const scriptVotes = pgTable(
+  "script_votes",
+  {
+    id: serial("id").primaryKey(),
+    registrationId: integer("registration_id")
+      .notNull()
+      .references(() => registrations.id, { onDelete: "cascade" }),
+    /** Name of the option in sessions.script_poll; votes for a renamed or removed option stop counting */
+    script: text("script").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("script_votes_registration_script_idx").on(t.registrationId, t.script)],
 );
 
 export const gameWinners = ["good", "evil"] as const;

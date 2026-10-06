@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { db } from "@/db";
-import { adminInvites, adminUsers, gamePlayers, games, passwordResets, registrations, sessions, type RegistrationState } from "@/db/schema";
+import { adminInvites, adminUsers, gamePlayers, games, passwordResets, registrations, scriptVotes, sessions, type RegistrationState } from "@/db/schema";
 import {
   checkBootstrapPassword,
   clearAdminCookie,
@@ -39,6 +39,7 @@ import {
   parsePlaylist,
   parseBluffs,
   parseRoster,
+  parseScriptPoll,
   parseScripts,
   type RosterValue,
   quickRegistrationSchema,
@@ -296,6 +297,8 @@ async function parseSessionForm(formData: FormData) {
   if (scripts.error) return { error: { scripts: scripts.error }, message: e.checkForm };
   const playlist = parsePlaylist(formData.get("playlist"));
   if (playlist.error) return { error: { playlist: [e.playlistInvalid] }, message: e.checkForm };
+  const poll = parseScriptPoll(formData, e);
+  if (poll.error) return { error: { scriptPoll: poll.error }, message: e.checkForm };
   let registrationOpensAt: Date | null = null;
   if (parsed.data.registrationState !== "open" && parsed.data.registrationOpensAt) {
     registrationOpensAt = pragueLocalToDate(parsed.data.registrationOpensAt);
@@ -307,6 +310,7 @@ async function parseSessionForm(formData: FormData) {
     values: {
       scripts: scripts.scripts,
       playlist: playlist.playlist,
+      scriptPoll: poll.options,
       title: parsed.data.title,
       place: parsed.data.place,
       capacity: parsed.data.capacity,
@@ -411,6 +415,15 @@ export async function setRegistrationStateAction(sessionId: number, state: Regis
   return { ok: true, message: state === "open" ? t.admin.session.registrationOpened : t.admin.session.registrationPaused };
 }
 
+/** One-click end of the script vote from the admin session page, or opening it again. */
+export async function setScriptPollClosedAction(sessionId: number, closed: boolean): Promise<SimpleResult> {
+  await requireAdmin();
+  const { t } = await getDict();
+  await db.update(sessions).set({ scriptPollClosedAt: closed ? new Date() : null }).where(eq(sessions.id, sessionId));
+  revalidateSession(sessionId);
+  return { ok: true, message: closed ? t.admin.session.pollClosedNow : t.admin.session.pollReopenedNow };
+}
+
 /**
  * Right to erasure on request: deletes everything personal in all the player's sign-ups and cancels the
  * ones for sessions that are not over yet. Sign-ups are matched by e-mail – including the older ones
@@ -445,6 +458,7 @@ export async function adminErasePlayerAction(registrationId: number): Promise<Si
       .where(eq(registrations.id, r.id));
     if (active) freed.add(r.sessionId);
   }
+  if (rows.length) await db.delete(scriptVotes).where(inArray(scriptVotes.registrationId, rows.map((r) => r.id)));
   for (const id of freed) await promoteWaitlist(id);
   for (const id of new Set(rows.map((r) => r.sessionId))) revalidateSession(id);
   return { ok: true, message: t.admin.session.erased(rows.length) };

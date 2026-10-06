@@ -23,7 +23,7 @@ export function SessionForm({
 }: {
   action: (prev: FormState, fd: FormData) => Promise<FormState>;
   /** Prefilled values – the session being edited, or a template when duplicating */
-  session?: Pick<Session, "title" | "place" | "capacity" | "gameLanguage" | "storyteller" | "note" | "scripts" | "playlist" | "arrivalMode" | "phoneRequired" | "registrationState">;
+  session?: Pick<Session, "title" | "place" | "capacity" | "gameLanguage" | "storyteller" | "note" | "scripts" | "scriptPoll" | "playlist" | "arrivalMode" | "phoneRequired" | "registrationState">;
   /** datetime-local strings in Prague time (the date part may be empty); the sign-up state as players see it right now */
   defaults?: { startsAt: string; endsAt: string; registrationState?: RegistrationState; registrationOpensAt?: string };
   /** "YYYY-MM-DD" in Prague time – calendars offer no earlier date (the session date only when creating) */
@@ -93,7 +93,38 @@ export function SessionForm({
       <Field label={t.note} name="note" errors={fe.note} hint={t.noteHint}>
         <textarea id="note" name="note" rows={3} defaultValue={session?.note ?? ""} className={inputClass} />
       </Field>
-      <ScriptsFields initial={session?.scripts ?? []} known={suggestions?.scripts} errors={fe.scripts} t={t} />
+      <ScriptsFields
+        initial={session?.scripts ?? []}
+        known={suggestions?.scripts}
+        errors={fe.scripts}
+        t={{
+          title: t.scripts,
+          hint: t.scriptsHint,
+          namePlaceholder: t.scriptNamePlaceholder,
+          urlPlaceholder: "https://…",
+          nameLabel: t.scriptNameLabel,
+          urlLabel: t.scriptUrlLabel,
+          remove: t.removeScript,
+          add: t.addScript,
+        }}
+      />
+      <ScriptsFields
+        initial={session?.scriptPoll ?? []}
+        known={suggestions?.scripts}
+        errors={fe.scriptPoll}
+        fields={{ name: "pollName", url: "pollUrl" }}
+        listId="poll-suggestions"
+        t={{
+          title: t.poll,
+          hint: t.pollHint,
+          namePlaceholder: t.scriptNamePlaceholder,
+          urlPlaceholder: t.pollUrlPlaceholder,
+          nameLabel: t.pollNameLabel,
+          urlLabel: t.pollUrlLabel,
+          remove: t.pollRemove,
+          add: t.pollAdd,
+        }}
+      />
       <PlaylistFields initial={session?.playlist ?? []} errors={fe.playlist} t={t} />
       {mode === "create" && (
         <div className="grid gap-4 sm:grid-cols-2">

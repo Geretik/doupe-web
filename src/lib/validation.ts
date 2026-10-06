@@ -170,15 +170,25 @@ export function sessionSchema(t: Dict["admin"]["errors"]) {
   });
 }
 
+const scriptUrlSchema = z
+  .string()
+  .trim()
+  // "botcscripts.com/…" → "https://botcscripts.com/…"
+  .transform((u) => (/^[a-z][a-z0-9+.-]*:\/\//i.test(u) ? u : `https://${u}`))
+  .pipe(z.string().url().max(2000));
+
 const scriptLinkSchema = z.object({
   name: z.string().trim().min(1).max(200),
-  url: z
-    .string()
-    .trim()
-    // "botcscripts.com/…" → "https://botcscripts.com/…"
-    .transform((u) => (/^[a-z][a-z0-9+.-]*:\/\//i.test(u) ? u : `https://${u}`))
-    .pipe(z.string().url().max(2000)),
+  url: scriptUrlSchema,
 });
+
+/** A script to vote on: the link is optional (empty string = none). */
+const pollOptionSchema = scriptLinkSchema.extend({
+  url: z.union([z.string().trim().length(0), scriptUrlSchema]),
+});
+
+/** Most scripts one poll offers */
+export const MAX_POLL_OPTIONS = 20;
 
 const playlistSchema = z
   .array(
@@ -213,22 +223,34 @@ export function parsePlaylist(value: FormDataEntryValue | null) {
   }
 }
 
+/** Name / link pairs of a scripts field in a FormData, without fully empty rows; a row with a link only is named by it. */
+function scriptRows(formData: FormData, nameField: string, urlField: string) {
+  const names = formData.getAll(nameField).map(String);
+  const urls = formData.getAll(urlField).map(String);
+  return names
+    .map((name, i) => ({ name, url: urls[i] ?? "" }))
+    .filter((r) => r.name.trim() || r.url.trim())
+    .map((r) => ({ name: r.name.trim() || r.url.trim(), url: r.url }));
+}
+
+/** 1-based rows with an error, for the message */
+const badRows = (error: z.ZodError) => [...new Set(error.issues.map((i) => Number(i.path[0]) + 1))].join(", ");
+
 /** Reads scriptName[] / scriptUrl[] pairs from a FormData, ignoring fully empty rows. */
 export function parseScripts(formData: FormData, t: Dict["admin"]["errors"]) {
-  const names = formData.getAll("scriptName").map(String);
-  const urls = formData.getAll("scriptUrl").map(String);
-  const rows = names.map((name, i) => ({ name, url: urls[i] ?? "" }));
-  const filled = rows.filter((r) => r.name.trim() || r.url.trim());
-  const result = z.array(scriptLinkSchema).safeParse(
-    filled.map((r) => ({ name: r.name.trim() || r.url.trim(), url: r.url })),
-  );
-  if (!result.success) {
-    const bad = result.error.issues.map((i) => Number(i.path[0]) + 1);
-    return {
-      error: [t.scriptUrl([...new Set(bad)].join(", "))],
-    };
-  }
+  const result = z.array(scriptLinkSchema).safeParse(scriptRows(formData, "scriptName", "scriptUrl"));
+  if (!result.success) return { error: [t.scriptUrl(badRows(result.error))] };
   return { scripts: result.data };
+}
+
+/** Reads the poll's pollName[] / pollUrl[] pairs; the same name twice is offered once. */
+export function parseScriptPoll(formData: FormData, t: Dict["admin"]["errors"]) {
+  const result = z.array(pollOptionSchema).safeParse(scriptRows(formData, "pollName", "pollUrl"));
+  if (!result.success) return { error: [t.scriptUrl(badRows(result.error))] };
+  const seen = new Set<string>();
+  const options = result.data.filter((o) => !seen.has(o.name.toLowerCase()) && seen.add(o.name.toLowerCase()));
+  if (options.length > MAX_POLL_OPTIONS) return { error: [t.pollTooMany(MAX_POLL_OPTIONS)] };
+  return { options };
 }
 
 function newPassword(t: Dict["admin"]["errors"]) {

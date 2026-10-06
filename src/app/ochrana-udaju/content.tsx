@@ -51,6 +51,10 @@ function Czech({ contact, discordAlerts }: Props) {
           <strong>Docházka</strong> – po hraní organizátoři zaznamenají, kdo přišel, kvůli statistikám klubu.
         </li>
         <li>
+          <strong>Hlas o scriptu</strong> – když u termínu hlasuješ, které scripty bys chtěl/a hrát, aby
+          organizátoři věděli, co připravit.
+        </li>
+        <li>
           <strong>Otisk IP adresy</strong> (samotnou adresu neukládáme) – ochrana proti hromadným falešným registracím.
         </li>
       </Ul>
@@ -63,6 +67,7 @@ function Czech({ contact, discordAlerts }: Props) {
       <H2>Kdo údaje uvidí</H2>
       <Ul>
         <li>Přezdívka je veřejně vidět v seznamu přihlášených u termínu.</li>
+        <li>U hlasování o scriptu je veřejně vidět jen počet hlasů, kdo jak hlasoval, vidí organizátoři.</li>
         <li>Ostatní údaje vidí jen organizátoři klubu v administraci webu.</li>
         <li>Nikomu je neprodáváme ani nepředáváme pro jiné účely.</li>
       </Ul>
@@ -83,8 +88,8 @@ function Czech({ contact, discordAlerts }: Props) {
           vyjde stejný kód, takže jde pořád o osobní údaj.
         </li>
         <li>
-          <strong>Přezdívka, docházka, časy, poznámka a důvod odhlášení</strong> zůstávají v archivu a
-          statistikách klubu, dokud nepožádáš o jejich smazání.
+          <strong>Přezdívka, docházka, časy, poznámka, důvod odhlášení a hlas o scriptu</strong> zůstávají
+          v archivu a statistikách klubu, dokud nepožádáš o jejich smazání.
         </li>
       </Ul>
 
@@ -164,6 +169,10 @@ function English({ contact, discordAlerts }: Props) {
           <strong>Attendance</strong> – after the game the organisers note who came, for the club&apos;s stats.
         </li>
         <li>
+          <strong>Your script vote</strong> – when you vote on which scripts you&apos;d like to play, so the
+          organisers know what to prepare.
+        </li>
+        <li>
           <strong>A fingerprint of your IP address</strong> (not the address itself) – protection against
           mass fake sign-ups.
         </li>
@@ -177,6 +186,7 @@ function English({ contact, discordAlerts }: Props) {
       <H2>Who can see it</H2>
       <Ul>
         <li>Your nickname is shown publicly in the list of players of the session.</li>
+        <li>In a script vote only the number of votes is public; the organisers see who voted for what.</li>
         <li>Everything else is visible only to the club&apos;s organisers in the site&apos;s admin.</li>
         <li>We don&apos;t sell or share your data for any other purpose.</li>
       </Ul>
@@ -198,8 +208,8 @@ function English({ contact, discordAlerts }: Props) {
           but the same address always gives the same code, so it still counts as personal data.
         </li>
         <li>
-          <strong>Nickname, attendance, times, note and cancel reason</strong> stay in the club&apos;s
-          archive and stats until you ask us to delete them.
+          <strong>Nickname, attendance, times, note, cancel reason and script vote</strong> stay in the
+          club&apos;s archive and stats until you ask us to delete them.
         </li>
       </Ul>
 

@@ -1816,3 +1816,85 @@ test("site texts: HTML, scripts, images and javascript: links from the admin nev
   await page.click("header button:has-text('English')");
   await expect(page.locator("main h2").first()).toHaveText("What is Blood on the Clocktower");
 });
+
+test("script vote: organisers offer scripts, players vote through their sign-up link, only counts are public", async ({ page }) => {
+  const id = await createSession({ title: "Hlasovací večer", capacity: 5 });
+  await adminLogin(page);
+  await page.goto(`/admin/termin/${id}`);
+  // a link is optional, the same name twice is offered once
+  await page.getByLabel("Script k hlasování 1", { exact: true }).fill("Trouble Brewing");
+  await page.getByLabel("Odkaz na script k hlasování 1", { exact: true }).fill("botcscripts.com/tb");
+  await page.click("button:has-text('+ Přidat script k hlasování')");
+  await page.getByLabel("Script k hlasování 2", { exact: true }).fill("Sects & Violets");
+  await page.click("button:has-text('+ Přidat script k hlasování')");
+  await page.getByLabel("Script k hlasování 3", { exact: true }).fill("trouble brewing");
+  await page.click("button:has-text('Uložit změny')");
+  await expect(page.locator("main")).toContainText("Uloženo.");
+  const [s] = await sql<{ script_poll: unknown }>("select script_poll from sessions where id = $1", [id]);
+  expect(s.script_poll).toEqual([
+    { name: "Trouble Brewing", url: "https://botcscripts.com/tb" },
+    { name: "Sects & Violets", url: "" },
+  ]);
+
+  await register(page, id, { nick: "Anna", email: "anna@example.com" });
+  await register(page, id, { nick: "Bob", email: "bob@example.com" });
+  const token = async (email: string) =>
+    (await sql<{ edit_token: string }>("select edit_token from registrations where email = $1", [email]))[0].edit_token;
+
+  // Anna votes for both, Bob for one; the counts follow right away
+  await page.goto(`/botc/r/${await token("anna@example.com")}`);
+  const vote = page.getByTestId("script-vote");
+  await expect(vote).toContainText("Hlasování o scriptu");
+  await expect(vote.locator("a:has-text('zobrazit script')")).toHaveAttribute("href", "https://botcscripts.com/tb");
+  await vote.getByLabel("Trouble Brewing").check();
+  await vote.getByLabel("Sects & Violets").check();
+  await vote.locator("button:has-text('Uložit hlas')").click();
+  await expect(vote).toContainText("Hlas uložen.");
+  await expect(vote.locator("li", { hasText: "Sects & Violets" })).toContainText("1 hlas");
+
+  await page.goto(`/botc/r/${await token("bob@example.com")}`);
+  await vote.getByLabel("Sects & Violets").check();
+  await vote.locator("button:has-text('Uložit hlas')").click();
+  await expect(vote.locator("li", { hasText: "Sects & Violets" })).toContainText("2 hlasy");
+  await expect(vote.locator("li", { hasText: "Trouble Brewing" })).toContainText("1 hlas");
+  // the vote is kept: after a reload the boxes are still ticked
+  await page.reload();
+  await expect(vote.getByLabel("Sects & Violets")).toBeChecked();
+  await expect(vote.getByLabel("Trouble Brewing")).not.toBeChecked();
+
+  // the public session page: counts, most votes first, no names
+  await page.goto(`/botc/termin/${id}`);
+  const summary = page.getByTestId("script-poll");
+  await expect(summary).toContainText("Hlasuje se, který script se bude hrát");
+  await expect(summary.locator("li").first()).toHaveText("Sects & Violets · 2 hlasy");
+  await expect(summary).not.toContainText("Anna");
+
+  // admin: who voted for what; ending the vote is refused even from a page left open
+  await page.goto(`/admin/termin/${id}`);
+  const card = page.locator("#hlasovani");
+  await expect(card).toContainText("Hlasovalo 2 z 2 přihlášených a náhradníků.");
+  await expect(card.locator("li", { hasText: "Sects & Violets" })).toContainText("Anna, Bob");
+  await page.goto(`/botc/r/${await token("anna@example.com")}`);
+  await sql("update sessions set script_poll_closed_at = now() where id = $1", [id]);
+  await vote.getByLabel("Trouble Brewing").uncheck();
+  await vote.locator("button:has-text('Uložit hlas')").click();
+  await expect(vote).toContainText("Hlasování už skončilo.");
+  await page.reload();
+  await expect(vote).toContainText("Hlasování skončilo");
+  await expect(vote.getByLabel("Trouble Brewing")).toBeDisabled();
+  await expect(vote.getByLabel("Trouble Brewing")).toBeChecked();
+  await expect(vote.locator("button")).toHaveCount(0);
+
+  // reopening from the admin; a cancelled player's vote stops counting
+  await page.goto(`/admin/termin/${id}`);
+  await expect(card).toContainText("Hlasování je ukončené");
+  await card.locator("button:has-text('Znovu otevřít hlasování')").click();
+  await expect(card.locator("button:has-text('Ukončit hlasování')")).toBeVisible();
+  await sql("update registrations set status = 'cancelled' where email = 'bob@example.com'");
+  await page.goto(`/botc/termin/${id}`);
+  await expect(summary.locator("li", { hasText: "Sects & Violets" })).toContainText("1 hlas");
+
+  // duplicating offers the same scripts, without the votes
+  await page.goto(`/admin/novy?from=${id}`);
+  await expect(page.getByLabel("Script k hlasování 2", { exact: true })).toHaveValue("Sects & Violets");
+});

@@ -42,6 +42,8 @@ const sessionColumns = {
   registrationOpensAt: sessions.registrationOpensAt,
   scripts: sessions.scripts,
   playlist: sessions.playlist,
+  scriptPoll: sessions.scriptPoll,
+  scriptPollClosedAt: sessions.scriptPollClosedAt,
   createdAt: sessions.createdAt,
   confirmedCount,
   waitlistedCount,

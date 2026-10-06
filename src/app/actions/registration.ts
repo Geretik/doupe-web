@@ -8,7 +8,7 @@ import { throttleLinkRequest } from "@/lib/link-throttle";
 import { siteUrl } from "@/lib/site";
 import { formatRange, formatShortDate, formatTime } from "@/lib/time";
 import { db } from "@/db";
-import { registrations, sessions } from "@/db/schema";
+import { registrations, scriptVotes, sessions } from "@/db/schema";
 import {
   sendConfirmationEmail,
   sendExistingRegistrationEmail,
@@ -28,6 +28,7 @@ import {
 import { getRegistrationByToken, listRegistrationsByEmail } from "@/lib/queries";
 import { createMyGamesToken } from "@/lib/my-games-token";
 import { promoteWaitlist } from "@/lib/waitlist";
+import { scriptPollOpen, scriptPollResults } from "@/lib/script-poll";
 import { getDict } from "@/i18n/server";
 import { effectiveRegistrationState, scheduledOpening } from "@/lib/registration-state";
 
@@ -278,6 +279,28 @@ export async function updateRegistrationAction(
     .returning({ id: registrations.id });
   if (!updated) return { error: t.errors.regNotFound };
   return { ok: true };
+}
+
+export type VoteResult = FormState & {
+  /** Votes per offered script after this one, so the player sees their vote counted without a reload */
+  counts?: Record<string, number>;
+};
+
+/** The player's vote in the session's script poll: the checked scripts replace the earlier vote, none withdraws it. */
+export async function voteScriptsAction(token: string, _prev: VoteResult, formData: FormData): Promise<VoteResult> {
+  const { t } = await getDict();
+  const current = await getRegistrationByToken(token);
+  if (!current || current.status === "cancelled") return { error: t.errors.regNotFound };
+  if (!scriptPollOpen(current.session)) return { error: t.poll.closedError };
+  const offered = new Set(current.session.scriptPoll.map((o) => o.name));
+  const chosen = [...new Set(formData.getAll("script").map(String))].filter((name) => offered.has(name));
+  await db.transaction(async (tx) => {
+    await tx.delete(scriptVotes).where(eq(scriptVotes.registrationId, current.id));
+    // a double submit runs this twice at once – the second one's rows are already there
+    if (chosen.length) await tx.insert(scriptVotes).values(chosen.map((script) => ({ registrationId: current.id, script }))).onConflictDoNothing();
+  });
+  const { options } = await scriptPollResults(current.session);
+  return { ok: true, counts: Object.fromEntries(options.map((o) => [o.name, o.voters.length])) };
 }
 
 /**
