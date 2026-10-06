@@ -22,7 +22,8 @@ import { DraftInviteForm } from "@/components/draft/invite-form";
 import { PickBoard, type BoardGroup } from "@/components/draft/pick-board";
 import { OptionChips, optionLabel, TeamRows } from "@/components/draft/role-chips";
 import { splitByGroup, TeamSection, type GroupKey } from "@/components/draft/team-section";
-import { draftFormInitial, draftFormProps, modeSummary, StatusBadge, YourTurnBadge } from "@/components/draft/view";
+import { TurnTitle } from "@/components/draft/turn-title";
+import { draftFormInitial, draftFormProps, modeSummary, StatusBadge } from "@/components/draft/view";
 import { Button, Card } from "@/components/ui";
 import { db } from "@/db";
 import type { DraftSessionMember } from "@/db/schema";
@@ -166,6 +167,17 @@ export default async function DraftPage({ params }: { params: Promise<{ id: stri
     </tr>
   );
 
+  // pick number, direction and pool size, under whose turn it is
+  const turnDetails = (
+    <>
+      <p className="text-sm">
+        {d.pickNumber(session.pickNumber)} · {d.direction}: {session.direction === 1 ? d.directionLabel.forward : d.directionLabel.back}
+      </p>
+      {myPool && session.mode === "personal" && <p className="font-medium">{d.yourPool(myPool.count, myPool.target)}</p>}
+      {sharedPool && <p className="font-medium">{d.sharedPool(sharedPool.count, sharedPool.target)}</p>}
+    </>
+  );
+
   return (
     <div className="flex flex-col gap-8">
       {status === "active" && !onTurn && <AutoRefresh seconds={30} />}
@@ -195,19 +207,36 @@ export default async function DraftPage({ params }: { params: Promise<{ id: stri
         </Card>
       )}
 
-      {status === "active" && (
-        <Card className={`flex flex-col gap-2 ${onTurn ? "border-accent" : ""}`} id="turn">
-          <p className="flex flex-wrap items-center gap-3 text-xl font-bold">
-            {onTurn ? <YourTurnBadge t={t} /> : rt.current ? d.waitingFor(rt.current.nickname) : null}
-          </p>
-          <p className="text-sm">
-            {d.pickNumber(session.pickNumber)} · {d.direction}: {session.direction === 1 ? d.directionLabel.forward : d.directionLabel.back}
-          </p>
-          {myPool && session.mode === "personal" && <p className="font-medium">{d.yourPool(myPool.count, myPool.target)}</p>}
-          {sharedPool && <p className="font-medium">{d.sharedPool(sharedPool.count, sharedPool.target)}</p>}
-          {!onTurn && access.drafter && <p className="text-sm text-muted">{d.comeBackLater}</p>}
-        </Card>
-      )}
+      {status === "active" &&
+        (onTurn ? (
+          // the one thing a drafter must not miss: the whole box in the accent colour, a pulsing dot, the tab title
+          <section id="turn" className="flex flex-col gap-2 rounded-xl border-2 border-accent bg-accent p-5 text-accent-foreground shadow-lg">
+            <TurnTitle text={d.yourTurnTab} />
+            <p className="flex items-center gap-3 text-2xl font-bold tracking-wide sm:text-3xl">
+              <span aria-hidden className="relative flex h-3.5 w-3.5 shrink-0">
+                <span className="absolute inline-flex h-full w-full rounded-full bg-accent-foreground opacity-75 motion-safe:animate-ping" />
+                <span className="relative inline-flex h-3.5 w-3.5 rounded-full bg-accent-foreground" />
+              </span>
+              {d.yourTurn}
+            </p>
+            <p className="font-medium">{d.yourTurnHint}</p>
+            {turnDetails}
+            {rt.available.length > 0 && (
+              <a
+                href="#pick"
+                className="mt-1 self-start rounded-md bg-accent-foreground px-4 py-2 text-sm font-semibold text-accent hover:opacity-90"
+              >
+                {d.yourTurnJump}
+              </a>
+            )}
+          </section>
+        ) : (
+          <Card className="flex flex-col gap-2" id="turn">
+            {rt.current && <p className="text-xl font-bold">{d.waitingFor(rt.current.nickname)}</p>}
+            {turnDetails}
+            {access.drafter && <p className="text-sm text-muted">{d.comeBackLater}</p>}
+          </Card>
+        ))}
 
       {/* the order: who picks when; on turn and pool sizes while drafting */}
       <section className="flex flex-col gap-3">
@@ -336,7 +365,7 @@ export default async function DraftPage({ params }: { params: Promise<{ id: stri
       )}
 
       {status === "active" && (
-        <section className="flex flex-col gap-3">
+        <section className="flex scroll-mt-4 flex-col gap-3" id="pick">
           <h2 className="text-lg font-semibold">{d.availableTitle}</h2>
           {rt.available.length === 0 ? (
             <p className="text-muted">{d.availableNone}</p>

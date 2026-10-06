@@ -183,6 +183,9 @@ test("draft: invitations, snake turns over days, a race of two tabs, bundles, co
   await expect(page.locator("#turn")).toContainText("JSI NA TAHU");
   await expect(page.locator("#turn")).toContainText("Pick č. 1");
   await expect(page.locator("#turn")).toContainText("Tvůj pool: 0 / 3");
+  // hard to miss: the browser tab says so too, and a button jumps to the offer
+  await expect(page).toHaveTitle(/^🎯 Jsi na tahu · /);
+  await expect(page.locator("#turn a:has-text('Vybrat ↓')")).toHaveAttribute("href", "#pick");
   await expect(page.getByTestId("order")).toHaveText(/1\. Alice.*2\. Bob/);
   await expect(page.locator("button:has-text('Uložit nastavení')")).toHaveCount(0);
   // every team in a box of its own; the bundles first
@@ -196,6 +199,7 @@ test("draft: invitations, snake turns over days, a race of two tabs, bundles, co
   await page.click("button:has-text('Potvrdit pick')");
   await expect(page.locator("main")).toContainText("Vybráno: Pradlena.");
   await expect(page.locator("#turn")).toContainText("Čeká se na Bob");
+  await expect(page).not.toHaveTitle(/Jsi na tahu/);
 
   // no e-mail for a new turn: a reminder only once the drafter has not picked for a day
   const turnEvents = () =>

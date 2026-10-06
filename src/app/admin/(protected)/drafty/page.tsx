@@ -27,7 +27,7 @@ export default async function DraftsPage() {
           return (
             <li key={x.draft.id}>
               <Link href={`/admin/drafty/${x.draft.id}`} className="block">
-                <Card className={`flex flex-col gap-1 hover:border-accent/50 sm:flex-row sm:items-center sm:justify-between ${x.myTurn ? "border-accent" : ""}`}>
+                <Card className={`flex flex-col gap-1 hover:border-accent/50 sm:flex-row sm:items-center sm:justify-between ${x.myTurn ? "border-2 border-accent shadow-md" : ""}`}>
                   <div className="flex flex-col gap-1">
                     <p className="font-semibold">{x.draft.name}</p>
                     <p className="text-sm text-muted">
