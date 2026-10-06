@@ -633,6 +633,7 @@ test("sitemap lists public pages and upcoming sessions; robots.txt keeps admin a
   const past = await createSession({ title: "Minulý", daysAhead: -5 });
   const sitemap = await (await page.request.get("/sitemap.xml")).text();
   expect(sitemap).toContain("/botc</loc>");
+  expect(sitemap).toContain("/hry</loc>");
   expect(sitemap).not.toContain("/klub</loc>");
   expect(sitemap).toContain(`/botc/termin/${upcoming}</loc>`);
   expect(sitemap).not.toContain(`/botc/termin/${past}</loc>`);

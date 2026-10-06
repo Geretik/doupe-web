@@ -1,7 +1,7 @@
 # DoUPě Olomouc – web klubu deskových her
 
 Web **Klubu deskových her DoUPě Olomouc**. Úvodní stránka je o klubu, jednotlivé části klubu
-jsou moduly s vlastní adresou a menu. Zatím je jen jeden: **Blood on the Clocktower** („Krvavka“)
+jsou moduly s vlastní adresou a menu. Sbírka her klubu je podstránka klubu `/hry` (odkaz z úvodní stránky, v menu zůstává zvýrazněný Klub). Modul je zatím jen jeden: **Blood on the Clocktower** („Krvavka“)
 pod `/botc`, registrace na herní večery bez uživatelských účtů. Hráč vyplní formulář, na e-mail
 dostane potvrzení s tajným odkazem, přes který může registraci upravit nebo zrušit.
 
@@ -17,6 +17,7 @@ dostane potvrzení s tajným odkazem, přes který může registraci upravit neb
 - Dvojjazyčné rozhraní **česky / English** včetně adminu (přepínač v hlavičce, volba se ukládá do cookie, e-maily chodí v jazyce hráče)
 
 - `/` – o klubu: kdy a kde se hraje, pravidla, přihlašování na klubová hraní (zatím přes Discord)
+- `/hry` – sbírka her klubu s hledáním (i v poznámkách, bez ohledu na diakritiku) a filtry (počet hráčů, jen klubové, bez rozšíření). Seznam se upravuje jen na [Zatrolených hrách](https://www.zatrolene-hry.cz/klub/klub-deskovych-her-doupe-olomouc-58/). Jejich API sbírky klubů neumí a Cloudflare před nimi odmítá požadavky ze serverů (Vercel, GitHub Actions), takže web si ho sám nenačte: po úpravě na Zatrolených hrách spusť u sebe `npm run hry`, který přečte veřejnou stránku klubu (`src/lib/zatrolene.ts`), uloží seznam do `src/data/game-collection.json` a vypíše, co přibylo a ubylo. Na web se dostane s dalším nasazením (commit a push).
 - `/botc` – Krvavka: seznam nadcházejících termínů s počtem volných míst, náhradníků a jazykem hry; stránky modulu mají vlastní menu (Termíny · O hře · Archiv · Moje hry)
 - `/botc/termin/[id]` – detail termínu a registrační formulář (jméno, příjmení, přezdívka, e-mail, telefon, volitelný příchod/odchod, „můžu dělat vypravěče“, „jsem nováček“); telefon vidí jen organizátoři
 - `/botc/termin/[id]/kalendar.ics` – termín jako soubor do kalendáře; odkaz i na Google Kalendář je na stránce termínu a v e-mailech
@@ -125,6 +126,7 @@ Potřebné GitHub secrets: `VERCEL_TOKEN` (vytvoř na vercel.com/account/tokens)
 ## Skripty
 
 - `npm run dev` / `build` / `start` / `lint`
+- `npm run hry` – načte sbírku her ze Zatrolených her do `src/data/game-collection.json` (spouští se z vlastního počítače, viz `/hry` výše)
 - `npm test` – build a e2e testy, `npm run test:e2e` – jen testy
 - `npm run db:push` – synchronizuje schéma do DB (vhodné pro vývoj a malé projekty)
 - `npm run db:generate`, `npm run db:migrate` – SQL migrace

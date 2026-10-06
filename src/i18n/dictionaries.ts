@@ -265,6 +265,35 @@ export const cs = {
     title: CLUB_NAME,
     discordButton: "Přidat se na Discord",
     editPencil: "Upravit text stránky (admin)",
+    gamesLead: "Co si u nás zahraješ: ",
+    gamesLink: "sbírka her",
+  },
+  games: {
+    title: "Sbírka her",
+    subtitle: "Co si u nás můžeš zahrát.",
+    intro: "Klubové hry jsou v klubu natrvalo. Soukromé hry členů (poznáš je podle poznámky) jsou ve skříni, jen dokud si je majitel neodnese, takže se jejich nabídka mění.",
+    playerCount: (min: number, max: number) => {
+      if (max >= 99) return `od ${min} ${min === 1 ? "hráče" : "hráčů"}`;
+      return `${min === max ? min : `${min}–${max}`} ${cz(max, "hráč", "hráči", "hráčů")}`;
+    },
+    /** Plain strings only – passed to the client component with the filters. */
+    list: {
+      search: "Hledat",
+      searchPlaceholder: "Název nebo poznámka",
+      players: "Počet hráčů",
+      anyPlayers: "Libovolný",
+      clubOnly: "Jen klubové hry",
+      noExpansions: "Bez rozšíření",
+      expansion: "rozšíření",
+      /** {n} of {total} games */
+      shown: "Zobrazeno {n} z {total}",
+      none: "Filtru neodpovídá žádná hra.",
+      botc: "Hrajeme pravidelně – termíny a registrace",
+    },
+    source: "Seznam vedeme na ",
+    sourceLink: "Zatrolených hrách",
+    updatedAt: (day: string) => `, sem ho přenášíme ručně – naposledy ${day}.`,
+    back: "← Zpět na klub",
   },
   privacy: {
     title: "Ochrana osobních údajů",
@@ -1091,6 +1120,33 @@ export const en: Dict = {
     title: CLUB_NAME,
     discordButton: "Join our Discord",
     editPencil: "Edit the page text (admin)",
+    gamesLead: "What you can play: ",
+    gamesLink: "our game collection",
+  },
+  games: {
+    title: "Game collection",
+    subtitle: "What you can play at the club.",
+    intro: "Club games stay at the club for good. Members’ private games (their note says so) are in the cupboard only until the owner takes them home, so they come and go.",
+    playerCount: (min, max) => {
+      if (max >= 99) return `${min}+ players`;
+      return min === max ? `${min} ${min === 1 ? "player" : "players"}` : `${min}–${max} players`;
+    },
+    list: {
+      search: "Search",
+      searchPlaceholder: "Name or note",
+      players: "Players",
+      anyPlayers: "Any",
+      clubOnly: "Club games only",
+      noExpansions: "No expansions",
+      expansion: "expansion",
+      shown: "Showing {n} of {total}",
+      none: "No game matches the filter.",
+      botc: "We play it regularly – sessions and sign-up",
+    },
+    source: "We keep the list on ",
+    sourceLink: "Zatrolené hry",
+    updatedAt: (day) => ` (a Czech board game site) and copy it here by hand, last on ${day}.`,
+    back: "← Back to the club",
   },
   privacy: {
     title: "Privacy",

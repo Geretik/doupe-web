@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Markdown } from "@/components/markdown";
 import { Card } from "@/components/ui";
 import type { PageTextKey } from "@/lib/site-content-defaults";
@@ -32,15 +33,29 @@ function DiscordBox({
   );
 }
 
-/** The club page under its heading; the texts are edited in the admin (Texty webu → Klub). */
-export function ClubContent({ texts, discordButton }: { texts: Record<PageTextKey<"klub">, string>; discordButton: string }) {
+/**
+ * The club page under its heading; the texts are edited in the admin (Texty webu → Klub). The link to
+ * the game collection is not part of them, so it stays whatever the texts say.
+ */
+export function ClubContent({
+  texts,
+  discordButton,
+  games,
+}: {
+  texts: Record<PageTextKey<"klub">, string>;
+  discordButton: string;
+  games: { lead: string; link: string };
+}) {
   return (
     <>
-      {texts["klub.info"].trim() && (
-        <Card>
-          <Markdown text={texts["klub.info"]} className="[&_p]:mt-2" />
-        </Card>
-      )}
+      <Card>
+        {texts["klub.info"].trim() && <Markdown text={texts["klub.info"]} className="[&_p]:mt-2" />}
+        <p className="[&:not(:first-child)]:mt-2">
+          <span aria-hidden className="mr-1.5">🎲</span>
+          {games.lead}
+          <Link href="/hry" className="underline hover:text-accent">{games.link}</Link>
+        </p>
+      </Card>
 
       <DiscordBox
         title={texts["klub.discordTitle"]}
