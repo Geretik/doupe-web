@@ -1,8 +1,14 @@
+import { gunzipSync } from "node:zlib";
 import { type Browser, type Page, expect, test } from "@playwright/test";
 import { afterPick, nextTurn, snakeOrder } from "../../src/lib/draft/engine";
 import { draftModes, fits, type PoolState } from "../../src/lib/draft/modes";
 import { buildOptions, matchRoleId, parseBundles, roleIdsFromScriptJson } from "../../src/lib/draft/roles";
 import { adminLogin, createAdminUser, resetDb, sql } from "./helpers";
+
+/** The script in a script tool link (`?script=` is the JSON gzipped and base64-encoded). */
+function toolScript(href: string) {
+  return JSON.parse(gunzipSync(Buffer.from(new URL(href).searchParams.get("script")!, "base64")).toString("utf8"));
+}
 
 test.describe.configure({ mode: "serial" });
 
@@ -262,6 +268,10 @@ test("draft: invitations, snake turns over days, a race of two tabs, bundles, co
   await pick(page, "librarian");
   await expect(page.locator("#turn")).toContainText("Pick č. 5");
   await expect(page.locator("#turn")).toContainText("Tvůj pool: 2 / 3");
+  // the pool so far opens in the script tool already mid-draft
+  const poolLinks = await page.getByTestId("pools").locator("a:has-text('Otevřít ve script toolu')").evaluateAll((as) => as.map((a) => a.getAttribute("href")!));
+  expect(poolLinks).toHaveLength(2);
+  expect(poolLinks.map(toolScript)).toContainEqual([{ id: "_meta", name: "Podzimní draft – Alice", author: "Alice" }, "librarian", "washerwoman"]);
   await expect(page.locator('[data-testid=pick-board] button[data-option="choirboy+king"]')).toHaveCount(0);
   await expect(page.locator('[data-testid=pick-board] span[data-option="choirboy+king"]')).toHaveCount(1);
   await pick(page, "chef");

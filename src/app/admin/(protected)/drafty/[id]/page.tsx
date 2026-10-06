@@ -33,7 +33,7 @@ import { getDict } from "@/i18n/server";
 import { requireAdmin } from "@/lib/admin-auth";
 import { draftModes, fits } from "@/lib/draft/modes";
 import { listInvitableAccounts, listScriptsOfSession, sessionIdOfDraft } from "@/lib/draft/queries";
-import { totalRoles } from "@/lib/draft/roles";
+import { sortRoleIds, totalRoles } from "@/lib/draft/roles";
 import { scriptToolLink } from "@/lib/draft/script";
 import { canScriptPool, loadSessionRows } from "@/lib/draft/service";
 import { drafters, runtime, sessionAccess, startReview, type StartCheck } from "@/lib/draft/state";
@@ -115,6 +115,10 @@ export default async function DraftPage({ params }: { params: Promise<{ id: stri
   const sharedPool = session.mode === "shared" ? rt.pools[0] : undefined;
   const nicknameOf = new Map(members.map((m) => [m.id, m.nickname]));
   const poolTitle = (memberId: number | null) => (memberId === null ? d.sharedPoolTitle : nicknameOf.get(memberId) ?? "?");
+  const poolToolLink = (p: { memberId: number | null; roleIds: string[] }) => {
+    const owner = p.memberId === null ? undefined : nicknameOf.get(p.memberId);
+    return scriptToolLink({ name: [draft.name, owner].filter(Boolean).join(" – "), author: owner ?? null, roleIds: sortRoleIds(p.roleIds) });
+  };
 
   const order = status === "preparing" ? drafters(members) : rt.order;
   const others = members.filter((m) => !order.includes(m));
@@ -395,7 +399,11 @@ export default async function DraftPage({ params }: { params: Promise<{ id: stri
                 {p.roleIds.length === 0 ? (
                   <p className="text-sm text-muted">{d.poolEmpty}</p>
                 ) : (
-                  <TeamRows roleIds={p.roleIds} locale={locale} labels={t.admin.session.roleTeams} />
+                  <>
+                    <TeamRows roleIds={p.roleIds} locale={locale} labels={t.admin.session.roleTeams} />
+                    {/* what is drafted so far, also mid-draft – the pool as a script, named like one made from it */}
+                    <a href={poolToolLink(p)} target="_blank" rel="noopener noreferrer" className={`${pill} self-start`}>{d.openInTool}</a>
+                  </>
                 )}
               </Card>
             ))}
