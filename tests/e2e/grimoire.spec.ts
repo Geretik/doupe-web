@@ -350,6 +350,7 @@ test("grimoire: the bag counts each team against the setup for the players, also
   await expect(count(screen, "minion")).toHaveText("2 / 1");
   await expect(count(screen, "demon")).toHaveText("0 / 1");
   await expect(screen).toContainText("Baron: [+2 Podivíni]");
+  await expect(screen.getByTestId("bag-summary-count")).toHaveText(["5 / 5", "0 / 0", "2 / 1", "0 / 1"]);
   // the whole script on the tablet without scrolling
   expect(await screen.evaluate((el) => el.scrollHeight <= el.clientHeight)).toBe(true);
 

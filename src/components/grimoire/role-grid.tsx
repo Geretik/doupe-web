@@ -4,7 +4,8 @@ import { findRole, roleTeams, type RoleTeam } from "@/lib/botc-roles";
 import { groupHeadingClass } from "@/components/draft/team-section";
 import { nameOf, RoleIcon, useGrimoire } from "./context";
 
-const box: Record<RoleTeam, string> = {
+/** A team's box in its colour */
+export const teamBox: Record<RoleTeam, string> = {
   townsfolk: "border-good/40 bg-good/5",
   outsider: "border-good/25 bg-good/[0.03]",
   minion: "border-accent/30 bg-accent/[0.04]",
@@ -48,7 +49,7 @@ export function RoleGrid({
   return (
     <div className="flex flex-col gap-2">
       {groups.map((g) => (
-        <section key={g.team} className={`rounded-xl border p-2 ${box[g.team]}`} data-team={g.team}>
+        <section key={g.team} className={`rounded-xl border p-2 ${teamBox[g.team]}`} data-team={g.team}>
           <h4 className={`mb-1.5 flex items-baseline justify-between gap-2 px-1 text-xs font-semibold tracking-wide uppercase ${groupHeadingClass(g.team)}`}>
             {t.teams[g.team]}
             {teamNote?.(g.team)}

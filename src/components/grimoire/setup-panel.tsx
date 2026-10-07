@@ -24,7 +24,7 @@ import {
 import { groupHeadingClass } from "@/components/draft/team-section";
 import { fill } from "@/lib/grimoire/text";
 import { nameOf, RoleIcon, useGrimoire, type GrimoireContextValue } from "./context";
-import { RoleGrid } from "./role-grid";
+import { RoleGrid, teamBox } from "./role-grid";
 import { holders } from "./seat-panel";
 import { gapIcon } from "./town";
 
@@ -344,6 +344,8 @@ function BagGrid({ wide = false }: { wide?: boolean }) {
 function BagScreen({ onClose }: { onClose: () => void }) {
   const { state, characters, locale, t } = useGrimoire();
   const players = playerSeats(state).length;
+  const expected = distribution(players);
+  const inBag = teamCounts(state.bag);
   const setupChanges = setupChangesOf(state, characters);
   useEffect(() => {
     const key = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -351,7 +353,13 @@ function BagScreen({ onClose }: { onClose: () => void }) {
     return () => document.removeEventListener("keydown", key);
   }, [onClose]);
   return (
-    <div className="fixed inset-0 z-50 flex flex-col gap-3 overflow-y-auto overscroll-contain bg-background p-4" role="dialog" aria-modal="true" aria-label={t.bagTitle} data-testid="bag-screen">
+    <div
+      className="fixed inset-0 z-50 flex flex-col gap-4 overflow-y-auto overscroll-contain bg-background px-4 py-4 sm:px-8 sm:py-6"
+      role="dialog"
+      aria-modal="true"
+      aria-label={t.bagTitle}
+      data-testid="bag-screen"
+    >
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         <h2 className="text-lg font-bold">{fill(t.bag, { n: state.bag.length, m: players })}</h2>
         <span className="text-sm text-muted">{distribution(players) ? fill(t.distribution, { n: players }) : t.distributionTooFew}</span>
@@ -361,6 +369,22 @@ function BagScreen({ onClose }: { onClose: () => void }) {
             {t.bagDone}
           </button>
         </div>
+      </div>
+      {/* in the bag against the rules, big: what the Storyteller checks while filling it */}
+      <div className="grid grid-cols-2 gap-2 lg:grid-cols-4" data-testid="bag-summary">
+        {setupTeams.map((team) => {
+          const want = expected?.[team] ?? null;
+          const off = state.bag.length > 0 && want !== null && inBag[team] !== want;
+          return (
+            <div key={team} className={`flex items-baseline justify-between gap-2 rounded-xl border px-4 py-2 ${teamBox[team]}`} data-team={team}>
+              <span className={`text-sm font-semibold tracking-wide uppercase ${groupHeadingClass(team)}`}>{t.teams[team]}</span>
+              <span className={`text-2xl font-bold whitespace-nowrap ${off ? "text-accent" : ""}`} title={`${t.inBag} / ${t.expected}`} data-testid="bag-summary-count">
+                {inBag[team]}
+                {want !== null && <span className="text-lg font-semibold text-muted"> / {want}</span>}
+              </span>
+            </div>
+          );
+        })}
       </div>
       {setupChanges.length > 0 && (
         <ul className="flex flex-wrap gap-x-4 text-sm">
