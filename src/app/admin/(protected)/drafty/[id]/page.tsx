@@ -10,6 +10,7 @@ import {
   pickAction,
   removeMemberAction,
   respondInviteAction,
+  saveScriptToLibraryAction,
   shuffleOrderAction,
   startDraftAction,
   updateDraftAction,
@@ -448,8 +449,15 @@ export default async function DraftPage({ params }: { params: Promise<{ id: stri
                       </Link>
                       <a href={scriptToolLink(script)} target="_blank" rel="noopener noreferrer" className={pill}>{d.openInTool}</a>
                       <a href={`/admin/drafty/script/${script.id}/script.json`} className={pill}>{d.downloadJson}</a>
+                      {script.libraryScriptId && <Link href={`/admin/scripty/${script.libraryScriptId}`} className={pill}>{d.inLibrary}</Link>}
                       {script.createdBy === me.id && (
-                        <ActionButton action={deleteScriptAction.bind(null, script.id)} label={d.deleteScript} confirmText={d.deleteScriptConfirm} variant="danger" />
+                        <>
+                          <ActionButton
+                            action={saveScriptToLibraryAction.bind(null, script.id)}
+                            label={script.libraryScriptId ? d.updateInLibrary : d.saveToLibrary}
+                          />
+                          <ActionButton action={deleteScriptAction.bind(null, script.id)} label={d.deleteScript} confirmText={d.deleteScriptConfirm} variant="danger" />
+                        </>
                       )}
                     </span>
                   </Card>

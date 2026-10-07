@@ -532,6 +532,8 @@ export const draftScripts = pgTable(
     roleIds: jsonb("role_ids").$type<string[]>().notNull(),
     /** Raised on every save; a save from a page with an older version is refused instead of overwriting */
     version: integer("version").notNull().default(1),
+    /** Its copy in the club's library (lib/scripts), which "save to the library" overwrites from then on */
+    libraryScriptId: integer("library_script_id").references(() => scripts.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },

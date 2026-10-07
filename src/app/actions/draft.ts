@@ -223,6 +223,15 @@ export async function saveScriptAction(scriptId: number, _prev: MessageState, fo
   return { ok: true, message: t.draft.scriptForm.saved };
 }
 
+export async function saveScriptToLibraryAction(scriptId: number): Promise<SimpleResult> {
+  const me = await requireAdmin();
+  const { t } = await getDict();
+  const r = await service.saveScriptToLibrary(me, scriptId);
+  if (!r.ok) return { message: errorText(t.draft, r.error) };
+  revalidateDrafts();
+  return { ok: true, message: r.updated ? t.draft.updatedInLibrary : t.draft.savedToLibrary };
+}
+
 export async function deleteScriptAction(scriptId: number): Promise<SimpleResult> {
   const me = await requireAdmin();
   const { t } = await getDict();

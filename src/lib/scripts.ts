@@ -104,9 +104,9 @@ export async function getLibraryScript(id: number) {
   return row ?? null;
 }
 
-/** Names are unique regardless of case: the session form finds a script by its name. */
-export async function scriptNameTaken(name: string, exceptId?: number) {
-  const [row] = await db
+/** Names are unique regardless of case: the session form finds a script by its name. `q`: a transaction to ask in. */
+export async function scriptNameTaken(name: string, exceptId?: number, q: Pick<typeof db, "select"> = db) {
+  const [row] = await q
     .select({ id: scripts.id })
     .from(scripts)
     .where(and(sql`lower(${scripts.name}) = lower(${name})`, exceptId ? ne(scripts.id, exceptId) : undefined))

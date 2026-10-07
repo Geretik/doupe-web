@@ -11,6 +11,7 @@ import {
   draftSessionOptions,
   draftSessions,
   drafts,
+  scripts,
   type AdminUser,
   type DraftEventType,
   type DraftModeId,
@@ -18,10 +19,12 @@ import {
   type DraftSessionMember,
 } from "@/db/schema";
 import type { Locale } from "@/i18n/dictionaries";
+import { canEditScript, scriptNameTaken, scriptText } from "../scripts";
 import { afterPick, drafterCanPick, firstTurn, type Turn } from "./engine";
 import { TURN_REMINDER_HOURS } from "./events";
 import { draftModes, fits, type ModeConfig } from "./modes";
 import { sortRoleIds } from "./roles";
+import { scriptJson } from "./script";
 import { drafters, isDraftManager, runtime, sessionAccess, startReview, type SessionAccess, type SessionRows } from "./state";
 
 /*
@@ -50,7 +53,9 @@ export type DraftError =
   /** the script was saved elsewhere since the page was opened */
   | "conflict"
   | "outsidePool"
-  | "emptyScript";
+  | "emptyScript"
+  /** the club's library has another script of the same name */
+  | "nameTaken";
 
 export type Result<T = object> = ({ ok: true } & T) | { ok: false; error: DraftError };
 
@@ -488,6 +493,36 @@ export async function saveScript(user: AdminUser, scriptId: number, input: Scrip
       .set({ name: input.name, author: input.author, roleIds: sortRoleIds(ids), version: script.version + 1, updatedAt: new Date() })
       .where(and(eq(draftScripts.id, scriptId), eq(draftScripts.version, input.version)));
     return { ok: true };
+  });
+}
+
+/**
+ * Its author copies a script, as last saved, into the club's library (lib/scripts), where the session form and
+ * its vote offer it. The first time makes a new library script, later times overwrite that one – unless it
+ * was deleted from the library in the meantime, then it is made anew.
+ */
+export async function saveScriptToLibrary(user: AdminUser, scriptId: number): Promise<Result<{ libraryId: number; updated: boolean }>> {
+  return db.transaction(async (tx) => {
+    // locked: a double click does not put the script into the library twice
+    const [script] = await tx.select().from(draftScripts).where(eq(draftScripts.id, scriptId)).for("update");
+    if (!script) return fail("notFound");
+    if (script.createdBy !== user.id) return fail("forbidden");
+    const [copy] = script.libraryScriptId ? await tx.select().from(scripts).where(eq(scripts.id, script.libraryScriptId)) : [];
+    if (copy && !canEditScript(user, copy)) return fail("forbidden");
+    if (await scriptNameTaken(script.name, copy?.id, tx)) return fail("nameTaken");
+    const values = {
+      name: script.name,
+      author: script.author,
+      json: scriptText(scriptJson(script), script.name, script.author),
+      roleIds: script.roleIds,
+    };
+    if (copy) {
+      await tx.update(scripts).set({ ...values, updatedAt: new Date() }).where(eq(scripts.id, copy.id));
+      return { ok: true, libraryId: copy.id, updated: true };
+    }
+    const [row] = await tx.insert(scripts).values({ ...values, createdBy: user.id }).returning({ id: scripts.id });
+    await tx.update(draftScripts).set({ libraryScriptId: row.id }).where(eq(draftScripts.id, scriptId));
+    return { ok: true, libraryId: row.id, updated: false };
   });
 }
 

@@ -327,6 +327,31 @@ test("draft: invitations, snake turns over days, a race of two tabs, bundles, co
   expect(toolLink).toMatch(/^https:\/\/botcscript\.app\/\?script=/);
   const json = await page.request.get(`/admin/drafty/script/${scriptId}/script.json`);
   expect(await json.json()).toEqual([{ id: "_meta", name: "Alicin script", author: "Alice" }, "librarian", "washerwoman"]);
+
+  // into the club's library as a copy of the saved script; saving it again updates that copy
+  await page.reload(); // without the forged checkbox
+  await page.click("button:has-text('Uložit do knihovny')");
+  await expect(page.locator("main")).toContainText("Script je v knihovně");
+  const [copy] = await sql<{ id: number; name: string; author: string; role_ids: string[]; json: string; created_by: number }>(
+    "select id, name, author, role_ids, json, created_by from scripts",
+  );
+  expect(copy).toMatchObject({ name: "Alicin script", author: "Alice", role_ids: ["librarian", "washerwoman"] });
+  expect(JSON.parse(copy.json)).toEqual([{ id: "_meta", name: "Alicin script", author: "Alice" }, "librarian", "washerwoman"]);
+  await expect(page.locator("a:has-text('V knihovně scriptů')")).toHaveAttribute("href", `/admin/scripty/${copy.id}`);
+  await page.fill("#name", "Alicin podzim");
+  await page.click("button:has-text('Uložit script')");
+  await expect(page.locator("main")).toContainText("Uloženo.");
+  await page.click("button:has-text('Aktualizovat v knihovně')");
+  await expect(page.locator("main")).toContainText("Script v knihovně je aktualizovaný.");
+  expect(await sql("select id, name from scripts")).toEqual([{ id: copy.id, name: "Alicin podzim" }]);
+  // a name another library script has is refused; the copy stays as it was
+  await sql("insert into scripts (name, json, role_ids) values ('Zabraný', '[]', '[]')");
+  await page.fill("#name", "zabraný");
+  await page.click("button:has-text('Uložit script')");
+  await expect(page.locator("main")).toContainText("Uloženo.");
+  await page.click("button:has-text('Aktualizovat v knihovně')");
+  await expect(page.locator("main")).toContainText("V knihovně už je jiný script se stejným názvem");
+  expect(await sql("select name from scripts where id=$1", [copy.id])).toEqual([{ name: "Alicin podzim" }]);
   await page.click("text=← Zpět na draft");
   await expect(page).toHaveURL(new RegExp(`/admin/drafty/${draftId}$`));
 
@@ -334,6 +359,8 @@ test("draft: invitations, snake turns over days, a race of two tabs, bundles, co
   await bob.goto(`/admin/drafty/script/${scriptId}`);
   await expect(bob.locator("main")).toContainText("Upravit ho může jen jeho autor.");
   await expect(bob.getByTestId("script-form")).toHaveCount(0);
+  await expect(bob.locator("a:has-text('V knihovně scriptů')")).toHaveCount(1);
+  await expect(bob.locator("button:has-text('knihovn')")).toHaveCount(0);
   await bob.goto(`/admin/drafty/${draftId}`);
   await expect(bob.locator("button:has-text('Vytvořit script')")).toHaveCount(1);
   await charlie.context().close();
