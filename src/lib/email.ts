@@ -31,7 +31,8 @@ function paced<T>(fn: () => Promise<T>): Promise<T> {
   return run;
 }
 
-async function send(to: string, subject: string, html: string, text: string) {
+/** The sender address has no mailbox, so replies go to `replyTo`: the organisers (CONTACT_EMAIL) unless said otherwise. */
+async function send(to: string, subject: string, html: string, text: string, replyTo = contactEmail() ?? undefined) {
   // the address was deleted after the session, or the player has none; sending would only bounce
   if (!hasEmail(to)) return;
   const apiKey = process.env.RESEND_API_KEY;
@@ -50,8 +51,6 @@ async function send(to: string, subject: string, html: string, text: string) {
     to = redirect;
   }
   const resend = new Resend(apiKey);
-  // the sender address has no mailbox; replies go to the organisers instead
-  const replyTo = contactEmail() ?? undefined;
   const { error } = await paced(() => resend.emails.send({ from, to, subject, html, text, replyTo }));
   if (error) {
     console.error("Resend error", error);
@@ -88,6 +87,20 @@ export async function sendLinkEmail(to: string, subject: string, greeting: strin
   const text = `${greeting}\n\n${body}\n${url}`;
   const html = `<p>${escapeHtml(greeting)}</p>\n<p>${escapeHtml(body)}</p>\n<p><a href="${escapeHtml(url)}">${escapeHtml(url)}</a></p>`;
   await send(to, subject, html, text);
+}
+
+/**
+ * A message from the club page's form to the organisers, always in Czech like their alerts. Replying to the
+ * e-mail answers the sender.
+ */
+export async function sendClubMessageEmail(to: string, m: { name: string | null; email: string; text: string; locale: Locale }) {
+  const from = m.name ? `${m.name} <${m.email}>` : m.email;
+  const intro = `Vzkaz z formuláře na úvodní stránce webu${m.locale === "en" ? " (psáno v angličtině)" : ""}. Odpověď na tento e-mail půjde odesílateli.`;
+  const text = `${intro}\n\nOd: ${from}\n\n${m.text}`;
+  const html = `<p style="color:#666;font-size:90%">${escapeHtml(intro)}</p>
+<p><strong>Od:</strong> ${escapeHtml(from)}</p>
+<p style="white-space:pre-line">${escapeHtml(m.text)}</p>`;
+  await send(to, `Vzkaz z webu od ${m.name ?? m.email}`, html, text, m.email);
 }
 
 /** Plain-text message, used for organiser alerts. */

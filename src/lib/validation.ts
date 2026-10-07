@@ -266,6 +266,25 @@ export function emailSchema(t: { invalidEmail: string }) {
   return z.string().trim().toLowerCase().email(t.invalidEmail).max(200);
 }
 
+/** Longest message the club page's form takes. */
+const MESSAGE_MAX_LENGTH = 5000;
+
+/** The club page's message form; the name is optional and kept on one line (it goes into the e-mail's subject). */
+export function messageSchema(t: Dict["club"]["message"], errors: Dict["errors"]) {
+  return z.object({
+    name: z
+      .string()
+      .optional()
+      .transform((v) => (v ?? "").replace(/\s+/g, " ").trim())
+      .pipe(z.string().max(100))
+      .transform((v) => (v === "" ? null : v)),
+    email: emailSchema(errors),
+    text: z.string().trim().min(1, t.fillText).max(MESSAGE_MAX_LENGTH, t.textTooLong),
+    // honeypot: any value is accepted here, and the action then pretends success without sending
+    website: z.string().optional(),
+  });
+}
+
 /** Nickname + e-mail + password twice; shared by the first-account setup and invitation forms. */
 export function accountSchema(t: Dict["admin"]["errors"]) {
   return z

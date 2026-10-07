@@ -278,10 +278,10 @@ export const loginFailures = pgTable(
   (t) => [index("login_failures_ip_hash_idx").on(t.ipHash, t.createdAt)],
 );
 
-export const linkKinds = ["my_games", "admin_reset"] as const;
+export const linkKinds = ["my_games", "admin_reset", "message"] as const;
 export type LinkKind = (typeof linkKinds)[number];
 
-/** "Send me a link" requests ("my games", forgotten admin password), for throttling them (lib/link-throttle); the daily cron deletes old rows. */
+/** "Send me a link" requests ("my games", forgotten admin password) and messages from the club page, for throttling them (lib/link-throttle); the daily cron deletes old rows. */
 export const linkRequests = pgTable(
   "link_requests",
   {

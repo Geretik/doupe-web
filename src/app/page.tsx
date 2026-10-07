@@ -23,7 +23,12 @@ export default async function ClubPage() {
       {texts["klub.intro"] && <p className="mt-2 text-muted">{texts["klub.intro"]}</p>}
 
       <div className="mt-8">
-        <ClubContent texts={texts} discordButton={t.club.discordButton} games={{ lead: t.club.gamesLead, link: t.club.gamesLink }} />
+        <ClubContent
+          texts={texts}
+          discordButton={t.club.discordButton}
+          games={{ lead: t.club.gamesLead, link: t.club.gamesLink }}
+          message={t.club.message}
+        />
       </div>
     </article>
   );

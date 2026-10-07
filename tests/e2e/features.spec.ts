@@ -1056,6 +1056,49 @@ test("club page is the home page: schedule, place and Discord sign-up, in both l
   );
 });
 
+test("club page: a message to the organisers, with a honeypot and a limit per network", async ({ page }) => {
+  // no CONTACT_EMAIL in tests: the message goes to the accounts' e-mails
+  await createAdminUser({ email: "org@example.com", password: "org-password-123", nickname: "Organizátorka", role: "organizer" });
+  const section = page.locator("#vzkaz");
+  const form = section.locator("form");
+  async function write(text: string) {
+    await page.goto("/");
+    await form.locator("#email").fill("host@example.com");
+    await form.locator("#text").fill(text);
+  }
+
+  await write("   ");
+  await expect(section.locator("h2")).toHaveText("Nech nám vzkaz");
+  await form.locator("button[type=submit]").click();
+  await expect(form).toContainText("Napiš vzkaz");
+  // what was typed stays
+  await expect(form.locator("#email")).toHaveValue("host@example.com");
+  await form.locator("#name").fill("Host");
+  await form.locator("#text").fill("Ahoj, můžu ve čtvrtek přijít poprvé?");
+  await form.locator("button[type=submit]").click();
+  await expect(section).toContainText("Díky, vzkaz dorazil organizátorům.");
+  expect((await sql<{ kind: string }>("select kind from link_requests")).map((r) => r.kind)).toEqual(["message"]);
+
+  // a bot filling the hidden field is told it worked, nothing is sent or counted
+  await write("Cheap pills");
+  await form.locator("#website").evaluate((el: HTMLInputElement) => (el.value = "https://spam.example"));
+  await form.locator("button[type=submit]").click();
+  await expect(section).toContainText("Díky, vzkaz dorazil organizátorům.");
+  expect(await sql("select id from link_requests")).toHaveLength(1);
+
+  // five messages an hour from one network
+  for (let i = 2; i <= 6; i++) {
+    await write(`Vzkaz číslo ${i}`);
+    await form.locator("button[type=submit]").click();
+    await expect(section).toContainText(i <= 5 ? "Díky, vzkaz dorazil organizátorům." : "Z této sítě přišlo příliš mnoho vzkazů.");
+  }
+  expect(await sql("select id from link_requests")).toHaveLength(5);
+
+  await page.click("header button:has-text('English')");
+  await expect(section.locator("h2")).toHaveText("Leave us a message");
+  await expect(form.locator("button[type=submit]")).toHaveText("Send message");
+});
+
 test("Blood on the Clocktower lives under /botc with its own menu; old addresses redirect there", async ({ page }) => {
   const id = await createSession({ title: "Modulový večer" });
   await page.goto("/");

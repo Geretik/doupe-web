@@ -55,13 +55,17 @@ function Czech({ contact, discordAlerts }: Props) {
           organizátoři věděli, co připravit.
         </li>
         <li>
+          <strong>Vzkaz</strong> – když nám napíšeš přes formulář na úvodní stránce: jméno nebo přezdívka
+          (nepovinné), e-mail a text vzkazu, abychom ti mohli odpovědět.
+        </li>
+        <li>
           <strong>Otisk IP adresy</strong> (samotnou adresu neukládáme) – ochrana proti hromadným falešným registracím.
         </li>
       </Ul>
       <P>
         Údaje zpracováváme, protože jsou potřeba k uspořádání hraní, na které se přihlašuješ
-        (čl. 6 odst. 1 písm. b GDPR). Statistiky klubu a ochrana proti zneužití jsou náš oprávněný
-        zájem (čl. 6 odst. 1 písm. f GDPR).
+        (čl. 6 odst. 1 písm. b GDPR). Statistiky klubu, odpovědi na vzkazy a ochrana proti zneužití jsou
+        náš oprávněný zájem (čl. 6 odst. 1 písm. f GDPR).
       </P>
 
       <H2>Kdo údaje uvidí</H2>
@@ -69,6 +73,7 @@ function Czech({ contact, discordAlerts }: Props) {
         <li>Přezdívka je veřejně vidět v seznamu přihlášených u termínu.</li>
         <li>U hlasování o scriptu je veřejně vidět jen počet hlasů, kdo jak hlasoval, vidí organizátoři.</li>
         <li>Ostatní údaje vidí jen organizátoři klubu v administraci webu.</li>
+        <li>Vzkaz dostanou jen organizátoři klubu do své e-mailové schránky.</li>
         <li>Nikomu je neprodáváme ani nepředáváme pro jiné účely.</li>
       </Ul>
 
@@ -79,8 +84,12 @@ function Czech({ contact, discordAlerts }: Props) {
           systému do uplynutí {RETENTION_DAYS} dní od konání hraní. Potom se automaticky smažou.
         </li>
         <li>
-          Když si necháš poslat odkaz na „Moje hry“, uložíme na jeden den otisk e-mailu a IP adresy
-          (ne adresy samotné), abychom mohli omezit, kolik odkazů odchází.
+          Když si necháš poslat odkaz na „Moje hry“ nebo nám pošleš vzkaz, uložíme na jeden den otisk
+          e-mailu a IP adresy (ne adresy samotné), abychom mohli omezit, kolik odkazů a vzkazů odchází.
+        </li>
+        <li>
+          <strong>Vzkaz</strong> web neukládá, jen ho přepošle e-mailem organizátorům. V jejich schránce
+          zůstane, dokud ho nesmažou.
         </li>
         <li>
           Místo e-mailu zůstane pseudonymní kód, díky kterému statistiky poznají stejného hráče a v „Mých
@@ -173,14 +182,18 @@ function English({ contact, discordAlerts }: Props) {
           organisers know what to prepare.
         </li>
         <li>
+          <strong>Your message</strong> – when you write to us through the form on the home page: your name
+          or nickname (optional), e-mail and the message, so we can reply.
+        </li>
+        <li>
           <strong>A fingerprint of your IP address</strong> (not the address itself) – protection against
           mass fake sign-ups.
         </li>
       </Ul>
       <P>
         We process the data because it is needed to run the game night you sign up for (Art. 6(1)(b)
-        GDPR). The club&apos;s stats and protection against abuse are our legitimate interest
-        (Art. 6(1)(f) GDPR).
+        GDPR). The club&apos;s stats, replying to messages and protection against abuse are our
+        legitimate interest (Art. 6(1)(f) GDPR).
       </P>
 
       <H2>Who can see it</H2>
@@ -188,6 +201,7 @@ function English({ contact, discordAlerts }: Props) {
         <li>Your nickname is shown publicly in the list of players of the session.</li>
         <li>In a script vote only the number of votes is public; the organisers see who voted for what.</li>
         <li>Everything else is visible only to the club&apos;s organisers in the site&apos;s admin.</li>
+        <li>Your message goes only to the club&apos;s organisers&apos; mailbox.</li>
         <li>We don&apos;t sell or share your data for any other purpose.</li>
       </Ul>
 
@@ -199,8 +213,13 @@ function English({ contact, discordAlerts }: Props) {
           automatically.
         </li>
         <li>
-          When you ask for a &quot;My games&quot; link, we keep a fingerprint of the e-mail and of your
-          IP address (not the addresses themselves) for one day, to limit how many links go out.
+          When you ask for a &quot;My games&quot; link or send us a message, we keep a fingerprint of the
+          e-mail and of your IP address (not the addresses themselves) for one day, to limit how many
+          links and messages go out.
+        </li>
+        <li>
+          The site doesn&apos;t keep <strong>your message</strong>; it only e-mails it to the organisers.
+          It stays in their mailbox until they delete it.
         </li>
         <li>
           Your e-mail is replaced by a pseudonymous code so the stats can recognise the same player and

@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { Markdown } from "@/components/markdown";
+import { MessageForm } from "@/components/message-form";
+import { H2 } from "@/components/prose";
 import { Card } from "@/components/ui";
+import type { Dict } from "@/i18n/dictionaries";
 import type { PageTextKey } from "@/lib/site-content-defaults";
 import { CLUB_DISCORD_URL as DISCORD_URL } from "@/lib/site";
 
@@ -35,16 +38,18 @@ function DiscordBox({
 
 /**
  * The club page under its heading; the texts are edited in the admin (Texty webu → Klub). The link to
- * the game collection is not part of them, so it stays whatever the texts say.
+ * the game collection and the message form are not part of them, so they stay whatever the texts say.
  */
 export function ClubContent({
   texts,
   discordButton,
   games,
+  message,
 }: {
   texts: Record<PageTextKey<"klub">, string>;
   discordButton: string;
   games: { lead: string; link: string };
+  message: Dict["club"]["message"];
 }) {
   return (
     <>
@@ -66,6 +71,14 @@ export function ClubContent({
       </DiscordBox>
 
       <Markdown text={texts["klub.body"]} className="mt-10" />
+
+      <section id="vzkaz" className="mt-10">
+        {texts["klub.messageTitle"] && <H2>{texts["klub.messageTitle"]}</H2>}
+        <Markdown text={texts["klub.messageText"]} className="mt-3" />
+        <Card className="mt-5">
+          <MessageForm t={message} />
+        </Card>
+      </section>
     </>
   );
 }

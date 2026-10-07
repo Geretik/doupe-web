@@ -194,6 +194,19 @@ export const SITE_PAGES = [
         },
       },
       { key: "klub.body", kind: "markdown", defaults: { cs: CLUB_BODY_CS, en: CLUB_BODY_EN } },
+      {
+        key: "klub.messageTitle",
+        kind: "line",
+        defaults: { cs: "Nech nám vzkaz", en: "Leave us a message" },
+      },
+      {
+        key: "klub.messageText",
+        kind: "markdown",
+        defaults: {
+          cs: "Nemáš Discord, nebo nám chceš napsat něco mimo něj? Pošli nám vzkaz a odpovíme ti e-mailem.\n",
+          en: "Not on Discord, or want to tell us something outside it? Send us a message and we'll reply by e-mail.\n",
+        },
+      },
     ],
   },
   {
