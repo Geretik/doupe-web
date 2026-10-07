@@ -1,4 +1,5 @@
 import { draftCs, draftEn } from "./draft";
+import { grimoireCs, grimoireEn } from "./grimoire";
 
 export const locales = ["cs", "en"] as const;
 export type Locale = (typeof locales)[number];
@@ -363,6 +364,7 @@ export const cs = {
     subtitle: "Jaké údaje při registraci sbíráme, k čemu je potřebujeme, kdo k nim má přístup a kdy je smažeme.",
   },
   draft: draftCs,
+  grimoire: grimoireCs,
   admin: {
     nav: {
       label: "Admin",
@@ -371,6 +373,7 @@ export const cs = {
       newSession: "+ Nový termín",
       stats: "Statistiky",
       drafts: "Drafty",
+      grimoires: "Grimoáry",
       scripts: "Scripty",
       draftsAttention: (turns: number, invites: number) =>
         [turns && `na tahu: ${turns}`, invites && `pozvánky: ${invites}`].filter(Boolean).join(", "),
@@ -1280,6 +1283,7 @@ export const en: Dict = {
     subtitle: "What we collect when you sign up, what we need it for, who can see it and when we delete it.",
   },
   draft: draftEn,
+  grimoire: grimoireEn,
   admin: {
     nav: {
       label: "Admin",
@@ -1288,6 +1292,7 @@ export const en: Dict = {
       newSession: "+ New session",
       stats: "Statistics",
       drafts: "Drafts",
+      grimoires: "Grimoires",
       scripts: "Scripts",
       draftsAttention: (turns, invites) => [turns && `your turn: ${turns}`, invites && `invitations: ${invites}`].filter(Boolean).join(", "),
       club: "Club",

@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { db } from "@/db";
-import { adminInvites, adminUsers, gamePlayers, games, passwordResets, registrations, scriptVotes, sessions, type RegistrationState } from "@/db/schema";
+import { adminInvites, adminUsers, games, passwordResets, registrations, scriptVotes, sessions, type RegistrationState } from "@/db/schema";
 import {
   checkBootstrapPassword,
   clearAdminCookie,
@@ -16,6 +16,7 @@ import {
 import { countAdminUsers, createInvite, createPasswordReset, getOpenInvite, getOpenPasswordReset, RESET_EMAIL_HOURS } from "@/lib/admin-users";
 import { throttleLinkRequest } from "@/lib/link-throttle";
 import { LOGIN_WINDOW_MINUTES, startLoginAttempt } from "@/lib/login-limit";
+import { saveRoster } from "@/lib/game-roster";
 import { rotateFeedKey } from "@/lib/org-feed";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { announceSessionOnDiscord } from "@/lib/discord";
@@ -41,7 +42,6 @@ import {
   parseRoster,
   parseScriptPoll,
   parseScripts,
-  type RosterValue,
   quickRegistrationSchema,
   sessionSchema,
   timeRangeErrors,
@@ -817,25 +817,6 @@ export async function rotateFeedKeyAction(): Promise<SimpleResult> {
   await rotateFeedKey(me.id);
   revalidatePath("/admin");
   return { ok: true, message: t.admin.list.orgCalendarRotated };
-}
-
-/**
- * Stores who played what in a game. Only the players in the form are touched, and only players of the
- * game's session count; an empty select removes what was entered for that player.
- */
-async function saveRoster(tx: Tx, gameId: number, sessionId: number, roster: Map<number, RosterValue | undefined>) {
-  const ids = [...roster.keys()];
-  if (ids.length === 0) return;
-  const ofSession = await tx
-    .select({ id: registrations.id })
-    .from(registrations)
-    .where(and(eq(registrations.sessionId, sessionId), inArray(registrations.id, ids)));
-  await tx.delete(gamePlayers).where(and(eq(gamePlayers.gameId, gameId), inArray(gamePlayers.registrationId, ids)));
-  const rows = ofSession.flatMap(({ id }) => {
-    const value = roster.get(id);
-    return value === undefined ? [] : [{ gameId, registrationId: id, ...value }];
-  });
-  if (rows.length > 0) await tx.insert(gamePlayers).values(rows);
 }
 
 export async function addGameAction(sessionId: number, _prev: FormState, formData: FormData): Promise<FormState> {

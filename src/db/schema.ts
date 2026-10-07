@@ -11,6 +11,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
 import type { RoleEdition, RoleTeam } from "../lib/botc-roles";
+import type { GrimoireState } from "../lib/grimoire/state";
 
 export const cities = ["olomouc", "praha"] as const;
 export type City = (typeof cities)[number];
@@ -571,6 +572,35 @@ export const draftEvents = pgTable(
   },
   (t) => [index("draft_events_pending_idx").on(t.dispatchedAt, t.dueAt)],
 );
+
+/**
+ * A Storyteller's online grimoire: the seats, characters, reminders and the night of one game, kept as one
+ * JSON document (lib/grimoire/state) that the page saves as it changes. Only its owner sees it until the
+ * game ends; ending it writes the game record of its session (games, game_players).
+ */
+export const grimoires = pgTable(
+  "grimoires",
+  {
+    id: serial("id").primaryKey(),
+    name: text("name").notNull(),
+    ownerId: integer("owner_id")
+      .notNull()
+      .references(() => adminUsers.id, { onDelete: "cascade" }),
+    /** The session whose players it started from and whose games it records; null = a grimoire on its own */
+    sessionId: integer("session_id").references(() => sessions.id, { onDelete: "set null" }),
+    /** The game record it wrote when the game ended; ending it again updates that one */
+    gameId: integer("game_id").references(() => games.id, { onDelete: "set null" }),
+    state: jsonb("state").$type<GrimoireState>().notNull(),
+    /** Raised by every save: a save from a page that started from an older version is refused */
+    version: integer("version").notNull().default(1),
+    endedAt: timestamp("ended_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("grimoires_owner_idx").on(t.ownerId), index("grimoires_session_idx").on(t.sessionId)],
+);
+
+export type Grimoire = typeof grimoires.$inferSelect;
 
 export type Draft = typeof drafts.$inferSelect;
 export type DraftSession = typeof draftSessions.$inferSelect;

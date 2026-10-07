@@ -45,3 +45,9 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, sans-serif;
 }
+
+/* the grimoire in full screen (components/grimoire): the page's background, not the browser's black */
+.grimoire:fullscreen {
+  padding: 0.75rem;
+  background: var(--background);
+}

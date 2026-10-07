@@ -15,6 +15,7 @@ import {
   setScriptPollClosedAction,
   updateSessionAction,
 } from "@/app/actions/admin";
+import { createGrimoireAction } from "@/app/actions/grimoire";
 import { ActionButton } from "@/components/admin/action-button";
 import { AttendanceToggle } from "@/components/admin/attendance-toggle";
 import { BroadcastForm } from "@/components/admin/broadcast-form";
@@ -22,6 +23,7 @@ import { DeleteSessionButton } from "@/components/admin/delete-session-button";
 import { EditablePlayerItem, EditablePlayerRow, type EditPlayerLabels, type EditPlayerProps } from "@/components/admin/edit-player";
 import { GameForm, GameItem, type GameFormLabels, type RosterPlayer } from "@/components/admin/game-form";
 import { GameRoster } from "@/components/game-roster";
+import { GrimoireLink } from "@/components/grimoire/grimoire-link";
 import { PresenceChart } from "@/components/admin/presence-chart";
 import { QuickRegistrationForm } from "@/components/admin/quick-registration-form";
 import { SessionForm } from "@/components/admin/session-form";
@@ -34,6 +36,7 @@ import { getDict } from "@/i18n/server";
 import { requireAdmin } from "@/lib/admin-auth";
 import { discordConfigured } from "@/lib/discord";
 import { getFormSuggestions } from "@/lib/form-suggestions";
+import { listGrimoires } from "@/lib/grimoire/service";
 import { getSessionWithCount, listGamesForSession, listRegistrationsForSession } from "@/lib/queries";
 import { presenceByHour } from "@/lib/presence";
 import { countPendingReminders } from "@/lib/reminders";
@@ -87,10 +90,10 @@ export default async function AdminSessionPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await requireAdmin();
+  const me = await requireAdmin();
   const numId = parseId((await params).id);
   if (!numId) notFound();
-  const [{ locale, t: dict }, session, regs, pendingReminders, playedGames, suggestions, storytellers] = await Promise.all([
+  const [{ locale, t: dict }, session, regs, pendingReminders, playedGames, suggestions, storytellers, sessionGrimoires] = await Promise.all([
     getDict(),
     getSessionWithCount(numId),
     listRegistrationsForSession(numId),
@@ -98,6 +101,7 @@ export default async function AdminSessionPage({
     listGamesForSession(numId),
     getFormSuggestions(),
     storytellerStats(),
+    listGrimoires(me, numId),
   ]);
   if (!session) notFound();
   const t = dict.admin.session;
@@ -501,6 +505,24 @@ export default async function AdminSessionPage({
       <Card id="hry" className="scroll-mt-4">
         <h2 className="mb-1 text-lg font-semibold">🎲 {t.gamesTitle}</h2>
         <p className="mb-4 text-sm text-muted">{t.gamesHint}</p>
+        <section className="mb-4 flex flex-col gap-2 rounded-lg border border-border p-3" data-testid="session-grimoires">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="text-sm text-muted">{dict.grimoire.sessionCardHint}</span>
+            <form action={createGrimoireAction}>
+              <input type="hidden" name="sessionId" value={session.id} />
+              <SubmitButton variant="secondary">{dict.grimoire.sessionNew}</SubmitButton>
+            </form>
+          </div>
+          {sessionGrimoires.length > 0 && (
+            <ul className="flex flex-col gap-1.5">
+              {sessionGrimoires.map((g) => (
+                <li key={g.id}>
+                  <GrimoireLink item={g} t={dict} locale={locale} showOwner />
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
         {playedGames.length === 0 && <p className="mb-4 text-sm text-muted">{t.gamesNone}</p>}
         {playedGames.length > 0 && (
           <ol className="mb-4 flex flex-col gap-2 text-sm">

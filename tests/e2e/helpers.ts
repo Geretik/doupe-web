@@ -17,6 +17,7 @@ export async function sql<T = Record<string, unknown>>(text: string, params: unk
 export async function resetDb() {
   // sessions, members, picks, pools, scripts and events go with their draft
   await sql("delete from drafts");
+  await sql("delete from grimoires");
   await sql("delete from registrations");
   await sql("delete from sessions");
   await sql("delete from admin_invites");
