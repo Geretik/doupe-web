@@ -361,9 +361,6 @@ export type DraftRoleSource =
   | { kind: "filter"; editions: RoleEdition[]; teams: RoleTeam[] }
   | { kind: "manual"; roleIds: string[] };
 
-/** Settings of each mode by mode id, e.g. { personal: { rolesPerParticipant: 15 } } – see lib/draft/modes. */
-export type DraftModeSettings = Partial<Record<DraftModeId, Record<string, number>>>;
-
 export const drafts = pgTable("drafts", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
@@ -373,12 +370,6 @@ export const drafts = pgTable("drafts", {
   roleSource: jsonb("role_source").$type<DraftRoleSource>().notNull(),
   /** Characters drafted only together, as one pick, e.g. [["choirboy", "king"], ["huntsman", "damsel"]] */
   bundles: jsonb("bundles").$type<string[][]>().notNull().default([]),
-  /**
-   * No longer used: the mode is the session's (draft_sessions.mode). Left in the schema for one deploy – the
-   * code still running during a deploy selects every column – and can be dropped by the next one.
-   */
-  modes: jsonb("modes").$type<DraftModeId[]>().notNull().default([]),
-  modeDefaults: jsonb("mode_defaults").$type<DraftModeSettings>().notNull().default({}),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
