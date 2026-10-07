@@ -14,7 +14,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
     "test:e2e": "playwright test",
-    "test": "npm run build && playwright test"
+    "test": "npm run build && playwright test",
+    "uklid": "npx --yes vercel remove playbotc --safe --yes"
   },
   "dependencies": {
     "@mdxeditor/editor": "^4.3.2",
