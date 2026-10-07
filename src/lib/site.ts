@@ -33,6 +33,11 @@ export function passwordResetUrl(token: string) {
   return `${siteUrl()}/admin/nove-heslo/${token}`;
 }
 
+/** The one-time link of "log in with a link from an e-mail". */
+export function loginLinkUrl(token: string) {
+  return `${siteUrl()}/admin/odkaz/${token}`;
+}
+
 /** What a device's QR code for logging in opens on the organiser's phone. */
 export function qrLoginUrl(token: string) {
   return `${siteUrl()}/admin/qr/${token}`;

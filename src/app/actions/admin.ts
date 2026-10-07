@@ -13,17 +13,26 @@ import {
   requireAdmin,
   setAdminCookie,
 } from "@/lib/admin-auth";
-import { countAdminUsers, createInvite, createPasswordReset, getOpenInvite, getOpenPasswordReset, RESET_EMAIL_HOURS } from "@/lib/admin-users";
+import {
+  claimLoginLink,
+  countAdminUsers,
+  createInvite,
+  createLoginLink,
+  createPasswordReset,
+  getOpenInvite,
+  getOpenPasswordReset,
+  RESET_EMAIL_HOURS,
+} from "@/lib/admin-users";
 import { throttleLinkRequest } from "@/lib/link-throttle";
 import { LOGIN_WINDOW_MINUTES, startLoginAttempt } from "@/lib/login-limit";
 import { saveRoster } from "@/lib/game-roster";
 import { rotateFeedKey } from "@/lib/org-feed";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { announceSessionOnDiscord } from "@/lib/discord";
-import { sendBroadcastEmail, sendConfirmationEmail, sendExistingRegistrationEmail, sendPasswordResetEmail, sendPromotedEmail } from "@/lib/email";
+import { sendBroadcastEmail, sendConfirmationEmail, sendExistingRegistrationEmail, sendLoginLinkEmail, sendPasswordResetEmail, sendPromotedEmail } from "@/lib/email";
 import { sendDueReminders } from "@/lib/reminders";
 import { getDict } from "@/i18n/server";
-import { inviteUrl, passwordResetUrl } from "@/lib/site";
+import { inviteUrl, loginLinkUrl, passwordResetUrl } from "@/lib/site";
 import { generateEditToken } from "@/lib/token";
 import { addPragueDays, pragueLocalToDate } from "@/lib/time";
 import {
@@ -248,6 +257,44 @@ export async function requestPasswordResetAction(_prev: FormState, formData: For
     });
   }
   return { ok: true };
+}
+
+/**
+ * "Log in with a link from an e-mail" on the login page: e-mails a one-time login link to the account's address.
+ * Like the forgotten password, the answer and its timing are the same whether an account exists or not.
+ */
+export async function requestLoginLinkAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const { locale, t } = await getDict();
+  const parsed = emailSchema(t.admin.errors).safeParse(formData.get("email"));
+  if (!parsed.success) return { error: t.admin.errors.checkForm, fieldErrors: { email: [t.admin.errors.invalidEmail] } };
+  const email = parsed.data;
+  const throttled = await throttleLinkRequest("admin_login", email);
+  if (throttled === "network") return { error: t.errors.tooManyLinks };
+  if (!throttled) {
+    after(async () => {
+      const user = await db.query.adminUsers.findFirst({ where: eq(adminUsers.email, email) });
+      if (!user) return;
+      const link = await createLoginLink(user.id);
+      try {
+        await sendLoginLinkEmail(user, loginLinkUrl(link.token), locale);
+      } catch (e) {
+        console.error("Login link e-mail failed", e);
+      }
+    });
+  }
+  return { ok: true };
+}
+
+/**
+ * The button behind an e-mailed login link: logs this device in and uses the link up. Not on opening the link,
+ * which mail scanners do on their own. A link no longer valid lands back on its page, which says so.
+ */
+export async function loginWithLinkAction(token: string) {
+  const userId = await claimLoginLink(token);
+  if (!userId) redirect(`/admin/odkaz/${encodeURIComponent(token)}`);
+  await db.update(adminUsers).set({ lastLoginAt: new Date() }).where(eq(adminUsers.id, userId));
+  await setAdminCookie(userId);
+  redirect("/admin");
 }
 
 /** Sets a new password from a reset link and logs that organiser in. */

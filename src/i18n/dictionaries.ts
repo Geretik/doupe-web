@@ -207,6 +207,10 @@ export const cs = {
     /** keep the validity in sync with RESET_EMAIL_HOURS in lib/admin-users.ts */
     passwordResetBody: "někdo (nejspíš ty) požádal o nové heslo k tvému účtu organizátora. Nastavíš ho na tomto odkazu, který platí 2 hodiny a jde použít jednou:",
     passwordResetIgnore: "Pokud jsi o nové heslo nežádal/a, e-mail ignoruj – současné heslo dál platí.",
+    loginLinkSubject: `Přihlášení do adminu – ${SITE_NAME}`,
+    /** keep the validity in sync with LOGIN_LINK_MINUTES in lib/admin-users.ts */
+    loginLinkBody: "někdo (nejspíš ty) požádal o přihlášení do adminu odkazem z e-mailu. Přihlásíš se na tomto odkazu na zařízení, kde ho otevřeš. Platí 15 minut a jde použít jednou:",
+    loginLinkIgnore: "Pokud jsi o přihlášení nežádal/a, e-mail ignoruj – bez odkazu se nikdo nepřihlásí.",
     pollText: (names: string) => `Hlasuje se, který script se bude hrát (${names}). Hlasovat můžeš na odkazu ke své registraci:`,
     pollHtmlBefore: (names: string) => `Hlasuje se, který script se bude hrát (${names}). `,
     pollHtmlLink: "Hlasuj zde",
@@ -392,6 +396,7 @@ export const cs = {
       submit: "Přihlásit",
       checking: "Ověřuji…",
       forgot: "Zapomenuté heslo?",
+      emailLink: "Přihlásit odkazem z e-mailu",
       qrOpen: "Přihlásit QR kódem z telefonu",
       qrHint: "Naskenuj kód telefonem, na kterém jsi do adminu přihlášený/á (Profil → Naskenovat QR kód, nebo fotoaparátem) a přihlášení na telefonu potvrď.",
       qrAlt: "QR kód pro přihlášení",
@@ -410,6 +415,23 @@ export const cs = {
       /** keep the validity in sync with RESET_EMAIL_HOURS in lib/admin-users.ts */
       sent: "Pokud k té adrese patří účet organizátora, odkaz pro nové heslo je na cestě. Platí 2 hodiny a jde použít jednou. Zkontroluj i spam.",
       back: "Zpět na přihlášení",
+    },
+    /** Plain strings only – passed to client components. */
+    loginLink: {
+      title: "Přihlášení odkazem z e-mailu",
+      intro: "Zadej e-mail, kterým se přihlašuješ. Pošleme na něj odkaz, který tě přihlásí bez hesla – na zařízení, kde ho otevřeš.",
+      email: "E-mail",
+      submit: "Poslat odkaz",
+      submitting: "Odesílám…",
+      /** keep the validity in sync with LOGIN_LINK_MINUTES in lib/admin-users.ts */
+      sent: "Pokud k té adrese patří účet organizátora, přihlašovací odkaz je na cestě. Platí 15 minut a jde použít jednou. Zkontroluj i spam.",
+      back: "Zpět na přihlášení",
+      confirmTitle: "Přihlášení do adminu",
+      confirmIntro: "Přihlásíš se na tomto zařízení jako:",
+      confirm: "Přihlásit se",
+      invalidTitle: "Odkaz neplatí",
+      invalidBody: "Přihlašovací odkaz je neplatný, už byl použitý nebo mu vypršela platnost (15 minut). Nech si poslat nový.",
+      requestNew: "Poslat nový odkaz",
     },
     /** Plain strings only – passed to client components. */
     setup: {
@@ -1178,6 +1200,9 @@ export const en: Dict = {
     passwordResetSubject: `New admin password – ${SITE_NAME}`,
     passwordResetBody: "someone (probably you) asked for a new password for your organiser account. Set it at this link, which is valid for 2 hours and works once:",
     passwordResetIgnore: "If you did not ask for it, ignore this e-mail – your current password still works.",
+    loginLinkSubject: `Admin login – ${SITE_NAME}`,
+    loginLinkBody: "someone (probably you) asked to log in to the admin with a link from an e-mail. This link logs in the device you open it on. It is valid for 15 minutes and works once:",
+    loginLinkIgnore: "If you did not ask for it, ignore this e-mail – nobody logs in without the link.",
     pollText: (names) => `There's a vote on which script will be played (${names}). Vote through the link to your sign-up:`,
     pollHtmlBefore: (names) => `There's a vote on which script will be played (${names}). `,
     pollHtmlLink: "Vote here",
@@ -1357,6 +1382,7 @@ export const en: Dict = {
       submit: "Log in",
       checking: "Checking…",
       forgot: "Forgot your password?",
+      emailLink: "Log in with a link from an e-mail",
       qrOpen: "Log in with a QR code from your phone",
       qrHint: "Scan the code with a phone where you are logged in to the admin (Profile → Scan QR code, or with the camera) and confirm the login on the phone.",
       qrAlt: "QR code for logging in",
@@ -1373,6 +1399,21 @@ export const en: Dict = {
       submitting: "Sending…",
       sent: "If an organiser account belongs to this address, a new-password link is on its way. It is valid for 2 hours and works once. Check your spam folder too.",
       back: "Back to login",
+    },
+    loginLink: {
+      title: "Log in with a link from an e-mail",
+      intro: "Enter the e-mail you log in with. We will send it a link that logs you in without a password – on the device you open it on.",
+      email: "E-mail",
+      submit: "Send link",
+      submitting: "Sending…",
+      sent: "If an organiser account belongs to this address, a login link is on its way. It is valid for 15 minutes and works once. Check your spam folder too.",
+      back: "Back to login",
+      confirmTitle: "Admin login",
+      confirmIntro: "You will be logged in on this device as:",
+      confirm: "Log in",
+      invalidTitle: "Link not valid",
+      invalidBody: "The login link is invalid, already used or expired (15 minutes). Get a new one.",
+      requestNew: "Send a new link",
     },
     setup: {
       title: "Create the first account",

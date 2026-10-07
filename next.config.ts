@@ -4,8 +4,8 @@ import type { NextConfig } from "next";
 const OLD_HOSTS = ["playbotc.vercel.app", "botc-olomoc.vercel.app"];
 const SITE = "https://www.doupeol.cz";
 
-/** Pages whose URL is itself the secret (edit link, "my games", invitation, new password, a device's QR login). */
-const TOKEN_PAGES = ["/botc/r/:token", "/botc/moje-hry/:token", "/admin/pozvanka/:token", "/admin/nove-heslo/:token", "/admin/qr/:token"];
+/** Pages whose URL is itself the secret (edit link, "my games", invitation, new password, login link, a device's QR login). */
+const TOKEN_PAGES = ["/botc/r/:token", "/botc/moje-hry/:token", "/admin/pozvanka/:token", "/admin/nove-heslo/:token", "/admin/odkaz/:token", "/admin/qr/:token"];
 
 /**
  * Blood on the Clocktower pages that lived at the top level before the site became the club's web:

@@ -23,8 +23,9 @@ export default async function AdminLoginPage() {
       <Card>{setup ? <SetupForm t={t.admin.setup} /> : <LoginForm t={t.admin.login} />}</Card>
       {!setup && (
         <>
-          <p className="mt-3 text-sm">
+          <p className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm">
             <Link href="/admin/zapomenute-heslo" className="underline hover:text-accent">{t.admin.login.forgot}</Link>
+            <Link href="/admin/odkaz" className="underline hover:text-accent">{t.admin.login.emailLink}</Link>
           </p>
           {/* a device without the password (the club tablet): a phone that is logged in approves it */}
           <Card className="mt-6 flex flex-col">

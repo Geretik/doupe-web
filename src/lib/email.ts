@@ -82,6 +82,22 @@ ${t.passwordResetIgnore}`;
   await send(user.email, t.passwordResetSubject, html, text);
 }
 
+/** "Log in with a link from an e-mail" on the login page; in the login page's language like the password reset. */
+export async function sendLoginLinkEmail(user: { nickname: string; email: string }, url: string, locale: Locale) {
+  const t = dictionaries[locale].email;
+  const text = `${t.hi(user.nickname)}
+
+${t.loginLinkBody}
+${url}
+
+${t.loginLinkIgnore}`;
+  const html = `<p>${escapeHtml(t.hi(user.nickname))}</p>
+<p>${escapeHtml(t.loginLinkBody)}</p>
+<p><a href="${url}">${url}</a></p>
+<p style="color:#666;font-size:90%">${escapeHtml(t.loginLinkIgnore)}</p>`;
+  await send(user.email, t.loginLinkSubject, html, text);
+}
+
 /** A short notification with a link, e.g. a draft turn (lib/draft/events): greeting, one paragraph, the link. */
 export async function sendLinkEmail(to: string, subject: string, greeting: string, body: string, url: string) {
   const text = `${greeting}\n\n${body}\n${url}`;

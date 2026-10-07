@@ -1409,6 +1409,48 @@ test("admin: forgotten password – a one-time link by e-mail, the same answer f
   await expect(page.locator("main a:has-text('Poslat nový odkaz')")).toHaveAttribute("href", "/admin/zapomenute-heslo");
 });
 
+test("admin: log in with a one-time link from an e-mail, the same answer for unknown addresses", async ({ page }) => {
+  await createAdminUser();
+  await page.goto("/admin/login");
+  await page.click("main a:has-text('Přihlásit odkazem z e-mailu')");
+  await expect(page).toHaveURL(/\/admin\/odkaz$/);
+
+  // an unknown address gets the same answer and no link
+  await page.fill("#email", "nobody@example.com");
+  await page.click("main button[type=submit]");
+  await expect(page.locator("main")).toContainText("přihlašovací odkaz je na cestě");
+
+  await page.goto("/admin/odkaz");
+  await page.fill("#email", E2E.adminEmail.toUpperCase());
+  await page.click("main button[type=submit]");
+  await expect(page.locator("main")).toContainText("přihlašovací odkaz je na cestě");
+  // the e-mail goes out after the answer
+  await expect.poll(async () => (await sql("select id from login_links")).length).toBe(1);
+  const [link] = await sql<{ token: string; valid_ms: number }>("select token, extract(epoch from expires_at - created_at) * 1000 as valid_ms from login_links");
+  expect(Number(link.valid_ms)).toBe(15 * 60_000);
+
+  // opening the link alone (as a mail scanner does) logs nobody in and does not use it up
+  await page.goto(`/admin/odkaz/${link.token}`);
+  await expect(page.locator("main")).toContainText("Přihlásíš se na tomto zařízení jako: Správce");
+  await page.goto("/admin");
+  await expect(page).toHaveURL(/\/admin\/login$/);
+
+  // the button logs in, once
+  await page.goto(`/admin/odkaz/${link.token}`);
+  await page.click("main button[type=submit]");
+  await page.waitForURL(/\/admin$/);
+  await expect(page.locator("main nav")).toContainText("Profil");
+  await page.context().clearCookies();
+  await page.goto(`/admin/odkaz/${link.token}`);
+  await expect(page.locator("main")).toContainText("Odkaz neplatí");
+  await expect(page.locator("main a:has-text('Poslat nový odkaz')")).toHaveAttribute("href", "/admin/odkaz");
+
+  // an expired link does not log in either
+  await sql("update login_links set used_at = null, expires_at = now() - interval '1 minute'");
+  await page.goto(`/admin/odkaz/${link.token}`);
+  await expect(page.locator("main")).toContainText("Odkaz neplatí");
+});
+
 test("registration form keeps what was typed when the server refuses it; the honeypot saves nothing", async ({ page }) => {
   const id = await createSession({ capacity: 5 });
   await page.goto(`/botc/termin/${id}`);

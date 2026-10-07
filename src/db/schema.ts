@@ -255,6 +255,18 @@ export const passwordResets = pgTable("password_resets", {
   usedAt: timestamp("used_at", { withTimezone: true }),
 });
 
+/** One-time login links e-mailed from the login page ("log in with a link"); a new one replaces the account's older ones. */
+export const loginLinks = pgTable("login_links", {
+  id: serial("id").primaryKey(),
+  token: text("token").notNull().unique(),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => adminUsers.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  usedAt: timestamp("used_at", { withTimezone: true }),
+});
+
 /** One-time invitation links; whoever opens one creates their own account. */
 export const adminInvites = pgTable("admin_invites", {
   id: serial("id").primaryKey(),
@@ -302,7 +314,7 @@ export const loginFailures = pgTable(
   (t) => [index("login_failures_ip_hash_idx").on(t.ipHash, t.createdAt)],
 );
 
-export const linkKinds = ["my_games", "admin_reset", "message"] as const;
+export const linkKinds = ["my_games", "admin_reset", "admin_login", "message"] as const;
 export type LinkKind = (typeof linkKinds)[number];
 
 /** "Send me a link" requests ("my games", forgotten admin password) and messages from the club page, for throttling them (lib/link-throttle); the daily cron deletes old rows. */
