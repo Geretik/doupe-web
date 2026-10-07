@@ -47,6 +47,7 @@ export const changelog: ChangelogEntry[] = [
       { for: "organizers", text: "Script z draftu jde uložit do knihovny scriptů klubu (a později aktualizovat); odtud se nabízí u termínu i v hlasování." },
       { for: "organizers", text: "„+ Nový termín“ je tlačítko na stránce Termíny místo položky v menu.", href: "/admin" },
       { for: "organizers", text: "Novinky: tahle stránka. Tečka v menu ukáže, že od posledního čtení něco přibylo." },
+      { for: "organizers", text: "Statistiky: u pravidelných hráčů je vedle večerů i počet odehraných her (podle soupisek her, bez vyprávění).", href: "/admin/statistiky" },
     ],
   },
   {

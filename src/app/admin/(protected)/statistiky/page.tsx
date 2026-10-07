@@ -156,6 +156,7 @@ export default async function StatsPage() {
                   <th className="p-3">{s.nickname}</th>
                   <th className="p-3">{s.email}</th>
                   <th className="p-3 text-right">{s.sessions}</th>
+                  <th className="p-3 text-right">{s.games}</th>
                   <th className="p-3 text-right">{s.attended}</th>
                   <th className="p-3 text-right">{s.noShow}</th>
                   <th className="p-3">{s.lastAt}</th>
@@ -167,6 +168,7 @@ export default async function StatsPage() {
                     <td className="p-3">{r.nickname}</td>
                     <td className="p-3">{r.email ? <a href={`mailto:${r.email}`} className="hover:underline">{r.email}</a> : <span className="text-muted">–</span>}</td>
                     <td className="p-3 text-right">{r.sessions}</td>
+                    <td className="p-3 text-right">{r.games}</td>
                     <td className="p-3 text-right">{r.attended}</td>
                     <td className="p-3 text-right">{r.noShow}</td>
                     <td className="p-3 whitespace-nowrap">{formatDate(r.lastAt, locale)}</td>

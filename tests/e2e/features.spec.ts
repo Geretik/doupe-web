@@ -609,7 +609,13 @@ test("personal data is deleted 14 days after the session; nickname, attendance a
   // the next run has nothing left to do
   expect((await (await cron()).json()).retention).toEqual({ anonymized: 0 });
 
-  // admin: deleted data is not shown; stats still see one player with two sessions
+  // one game played at the anonymised night, one sat out at the recent one
+  for (const [sessionId, token, role] of [[old, "tok-old", "washerwoman"], [recent, "tok-recent", null]] as const) {
+    const [{ id }] = await sql<{ id: number }>("insert into games (session_id, script_name) values ($1, 'Trouble Brewing') returning id", [sessionId]);
+    await sql("insert into game_players (game_id, registration_id, role) select $1, id, $2 from registrations where edit_token = $3", [id, role, token]);
+  }
+
+  // admin: deleted data is not shown; stats still see one player with two sessions and one game
   await adminLogin(page);
   await page.goto(`/admin/termin/${old}`);
   await expect(page.locator("main")).toContainText("byly 14 dní po termínu smazány");
@@ -620,6 +626,7 @@ test("personal data is deleted 14 days after the session; nickname, attendance a
   await expect(row).toHaveCount(1);
   await expect(row.locator("td").nth(1)).toHaveText("honza@example.com");
   await expect(row.locator("td").nth(2)).toHaveText("2");
+  await expect(row.locator("td").nth(3)).toHaveText("1");
 
   // "my games" still finds the older, anonymised game through the e-mail's pseudonym
   process.env.ADMIN_SECRET = "e2e-secret"; // same as the e2e server, so the token verifies

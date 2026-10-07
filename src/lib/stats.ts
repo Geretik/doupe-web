@@ -1,7 +1,7 @@
 import { and, desc, eq, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { gamePlayers, games, registrations, sessions } from "@/db/schema";
-import { STORYTELLER } from "./botc-roles";
+import { findRole, STORYTELLER } from "./botc-roles";
 import { isErased, playerPseudonym, shownEmail } from "./retention";
 
 export type PastSessionStats = {
@@ -44,6 +44,8 @@ export type Regular = {
   email: string | null;
   nickname: string;
   sessions: number;
+  /** Games they played a character in, from the rosters of recorded games (not ones they ran or sat out) */
+  games: number;
   attended: number;
   noShow: number;
   lastAt: Date;
@@ -76,13 +78,22 @@ export async function regulars(limit = 20): Promise<Regular[]> {
     let p = byPlayer.get(key);
     if (!p) {
       // newest first: the first row has the player's current nickname
-      p = { key, email: null, nickname: r.nickname, sessions: 0, attended: 0, noShow: 0, lastAt: r.startsAt };
+      p = { key, email: null, nickname: r.nickname, sessions: 0, games: 0, attended: 0, noShow: 0, lastAt: r.startsAt };
       byPlayer.set(key, p);
     }
     p.email ??= shownEmail(r.email);
     p.sessions++;
     if (r.attended === true) p.attended++;
     if (r.attended === false) p.noShow++;
+  }
+  const roster = await db
+    .select({ email: registrations.email, role: gamePlayers.role })
+    .from(gamePlayers)
+    .innerJoin(registrations, eq(gamePlayers.registrationId, registrations.id));
+  for (const r of roster) {
+    if (isErased(r.email) || !findRole(r.role)) continue;
+    const p = byPlayer.get(playerPseudonym(r.email));
+    if (p) p.games++;
   }
   return [...byPlayer.values()]
     .sort((a, b) => b.sessions - a.sessions || b.lastAt.getTime() - a.lastAt.getTime())
