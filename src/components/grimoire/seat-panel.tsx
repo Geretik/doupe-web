@@ -7,6 +7,7 @@ import {
   gapKinds,
   MAX_REMINDERS,
   MAX_SEATS,
+  moveSeat,
   newGap,
   uid,
   type GapKind,
@@ -242,13 +243,7 @@ function GapPanel({ seat, index, onRemoved }: { seat: GrimoireSeat & { gap: GapK
 function PlaceControls({ seat, index, onRemoved }: { seat: GrimoireSeat; index: number; onRemoved: () => void }) {
   const { state, update, readOnly, t } = useGrimoire();
   if (readOnly) return null;
-  const move = (by: number) =>
-    update((s) => {
-      const seats = [...s.seats];
-      const to = (index + by + seats.length) % seats.length;
-      [seats[index], seats[to]] = [seats[to], seats[index]];
-      return { ...s, seats };
-    });
+  const move = (by: number) => update((s) => ({ ...s, seats: moveSeat(s.seats, index, (index + by + s.seats.length) % s.seats.length) }));
   const insertGap = (gap: GapKind) =>
     update((s) => (s.seats.length >= MAX_SEATS ? s : { ...s, seats: [...s.seats.slice(0, index + 1), newGap(gap), ...s.seats.slice(index + 1)] }));
   const hasStoryteller = state.seats.some((s) => s.gap === "storyteller");

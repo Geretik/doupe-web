@@ -38,4 +38,5 @@ export const grimoireStateSchema: z.ZodType<GrimoireState> = z.object({
   winner: z.enum(gameWinners).nullable(),
   nightDone: z.array(z.string().max(40)).max(200),
   drawing: z.boolean().optional(),
+  seatsLocked: z.boolean().optional(),
 });

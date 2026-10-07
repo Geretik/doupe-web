@@ -49,6 +49,8 @@ export type GrimoireState = {
   nightDone: string[];
   /** The players are drawing their characters from the bag on the tablet: the grimoire is hidden */
   drawing?: boolean;
+  /** The seating is done: the places in the town can no longer be dragged */
+  seatsLocked?: boolean;
 };
 
 /** Up to this many places in the circle; the official game goes to 15 players and a few travellers, then the gaps. */
@@ -69,6 +71,21 @@ export function newGap(gap: GapKind): GrimoireSeat {
 
 export function isPlayer(seat: Pick<GrimoireSeat, "gap">) {
   return !seat.gap;
+}
+
+/**
+ * The place at `from` put at `to` the shorter way round the circle: the places in between move one step towards
+ * `from`, all the others stay where they are. Next to each other it is a swap.
+ */
+export function moveSeat<T>(seats: T[], from: number, to: number): T[] {
+  const n = seats.length;
+  if (from === to || from < 0 || to < 0 || from >= n || to >= n) return seats;
+  const forward = (to - from + n) % n;
+  const step = forward <= n - forward ? 1 : -1;
+  const moved = [...seats];
+  for (let i = from; i !== to; i = (i + step + n) % n) moved[i] = seats[(i + step + n) % n];
+  moved[to] = seats[from];
+  return moved;
 }
 
 /** The players in the circle, without the gaps. */

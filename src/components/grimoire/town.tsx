@@ -2,13 +2,17 @@
 
 import { useEffect, useRef, useState } from "react";
 import { linkedRoleOf } from "@/lib/botc-roles";
-import { players, seatSide, voteMath, type GapKind, type GrimoireSeat } from "@/lib/grimoire/state";
+import { moveSeat, players, seatSide, voteMath, type GapKind, type GrimoireSeat } from "@/lib/grimoire/state";
 import { fill } from "@/lib/grimoire/text";
 import { nameOf, RoleIcon, useGrimoire } from "./context";
 
 const LABEL = 22;
 const PILL_W = 104;
 const PILL_H = 26;
+/** How far a finger goes on a place before it is a drag, not a tap */
+const DRAG_START = 8;
+/** Places glide to where they move: around the circle while one is dragged, the whole circle when it turns */
+const glide = "transition-[left,top] duration-200 ease-out motion-reduce:transition-none";
 
 function clamp(v: number, min: number, max: number) {
   return Math.min(max, Math.max(min, v));
@@ -23,12 +27,13 @@ export const gapIcon: Record<GapKind, string> = { door: "ðŸšª", storyteller: "ðŸ
  * tokens pointing to the middle; the phase and the vote count in the middle. The Storyteller's spot is at
  * the bottom, so the tablet shows the table as the Storyteller sees it (without one the first seat is at
  * the top). Sizes follow the area and the number of places, so it works on a tablet either way round and
- * on a phone.
+ * on a phone. With `onMove`, a place is dragged to another one; the places in between make room.
  */
 export function Town({
   selectedId,
   highlightIds,
   onSelect,
+  onMove,
   center,
   hideRoles = false,
 }: {
@@ -36,6 +41,8 @@ export function Town({
   /** Seats that wake on the night step in focus */
   highlightIds: string[];
   onSelect: (seatId: string) => void;
+  /** A place dragged to the place `to` of the circle; absent = the places stay put */
+  onMove?: (seatId: string, to: number) => void;
   center: React.ReactNode;
   /** The players hold the tablet (the draw): characters face down, no reminders */
   hideRoles?: boolean;
@@ -43,6 +50,11 @@ export function Town({
   const { state, t } = useGrimoire();
   const ref = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
+  const [drag, setDrag] = useState<{ id: string; from: number; to: number; x: number; y: number } | null>(null);
+  /** Set by a drag, so the click that ends it does not open the place */
+  const dragged = useRef(false);
+  const stopDrag = useRef<(() => void) | null>(null);
+  useEffect(() => () => stopDrag.current?.(), []);
 
   useEffect(() => {
     const el = ref.current;
@@ -64,9 +76,57 @@ export function Town({
   const ry = Math.max(0, (h - LABEL) / 2 - token / 2 - 4);
   const storyteller = seats.findIndex((s) => s.gap === "storyteller");
   const first = storyteller >= 0 ? Math.PI / 2 - (2 * Math.PI * storyteller) / n : -Math.PI / 2;
-  const places = seats.map((seat, i) => {
-    const angle = first + (2 * Math.PI * i) / Math.max(n, 1);
+  const step = (2 * Math.PI) / Math.max(n, 1);
+  // while a place is dragged: the circle as it would be after the drop, the dragged one under the finger
+  const order = drag ? moveSeat(seats, drag.from, drag.to) : seats;
+  const places = seats.map((seat) => {
+    if (drag?.id === seat.id) return { seat, x: drag.x, y: drag.y };
+    const angle = first + step * order.indexOf(seat);
     return { seat, x: cx + rx * Math.cos(angle), y: cy + ry * Math.sin(angle) };
+  });
+
+  const press = (e: React.PointerEvent, seatId: string) => {
+    if (!onMove || !e.isPrimary || e.button !== 0) return;
+    stopDrag.current?.();
+    dragged.current = false;
+    const box = ref.current!.getBoundingClientRect();
+    const { pointerId, clientX: startX, clientY: startY } = e;
+    const from = seats.findIndex((s) => s.id === seatId);
+    let to = from;
+    const move = (ev: PointerEvent) => {
+      if (ev.pointerId !== pointerId) return;
+      if (!dragged.current && Math.hypot(ev.clientX - startX, ev.clientY - startY) < DRAG_START) return;
+      dragged.current = true;
+      const x = ev.clientX - box.left;
+      const y = ev.clientY - box.top;
+      // the place of the circle nearest to the finger
+      const angle = Math.atan2((y - cy) / (ry || 1), (x - cx) / (rx || 1));
+      to = ((Math.round((angle - first) / step) % n) + n) % n;
+      setDrag({ id: seatId, from, to, x, y });
+    };
+    const end = (ev: PointerEvent) => {
+      if (ev.pointerId !== pointerId) return;
+      stop();
+      if (dragged.current && ev.type === "pointerup") onMove(seatId, to);
+      // the click of this press comes right after; a later one is a tap again
+      setTimeout(() => (dragged.current = false));
+    };
+    const stop = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", end);
+      window.removeEventListener("pointercancel", end);
+      stopDrag.current = null;
+      setDrag(null);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", end);
+    window.addEventListener("pointercancel", end);
+    stopDrag.current = stop;
+  };
+  const select = (seatId: string) => !dragged.current && onSelect(seatId);
+  const moving = (seatId: string) => ({
+    dragging: drag?.id === seatId,
+    onPointerDown: onMove ? (e: React.PointerEvent) => press(e, seatId) : undefined,
   });
 
   return (
@@ -81,7 +141,9 @@ export function Town({
           </div>
           {places.map(({ seat, x, y }) => {
             if (seat.gap) {
-              return <Gap key={seat.id} gap={seat.gap} size={token} x={x} y={y} selected={seat.id === selectedId} onClick={() => onSelect(seat.id)} />;
+              return (
+                <Gap key={seat.id} gap={seat.gap} size={token} x={x} y={y} selected={seat.id === selectedId} onClick={() => select(seat.id)} {...moving(seat.id)} />
+              );
             }
             const dx = cx - x;
             const dy = cy - y;
@@ -93,14 +155,14 @@ export function Town({
             const start = token / 2 + 6 + step / 2;
             return (
               <div key={seat.id}>
-                {!hideRoles && seat.reminders.map((r, j) => {
+                {!hideRoles && drag?.id !== seat.id && seat.reminders.map((r, j) => {
                   const d = start + j * step;
                   return (
                     <button
                       key={r.id}
                       type="button"
-                      onClick={() => onSelect(seat.id)}
-                      className="absolute flex items-center gap-1 rounded-full border border-border bg-card/95 px-1.5 text-[11px] leading-none shadow-sm"
+                      onClick={() => select(seat.id)}
+                      className={`absolute flex items-center gap-1 rounded-full border border-border bg-card/95 px-1.5 text-[11px] leading-none shadow-sm ${glide}`}
                       style={{ left: x + ux * d - PILL_W / 2, top: y + uy * d - pill / 2, maxWidth: PILL_W, height: pill }}
                       title={r.text}
                       data-testid="reminder"
@@ -117,8 +179,9 @@ export function Town({
                   y={y}
                   selected={seat.id === selectedId}
                   highlighted={highlightIds.includes(seat.id)}
-                  onClick={() => onSelect(seat.id)}
+                  onClick={() => select(seat.id)}
                   hidden={hideRoles}
+                  {...moving(seat.id)}
                 />
               </div>
             );
@@ -134,15 +197,32 @@ export function Town({
   );
 }
 
+/** How a place is moved: none, gliding into its place, or dragged under the finger. */
+type Moving = { dragging: boolean; onPointerDown?: (e: React.PointerEvent) => void };
+
+function moveClass({ dragging, onPointerDown }: Moving) {
+  if (dragging) return "z-20 scale-110 cursor-grabbing touch-none";
+  return `${glide} ${onPointerDown ? "cursor-grab touch-none" : ""}`;
+}
+
 /** A gap in the circle: smaller and dashed, an icon and what it is. */
-function Gap({ gap, size, x, y, selected, onClick }: { gap: GapKind; size: number; x: number; y: number; selected: boolean; onClick: () => void }) {
+function Gap({
+  gap,
+  size,
+  x,
+  y,
+  selected,
+  onClick,
+  ...moving
+}: { gap: GapKind; size: number; x: number; y: number; selected: boolean; onClick: () => void } & Moving) {
   const { t } = useGrimoire();
   const d = size * 0.62;
   return (
     <button
       type="button"
       onClick={onClick}
-      className="absolute flex flex-col items-center"
+      onPointerDown={moving.onPointerDown}
+      className={`absolute flex flex-col items-center ${moveClass(moving)}`}
       style={{ left: x - size / 2, top: y - d / 2, width: size }}
       aria-pressed={selected}
       data-testid="gap"
@@ -168,6 +248,7 @@ function SeatToken({
   highlighted,
   onClick,
   hidden,
+  ...moving
 }: {
   seat: GrimoireSeat;
   size: number;
@@ -177,7 +258,7 @@ function SeatToken({
   highlighted: boolean;
   onClick: () => void;
   hidden: boolean;
-}) {
+} & Moving) {
   const { locale, t } = useGrimoire();
   if (hidden) {
     // face down: whether the place has drawn, never what
@@ -209,7 +290,8 @@ function SeatToken({
     <button
       type="button"
       onClick={onClick}
-      className="absolute flex flex-col items-center"
+      onPointerDown={moving.onPointerDown}
+      className={`absolute flex flex-col items-center ${moveClass(moving)}`}
       style={{ left: x - size / 2, top: y - size / 2, width: size }}
       aria-pressed={selected}
       data-testid="seat"

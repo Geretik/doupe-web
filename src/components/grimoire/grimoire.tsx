@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import type { Locale } from "@/i18n/dictionaries";
 import type { GrimoireCharacter } from "@/lib/grimoire/characters";
-import { nextPhase, nightSteps, type GrimoireState } from "@/lib/grimoire/state";
+import { moveSeat, nextPhase, nightSteps, type GrimoireState } from "@/lib/grimoire/state";
 import { useAutosave, type SaveStatus } from "./autosave";
 import { DrawView } from "./draw";
 import { fill } from "@/lib/grimoire/text";
@@ -117,6 +117,11 @@ export function Grimoire({
     if (next.phase === "night") setTab("night");
     else if (tab === "night" || tab === "setup") setTab("seat");
   };
+  const moveTo = (seatId: string, to: number) =>
+    update((s) => {
+      const seats = moveSeat(s.seats, s.seats.findIndex((x) => x.id === seatId), to);
+      return seats === s.seats ? s : { ...s, seats };
+    });
   const phaseLabel =
     state.phase === "setup" ? t.phases.setup : state.phase === "ended" ? t.phases.ended : fill(t.phases[state.phase], { n: state.round });
   const nextLabel =
@@ -211,8 +216,23 @@ export function Grimoire({
                     setSelected(seatId);
                     setTab("seat");
                   }}
+                  onMove={context.readOnly || state.seatsLocked ? undefined : moveTo}
                   center={<TownCenter phaseLabel={phaseLabel} />}
                 />
+                {!context.readOnly && state.seats.length > 1 && (
+                  // the seating done, the circle is locked so a finger in the game does not move anybody
+                  <button
+                    type="button"
+                    onClick={() => update((s) => ({ ...s, seatsLocked: !s.seatsLocked }))}
+                    className={`absolute top-0 left-0 z-10 flex size-11 items-center justify-center rounded-full border bg-card text-lg shadow-sm ${state.seatsLocked ? "border-accent" : "border-border"}`}
+                    aria-pressed={!!state.seatsLocked}
+                    aria-label={state.seatsLocked ? t.unlockSeats : t.lockSeats}
+                    title={state.seatsLocked ? t.unlockSeats : t.lockSeats}
+                    data-testid="seats-lock"
+                  >
+                    {state.seatsLocked ? "🔒" : "🔓"}
+                  </button>
+                )}
               </div>
               <aside className="flex min-h-0 flex-1 flex-col rounded-xl border border-border bg-card lg:w-[25rem] lg:flex-none">
                 <div className="flex border-b border-border" role="tablist">

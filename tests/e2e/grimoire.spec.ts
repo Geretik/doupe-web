@@ -30,7 +30,10 @@ async function sessionWithPlayers(names: string[]) {
 const seat = (page: Page, name: string) => page.locator(`[data-testid=seat][data-seat="${name}"]`);
 
 /** The stored grimoire, once the page's autosave has caught up with what the test expects. */
-async function stored<T>(pick: (state: { seats: { name: string; role: string | null; reminders: { text: string }[] }[]; phase: string }) => T, expected: T) {
+async function stored<T>(
+  pick: (state: { seats: { name: string; role: string | null; reminders: { text: string }[] }[]; phase: string; seatsLocked?: boolean }) => T,
+  expected: T,
+) {
   await expect
     .poll(async () => {
       const [row] = await sql<{ state: Parameters<typeof pick>[0] }>("select state from grimoires order by id desc limit 1");
@@ -281,4 +284,46 @@ test("grimoire: the door and the Storyteller's spot, a pasted script, players dr
   const [game] = await sql<{ script_url: string }>("select script_url from games where session_id = $1", [sessionId]);
   expect(game.script_url).toContain("?script=");
   expect(await sql("select id from game_players where role is not null")).toHaveLength(5);
+});
+
+test("grimoire: players dragged to other places in the circle, then the seating locked", async ({ page }) => {
+  await adminLogin(page);
+  await page.goto("/admin/grimoary");
+  await page.fill("#name", "Rozesazení");
+  await page.getByRole("button", { name: "Založit grimoár" }).click();
+  for (const name of ["Jana", "Petr", "Olga", "Zbyněk"]) {
+    await page.getByRole("textbox", { name: "Jméno hráče" }).fill(name);
+    await page.getByRole("button", { name: "Přidat", exact: true }).click();
+  }
+  await stored((st) => st.seats.map((x) => x.name), ["Jana", "Petr", "Olga", "Zbyněk"]);
+  const names = (st: { seats: { name: string }[] }) => st.seats.map((x) => x.name);
+
+  /** Drags one token onto the place of another, by the middle of its circle (the name is under it). */
+  const drag = async (from: string, to: string) => {
+    const [a, b] = [(await seat(page, from).boundingBox())!, (await seat(page, to).boundingBox())!];
+    await page.mouse.move(a.x + a.width / 2, a.y + a.width / 2);
+    await page.mouse.down();
+    await page.mouse.move(b.x + b.width / 2, b.y + b.width / 2, { steps: 12 });
+    await page.mouse.up();
+  };
+
+  // onto the place across: the two in between move one place back, the drag does not open the player
+  await drag("Jana", "Olga");
+  await stored(names, ["Petr", "Olga", "Jana", "Zbyněk"]);
+  await expect(seat(page, "Jana")).toHaveAttribute("aria-pressed", "false");
+  await seat(page, "Petr").click();
+  await expect(seat(page, "Petr")).toHaveAttribute("aria-pressed", "true");
+
+  // locked, also after a reload: dragging does nothing
+  await page.getByTestId("seats-lock").click();
+  await stored((st) => st.seatsLocked, true);
+  await page.reload();
+  await expect(page.getByTestId("seats-lock")).toHaveAttribute("aria-pressed", "true");
+  await drag("Jana", "Petr");
+  await page.getByTestId("seats-lock").click();
+  await stored((st) => [st.seatsLocked, names(st)], [false, ["Petr", "Olga", "Jana", "Zbyněk"]]);
+
+  // unlocked again; the last place next to the first goes the short way round, a swap
+  await drag("Zbyněk", "Petr");
+  await stored(names, ["Zbyněk", "Olga", "Jana", "Petr"]);
 });
