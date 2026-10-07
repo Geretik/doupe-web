@@ -13,6 +13,17 @@ export type ChangelogEntry = { /** YYYY-MM-DD */ date: string; title: string; it
 
 export const changelog: ChangelogEntry[] = [
   {
+    date: "2026-10-08",
+    title: "Opilec v pytlíku",
+    items: [
+      {
+        for: "organizers",
+        text: "Grimoár: s Opilcem v pytlíku se počítá jeden Měšťan navíc (s Marionetou dobrá postava navíc, Blázen může mít druhého Démona). Kdo ho při rozdání nebo losování dostane, je Opilec a myslí si, že je tím Měšťanem; Marioneta vždy sedí vedle Démona. Losovat jde i s Opilcem v pytlíku.",
+        href: "/admin/grimoary",
+      },
+    ],
+  },
+  {
     date: "2026-10-07",
     title: "Grimoár, vzkazy organizátorům, novinky",
     items: [

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import { findRole } from "@/lib/botc-roles";
-import { drawFor, remainingBag } from "@/lib/grimoire/state";
+import { drawFor, endDrawing, remainingBag, takeDrawn } from "@/lib/grimoire/state";
 import { fill } from "@/lib/grimoire/text";
 import { groupHeadingClass } from "@/components/draft/team-section";
 import { nameOf, RoleIcon, useGrimoire } from "./context";
@@ -30,11 +30,11 @@ export function DrawView() {
   const reveal = () => {
     if (!open) return;
     const roleId = drawFor(state, open.seatId);
-    if (roleId) update((s) => ({ ...s, seats: s.seats.map((x) => (x.id === open.seatId ? { ...x, role: roleId } : x)) }));
+    if (roleId) update((s) => takeDrawn(s, open.seatId, roleId));
     setOpen({ ...open, shown: true, roleId });
   };
   const end = () => {
-    if (confirm(t.drawEndConfirm)) update((s) => ({ ...s, drawing: false }));
+    if (confirm(t.drawEndConfirm)) update(endDrawing);
   };
   const role = findRole(open?.roleId);
 

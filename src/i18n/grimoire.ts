@@ -104,8 +104,7 @@ export const grimoireCs = {
   jsonExtras: "Web nezná (v grimoáru nebudou): {list}",
   draw: "Losování hráči",
   drawSetupHint: "Hráči si postavy vylosují sami: tablet koluje a každý ťukne na své místo v kruhu.",
-  undrawable:
-    "{roles}: při losování by hráč viděl svou skutečnou postavu. Dej místo ní do pytlíku postavu, za kterou se má považovat, a po losování ji u hráče změň.",
+  undrawable: "{roles}: při losování by hráč viděl svou skutečnou postavu. Přidej do pytlíku druhého Démona, za kterého se bude považovat.",
   drawConfirm: "Začít losování? Postavy, které už hráči mají, se vrátí do pytlíku.",
   drawTitle: "Losování postav",
   drawHint: "Najdi své místo v kruhu a ťukni na něj. Postavu uvidíš jen ty.",
@@ -134,6 +133,13 @@ export const grimoireCs = {
   assigned: "rozdáno",
   teams: { townsfolk: "Měšťané", outsider: "Podivíni", minion: "Přisluhovači", demon: "Démoni", traveller: "Pocestní" },
   linkedNeeded: "{name} ({role}): vyber, za koho se považuje",
+  standIn: {
+    drunk: "Do pytlíku patří navíc jeden Měšťan. Kdo ho dostane, je Opilec a myslí si, že je tím Měšťanem.",
+    marionette: "Do pytlíku patří navíc jedna dobrá postava. Marionetou bude soused Démona, který dostane dobrou postavu, a myslí si, že je jí.",
+    lunatic: "Do pytlíku můžeš dát druhého Démona. Kdo ho dostane, je Blázen a myslí si, že je tím Démonem; bez něj si myslí, že je Démonem ve hře.",
+  },
+  marionetteApart: "Marioneta nesedí vedle Démona.",
+  standInBadge: { drunk: "+1 Měšťan", marionette: "+1 dobrá postava", lunatic: "+1 Démon" },
   bag: "Pytlík: {n} z {m}",
   bagHint:
     "Vyber postavy do pytlíku a rozdej je náhodně, nebo každému hráči nastav postavu ručně. Pocestní se nerozdávají.",
@@ -279,8 +285,7 @@ export const grimoireEn: GrimoireDict = {
   jsonExtras: "Unknown to this site (not in the grimoire): {list}",
   draw: "Players draw",
   drawSetupHint: "The players draw their characters themselves: the tablet goes round and each taps their own place in the circle.",
-  undrawable:
-    "{roles}: a player drawing it would see their real character. Put the character they should think they are in the bag instead, and change it at the player after the draw.",
+  undrawable: "{roles}: a player drawing it would see their real character. Put a second Demon in the bag for them to think they are.",
   drawConfirm: "Start the draw? The characters players already have go back into the bag.",
   drawTitle: "Drawing characters",
   drawHint: "Find your place in the circle and tap it. Only you will see your character.",
@@ -309,6 +314,13 @@ export const grimoireEn: GrimoireDict = {
   assigned: "handed out",
   teams: { townsfolk: "Townsfolk", outsider: "Outsiders", minion: "Minions", demon: "Demons", traveller: "Travellers" },
   linkedNeeded: "{name} ({role}): pick who they think they are",
+  standIn: {
+    drunk: "One more Townsfolk goes in the bag. Whoever gets it is the Drunk and thinks they are that Townsfolk.",
+    marionette: "One more good character goes in the bag. The Marionette is a neighbour of the Demon who gets a good character, and thinks they are it.",
+    lunatic: "You may put a second Demon in the bag. Whoever gets it is the Lunatic and thinks they are that Demon; without one they think they are the Demon in play.",
+  },
+  marionetteApart: "The Marionette does not neighbour the Demon.",
+  standInBadge: { drunk: "+1 Townsfolk", marionette: "+1 good character", lunatic: "+1 Demon" },
   bag: "Bag: {n} of {m}",
   bagHint: "Put characters in the bag and hand them out at random, or set each player's character by hand. Travellers are not handed out.",
   bagLabel: "Into the bag",

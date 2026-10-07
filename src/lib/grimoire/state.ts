@@ -152,14 +152,34 @@ const SETUP_EFFECTS: Record<string, { options?: Partial<Record<CountTeam, number
 /** A team's number for a game: the rulebook's, the values the characters allow (several when one leaves a choice; null = any), and who changed it. */
 export type ExpectedCount = { base: number; values: number[] | null; by: string[] };
 
-/** The setup for the players with these characters in play (the bag, or the seats); null under 5 players. */
-export function expectedSetup(players: number, roleIds: (string | null)[]): Record<SetupTeam, ExpectedCount> | null {
+/**
+ * The extra token a character who thinks they are someone else brings into the bag (hiddenInBag), one of `options`:
+ * a Townsfolk for the Drunk, a good character for the Marionette, a second Demon for the Lunatic, who may do
+ * without one and think they are the Demon in play.
+ */
+const STAND_INS: Record<string, Partial<Record<SetupTeam, number>>[]> = {
+  drunk: [{ townsfolk: 1 }],
+  marionette: [{ townsfolk: 1 }, { outsider: 1 }],
+  lunatic: [{ demon: 1 }, {}],
+};
+
+/**
+ * The setup for the players with these characters in play (the bag, or the seats); null under 5 players.
+ * For the bag (`bag`), with the extra tokens a Drunk, Lunatic or Marionette brings.
+ */
+export function expectedSetup(players: number, roleIds: (string | null)[], bag = false): Record<SetupTeam, ExpectedCount> | null {
   const base = distribution(players);
   if (!base) return null;
-  const effects = [...new Set(roleIds)].flatMap((id) => (id && SETUP_EFFECTS[id] ? [{ id, ...SETUP_EFFECTS[id] }] : []));
+  const ids = [...new Set(roleIds)];
+  const effects = ids.flatMap((id) => (id && SETUP_EFFECTS[id] ? [{ id, ...SETUP_EFFECTS[id] }] : []));
   let combos: Record<CountTeam, number>[] = [{ outsider: 0, minion: 0, demon: 0 }];
   for (const { options } of effects) {
     if (options) combos = combos.flatMap((c) => options.map((o) => ({ outsider: c.outsider + (o.outsider ?? 0), minion: c.minion + (o.minion ?? 0), demon: c.demon + (o.demon ?? 0) })));
+  }
+  const standIns = bag ? ids.flatMap((id) => (id && STAND_INS[id] ? [{ id, options: STAND_INS[id] }] : [])) : [];
+  let extras: Partial<Record<SetupTeam, number>>[] = [{}];
+  for (const { options } of standIns) {
+    extras = extras.flatMap((x) => options.map((o) => Object.fromEntries(setupTeams.map((team) => [team, (x[team] ?? 0) + (o[team] ?? 0)]))));
   }
   const none = new Set(effects.flatMap((e) => e.none ?? []));
   const open = new Set(effects.flatMap((e) => e.open ?? []));
@@ -167,8 +187,10 @@ export function expectedSetup(players: number, roleIds: (string | null)[]): Reco
   for (const c of combos) {
     const n = { outsider: 0, minion: 0, demon: 0 };
     for (const team of countTeams) n[team] = none.has(team) ? 0 : Math.max(0, base[team] + c[team]);
-    for (const team of countTeams) values[team].add(n[team]);
-    values.townsfolk.add(Math.max(0, players - n.outsider - n.minion - n.demon));
+    for (const x of extras) {
+      for (const team of countTeams) values[team].add(n[team] + (x[team] ?? 0));
+      values.townsfolk.add(Math.max(0, players - n.outsider - n.minion - n.demon) + (x.townsfolk ?? 0));
+    }
   }
   const changes = (team: SetupTeam) => (e: (typeof effects)[number]) =>
     team === "townsfolk" || e.options?.some((o) => o[team]) || e.none?.includes(team) || e.open?.includes(team);
@@ -178,10 +200,26 @@ export function expectedSetup(players: number, roleIds: (string | null)[]): Reco
       {
         base: base[team],
         values: open.has(team as CountTeam) || (team === "townsfolk" && open.size > 0) ? null : [...values[team]].sort((a, b) => a - b),
-        by: effects.filter(changes(team)).map((e) => e.id),
+        by: [...effects.filter(changes(team)).map((e) => e.id), ...standIns.filter((s) => s.options.some((o) => o[team])).map((s) => s.id)],
       },
     ]),
   ) as Record<SetupTeam, ExpectedCount>;
+}
+
+/**
+ * Characters in the bag through a stand-in, as in the rulebook: the player who gets the extra token of the team
+ * they think they are (STAND_INS) is them, and thinks they are that token. The Lunatic only with a second Demon
+ * in the bag; without one they go to a player as themselves.
+ */
+export function hiddenInBag(bag: string[]) {
+  const demons = bag.filter((id) => findRole(id)?.team === "demon").length;
+  return bag.filter((id) => linkedRoleOf(id)?.kind === "as" && (id !== "lunatic" || demons > 1));
+}
+
+/** The tokens that go round with the bag, one for each player: the bag without the characters behind a stand-in. */
+export function bagTokens(bag: string[]) {
+  const hidden = new Set(hiddenInBag(bag));
+  return bag.filter((id) => !hidden.has(id));
 }
 
 /** The characters the setup counts with: the bag while it is being filled, else the seats'. */
@@ -217,31 +255,88 @@ export function setupNote(ability: string) {
   return ability.match(/\[[^\]]+\]/)?.[0] ?? null;
 }
 
-/** Hands the bag out to the seats without a traveller at random; null when the bag does not fit them. */
+/** The players either side of a player in the circle, the gaps skipped. */
+export function neighbours(state: Pick<GrimoireState, "seats">, seatId: string) {
+  const ring = players(state);
+  const i = ring.findIndex((s) => s.id === seatId);
+  if (i < 0 || ring.length < 2) return [];
+  return [ring[(i - 1 + ring.length) % ring.length].id, ring[(i + 1) % ring.length].id];
+}
+
+/** A Marionette at the table who does not neighbour the Demon, against their setup rule. */
+export function marionetteApart(state: Pick<GrimoireState, "seats">) {
+  const marionette = state.seats.find((s) => s.role === "marionette");
+  const demons = players(state).filter((s) => findRole(s.role)?.team === "demon");
+  return !!marionette && demons.length > 0 && !demons.some((d) => neighbours(state, d.id).includes(marionette.id));
+}
+
+/** First the Lunatic (which Demon is the real one), then the Marionette next to it, the Drunk last. */
+const STAND_IN_ORDER = ["lunatic", "marionette", "drunk"];
+
+/**
+ * Who of the players is a character the bag held through a stand-in (hiddenInBag): a random player with a token
+ * of the team they think they are becomes them and thinks they are that token; the Marionette one of the Demon's
+ * neighbours, or any good player when no good player neighbours the Demon (marionetteApart then says so).
+ */
+export function resolveStandIns(state: GrimoireState, random: () => number = Math.random): GrimoireState {
+  let seats = state.seats;
+  const hidden = new Set(hiddenInBag(state.bag));
+  for (const id of STAND_IN_ORDER) {
+    if (!hidden.has(id) || seats.some((s) => s.role === id)) continue;
+    const teams: readonly RoleTeam[] = linkedRoleOf(id)?.teams ?? [];
+    // a player already standing in for another of them keeps their token
+    const holding = playerSeats({ seats }).filter((s) => linkedRoleOf(s.role)?.kind !== "as" && teams.some((team) => findRole(s.role)?.team === team));
+    let candidates = holding;
+    if (id === "marionette") {
+      const demons = players({ seats }).filter((s) => findRole(s.role)?.team === "demon");
+      const near = holding.filter((s) => demons.some((d) => neighbours({ seats }, d.id).includes(s.id)));
+      if (near.length) candidates = near;
+    }
+    if (!candidates.length) continue;
+    const pick = candidates[Math.floor(random() * candidates.length)];
+    seats = seats.map((s) => (s.id === pick.id ? { ...s, role: id, believedRole: s.role } : s));
+  }
+  return { ...state, seats };
+}
+
+/**
+ * Hands the bag's tokens out to the seats without a traveller at random, then picks who is a Drunk, Lunatic or
+ * Marionette of the bag (resolveStandIns); null when the bag does not fit the seats.
+ */
 export function dealBag(state: GrimoireState, random: () => number = Math.random): GrimoireState | null {
   const seats = playerSeats(state);
-  if (seats.length === 0 || state.bag.length !== seats.length) return null;
-  const bag = [...state.bag];
-  for (let i = bag.length - 1; i > 0; i--) {
-    const j = Math.floor(random() * (i + 1));
-    [bag[i], bag[j]] = [bag[j], bag[i]];
+  const tokens = bagTokens(state.bag);
+  if (seats.length === 0 || tokens.length !== seats.length) return null;
+  // the Marionette must neighbour the Demon: deal again in the rare case that no good player does
+  for (let attempt = 0; ; attempt++) {
+    const bag = [...tokens];
+    for (let i = bag.length - 1; i > 0; i--) {
+      const j = Math.floor(random() * (i + 1));
+      [bag[i], bag[j]] = [bag[j], bag[i]];
+    }
+    const dealt = new Map(seats.map((s, i) => [s.id, bag[i]]));
+    const handed = resolveStandIns(
+      { ...state, seats: state.seats.map((s) => (dealt.has(s.id) ? { ...s, role: dealt.get(s.id)!, believedRole: null } : s)) },
+      random,
+    );
+    if (marionetteApart(handed) && attempt < 20) continue;
+    // a Lunatic without a second Demon in the bag thinks they are the Demon in play
+    const demon = handed.seats.find((s) => findRole(s.role)?.team === "demon")?.role ?? null;
+    return { ...handed, seats: handed.seats.map((s) => (s.role === "lunatic" && !s.believedRole ? { ...s, believedRole: demon } : s)) };
   }
-  const dealt = new Map(seats.map((s, i) => [s.id, bag[i]]));
-  return {
-    ...state,
-    seats: state.seats.map((s) => (dealt.has(s.id) ? { ...s, role: dealt.get(s.id)!, believedRole: null } : s)),
-  };
 }
 
-/** Characters of the bag nobody has drawn yet. */
+/** Tokens of the bag nobody has drawn yet: a player standing in for a Drunk… holds the token they think they are. */
 export function remainingBag(state: Pick<GrimoireState, "seats" | "bag">) {
-  const taken = new Set(players(state).map((s) => s.role));
-  return state.bag.filter((id) => !taken.has(id));
+  const hidden = new Set(hiddenInBag(state.bag));
+  const taken = new Set(players(state).map((s) => (s.role && hidden.has(s.role) ? s.believedRole : s.role)));
+  return bagTokens(state.bag).filter((id) => !taken.has(id));
 }
 
-/** Characters that must not be drawn: the player would see the character they do not know they are (the Drunk…). */
+/** Characters that must not be drawn: the player would see the character they do not know they are (a Lunatic without a second Demon). */
 export function undrawable(bag: string[]) {
-  return bag.filter((id) => linkedRoleOf(id)?.kind === "as");
+  const hidden = new Set(hiddenInBag(bag));
+  return bag.filter((id) => linkedRoleOf(id)?.kind === "as" && !hidden.has(id));
 }
 
 /** The players draw from the bag: the characters of the players without a traveller are taken back first. */
@@ -259,6 +354,17 @@ export function drawFor(state: GrimoireState, seatId: string, random: () => numb
   const seat = state.seats.find((s) => s.id === seatId);
   if (!seat || !isPlayer(seat) || seat.role || left.length === 0) return null;
   return left[Math.floor(random() * left.length)];
+}
+
+/** The seat drew this token; with the last one drawn it is decided who of them is a Drunk… of the bag. */
+export function takeDrawn(state: GrimoireState, seatId: string, roleId: string): GrimoireState {
+  const next = { ...state, seats: state.seats.map((s) => (s.id === seatId ? { ...s, role: roleId } : s)) };
+  return remainingBag(next).length ? next : resolveStandIns(next);
+}
+
+/** The draw is over (also before everyone drew): back to the grimoire, a Drunk… of the bag decided among those who drew. */
+export function endDrawing(state: GrimoireState): GrimoireState {
+  return { ...resolveStandIns(state), drawing: false };
 }
 
 /** Characters at the table: the seats' and the ones a Drunk, Philosopher… stands in for. */

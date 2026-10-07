@@ -5,11 +5,14 @@ import { createPortal } from "react-dom";
 import { readGrimoireScriptAction } from "@/app/actions/grimoire";
 import { BLUFF_COUNT, botcRoles, findRole, linkedRoleOf, type RoleTeam } from "@/lib/botc-roles";
 import {
+  bagTokens,
   bluffCandidates,
   dealBag,
   expectedSetup,
   gapKinds,
+  hiddenInBag,
   isPlayer,
+  marionetteApart,
   MAX_SEATS,
   newGap,
   newSeat,
@@ -47,12 +50,22 @@ function changed(e: ExpectedCount | undefined) {
   return !!e && e.by.length > 0 && (!e.values || e.values.length !== 1 || e.values[0] !== e.base);
 }
 
-/** Characters in the bag or at the table that change the setup, with their note ("[+2 Outsiders]"). */
-function setupChangesOf(state: GrimoireState, characters: GrimoireContextValue["characters"]) {
+/**
+ * Characters in the bag or at the table that change the setup, with their note ("[+2 Outsiders]"), and the ones
+ * in the bag that bring an extra token of the character the player will think they are (the Drunk's Townsfolk).
+ */
+function setupChangesOf(state: GrimoireState, characters: GrimoireContextValue["characters"], t: GrimoireTexts) {
   return [...new Set([...state.bag, ...state.seats.map((s) => s.role)])].flatMap((id) => {
-    const note = id && characters[id]?.setup ? setupNote(characters[id].ability) : null;
+    const setup = id && characters[id]?.setup ? setupNote(characters[id].ability) : null;
+    const standIn = id && state.bag.includes(id) ? t.standIn[id as keyof GrimoireTexts["standIn"]] : undefined;
+    const note = [setup, standIn].filter(Boolean).join(" ");
     return id && note ? [{ id, note }] : [];
   });
+}
+
+/** How many tokens the bag holds for the players: one each, and the extra ones of a Drunk, Lunatic or Marionette. */
+function bagSize(state: GrimoireState) {
+  return playerSeats(state).length + hiddenInBag(state.bag).length;
 }
 
 const allCharacterIds = botcRoles.filter((r) => r.team !== "traveller").map((r) => r.id);
@@ -69,9 +82,10 @@ export function SetupPanel({ scripts, onSelectSeat }: { scripts: ScriptChoice[];
   const players = playerSeats(state).length;
   const inCircle = state.seats.filter(isPlayer);
   const expected = expectedSetup(players, setupRoles(state));
+  const bagExpected = expectedSetup(players, setupRoles(state), true);
   const assigned = teamCounts(state.seats.map((s) => s.role));
   const inBag = teamCounts(state.bag);
-  const setupChanges = setupChangesOf(state, characters);
+  const setupChanges = setupChangesOf(state, characters, t);
   const missingLinked = state.seats.filter((s) => linkedRoleOf(s.role) && !s.believedRole);
 
   const addPlayer = () => {
@@ -201,7 +215,7 @@ export function SetupPanel({ scripts, onSelectSeat }: { scripts: ScriptChoice[];
           <tbody>
             {[...setupTeams, "traveller" as const].map((team) => {
               const want = team === "traveller" ? undefined : expected?.[team];
-              const off = (n: number) => (offCount(want, n) ? "font-bold text-accent" : "");
+              const off = (n: number, e = want) => (offCount(e, n) ? "font-bold text-accent" : "");
               if (team === "traveller" && assigned.traveller === 0) return null;
               return (
                 <tr key={team}>
@@ -209,7 +223,7 @@ export function SetupPanel({ scripts, onSelectSeat }: { scripts: ScriptChoice[];
                   <td className="text-center" title={want?.values ? undefined : t.anyCount}>
                     {wanted(want, t) ?? "–"}
                   </td>
-                  <td className={`text-center ${state.bag.length ? off(inBag[team]) : ""}`}>{team === "traveller" ? "–" : inBag[team]}</td>
+                  <td className={`text-center ${state.bag.length && team !== "traveller" ? off(inBag[team], bagExpected?.[team]) : ""}`}>{team === "traveller" ? "–" : inBag[team]}</td>
                   <td className={`text-center ${off(assigned[team])}`}>{assigned[team]}</td>
                 </tr>
               );
@@ -225,6 +239,7 @@ export function SetupPanel({ scripts, onSelectSeat }: { scripts: ScriptChoice[];
             ))}
           </ul>
         )}
+        {marionetteApart(state) && <p className="text-sm text-accent">{t.marionetteApart}</p>}
         {missingLinked.map((s) => (
           <button key={s.id} type="button" onClick={() => onSelectSeat(s.id)} className="text-left text-sm text-accent underline">
             {fill(t.linkedNeeded, { name: s.name, role: nameOf(s.role, locale) })}
@@ -235,7 +250,7 @@ export function SetupPanel({ scripts, onSelectSeat }: { scripts: ScriptChoice[];
       {!readOnly && (
         <section className="flex flex-col gap-2">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className={heading}>{fill(t.bag, { n: state.bag.length, m: players })}</h3>
+            <h3 className={heading}>{fill(t.bag, { n: state.bag.length, m: bagSize(state) })}</h3>
             <button type="button" className={`${plain} ml-auto flex items-center gap-1.5`} onClick={() => setBagOpen(true)}>
               <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
                 <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />
@@ -301,7 +316,7 @@ function BagActions({ onDealt }: { onDealt?: () => void }) {
   const { state, update, t } = useGrimoire();
   const players = playerSeats(state).length;
   const blocked = undrawable(state.bag);
-  const ready = state.bag.length > 0 && state.bag.length === players;
+  const ready = state.bag.length > 0 && bagTokens(state.bag).length === players;
   const deal = () => {
     if (state.seats.some((s) => s.role) && !confirm(t.dealConfirm)) return;
     update((s) => dealBag(s) ?? s);
@@ -339,14 +354,15 @@ function UndrawableWarning() {
 /** The script's characters to put in the bag, each team with how many are in it and how many the rules want. */
 function BagGrid({ wide = false }: { wide?: boolean }) {
   const { state, update, characters, t } = useGrimoire();
-  const expected = expectedSetup(playerSeats(state).length, setupRoles(state));
+  const expected = expectedSetup(playerSeats(state).length, setupRoles(state), true);
   const inBag = teamCounts(state.bag);
   const roleIds = state.script.roleIds.filter((id) => findRole(id)?.team !== "traveller");
-  // what a character does to the setup, on its tile: "+2 Podivíni"
+  // what a character does to the setup, on its tile: "+2 Podivíni", "+1 Měšťan" for the Drunk's extra token
   const setupNotes = new Map(
     roleIds.flatMap((id) => {
+      const standIn = t.standInBadge[id as keyof GrimoireTexts["standInBadge"]];
       const note = characters[id]?.setup ? setupNote(characters[id].ability) : null;
-      return note ? [[id, note.slice(1, -1).trim()] as const] : [];
+      return standIn ? [[id, standIn] as const] : note ? [[id, note.slice(1, -1).trim()] as const] : [];
     }),
   );
   const count = (team: RoleTeam) => {
@@ -378,9 +394,9 @@ function BagGrid({ wide = false }: { wide?: boolean }) {
 function BagScreen({ onClose }: { onClose: () => void }) {
   const { state, characters, locale, t } = useGrimoire();
   const players = playerSeats(state).length;
-  const expected = expectedSetup(players, setupRoles(state));
+  const expected = expectedSetup(players, setupRoles(state), true);
   const inBag = teamCounts(state.bag);
-  const setupChanges = setupChangesOf(state, characters);
+  const setupChanges = setupChangesOf(state, characters, t);
   useEffect(() => {
     const key = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     document.addEventListener("keydown", key);
@@ -395,7 +411,7 @@ function BagScreen({ onClose }: { onClose: () => void }) {
       data-testid="bag-screen"
     >
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-        <h2 className="text-lg font-bold">{fill(t.bag, { n: state.bag.length, m: players })}</h2>
+        <h2 className="text-lg font-bold">{fill(t.bag, { n: state.bag.length, m: bagSize(state) })}</h2>
         <span className="text-sm text-muted">{expected ? fill(t.distribution, { n: players }) : t.distributionTooFew}</span>
         <div className="ml-auto flex flex-wrap items-center gap-2">
           <BagActions onDealt={onClose} />

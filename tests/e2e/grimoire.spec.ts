@@ -375,6 +375,56 @@ test("grimoire: the bag counts each team against the setup for the players, also
   await expect(page.getByTestId("town")).not.toContainText("bez postavy");
 });
 
+test("grimoire: the Drunk brings an extra Townsfolk into the bag, whoever gets it is the Drunk, handed out or drawn", async ({ page }) => {
+  await page.setViewportSize({ width: 1180, height: 820 });
+  const sessionId = await sessionWithPlayers(["Ada", "Bára", "Cyril", "Dan", "Eva", "Filip"]);
+  await adminLogin(page);
+  await page.goto(`/admin/termin/${sessionId}`);
+  await page.getByRole("button", { name: "Nový grimoár z tohoto termínu" }).click();
+  await expect(page.getByTestId("seat")).toHaveCount(6);
+
+  // six players: three Townsfolk and the Drunk as the Outsider, plus the Townsfolk the Drunk will think they are
+  for (const name of ["Pradlena", "Kuchař", "Empat", "Mnich", "Opilec", "Travič", "Čert"]) {
+    await page.getByRole("button", { name: `Do pytlíku: ${name}` }).click();
+  }
+  await expect(page.locator("main")).toContainText("Pytlík: 7 z 7");
+  const count = (team: string) => page.locator(`[data-team=${team}] [data-testid=bag-team-count]`);
+  await expect(count("townsfolk")).toHaveText("4 / 4");
+  await expect(count("outsider")).toHaveText("1 / 1");
+  await expect(page.getByRole("button", { name: "Do pytlíku: Opilec" }).getByTestId("role-badge")).toHaveText("+1 Měšťan");
+  await expect(page.getByTestId("distribution")).toContainText("Opilec: Do pytlíku patří navíc jeden Měšťan.");
+
+  /** The tokens the players got (the Drunk's is the Townsfolk they think they are) and how many Drunks there are */
+  const dealt = async () => {
+    const [row] = await sql<{ state: { seats: { role: string | null; believedRole: string | null }[] } }>("select state from grimoires order by id desc limit 1");
+    return {
+      tokens: row.state.seats.map((s) => (s.role === "drunk" ? s.believedRole : s.role)).sort(),
+      drunks: row.state.seats.filter((s) => s.role === "drunk").length,
+    };
+  };
+  const all = { tokens: ["chef", "empath", "imp", "monk", "poisoner", "washerwoman"], drunks: 1 };
+  await page.getByRole("button", { name: "Rozdat náhodně" }).click();
+  await expect(page.getByTestId("town")).toContainText("Opilec");
+  await expect.poll(dealt).toEqual(all);
+
+  // the players draw: nobody sees the Drunk, the last draw decides who it is
+  page.once("dialog", (d) => d.accept());
+  await page.getByRole("button", { name: "Losování hráči" }).click();
+  await expect(page.getByTestId("draw-left")).toHaveText("V pytlíku zbývá 6");
+  const dialog = page.getByTestId("draw-dialog");
+  for (let i = 0; i < 6; i++) {
+    await page.locator("[data-testid=seat][data-drawn=no]").first().click();
+    await dialog.getByRole("button", { name: "Ťukni a podívej se na svou postavu" }).click();
+    await expect(dialog.getByTestId("drawn-role")).not.toHaveText("Opilec");
+    await dialog.getByRole("button", { name: "Mám to – skrýt" }).click();
+  }
+  await expect(page.getByTestId("draw-left")).toHaveText("V pytlíku zbývá 0");
+  page.once("dialog", (d) => d.accept());
+  await page.getByRole("button", { name: "Konec losování (vypravěč)" }).click();
+  await expect(page.getByTestId("town")).toContainText("Opilec");
+  await expect.poll(dealt).toEqual(all);
+});
+
 test("grimoire: only administrators delete grimoires, also another account's finished one", async ({ page, browser }) => {
   await createAdminUser({ email: "org@example.com", password: "org-password-123", nickname: "Organizátorka", role: "organizer" });
   const ctx = await browser.newContext({ locale: "cs-CZ" });
