@@ -1765,8 +1765,10 @@ test("admin menu groups the sections and marks the current page", async ({ page 
   await expect(current).toHaveText("Texty webu");
   await page.click("main nav a:has-text('Účty')");
   await expect(current).toHaveText("Účty");
-  await page.click("main nav a:has-text('Nový termín')");
-  await expect(current).toHaveText("+ Nový termín");
+  await page.goto("/admin");
+  await page.click("main a:has-text('+ Nový termín')");
+  await expect(page).toHaveURL(/\/admin\/novy$/);
+  await expect(current).toHaveText("Termíny");
 });
 
 test("site texts: an organiser edits the club page in the admin, with history, conflicts and the original text", async ({ page, browser }) => {

@@ -57,10 +57,13 @@ export default async function AdminHomePage() {
     <div className="flex flex-col gap-8">
       <SetupWarnings t={t} locale={locale} />
       <section className="flex flex-col gap-3">
-        <h1 className="text-2xl font-bold">{a.upcoming}</h1>
-        {upcoming.length === 0 && (
-          <p className="text-muted">{a.none}<Link href="/admin/novy" className="underline">{a.createNew}</Link>.</p>
-        )}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h1 className="text-2xl font-bold">{a.upcoming}</h1>
+          <Link href="/admin/novy" className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:opacity-90">
+            {a.createNew}
+          </Link>
+        </div>
+        {upcoming.length === 0 && <p className="text-muted">{a.none}</p>}
         {upcoming.map((s) => <Row key={s.id} s={s} />)}
       </section>
       {past.length > 0 && (

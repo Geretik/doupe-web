@@ -33,8 +33,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           {/* wraps between links on a narrow phone, never inside one */}
           <div className="flex flex-wrap items-center gap-1">
             <span className={groupClass}>{n.botc}</span>
-            <NavLink href="/admin" prefixes={["/admin/termin"]} className={linkClass}>{n.sessions}</NavLink>
-            <NavLink href="/admin/novy" className={linkClass}>{n.newSession}</NavLink>
+            <NavLink href="/admin" prefixes={["/admin/termin", "/admin/novy"]} className={linkClass}>{n.sessions}</NavLink>
             <NavLink href="/admin/statistiky" className={linkClass}>{n.stats}</NavLink>
             <NavLink href="/admin/drafty" prefixes={["/admin/drafty"]} className={linkClass}>
               {n.drafts}
