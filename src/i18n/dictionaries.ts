@@ -378,6 +378,8 @@ export const cs = {
         [turns && `na tahu: ${turns}`, invites && `pozvánky: ${invites}`].filter(Boolean).join(", "),
       club: "Klub",
       web: "Texty webu",
+      news: "Novinky",
+      newsUnread: "Přibyly novinky",
       accounts: "Účty",
       password: "Změnit heslo",
       logout: "Odhlásit",
@@ -597,6 +599,13 @@ export const cs = {
       notOpenShort: "neotevřeno",
       pausedShort: "pozastaveno",
       opensShort: (date: string, time: string) => `otevře se ${date} ${time}`,
+    },
+    news: {
+      title: "Novinky",
+      intro: "Co se na webu změnilo, nejnovější nahoře. Štítek říká, kdo změnu pozná.",
+      czechOnly: "",
+      audience: { players: "Hráči", organizers: "Organizátoři" },
+      open: "Otevřít →",
     },
     /** Setup problems shown on the admin home page */
     health: {
@@ -1295,6 +1304,8 @@ export const en: Dict = {
       draftsAttention: (turns, invites) => [turns && `your turn: ${turns}`, invites && `invitations: ${invites}`].filter(Boolean).join(", "),
       club: "Club",
       web: "Site texts",
+      news: "What's new",
+      newsUnread: "New changes",
       accounts: "Accounts",
       password: "Change password",
       logout: "Log out",
@@ -1469,6 +1480,13 @@ export const en: Dict = {
       notOpenShort: "not open",
       pausedShort: "paused",
       opensShort: (date, time) => `opens ${date} ${time}`,
+    },
+    news: {
+      title: "What's new",
+      intro: "What changed on the site, newest first. The label says who notices the change.",
+      czechOnly: "The notes are written in Czech.",
+      audience: { players: "Players", organizers: "Organisers" },
+      open: "Open →",
     },
     health: {
       title: "⚠️ The site setup needs attention",

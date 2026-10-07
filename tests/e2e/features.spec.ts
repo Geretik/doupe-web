@@ -1771,6 +1771,20 @@ test("admin menu groups the sections and marks the current page", async ({ page 
   await expect(current).toHaveText("Termíny");
 });
 
+test("news: the changelog in the admin, a dot in the menu until it is read on this device", async ({ page }) => {
+  await adminLogin(page);
+  const dot = page.getByTestId("news-dot");
+  await expect(dot).toBeVisible();
+  await page.click("main nav a:has-text('Novinky')");
+  await expect(page.locator("main nav a[aria-current=page]")).toContainText("Novinky");
+  await expect(page.locator("h1")).toHaveText("Novinky");
+  await expect(page.getByTestId("news-entry").last()).toContainText("Spuštění");
+  await expect(dot).toHaveCount(0);
+  await page.goto("/admin");
+  await expect(page.locator("main nav a:has-text('Novinky')")).toBeVisible();
+  await expect(dot).toHaveCount(0);
+});
+
 test("site texts: an organiser edits the club page in the admin, with history, conflicts and the original text", async ({ page, browser }) => {
   await createAdminUser({ email: "org@example.com", password: "org-password-123", nickname: "Organizátorka", role: "organizer" });
   await adminLogin(page, { email: "org@example.com", password: "org-password-123" });

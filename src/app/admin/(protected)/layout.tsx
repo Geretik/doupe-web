@@ -1,11 +1,14 @@
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { logoutAction } from "@/app/actions/admin";
 import { NavLink } from "@/components/nav-link";
 import { Button } from "@/components/ui";
+import { changelogStamp } from "@/data/changelog";
 import { getDict } from "@/i18n/server";
 import { getAdmin, hasRole } from "@/lib/admin-auth";
 import { dispatchDraftEventsLater } from "@/lib/draft/events";
 import { countDraftAttention } from "@/lib/draft/queries";
+import { NEWS_COOKIE } from "@/lib/news";
 
 export const dynamic = "force-dynamic";
 
@@ -17,10 +20,12 @@ const groupClass = "px-2 text-xs font-medium uppercase tracking-wide text-muted"
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const me = await getAdmin();
   if (!me) redirect("/admin/login");
-  const [{ t }, attention] = await Promise.all([getDict(), countDraftAttention(me.id)]);
+  const [{ t }, attention, jar] = await Promise.all([getDict(), countDraftAttention(me.id), cookies()]);
   const n = t.admin.nav;
   // sessions where it is this account's turn, and invitations it has not answered
   const draftBadge = attention.turns + attention.invites;
+  // something was added to the news since they were last read on this device
+  const newsUnread = jar.get(NEWS_COOKIE)?.value !== changelogStamp();
   // draft reminders that came due (a turn left for a day) go out with any admin page, not only with the daily cron
   dispatchDraftEventsLater();
   return (
@@ -55,6 +60,17 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <span className={groupClass}>{n.club}</span>
             <NavLink href="/admin/web" prefixes={["/admin/web"]} className={linkClass}>{n.web}</NavLink>
             {hasRole(me, "admin") && <NavLink href="/admin/ucty" className={linkClass}>{n.accounts}</NavLink>}
+            <NavLink href="/admin/novinky" className={linkClass}>
+              {n.news}
+              {newsUnread && (
+                <span
+                  className="ml-1 inline-block size-2 rounded-full bg-accent align-middle"
+                  title={n.newsUnread}
+                  aria-label={n.newsUnread}
+                  data-testid="news-dot"
+                />
+              )}
+            </NavLink>
           </div>
         </div>
         <span className="ml-auto flex items-center gap-3">
