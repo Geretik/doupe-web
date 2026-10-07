@@ -7,28 +7,45 @@ import { BLUFF_COUNT, botcRoles, findRole, linkedRoleOf, type RoleTeam } from "@
 import {
   bluffCandidates,
   dealBag,
-  distribution,
+  expectedSetup,
   gapKinds,
   isPlayer,
   MAX_SEATS,
   newGap,
   newSeat,
+  offCount,
   playerSeats,
   setupNote,
+  setupRoles,
   setupTeams,
   startDrawing,
   teamCounts,
   undrawable,
+  type ExpectedCount,
   type GrimoireState,
 } from "@/lib/grimoire/state";
 import { groupHeadingClass } from "@/components/draft/team-section";
 import { fill } from "@/lib/grimoire/text";
-import { nameOf, RoleIcon, useGrimoire, type GrimoireContextValue } from "./context";
+import { nameOf, RoleIcon, useGrimoire, type GrimoireContextValue, type GrimoireTexts } from "./context";
 import { RoleGrid, teamBox } from "./role-grid";
 import { holders } from "./seat-panel";
 import { gapIcon } from "./town";
 
 export type ScriptChoice = { id: number; name: string; roleIds: string[] };
+
+/** A team's number the setup wants: "5", "0–2" or "1 nebo 3" when characters leave a choice, "?" when any; null under 5 players. */
+function wanted(e: ExpectedCount | undefined, t: GrimoireTexts) {
+  if (!e) return null;
+  const v = e.values;
+  if (!v) return "?";
+  if (v.length === 1) return String(v[0]);
+  return v.every((x, i) => i === 0 || x === v[i - 1] + 1) ? `${v[0]}–${v[v.length - 1]}` : v.join(` ${t.or} `);
+}
+
+/** Characters changed the rulebook's number of the team */
+function changed(e: ExpectedCount | undefined) {
+  return !!e && e.by.length > 0 && (!e.values || e.values.length !== 1 || e.values[0] !== e.base);
+}
 
 /** Characters in the bag or at the table that change the setup, with their note ("[+2 Outsiders]"). */
 function setupChangesOf(state: GrimoireState, characters: GrimoireContextValue["characters"]) {
@@ -51,7 +68,7 @@ export function SetupPanel({ scripts, onSelectSeat }: { scripts: ScriptChoice[];
   const [bagOpen, setBagOpen] = useState(false);
   const players = playerSeats(state).length;
   const inCircle = state.seats.filter(isPlayer);
-  const expected = distribution(players);
+  const expected = expectedSetup(players, setupRoles(state));
   const assigned = teamCounts(state.seats.map((s) => s.role));
   const inBag = teamCounts(state.bag);
   const setupChanges = setupChangesOf(state, characters);
@@ -183,13 +200,15 @@ export function SetupPanel({ scripts, onSelectSeat }: { scripts: ScriptChoice[];
           </thead>
           <tbody>
             {[...setupTeams, "traveller" as const].map((team) => {
-              const want = team === "traveller" ? null : (expected?.[team] ?? null);
-              const off = (n: number) => (want !== null && n !== want ? "font-bold text-accent" : "");
+              const want = team === "traveller" ? undefined : expected?.[team];
+              const off = (n: number) => (offCount(want, n) ? "font-bold text-accent" : "");
               if (team === "traveller" && assigned.traveller === 0) return null;
               return (
                 <tr key={team}>
                   <td className={`py-0.5 font-medium ${groupHeadingClass(team)}`}>{t.teams[team]}</td>
-                  <td className="text-center">{want ?? "–"}</td>
+                  <td className="text-center" title={want?.values ? undefined : t.anyCount}>
+                    {wanted(want, t) ?? "–"}
+                  </td>
                   <td className={`text-center ${state.bag.length ? off(inBag[team]) : ""}`}>{team === "traveller" ? "–" : inBag[team]}</td>
                   <td className={`text-center ${off(assigned[team])}`}>{assigned[team]}</td>
                 </tr>
@@ -226,6 +245,7 @@ export function SetupPanel({ scripts, onSelectSeat }: { scripts: ScriptChoice[];
           </div>
           <p className="text-xs text-muted">{t.bagHint}</p>
           <BagActions />
+          <UndrawableWarning />
           {state.phase === "setup" && <p className="text-xs text-muted">{t.drawSetupHint}</p>}
           <BagGrid />
         </section>
@@ -278,7 +298,7 @@ export function SetupPanel({ scripts, onSelectSeat }: { scripts: ScriptChoice[];
 
 /** Hands the bag out at random, lets the players draw from it, empties it; `onDealt` after a deal. */
 function BagActions({ onDealt }: { onDealt?: () => void }) {
-  const { state, update, locale, t } = useGrimoire();
+  const { state, update, t } = useGrimoire();
   const players = playerSeats(state).length;
   const blocked = undrawable(state.bag);
   const ready = state.bag.length > 0 && state.bag.length === players;
@@ -292,46 +312,60 @@ function BagActions({ onDealt }: { onDealt?: () => void }) {
     update(startDrawing);
   };
   return (
-    <>
-      <div className="flex flex-wrap gap-2">
-        <button type="button" className={`${button} border-accent bg-accent text-accent-foreground`} onClick={deal} disabled={!ready}>
-          {t.deal}
+    <div className="flex flex-wrap gap-2">
+      <button type="button" className={`${button} border-accent bg-accent text-accent-foreground`} onClick={deal} disabled={!ready}>
+        {t.deal}
+      </button>
+      {state.phase === "setup" && (
+        <button type="button" className={`${button} border-accent text-accent`} onClick={startDraw} disabled={!ready || blocked.length > 0}>
+          {t.draw}
         </button>
-        {state.phase === "setup" && (
-          <button type="button" className={`${button} border-accent text-accent`} onClick={startDraw} disabled={!ready || blocked.length > 0}>
-            {t.draw}
-          </button>
-        )}
-        <button type="button" className={plain} onClick={() => update((s) => ({ ...s, bag: [] }))} disabled={!state.bag.length}>
-          {t.emptyBag}
-        </button>
-      </div>
-      {blocked.length > 0 && <p className="text-sm text-accent">{fill(t.undrawable, { roles: blocked.map((id) => nameOf(id, locale)).join(", ") })}</p>}
-    </>
+      )}
+      <button type="button" className={plain} onClick={() => update((s) => ({ ...s, bag: [] }))} disabled={!state.bag.length}>
+        {t.emptyBag}
+      </button>
+    </div>
   );
+}
+
+/** Why the players cannot draw: a character in the bag they must not see (the Drunk…). */
+function UndrawableWarning() {
+  const { state, locale, t } = useGrimoire();
+  const blocked = undrawable(state.bag);
+  if (!blocked.length) return null;
+  return <p className="text-sm text-accent">{fill(t.undrawable, { roles: blocked.map((id) => nameOf(id, locale)).join(", ") })}</p>;
 }
 
 /** The script's characters to put in the bag, each team with how many are in it and how many the rules want. */
 function BagGrid({ wide = false }: { wide?: boolean }) {
-  const { state, update, t } = useGrimoire();
-  const expected = distribution(playerSeats(state).length);
+  const { state, update, characters, t } = useGrimoire();
+  const expected = expectedSetup(playerSeats(state).length, setupRoles(state));
   const inBag = teamCounts(state.bag);
+  const roleIds = state.script.roleIds.filter((id) => findRole(id)?.team !== "traveller");
+  // what a character does to the setup, on its tile: "+2 Podivíni"
+  const setupNotes = new Map(
+    roleIds.flatMap((id) => {
+      const note = characters[id]?.setup ? setupNote(characters[id].ability) : null;
+      return note ? [[id, note.slice(1, -1).trim()] as const] : [];
+    }),
+  );
   const count = (team: RoleTeam) => {
     if (team === "traveller") return null;
-    const want = expected?.[team] ?? null;
-    const off = state.bag.length > 0 && want !== null && inBag[team] !== want;
+    const want = expected?.[team];
+    const off = state.bag.length > 0 && offCount(want, inBag[team]);
     return (
       <span className={`text-sm tracking-normal ${off ? "font-bold text-accent" : "text-foreground"}`} title={`${t.inBag} / ${t.expected}`} data-testid="bag-team-count">
         {inBag[team]}
-        {want !== null && ` / ${want}`}
+        {want && ` / ${wanted(want, t)}`}
       </span>
     );
   };
   return (
     <RoleGrid
-      roleIds={state.script.roleIds.filter((id) => findRole(id)?.team !== "traveller")}
+      roleIds={roleIds}
       marked={new Set(state.bag)}
       notes={holders(state)}
+      badges={setupNotes}
       teamNote={count}
       label={t.bagLabel}
       onPick={(id) => update((s) => ({ ...s, bag: s.bag.includes(id) ? s.bag.filter((x) => x !== id) : [...s.bag, id] }))}
@@ -344,7 +378,7 @@ function BagGrid({ wide = false }: { wide?: boolean }) {
 function BagScreen({ onClose }: { onClose: () => void }) {
   const { state, characters, locale, t } = useGrimoire();
   const players = playerSeats(state).length;
-  const expected = distribution(players);
+  const expected = expectedSetup(players, setupRoles(state));
   const inBag = teamCounts(state.bag);
   const setupChanges = setupChangesOf(state, characters);
   useEffect(() => {
@@ -362,7 +396,7 @@ function BagScreen({ onClose }: { onClose: () => void }) {
     >
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         <h2 className="text-lg font-bold">{fill(t.bag, { n: state.bag.length, m: players })}</h2>
-        <span className="text-sm text-muted">{distribution(players) ? fill(t.distribution, { n: players }) : t.distributionTooFew}</span>
+        <span className="text-sm text-muted">{expected ? fill(t.distribution, { n: players }) : t.distributionTooFew}</span>
         <div className="ml-auto flex flex-wrap items-center gap-2">
           <BagActions onDealt={onClose} />
           <button type="button" className={plain} onClick={onClose}>
@@ -373,15 +407,23 @@ function BagScreen({ onClose }: { onClose: () => void }) {
       {/* in the bag against the rules, big: what the Storyteller checks while filling it */}
       <div className="grid grid-cols-2 gap-2 lg:grid-cols-4" data-testid="bag-summary">
         {setupTeams.map((team) => {
-          const want = expected?.[team] ?? null;
-          const off = state.bag.length > 0 && want !== null && inBag[team] !== want;
+          const want = expected?.[team];
+          const off = state.bag.length > 0 && offCount(want, inBag[team]);
           return (
-            <div key={team} className={`flex items-baseline justify-between gap-2 rounded-xl border px-4 py-2 ${teamBox[team]}`} data-team={team}>
-              <span className={`text-sm font-semibold tracking-wide uppercase ${groupHeadingClass(team)}`}>{t.teams[team]}</span>
-              <span className={`text-2xl font-bold whitespace-nowrap ${off ? "text-accent" : ""}`} title={`${t.inBag} / ${t.expected}`} data-testid="bag-summary-count">
-                {inBag[team]}
-                {want !== null && <span className="text-lg font-semibold text-muted"> / {want}</span>}
-              </span>
+            <div key={team} className={`flex flex-col rounded-xl border px-4 py-2 ${teamBox[team]}`} data-team={team}>
+              <div className="flex items-baseline justify-between gap-2">
+                <span className={`text-sm font-semibold tracking-wide uppercase ${groupHeadingClass(team)}`}>{t.teams[team]}</span>
+                <span className={`text-2xl font-bold whitespace-nowrap ${off ? "text-accent" : ""}`} title={`${t.inBag} / ${t.expected}`} data-testid="bag-summary-count">
+                  {inBag[team]}
+                  {want && <span className="text-lg font-semibold text-muted"> / {wanted(want, t)}</span>}
+                </span>
+              </div>
+              {want && changed(want) && (
+                // who changed the rulebook's number
+                <span className="text-xs text-muted" data-testid="bag-summary-by">
+                  {want.by.map((id) => nameOf(id, locale)).join(", ")} · {fill(t.baseCount, { n: want.base })}
+                </span>
+              )}
             </div>
           );
         })}
@@ -395,6 +437,7 @@ function BagScreen({ onClose }: { onClose: () => void }) {
           ))}
         </ul>
       )}
+      <UndrawableWarning />
       <BagGrid wide />
     </div>
   );

@@ -44,6 +44,7 @@ export function Grimoire({
   name,
   initial,
   canEdit,
+  canDelete,
   characters,
   scripts,
   session,
@@ -56,6 +57,7 @@ export function Grimoire({
   name: string;
   initial: { state: GrimoireState; version: number };
   canEdit: boolean;
+  canDelete: boolean;
   characters: Record<string, GrimoireCharacter>;
   scripts: ScriptChoice[];
   session: { id: number; title: string } | null;
@@ -263,7 +265,7 @@ export function Grimoire({
                       }}
                     />
                   )}
-                  {shown === "game" && <GamePanel id={id} session={session} recorded={recorded} canEdit={canEdit} />}
+                  {shown === "game" && <GamePanel id={id} session={session} recorded={recorded} canEdit={canEdit} canDelete={canDelete} />}
                 </div>
               </aside>
             </div>

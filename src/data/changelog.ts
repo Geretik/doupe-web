@@ -35,6 +35,11 @@ export const changelog: ChangelogEntry[] = [
         text: "Grimoár: u pytlíku je u každého týmu, kolik postav v něm je a kolik jich podle pravidel patří k počtu hráčů; pytlík jde otevřít na celou obrazovku, kde jsou počty velké nahoře a script se vejde na tablet bez posouvání.",
       },
       {
+        for: "organizers",
+        text: "Grimoár: postavy, které mění rozložení (Baron, Kmotr, Fang Gu, Vyvolávač…), se do počtů v pytlíku započítají samy – u volby jako Kmotr „1 nebo 3“ – a na jejich dlaždici je napsané, co dělají („+2 Podivíni“).",
+      },
+      { for: "organizers", text: "Grimoáry maže jen správce – svoje i odehrané hry ostatních, tlačítkem 🗑️ v seznamu nebo v grimoáru na kartě Hra.", href: "/admin/grimoary" },
+      {
         for: "players",
         text: "Na konci úvodní stránky je formulář „Nech nám vzkaz“; vzkaz přijde organizátorům e-mailem a odpovídá se rovnou z pošty.",
         href: "/#vzkaz",

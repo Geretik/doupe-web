@@ -15,13 +15,15 @@ export const teamBox: Record<RoleTeam, string> = {
 
 /**
  * Characters to tap, by team in the team colours: big targets for a finger. `marked` are highlighted
- * (the seat's character, the ones in the bag); `notes` adds a line under a name (who has it), `teamNote`
+ * (the seat's character, the ones in the bag); `notes` and `badges` add lines under a name (who has it,
+ * what it does to the setup), `teamNote`
  * something next to a team's heading (the bag's counts). `wide` fills a whole screen with columns.
  */
 export function RoleGrid({
   roleIds,
   marked,
   notes,
+  badges,
   teamNote,
   onPick,
   label,
@@ -30,6 +32,8 @@ export function RoleGrid({
   roleIds: string[];
   marked: Set<string>;
   notes?: Map<string, string>;
+  /** A second line under a name, e.g. what the character does to the setup */
+  badges?: Map<string, string>;
   teamNote?: (team: RoleTeam) => React.ReactNode;
   onPick: (roleId: string) => void;
   /** For the buttons' accessible names, e.g. "Postava" */
@@ -72,6 +76,11 @@ export function RoleGrid({
                   <span className="flex min-w-0 flex-col leading-tight">
                     <span className="truncate">{nameOf(id, locale)}</span>
                     {notes?.get(id) && <span className="truncate text-xs font-normal text-muted">{notes.get(id)}</span>}
+                    {badges?.get(id) && (
+                      <span className="truncate text-xs font-medium text-amber-700 dark:text-amber-400" data-testid="role-badge">
+                        {badges.get(id)}
+                      </span>
+                    )}
                   </span>
                 </button>
               );

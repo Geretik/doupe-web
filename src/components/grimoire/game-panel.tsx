@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { createGrimoireAction, deleteGrimoireAction } from "@/app/actions/grimoire";
+import { createGrimoireAction } from "@/app/actions/grimoire";
 import type { GameWinner } from "@/db/schema";
 import { endGame, reopenGame } from "@/lib/grimoire/state";
 import { fill } from "@/lib/grimoire/text";
 import { useGrimoire } from "./context";
+import { DeleteGrimoireButton } from "./delete-grimoire";
 
 const button = "min-h-12 rounded-lg border px-3 py-2 text-sm font-semibold";
 
@@ -15,12 +16,15 @@ export function GamePanel({
   session,
   recorded,
   canEdit,
+  canDelete,
 }: {
   id: number;
   session: { id: number; title: string } | null;
   /** The game record was written (now or before) */
   recorded: boolean;
   canEdit: boolean;
+  /** An administrator's */
+  canDelete: boolean;
 }) {
   const { state, update, readOnly, t } = useGrimoire();
   const end = (winner: GameWinner | null) => update((s) => endGame(s, winner));
@@ -80,18 +84,10 @@ export function GamePanel({
         </section>
       )}
 
-      {canEdit && (
-        <form
-          action={deleteGrimoireAction.bind(null, id)}
-          onSubmit={(e) => {
-            if (!confirm(t.deleteConfirm)) e.preventDefault();
-          }}
-          className="border-t border-border pt-3"
-        >
-          <button type="submit" className="min-h-11 rounded-lg border border-accent px-3 text-sm text-accent hover:bg-accent/10">
-            {t.delete}
-          </button>
-        </form>
+      {canDelete && (
+        <div className="border-t border-border pt-3">
+          <DeleteGrimoireButton id={id} label={t.delete} confirmText={t.deleteConfirm} />
+        </div>
       )}
     </div>
   );

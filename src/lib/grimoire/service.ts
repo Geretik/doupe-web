@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, gt, isNotNull, lt, or, sql, TransactionRollbackError } from "drizzle-orm";
 import { db } from "@/db";
 import { adminUsers, games, grimoires, registrations, scripts, sessions, type AdminUser, type Grimoire } from "@/db/schema";
+import { hasRole } from "@/lib/admin-auth";
 import { botcRoles, linkedRoleOf } from "@/lib/botc-roles";
 import { saveRoster } from "@/lib/game-roster";
 import { scriptToolLinkForJson } from "@/lib/draft/script";
@@ -17,6 +18,11 @@ export function canEditGrimoire(me: AdminUser, g: Pick<Grimoire, "ownerId">) {
 
 export function canViewGrimoire(me: AdminUser, g: Pick<Grimoire, "ownerId" | "endedAt">) {
   return canEditGrimoire(me, g) || g.endedAt !== null;
+}
+
+/** Only the site's administrators delete grimoires: their own and every ended one (another account's running game stays hidden from them too). */
+export function canDeleteGrimoire(me: AdminUser, g: Pick<Grimoire, "ownerId" | "endedAt">) {
+  return hasRole(me, "admin") && canViewGrimoire(me, g);
 }
 
 /** Every character but the travellers: the "script" of a grimoire without one. */
@@ -233,9 +239,10 @@ export async function saveGrimoire(me: AdminUser, id: number, baseVersion: numbe
 }
 
 export async function deleteGrimoire(me: AdminUser, id: number) {
+  if (!hasRole(me, "admin")) return null;
   const [row] = await db
     .delete(grimoires)
-    .where(and(eq(grimoires.id, id), eq(grimoires.ownerId, me.id)))
+    .where(and(eq(grimoires.id, id), or(eq(grimoires.ownerId, me.id), isNotNull(grimoires.endedAt))))
     .returning({ sessionId: grimoires.sessionId });
   return row ?? null;
 }

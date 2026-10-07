@@ -64,6 +64,13 @@ test("grimoire: from a session, hand out the bag, the first night, a death and a
   await expect(page.locator("main")).toContainText("Pytlík: 7 z 7");
   await page.getByRole("button", { name: "Rozdat náhodně" }).click();
   await expect(page.getByTestId("town")).not.toContainText("bez postavy");
+  // Ada becomes the Drunk below, so the Poisoner and the Demon must be someone else's: deal again until they are
+  for (let i = 0; i < 30 && /Travič|Čert/.test((await seat(page, "Ada").textContent()) ?? ""); i++) {
+    page.once("dialog", (d) => d.accept());
+    await page.getByRole("button", { name: "Rozdat náhodně" }).click();
+    await expect(page.getByTestId("town")).not.toContainText("bez postavy");
+  }
+  await expect(seat(page, "Ada")).not.toContainText(/Travič|Čert/);
   await expect(page.locator("[data-testid=distribution] tbody tr").first()).toContainText("Měšťané555");
 
   // Ada is the Drunk who thinks she is the Chef
@@ -344,13 +351,16 @@ test("grimoire: the bag counts each team against the setup for the players, also
   for (const name of ["Pradlena", "Empat", "Mnich", "Strážkyně krkavců", "Panna", "Travič", "Baron"]) {
     await screen.getByRole("button", { name: `Do pytlíku: ${name}` }).click();
   }
+  // the Baron counts: two Outsiders instead of two Townsfolk, and says so
   await expect(screen.locator("h2")).toHaveText("Pytlík: 7 z 7");
-  await expect(count(screen, "townsfolk")).toHaveText("5 / 5");
-  await expect(count(screen, "outsider")).toHaveText("0 / 0");
+  await expect(count(screen, "townsfolk")).toHaveText("5 / 3");
+  await expect(count(screen, "outsider")).toHaveText("0 / 2");
   await expect(count(screen, "minion")).toHaveText("2 / 1");
   await expect(count(screen, "demon")).toHaveText("0 / 1");
   await expect(screen).toContainText("Baron: [+2 Podivíni]");
-  await expect(screen.getByTestId("bag-summary-count")).toHaveText(["5 / 5", "0 / 0", "2 / 1", "0 / 1"]);
+  await expect(screen.getByRole("button", { name: "Do pytlíku: Baron" }).getByTestId("role-badge")).toHaveText("+2 Podivíni");
+  await expect(screen.getByTestId("bag-summary-count")).toHaveText(["5 / 3", "0 / 2", "2 / 1", "0 / 1"]);
+  await expect(screen.getByTestId("bag-summary-by")).toHaveText(["Baron · základ 5", "Baron · základ 0"]);
   // the whole script on the tablet without scrolling
   expect(await screen.evaluate((el) => el.scrollHeight <= el.clientHeight)).toBe(true);
 
@@ -358,7 +368,36 @@ test("grimoire: the bag counts each team against the setup for the players, also
   await screen.getByRole("button", { name: "Do pytlíku: Baron" }).click();
   await screen.getByRole("button", { name: "Do pytlíku: Čert" }).click();
   await expect(count(screen, "demon")).toHaveText("1 / 1");
+  await expect(count(screen, "townsfolk")).toHaveText("5 / 5");
+  await expect(screen.getByTestId("bag-summary-by")).toHaveCount(0);
   await screen.getByRole("button", { name: "Rozdat náhodně" }).click();
   await expect(screen).toHaveCount(0);
   await expect(page.getByTestId("town")).not.toContainText("bez postavy");
+});
+
+test("grimoire: only administrators delete grimoires, also another account's finished one", async ({ page, browser }) => {
+  await createAdminUser({ email: "org@example.com", password: "org-password-123", nickname: "Organizátorka", role: "organizer" });
+  const ctx = await browser.newContext({ locale: "cs-CZ" });
+  const org = await ctx.newPage();
+  await adminLogin(org, { email: "org@example.com", password: "org-password-123" });
+  await org.goto("/admin/grimoary");
+  await org.fill("#name", "Zkušební hra");
+  await org.getByRole("button", { name: "Založit grimoár" }).click();
+  await org.getByRole("tab", { name: "Hra" }).click();
+  await org.getByRole("button", { name: "Nevím" }).click();
+  await stored((st) => st.phase, "ended");
+  // an organiser deletes nothing, not even their own
+  await expect(org.getByTestId("game-panel").getByRole("button", { name: "Smazat grimoár" })).toHaveCount(0);
+  await org.goto("/admin/grimoary");
+  await expect(org.getByTestId("grimoires")).toContainText("Zkušební hra");
+  await expect(org.getByRole("button", { name: /^Smazat grimoár/ })).toHaveCount(0);
+  await ctx.close();
+
+  // the administrator sees it among the others' games and deletes it from the list
+  await adminLogin(page);
+  await page.goto("/admin/grimoary");
+  page.once("dialog", (d) => d.accept());
+  await page.getByRole("button", { name: "Smazat grimoár: Zkušební hra" }).click();
+  await expect(page.locator("main")).not.toContainText("Zkušební hra");
+  expect(await sql("select id from grimoires")).toHaveLength(0);
 });

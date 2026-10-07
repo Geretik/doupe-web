@@ -46,7 +46,7 @@ export async function saveGrimoireAction(id: number, baseVersion: number, state:
 }
 
 export async function deleteGrimoireAction(id: number) {
-  const me = await requireAdmin();
+  const me = await requireAdmin("admin");
   if (parseId(id) === null) return;
   const deleted = await deleteGrimoire(me, id);
   if (deleted?.sessionId) revalidatePath(`/admin/termin/${deleted.sessionId}`);

@@ -122,6 +122,78 @@ export function distribution(players: number): Record<SetupTeam, number> | null 
   return { townsfolk, outsider, minion, demon };
 }
 
+/** The teams whose number a character can change; the Townsfolk make up the rest */
+const countTeams = ["outsider", "minion", "demon"] as const;
+type CountTeam = (typeof countTeams)[number];
+
+/**
+ * How a character changes the rulebook's numbers ("[+2 Outsiders]"): the Storyteller picks one of `options`,
+ * `none` teams get no character in the bag, `open` ones any number. Notes that change no count (the Atheist's
+ * good team aside, the Marionette, the Village Idiot…) and the ones the bag cannot show (Lil' Monsta, Legion)
+ * are only shown, not counted.
+ */
+const SETUP_EFFECTS: Record<string, { options?: Partial<Record<CountTeam, number>>[]; none?: CountTeam[]; open?: CountTeam[] }> = {
+  baron: { options: [{ outsider: 2 }] },
+  fanggu: { options: [{ outsider: 1 }] },
+  vigormortis: { options: [{ outsider: -1 }] },
+  godfather: { options: [{ outsider: -1 }, { outsider: 1 }] },
+  balloonist: { options: [{}, { outsider: 1 }] },
+  hermit: { options: [{}, { outsider: -1 }] },
+  // the Damsel, an Outsider, instead of a Townsfolk
+  huntsman: { options: [{ outsider: 1 }] },
+  summoner: { none: ["demon"] },
+  atheist: { none: ["minion", "demon"] },
+  // the Kazali makes the Minions at night
+  kazali: { none: ["minion"], open: ["outsider"] },
+  lordoftyphon: { options: [{ minion: 1 }], open: ["outsider"] },
+  xaan: { open: ["outsider"] },
+};
+
+/** A team's number for a game: the rulebook's, the values the characters allow (several when one leaves a choice; null = any), and who changed it. */
+export type ExpectedCount = { base: number; values: number[] | null; by: string[] };
+
+/** The setup for the players with these characters in play (the bag, or the seats); null under 5 players. */
+export function expectedSetup(players: number, roleIds: (string | null)[]): Record<SetupTeam, ExpectedCount> | null {
+  const base = distribution(players);
+  if (!base) return null;
+  const effects = [...new Set(roleIds)].flatMap((id) => (id && SETUP_EFFECTS[id] ? [{ id, ...SETUP_EFFECTS[id] }] : []));
+  let combos: Record<CountTeam, number>[] = [{ outsider: 0, minion: 0, demon: 0 }];
+  for (const { options } of effects) {
+    if (options) combos = combos.flatMap((c) => options.map((o) => ({ outsider: c.outsider + (o.outsider ?? 0), minion: c.minion + (o.minion ?? 0), demon: c.demon + (o.demon ?? 0) })));
+  }
+  const none = new Set(effects.flatMap((e) => e.none ?? []));
+  const open = new Set(effects.flatMap((e) => e.open ?? []));
+  const values: Record<SetupTeam, Set<number>> = { townsfolk: new Set(), outsider: new Set(), minion: new Set(), demon: new Set() };
+  for (const c of combos) {
+    const n = { outsider: 0, minion: 0, demon: 0 };
+    for (const team of countTeams) n[team] = none.has(team) ? 0 : Math.max(0, base[team] + c[team]);
+    for (const team of countTeams) values[team].add(n[team]);
+    values.townsfolk.add(Math.max(0, players - n.outsider - n.minion - n.demon));
+  }
+  const changes = (team: SetupTeam) => (e: (typeof effects)[number]) =>
+    team === "townsfolk" || e.options?.some((o) => o[team]) || e.none?.includes(team) || e.open?.includes(team);
+  return Object.fromEntries(
+    setupTeams.map((team) => [
+      team,
+      {
+        base: base[team],
+        values: open.has(team as CountTeam) || (team === "townsfolk" && open.size > 0) ? null : [...values[team]].sort((a, b) => a - b),
+        by: effects.filter(changes(team)).map((e) => e.id),
+      },
+    ]),
+  ) as Record<SetupTeam, ExpectedCount>;
+}
+
+/** The characters the setup counts with: the bag while it is being filled, else the seats'. */
+export function setupRoles(state: Pick<GrimoireState, "bag" | "seats">) {
+  return state.bag.length ? state.bag : state.seats.map((s) => s.role);
+}
+
+/** A number of a team that the setup does not allow */
+export function offCount(expected: ExpectedCount | undefined, n: number) {
+  return !!expected?.values && !expected.values.includes(n);
+}
+
 export function isTraveller(roleId: string | null) {
   return findRole(roleId)?.team === "traveller";
 }

@@ -1,10 +1,11 @@
 import { createGrimoireAction } from "@/app/actions/grimoire";
 import { SubmitButton } from "@/components/admin/submit-button";
+import { DeleteGrimoireButton } from "@/components/grimoire/delete-grimoire";
 import { GrimoireLink } from "@/components/grimoire/grimoire-link";
 import { Alert, Card, Field, inputClass } from "@/components/ui";
 import type { Dict, Locale } from "@/i18n/dictionaries";
 import { getDict } from "@/i18n/server";
-import { requireAdmin } from "@/lib/admin-auth";
+import { hasRole, requireAdmin } from "@/lib/admin-auth";
 import { grimoireScripts, grimoireSessions, listGrimoires, type GrimoireListItem } from "@/lib/grimoire/service";
 import { formatShortDate } from "@/lib/time";
 
@@ -59,13 +60,28 @@ export default async function GrimoiresPage({ searchParams }: { searchParams: Pr
         </form>
       </Card>
 
-      <GrimoireList title={g.mine} items={mine} t={t} locale={locale} />
-      {others.length > 0 && <GrimoireList title={g.others} items={others} t={t} locale={locale} showOwner />}
+      <GrimoireList title={g.mine} items={mine} t={t} locale={locale} canDelete={hasRole(me, "admin")} />
+      {others.length > 0 && <GrimoireList title={g.others} items={others} t={t} locale={locale} canDelete={hasRole(me, "admin")} showOwner />}
     </div>
   );
 }
 
-function GrimoireList({ title, items, t, locale, showOwner }: { title: string; items: GrimoireListItem[]; t: Dict; locale: Locale; showOwner?: boolean }) {
+function GrimoireList({
+  title,
+  items,
+  t,
+  locale,
+  canDelete,
+  showOwner,
+}: {
+  title: string;
+  items: GrimoireListItem[];
+  t: Dict;
+  locale: Locale;
+  /** An administrator's list: each grimoire with a delete button */
+  canDelete: boolean;
+  showOwner?: boolean;
+}) {
   const g = t.grimoire;
   return (
     <section className="flex flex-col gap-2">
@@ -73,8 +89,11 @@ function GrimoireList({ title, items, t, locale, showOwner }: { title: string; i
       {items.length === 0 && <p className="text-muted">{g.none}</p>}
       <ul className="flex flex-col gap-2" data-testid="grimoires">
         {items.map((x) => (
-          <li key={x.id}>
-            <GrimoireLink item={x} t={t} locale={locale} showOwner={showOwner} />
+          <li key={x.id} className="flex items-stretch gap-2">
+            <div className="min-w-0 flex-1">
+              <GrimoireLink item={x} t={t} locale={locale} showOwner={showOwner} />
+            </div>
+            {canDelete && <DeleteGrimoireButton id={x.id} label={`${g.delete}: ${x.name}`} confirmText={g.deleteConfirm} compact />}
           </li>
         ))}
       </ul>

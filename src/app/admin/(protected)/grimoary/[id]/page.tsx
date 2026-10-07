@@ -4,7 +4,7 @@ import { Grimoire } from "@/components/grimoire/grimoire";
 import { getDict } from "@/i18n/server";
 import { requireAdmin } from "@/lib/admin-auth";
 import { grimoireCharacters } from "@/lib/grimoire/characters";
-import { canEditGrimoire, canViewGrimoire, getGrimoire, grimoireScripts, sessionPlayers } from "@/lib/grimoire/service";
+import { canDeleteGrimoire, canEditGrimoire, canViewGrimoire, getGrimoire, grimoireScripts, sessionPlayers } from "@/lib/grimoire/service";
 import { parseId } from "@/lib/validation";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
@@ -28,6 +28,7 @@ export default async function GrimoirePage({ params }: { params: Promise<{ id: s
       name={g.name}
       initial={{ state: g.state, version: g.version }}
       canEdit={canEditGrimoire(me, g)}
+      canDelete={canDeleteGrimoire(me, g)}
       characters={grimoireCharacters(locale)}
       scripts={scripts}
       session={g.sessionId && row.sessionTitle ? { id: g.sessionId, title: row.sessionTitle } : null}
