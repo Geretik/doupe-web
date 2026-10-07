@@ -14,8 +14,14 @@ export type ChangelogEntry = { /** YYYY-MM-DD */ date: string; title: string; it
 export const changelog: ChangelogEntry[] = [
   {
     date: "2026-10-08",
-    title: "Opilec v pytlíku",
+    title: "Přihlášení QR kódem, Opilec v pytlíku",
     items: [
+      {
+        for: "organizers",
+        text: "Přihlášení QR kódem: na přihlášení do adminu (třeba na klubovém tabletu) klepni na „Přihlásit QR kódem z telefonu“ a kód naskenuj telefonem, kde jsi přihlášený/á – v Profilu → Naskenovat QR kód, nebo fotoaparátem – a přihlášení potvrď. Heslo na tabletu psát nemusíš.",
+        href: "/admin/profil",
+      },
+      { for: "organizers", text: "Profil (vpravo v menu místo Změnit heslo): skenování QR kódu, změna hesla a „Odhlásit ze všech ostatních zařízení“.", href: "/admin/profil" },
       {
         for: "organizers",
         text: "Grimoár: s Opilcem v pytlíku se počítá jeden Měšťan navíc (s Marionetou dobrá postava navíc, Blázen může mít druhého Démona). Kdo ho při rozdání nebo losování dostane, je Opilec a myslí si, že je tím Měšťanem; Marioneta vždy sedí vedle Démona. Losovat jde i s Opilcem v pytlíku.",

@@ -7,6 +7,7 @@ import { postDiscordMessage, spotsLeftEnabled, spotsLeftMessage } from "./discor
 import { recordDailyRun } from "./job-runs";
 import { deleteOldLinkRequests } from "./link-throttle";
 import { deleteOldLoginFailures } from "./login-limit";
+import { deleteOldQrLogins } from "./qr-login";
 import { sendDueReminders } from "./reminders";
 import { anonymizeOldRegistrations, RETENTION_DAYS } from "./retention";
 import { promoteWaitlist } from "./waitlist";
@@ -109,6 +110,7 @@ export async function runDailyJobs() {
   });
   await deleteOldLoginFailures().catch((e) => console.error("Deleting old login failures failed", e));
   await deleteOldLinkRequests().catch((e) => console.error("Deleting old link requests failed", e));
+  await deleteOldQrLogins().catch((e) => console.error("Deleting old QR logins failed", e));
   await recordDailyRun();
   return { reminders, spots, retention, waitlists, draftNotices };
 }

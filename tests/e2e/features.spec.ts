@@ -1213,8 +1213,8 @@ test("admin: change own password, other devices are logged out", async ({ browse
   // login cookies carry whole seconds; one issued in the same second as the change would survive it
   await page.waitForTimeout(1100);
 
-  await page.click("main nav >> text=Změnit heslo");
-  await expect(page).toHaveURL(/\/admin\/heslo$/);
+  await page.click("main nav >> text=Profil");
+  await expect(page).toHaveURL(/\/admin\/profil$/);
   const change = async (current: string, next: string, again = next) => {
     await page.fill("#currentPassword", current);
     await page.fill("#password", next);
@@ -1244,6 +1244,64 @@ test("admin: change own password, other devices are logged out", async ({ browse
   await page.click("main button[type=submit]");
   await expect(page.locator("main")).toContainText("Nesprávný e-mail nebo heslo");
   await adminLogin(page, { email: E2E.adminEmail, password: "brand-new-password" });
+});
+
+test("admin: a device logs in with a QR code approved on a phone; the phone logs out every other device", async ({ browser, page }) => {
+  await adminLogin(page); // the phone
+  const ctx = await browser.newContext({ locale: "cs-CZ" });
+  const tablet = await ctx.newPage();
+  await tablet.goto("/admin/login");
+  await tablet.getByRole("button", { name: "Přihlásit QR kódem z telefonu" }).click();
+  const qr = tablet.getByTestId("qr-login");
+  await expect(qr.getByRole("img", { name: "QR kód pro přihlášení" })).toBeVisible();
+  const url = await qr.getAttribute("data-url");
+  expect(url).toMatch(/\/admin\/qr\/[\w-]+$/);
+  const path = new URL(url!).pathname;
+
+  // the code alone logs nobody in: a browser that is not logged in cannot approve it
+  const stranger = await browser.newContext({ locale: "cs-CZ" });
+  const strangerPage = await stranger.newPage();
+  await strangerPage.goto(path);
+  await expect(strangerPage.locator("main")).toContainText("musíš být do adminu přihlášený/á tady");
+  await stranger.close();
+
+  // the phone opens it from the profile's scan (here straight away) and approves
+  await page.click("main nav >> text=Profil");
+  await expect(page.getByRole("button", { name: "Naskenovat QR kód" })).toBeVisible();
+  await page.goto(path);
+  await expect(page.locator("h1")).toHaveText("Přihlásit zařízení?");
+  await expect(page.getByTestId("qr-device")).toContainText("Chrome");
+  await page.getByRole("button", { name: "Přihlásit zařízení" }).click();
+  await expect(page.locator("main")).toContainText("Zařízení se během pár vteřin přihlásí");
+  // the tablet notices and opens the admin; the code is used up
+  await tablet.waitForURL(/\/admin$/, { timeout: 15_000 });
+  await expect(tablet.locator("main nav")).toContainText("Profil");
+  await page.goto(path);
+  await expect(page.locator("main")).toContainText("Tento QR kód už neplatí");
+
+  // a code nobody approved in time: the device offers a new one
+  const late = await browser.newContext({ locale: "cs-CZ" });
+  const latePage = await late.newPage();
+  await latePage.goto("/admin/login");
+  await latePage.getByRole("button", { name: "Přihlásit QR kódem z telefonu" }).click();
+  await expect(latePage.getByTestId("qr-login").getByRole("img")).toBeVisible();
+  await sql("update qr_logins set expires_at = now() - interval '1 minute' where approved_at is null");
+  await expect(latePage.getByTestId("qr-login")).toContainText("Kód vypršel.");
+  await expect(latePage.getByRole("button", { name: "Nový kód" })).toBeVisible();
+  await late.close();
+
+  // the phone logs out every other device and stays logged in itself
+  // login cookies carry whole seconds; one issued in the same second as the logout would survive it
+  await page.waitForTimeout(1100);
+  await page.goto("/admin/profil");
+  page.once("dialog", (d) => d.accept());
+  await page.getByRole("button", { name: "Odhlásit ze všech ostatních zařízení" }).click();
+  await expect(page.locator("main")).toContainText("Na ostatních zařízeních se bude potřeba přihlásit znovu");
+  await tablet.goto("/admin");
+  await expect(tablet).toHaveURL(/\/admin\/login$/);
+  await page.goto("/admin");
+  await expect(page).toHaveURL(/\/admin$/);
+  await ctx.close();
 });
 
 test("admin: one-time new-password link for a forgotten password", async ({ browser, page }) => {

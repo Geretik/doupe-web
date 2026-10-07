@@ -21,6 +21,7 @@
     "@mdxeditor/editor": "^4.3.2",
     "@neondatabase/serverless": "^1.1.0",
     "drizzle-orm": "^0.45.3",
+    "jsqr": "^1.4.0",
     "next": "16.3.8",
     "pg": "^8.23.1",
     "qrcode": "^1.5.4",

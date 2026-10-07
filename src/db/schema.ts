@@ -233,6 +233,8 @@ export const adminUsers = pgTable("admin_users", {
   lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
   /** Login cookies issued before this stop working (password changed or reset) */
   passwordChangedAt: timestamp("password_changed_at", { withTimezone: true }),
+  /** Login cookies issued before this stop working too: "log out on all other devices" in the profile */
+  sessionsRevokedAt: timestamp("sessions_revoked_at", { withTimezone: true }),
   /**
    * Secret of this organiser's own calendar feed (/admin/kalendar.ics?key=…): made when first shown, replaced
    * on request, gone with the account. 128 random bits, so no unique constraint: adding one to a table with
@@ -265,6 +267,27 @@ export const adminInvites = pgTable("admin_invites", {
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   usedAt: timestamp("used_at", { withTimezone: true }),
   usedBy: integer("used_by").references(() => adminUsers.id, { onDelete: "set null" }),
+});
+
+/**
+ * Logging a device in with a QR code: the device shows `token` in a QR code, a signed-in organiser opens it on their
+ * phone and approves, then the device (holding the secret behind `deviceKeyHash` in a cookie) is logged in as them.
+ * The daily cron deletes old rows.
+ */
+export const qrLogins = pgTable("qr_logins", {
+  id: serial("id").primaryKey(),
+  token: text("token").notNull().unique(),
+  /** sha256 of the secret in the asking device's cookie: the QR code alone logs nobody in */
+  deviceKeyHash: text("device_key_hash").notNull(),
+  /** "Chrome · Android": what the approving organiser is shown */
+  device: text("device").notNull(),
+  /** Salted hash of the IP, like registrations.ipHash, for the limit on new codes */
+  ipHash: text("ip_hash"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  approvedBy: integer("approved_by").references(() => adminUsers.id, { onDelete: "cascade" }),
+  approvedAt: timestamp("approved_at", { withTimezone: true }),
+  usedAt: timestamp("used_at", { withTimezone: true }),
 });
 
 /** Admin password attempts per network that were not right, for the login limit (lib/login-limit); the daily cron deletes old rows. */

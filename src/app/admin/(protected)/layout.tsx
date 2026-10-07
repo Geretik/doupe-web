@@ -75,7 +75,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         </div>
         <span className="ml-auto flex items-center gap-3">
           <span className="truncate text-muted" title={me.email}>{me.nickname}</span>
-          <NavLink href="/admin/heslo" className="hover:underline">{n.password}</NavLink>
+          <NavLink href="/admin/profil" className="hover:underline">{n.profile}</NavLink>
           <form action={logoutAction}>
             <Button type="submit" variant="secondary">{n.logout}</Button>
           </form>

@@ -33,6 +33,11 @@ export function passwordResetUrl(token: string) {
   return `${siteUrl()}/admin/nove-heslo/${token}`;
 }
 
+/** What a device's QR code for logging in opens on the organiser's phone. */
+export function qrLoginUrl(token: string) {
+  return `${siteUrl()}/admin/qr/${token}`;
+}
+
 /** A draft in the admin; the link of the draft e-mails. */
 export function draftUrl(draftId: number) {
   return `${siteUrl()}/admin/drafty/${draftId}`;

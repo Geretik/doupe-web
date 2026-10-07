@@ -47,8 +47,10 @@ export const getAdmin = cache(async (): Promise<AdminUser | null> => {
   if (!cookie) return null;
   const user = await db.query.adminUsers.findFirst({ where: eq(adminUsers.id, cookie.userId) });
   if (!user) return null;
-  // a password change or reset logs out every other device
-  if (user.passwordChangedAt && cookie.issuedAt < Math.floor(user.passwordChangedAt.getTime() / 1000)) return null;
+  // a password change or reset, or "log out on all other devices", logs out every other device
+  for (const at of [user.passwordChangedAt, user.sessionsRevokedAt]) {
+    if (at && cookie.issuedAt < Math.floor(at.getTime() / 1000)) return null;
+  }
   return user;
 });
 
