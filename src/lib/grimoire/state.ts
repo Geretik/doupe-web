@@ -10,8 +10,14 @@ import type { GrimoireCharacter } from "./characters";
 /** A reminder token at a seat: the character it belongs to (its icon) and its text; null = the Storyteller's own note */
 export type GrimoireReminder = { id: string; roleId: string | null; text: string };
 
+/** Places in the circle that are no player: a gap for the door, the Storyteller's spot in front of the grimoire. */
+export const gapKinds = ["door", "storyteller"] as const;
+export type GapKind = (typeof gapKinds)[number];
+
 export type GrimoireSeat = {
   id: string;
+  /** A gap in the circle instead of a player (no name, character or reminders); absent = a player */
+  gap?: GapKind;
   name: string;
   /** The sign-up this seat is when the grimoire came from a session: the player of the game record */
   registrationId: number | null;
@@ -27,9 +33,9 @@ export type GrimoireSeat = {
 export type GrimoirePhase = "setup" | "night" | "day" | "ended";
 
 export type GrimoireState = {
-  /** The characters to play with: a script of the club's library (id) or every character (id null) */
-  script: { id: number | null; name: string; roleIds: string[] };
-  /** In seating order, clockwise from the top */
+  /** The characters to play with: a script of the club's library (id), one pasted as JSON (json), else every character */
+  script: { id: number | null; json?: boolean; name: string; roleIds: string[] };
+  /** The circle in seating order, clockwise: the players and the gaps between them */
   seats: GrimoireSeat[];
   /** Characters the Storyteller put in the bag to hand out at random */
   bag: string[];
@@ -41,10 +47,12 @@ export type GrimoireState = {
   winner: GameWinner | null;
   /** Steps of the current night that are done (NightStep ids) */
   nightDone: string[];
+  /** The players are drawing their characters from the bag on the tablet: the grimoire is hidden */
+  drawing?: boolean;
 };
 
-/** Up to this many seats; the official game goes to 15 players and a few travellers. */
-export const MAX_SEATS = 24;
+/** Up to this many places in the circle; the official game goes to 15 players and a few travellers, then the gaps. */
+export const MAX_SEATS = 30;
 export const MAX_REMINDERS = 12;
 
 export function uid() {
@@ -53,6 +61,19 @@ export function uid() {
 
 export function newSeat(name: string, registrationId: number | null = null): GrimoireSeat {
   return { id: uid(), name, registrationId, role: null, believedRole: null, dead: false, voteUsed: false, reminders: [] };
+}
+
+export function newGap(gap: GapKind): GrimoireSeat {
+  return { ...newSeat(""), gap };
+}
+
+export function isPlayer(seat: Pick<GrimoireSeat, "gap">) {
+  return !seat.gap;
+}
+
+/** The players in the circle, without the gaps. */
+export function players(state: Pick<GrimoireState, "seats">) {
+  return state.seats.filter(isPlayer);
 }
 
 export function newGrimoireState(script: GrimoireState["script"], seats: GrimoireSeat[]): GrimoireState {
@@ -88,9 +109,9 @@ export function isTraveller(roleId: string | null) {
   return findRole(roleId)?.team === "traveller";
 }
 
-/** Players the setup counts: every seat but those with a traveller. */
+/** Players the setup counts: every player but those with a traveller. */
 export function playerSeats(state: Pick<GrimoireState, "seats">) {
-  return state.seats.filter((s) => !isTraveller(s.role));
+  return players(state).filter((s) => !isTraveller(s.role));
 }
 
 export function teamCounts(roleIds: (string | null)[]): Record<RoleTeam, number> {
@@ -121,6 +142,34 @@ export function dealBag(state: GrimoireState, random: () => number = Math.random
     ...state,
     seats: state.seats.map((s) => (dealt.has(s.id) ? { ...s, role: dealt.get(s.id)!, believedRole: null } : s)),
   };
+}
+
+/** Characters of the bag nobody has drawn yet. */
+export function remainingBag(state: Pick<GrimoireState, "seats" | "bag">) {
+  const taken = new Set(players(state).map((s) => s.role));
+  return state.bag.filter((id) => !taken.has(id));
+}
+
+/** Characters that must not be drawn: the player would see the character they do not know they are (the Drunk…). */
+export function undrawable(bag: string[]) {
+  return bag.filter((id) => linkedRoleOf(id)?.kind === "as");
+}
+
+/** The players draw from the bag: the characters of the players without a traveller are taken back first. */
+export function startDrawing(state: GrimoireState): GrimoireState {
+  return {
+    ...state,
+    drawing: true,
+    seats: state.seats.map((s) => (isPlayer(s) && !isTraveller(s.role) ? { ...s, role: null, believedRole: null } : s)),
+  };
+}
+
+/** A random character of the bag for a seat that has none yet; null when the bag is empty. */
+export function drawFor(state: GrimoireState, seatId: string, random: () => number = Math.random): string | null {
+  const left = remainingBag(state);
+  const seat = state.seats.find((s) => s.id === seatId);
+  if (!seat || !isPlayer(seat) || seat.role || left.length === 0) return null;
+  return left[Math.floor(random() * left.length)];
 }
 
 /** Characters at the table: the seats' and the ones a Drunk, Philosopher… stands in for. */
@@ -206,8 +255,8 @@ export function reopenGame(state: GrimoireState): GrimoireState {
 
 /** Living players and the votes needed to execute: at least half of them. */
 export function voteMath(state: Pick<GrimoireState, "seats">) {
-  const alive = state.seats.filter((s) => !s.dead).length;
-  const votes = state.seats.filter((s) => !s.dead || !s.voteUsed).length;
+  const alive = players(state).filter((s) => !s.dead).length;
+  const votes = players(state).filter((s) => !s.dead || !s.voteUsed).length;
   return { alive, votes, toExecute: Math.ceil(alive / 2) };
 }
 

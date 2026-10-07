@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { linkedRoleOf } from "@/lib/botc-roles";
-import { seatSide, voteMath, type GrimoireSeat } from "@/lib/grimoire/state";
+import { players, seatSide, voteMath, type GapKind, type GrimoireSeat } from "@/lib/grimoire/state";
 import { fill } from "@/lib/grimoire/text";
 import { nameOf, RoleIcon, useGrimoire } from "./context";
 
@@ -16,22 +16,29 @@ function clamp(v: number, min: number, max: number) {
 
 const sideBorder = { good: "border-good", evil: "border-accent" } as const;
 
+export const gapIcon: Record<GapKind, string> = { door: "🚪", storyteller: "🎩" };
+
 /**
- * The town square: the seats on an ellipse filling the area, clockwise from the top, each with its
- * reminder tokens pointing to the middle; the phase and the vote count in the middle. Sizes follow the
- * area and the number of seats, so it works on a tablet either way round and on a phone.
+ * The town square: the circle on an ellipse filling the area, clockwise, each player with their reminder
+ * tokens pointing to the middle; the phase and the vote count in the middle. The Storyteller's spot is at
+ * the bottom, so the tablet shows the table as the Storyteller sees it (without one the first seat is at
+ * the top). Sizes follow the area and the number of places, so it works on a tablet either way round and
+ * on a phone.
  */
 export function Town({
   selectedId,
   highlightIds,
   onSelect,
   center,
+  hideRoles = false,
 }: {
   selectedId: string | null;
   /** Seats that wake on the night step in focus */
   highlightIds: string[];
   onSelect: (seatId: string) => void;
   center: React.ReactNode;
+  /** The players hold the tablet (the draw): characters face down, no reminders */
+  hideRoles?: boolean;
 }) {
   const { state, t } = useGrimoire();
   const ref = useRef<HTMLDivElement>(null);
@@ -55,8 +62,10 @@ export function Town({
   const cy = (h - LABEL) / 2;
   const rx = Math.max(0, w / 2 - token / 2 - 4);
   const ry = Math.max(0, (h - LABEL) / 2 - token / 2 - 4);
+  const storyteller = seats.findIndex((s) => s.gap === "storyteller");
+  const first = storyteller >= 0 ? Math.PI / 2 - (2 * Math.PI * storyteller) / n : -Math.PI / 2;
   const places = seats.map((seat, i) => {
-    const angle = -Math.PI / 2 + (2 * Math.PI * i) / Math.max(n, 1);
+    const angle = first + (2 * Math.PI * i) / Math.max(n, 1);
     return { seat, x: cx + rx * Math.cos(angle), y: cy + ry * Math.sin(angle) };
   });
 
@@ -71,6 +80,9 @@ export function Town({
             {center}
           </div>
           {places.map(({ seat, x, y }) => {
+            if (seat.gap) {
+              return <Gap key={seat.id} gap={seat.gap} size={token} x={x} y={y} selected={seat.id === selectedId} onClick={() => onSelect(seat.id)} />;
+            }
             const dx = cx - x;
             const dy = cy - y;
             const len = Math.hypot(dx, dy) || 1;
@@ -81,7 +93,7 @@ export function Town({
             const start = token / 2 + 6 + step / 2;
             return (
               <div key={seat.id}>
-                {seat.reminders.map((r, j) => {
+                {!hideRoles && seat.reminders.map((r, j) => {
                   const d = start + j * step;
                   return (
                     <button
@@ -106,6 +118,7 @@ export function Town({
                   selected={seat.id === selectedId}
                   highlighted={highlightIds.includes(seat.id)}
                   onClick={() => onSelect(seat.id)}
+                  hidden={hideRoles}
                 />
               </div>
             );
@@ -121,6 +134,31 @@ export function Town({
   );
 }
 
+/** A gap in the circle: smaller and dashed, an icon and what it is. */
+function Gap({ gap, size, x, y, selected, onClick }: { gap: GapKind; size: number; x: number; y: number; selected: boolean; onClick: () => void }) {
+  const { t } = useGrimoire();
+  const d = size * 0.62;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="absolute flex flex-col items-center"
+      style={{ left: x - size / 2, top: y - d / 2, width: size }}
+      aria-pressed={selected}
+      data-testid="gap"
+      data-gap={gap}
+    >
+      <span
+        className={`flex items-center justify-center rounded-full border-2 border-dashed border-muted/60 bg-background/60 ${selected ? "outline-4 outline-offset-2 outline-accent" : ""}`}
+        style={{ width: d, height: d, fontSize: d * 0.45 }}
+      >
+        {gapIcon[gap]}
+      </span>
+      <span className="mt-0.5 text-xs text-muted">{t.gaps[gap]}</span>
+    </button>
+  );
+}
+
 function SeatToken({
   seat,
   size,
@@ -129,6 +167,7 @@ function SeatToken({
   selected,
   highlighted,
   onClick,
+  hidden,
 }: {
   seat: GrimoireSeat;
   size: number;
@@ -137,8 +176,31 @@ function SeatToken({
   selected: boolean;
   highlighted: boolean;
   onClick: () => void;
+  hidden: boolean;
 }) {
   const { locale, t } = useGrimoire();
+  if (hidden) {
+    // face down: whether the place has drawn, never what
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className="absolute flex flex-col items-center"
+        style={{ left: x - size / 2, top: y - size / 2, width: size }}
+        data-testid="seat"
+        data-seat={seat.name}
+        data-drawn={seat.role ? "yes" : "no"}
+      >
+        <span
+          className={`flex items-center justify-center rounded-full border-[3px] shadow-md ${seat.role ? "border-foreground/70 bg-foreground/80 text-background" : "border-dashed border-accent/60 bg-card text-accent"}`}
+          style={{ width: size, height: size, fontSize: size * 0.4 }}
+        >
+          {seat.role ? "✓" : "?"}
+        </span>
+        <span className="mt-0.5 max-w-[150%] truncate text-sm leading-tight font-semibold">{seat.name || "\u00a0"}</span>
+      </button>
+    );
+  }
   const side = seatSide(seat);
   const border = side ? sideBorder[side] : seat.role ? "border-muted" : "border-dashed border-border";
   const ring = selected ? "outline-4 outline-offset-2 outline-accent" : highlighted ? "outline-4 outline-offset-2 outline-amber-400" : "";
@@ -192,13 +254,14 @@ function SeatToken({
 export function TownCenter({ phaseLabel }: { phaseLabel: string }) {
   const { state, t } = useGrimoire();
   const { alive, votes, toExecute } = voteMath(state);
+  const count = players(state).length;
   const bluffs = state.bluffs.filter((b): b is string => b !== null);
   return (
     <>
       <span className="text-xl font-bold tracking-tight sm:text-2xl">{phaseLabel}</span>
-      {state.seats.length > 0 && (
+      {count > 0 && (
         <span className="text-sm text-muted">
-          {fill(t.aliveCount, { n: alive, m: state.seats.length })} · {fill(t.votesCount, { n: votes })}
+          {fill(t.aliveCount, { n: alive, m: count })} · {fill(t.votesCount, { n: votes })}
         </span>
       )}
       {state.phase === "day" && alive > 0 && <span className="text-sm font-semibold">{fill(t.toExecute, { n: toExecute })}</span>}

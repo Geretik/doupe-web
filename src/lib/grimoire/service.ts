@@ -3,9 +3,10 @@ import { db } from "@/db";
 import { adminUsers, games, grimoires, registrations, scripts, sessions, type AdminUser, type Grimoire } from "@/db/schema";
 import { botcRoles, linkedRoleOf } from "@/lib/botc-roles";
 import { saveRoster } from "@/lib/game-roster";
+import { scriptToolLinkForJson } from "@/lib/draft/script";
 import { libraryScriptToolLink } from "@/lib/scripts";
 import type { RosterValue } from "@/lib/validation";
-import { newGrimoireState, newSeat, type GrimoireState } from "./state";
+import { newGap, newGrimoireState, newSeat, players, type GrimoireState } from "./state";
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -79,8 +80,8 @@ export async function getGrimoire(id: number) {
   return row ?? null;
 }
 
-/** The session's players as seats: confirmed sign-ups not marked absent, by nickname. */
-async function sessionSeats(sessionId: number, locale: string) {
+/** The session's players: confirmed sign-ups not marked absent, by nickname. */
+export async function sessionPlayers(sessionId: number, locale: string) {
   const rows = await db
     .select({ id: registrations.id, nickname: registrations.nickname, attended: registrations.attended })
     .from(registrations)
@@ -88,14 +89,14 @@ async function sessionSeats(sessionId: number, locale: string) {
   return rows
     .filter((r) => r.attended !== false)
     .sort((a, b) => a.nickname.localeCompare(b.nickname, locale))
-    .map((r) => newSeat(r.nickname, r.id));
+    .map(({ id, nickname }) => ({ id, nickname }));
 }
 
 export type NewGrimoire = {
   name: string | null;
   sessionId: number | null;
   scriptId: number | null;
-  /** Another grimoire of the account: the next game with the same players in the same seats */
+  /** Another grimoire of the account: the next game with the same players in the same seats (and the same gaps) */
   fromId: number | null;
 };
 
@@ -116,13 +117,13 @@ export async function createGrimoire(
   if (input.fromId) {
     const from = await db.query.grimoires.findFirst({ where: eq(grimoires.id, input.fromId) });
     if (!from || !canEditGrimoire(me, from)) return null;
-    seats = from.state.seats.map((s) => newSeat(s.name, s.registrationId));
+    seats = from.state.seats.map((s) => (s.gap ? newGap(s.gap) : newSeat(s.name, s.registrationId)));
     sessionId = from.sessionId;
     script = from.state.script;
   }
   const session = sessionId ? await db.query.sessions.findFirst({ where: eq(sessions.id, sessionId) }) : undefined;
   if (sessionId && !session) return null;
-  if (session && !input.fromId) seats = await sessionSeats(session.id, locale);
+  if (session && !input.fromId) seats = (await sessionPlayers(session.id, locale)).map((p) => newSeat(p.nickname, p.id));
 
   const library = await grimoireScripts();
   if (input.scriptId) {
@@ -159,13 +160,16 @@ async function writeGameRecord(tx: Tx, g: Grimoire, sessionId: number, state: Gr
   }
   const name = state.script.name.trim().toLowerCase();
   scriptUrl ??= session.scripts.find((s) => s.name.trim().toLowerCase() === name)?.url ?? null;
+  // a pasted script is not stored; the script tool opens its characters
+  if (!scriptUrl && state.script.json) scriptUrl = scriptToolLinkForJson([{ id: "_meta", name: state.script.name }, ...state.script.roleIds]);
   const bluffs = state.bluffs.filter((b): b is string => b !== null);
+  const count = players(state).length;
   const values = {
     scriptName: state.script.name,
     scriptUrl,
     winner: state.winner,
     // the game form takes 5–20 players
-    players: state.seats.length >= 5 && state.seats.length <= 20 ? state.seats.length : null,
+    players: count >= 5 && count <= 20 ? count : null,
     demonBluffs: bluffs.length ? bluffs : null,
   };
   let gameId = g.gameId;

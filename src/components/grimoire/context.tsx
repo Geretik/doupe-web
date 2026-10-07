@@ -15,6 +15,8 @@ export type GrimoireContextValue = {
   update: (change: (s: GrimoireState) => GrimoireState) => void;
   readOnly: boolean;
   characters: Record<string, GrimoireCharacter>;
+  /** The session's signed-up players (sign-up id, nickname), for naming the seats; empty without a session */
+  sessionPlayers: { id: number; nickname: string }[];
   locale: Locale;
   t: GrimoireTexts;
 };

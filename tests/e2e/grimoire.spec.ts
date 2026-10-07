@@ -30,7 +30,7 @@ async function sessionWithPlayers(names: string[]) {
 const seat = (page: Page, name: string) => page.locator(`[data-testid=seat][data-seat="${name}"]`);
 
 /** The stored grimoire, once the page's autosave has caught up with what the test expects. */
-async function stored<T>(pick: (state: { seats: { name: string; reminders: { text: string }[] }[]; phase: string }) => T, expected: T) {
+async function stored<T>(pick: (state: { seats: { name: string; role: string | null; reminders: { text: string }[] }[]; phase: string }) => T, expected: T) {
   await expect
     .poll(async () => {
       const [row] = await sql<{ state: Parameters<typeof pick>[0] }>("select state from grimoires order by id desc limit 1");
@@ -200,4 +200,85 @@ test("grimoire: an empty one, players typed in; only its Storyteller sees it unt
   await expect(other.locator("main")).toContainText("Odehrané hry ostatních");
   await expect(other.locator("main")).toContainText("vypravěč/ka Správce");
   await ctx.close();
+});
+
+test("grimoire: the door and the Storyteller's spot, a pasted script, players drawing their characters, names from the session afterwards", async ({ page }) => {
+  await page.setViewportSize({ width: 1180, height: 820 });
+  const sessionId = await sessionWithPlayers(["Ada", "Bára", "Cyril", "Dan", "Eva"]);
+  await adminLogin(page);
+  await page.goto(`/admin/termin/${sessionId}`);
+  await page.getByRole("button", { name: "Nový grimoár z tohoto termínu" }).click();
+  await expect(page.getByTestId("seat")).toHaveCount(5);
+
+  // they will sit differently: five places without names, one more and back
+  await page.getByRole("button", { name: "Smazat jména (rozesazení)" }).click();
+  await expect(page.locator('[data-testid=seat][data-seat=""]')).toHaveCount(5);
+  await page.getByRole("button", { name: "Přidat místo" }).click();
+  await expect(page.getByTestId("seat")).toHaveCount(6);
+  await page.getByRole("button", { name: "Ubrat místo" }).click();
+  await expect(page.getByTestId("seat")).toHaveCount(5);
+
+  // the Storyteller's spot turns the circle so it is at the bottom; a door after the first player
+  await page.getByRole("button", { name: "🎩 Vypravěč" }).click();
+  const middle = async (el: import("@playwright/test").Locator) => {
+    const box = (await el.boundingBox())!;
+    return box.y + box.height / 2;
+  };
+  const storyteller = await middle(page.locator("[data-gap=storyteller]"));
+  for (const s of await page.getByTestId("seat").all()) expect(await middle(s)).toBeLessThan(storyteller);
+  await page.getByTestId("seat").first().click();
+  await page.getByTestId("seat-panel").getByRole("button", { name: "🚪 Dveře" }).click();
+  await expect(page.getByTestId("gap")).toHaveCount(2);
+  await expect(page.getByTestId("town")).toContainText("Živí 5 z 5");
+
+  // a script pasted as JSON; what the site does not know is said and left out
+  await page.getByRole("tab", { name: "Příprava" }).click();
+  await page.getByRole("button", { name: "Vložit JSON nebo soubor" }).click();
+  await page.getByRole("textbox", { name: "Vložit JSON nebo soubor" }).fill(
+    JSON.stringify([{ id: "_meta", name: "Malý script" }, "washerwoman", "chef", "empath", "poisoner", "imp", { id: "hrdina", name: "Homebrew Hrdina" }]),
+  );
+  await page.getByRole("button", { name: "Použít script" }).click();
+  await expect(page.locator("#grimoire-script option:checked")).toHaveText("Malý script (JSON)");
+  await expect(page.getByTestId("setup-panel")).toContainText("Web nezná (v grimoáru nebudou): Homebrew Hrdina");
+
+  // the bag, then the players draw: the grimoire hides, each taps their place
+  for (const name of ["Pradlena", "Kuchař", "Empat", "Travič", "Čert"]) await page.getByRole("button", { name: `Do pytlíku: ${name}` }).click();
+  await page.getByRole("button", { name: "Losování hráči" }).click();
+  await expect(page.locator("h1")).toHaveText("Losování postav");
+  await expect(page.getByTestId("draw-left")).toHaveText("V pytlíku zbývá 5");
+  const dialog = page.getByTestId("draw-dialog");
+  for (let i = 0; i < 5; i++) {
+    await page.locator("[data-testid=seat][data-drawn=no]").first().click();
+    await dialog.getByRole("button", { name: "Ťukni a podívej se na svou postavu" }).click();
+    await expect(dialog.getByTestId("drawn-role")).toBeVisible();
+    await dialog.getByRole("button", { name: "Mám to – skrýt" }).click();
+  }
+  await expect(page.getByTestId("draw-left")).toHaveText("V pytlíku zbývá 0");
+  await expect(page.getByTestId("town")).not.toContainText("Pradlena");
+  // a place that has drawn shows nothing to the next player
+  await page.locator("[data-testid=seat][data-drawn=yes]").first().click();
+  await expect(dialog).toContainText("Toto místo už postavu má");
+  await dialog.getByRole("button", { name: "Zpět" }).click();
+  page.once("dialog", (d) => d.accept());
+  await page.getByRole("button", { name: "Konec losování (vypravěč)" }).click();
+  await expect(page.getByTestId("phase")).toHaveText("Příprava");
+  await stored((st) => st.seats.flatMap((x) => (x.role ? [x.role] : [])).sort(), ["chef", "empath", "imp", "poisoner", "washerwoman"]);
+
+  // names afterwards: tap the first place, then the session's players one by one, the grimoire moves on by itself
+  await page.getByTestId("seat").first().click();
+  for (const name of ["Eva", "Dan", "Cyril", "Bára", "Ada"]) {
+    await page.getByTestId("seat-panel").getByRole("button", { name, exact: true }).click();
+  }
+  await expect(page.locator('[data-testid=seat][data-seat=""]')).toHaveCount(0);
+  await expect(page.getByTestId("seat-panel")).toContainText("Propojeno s přihláškou na termín");
+
+  // the game record counts the players, not the gaps, and links the pasted script to the script tool
+  await page.getByRole("tab", { name: "Hra" }).click();
+  await page.getByRole("button", { name: "😇 Dobro" }).click();
+  await expect
+    .poll(() => sql<{ players: number; script_name: string }>("select players, script_name from games where session_id = $1", [sessionId]))
+    .toEqual([{ players: 5, script_name: "Malý script" }]);
+  const [game] = await sql<{ script_url: string }>("select script_url from games where session_id = $1", [sessionId]);
+  expect(game.script_url).toContain("?script=");
+  expect(await sql("select id from game_players where role is not null")).toHaveLength(5);
 });

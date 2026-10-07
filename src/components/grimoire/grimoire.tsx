@@ -6,6 +6,7 @@ import type { Locale } from "@/i18n/dictionaries";
 import type { GrimoireCharacter } from "@/lib/grimoire/characters";
 import { nextPhase, nightSteps, type GrimoireState } from "@/lib/grimoire/state";
 import { useAutosave, type SaveStatus } from "./autosave";
+import { DrawView } from "./draw";
 import { fill } from "@/lib/grimoire/text";
 import { GrimoireContext, type GrimoireContextValue, type GrimoireTexts } from "./context";
 import { GamePanel } from "./game-panel";
@@ -46,6 +47,7 @@ export function Grimoire({
   characters,
   scripts,
   session,
+  sessionPlayers,
   recorded: initiallyRecorded,
   locale,
   t,
@@ -57,6 +59,8 @@ export function Grimoire({
   characters: Record<string, GrimoireCharacter>;
   scripts: ScriptChoice[];
   session: { id: number; title: string } | null;
+  /** The session's signed-up players, for naming the seats */
+  sessionPlayers: { id: number; nickname: string }[];
   recorded: boolean;
   locale: Locale;
   t: GrimoireTexts;
@@ -104,7 +108,7 @@ export function Grimoire({
   const currentStep = steps.find((s) => !state.nightDone.includes(s.id)) ?? null;
   const focused = steps.find((s) => s.id === focusStep) ?? currentStep;
 
-  const context: GrimoireContextValue = { state, update, readOnly: !canEdit || state.phase === "ended", characters, locale, t };
+  const context: GrimoireContextValue = { state, update, readOnly: !canEdit || state.phase === "ended", characters, sessionPlayers, locale, t };
 
   const advance = () => {
     const next = nextPhase(state);
@@ -128,117 +132,123 @@ export function Grimoire({
         className="grimoire flex h-[calc(100dvh-10rem)] min-h-[34rem] touch-manipulation flex-col gap-2 bg-background"
         data-testid="grimoire"
       >
-        <div className="flex flex-wrap items-center gap-2">
-          {!fullscreen && (
-            <Link href="/admin/grimoary" className="text-sm text-muted hover:underline">
-              {t.back}
-            </Link>
-          )}
-          <h1 className="min-w-0 truncate text-lg font-bold">{name}</h1>
-          <span className="rounded-full border border-border bg-card px-2.5 py-0.5 text-sm font-semibold" data-testid="phase">
-            {phaseLabel}
-          </span>
-          <span className={`text-xs ${statusClass[save.status]}`} role="status" data-testid="save-status">
-            {canEdit ? t.saveStatus[save.status] : t.readOnly}
-          </span>
-          <span className="ml-auto flex flex-wrap items-center gap-2">
-            {canEdit && (
-              <button
-                type="button"
-                onClick={() => dispatch({ type: "undo" })}
-                disabled={history.past.length === 0}
-                className="min-h-11 rounded-lg border border-border bg-card px-3 text-sm font-medium disabled:opacity-40"
-              >
-                ↶ {t.undo}
-              </button>
-            )}
-            {canEdit && nextLabel && (
-              <button type="button" onClick={advance} className="min-h-11 rounded-lg bg-accent px-3 text-sm font-semibold text-accent-foreground">
-                {nextLabel}
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={() => (fullscreen ? document.exitFullscreen() : root.current?.requestFullscreen())?.catch(() => {})}
-              className="min-h-11 rounded-lg border border-border bg-card px-3 text-sm"
-              aria-label={fullscreen ? t.exitFullscreen : t.fullscreen}
-              title={fullscreen ? t.exitFullscreen : t.fullscreen}
-            >
-              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
-                {fullscreen ? (
-                  <path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" />
-                ) : (
-                  <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />
-                )}
-              </svg>
-            </button>
-          </span>
-        </div>
-
-        {save.conflict && (
-          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-accent/50 bg-accent/10 px-3 py-2 text-sm">
-            <span className="flex-1">{t.conflict}</span>
-            <button
-              type="button"
-              className="min-h-10 rounded-lg border border-border bg-card px-3"
-              onClick={() => {
-                const theirs = save.takeTheirs();
-                if (theirs) dispatch({ type: "replace", state: theirs });
-              }}
-            >
-              {t.conflictTheirs}
-            </button>
-            <button type="button" className="min-h-10 rounded-lg bg-accent px-3 text-accent-foreground" onClick={save.keepMine}>
-              {t.conflictMine}
-            </button>
-          </div>
-        )}
-
-        <div className="flex min-h-0 flex-1 flex-col gap-3 lg:flex-row">
-          <div className="relative min-h-0 basis-[55%] lg:basis-auto lg:flex-1">
-            <Town
-              selectedId={shown === "seat" ? selected : null}
-              highlightIds={focused?.seatIds ?? []}
-              onSelect={(seatId) => {
-                setSelected(seatId);
-                setTab("seat");
-              }}
-              center={<TownCenter phaseLabel={phaseLabel} />}
-            />
-          </div>
-          <aside className="flex min-h-0 flex-1 flex-col rounded-xl border border-border bg-card lg:w-[25rem] lg:flex-none">
-            <div className="flex border-b border-border" role="tablist">
-              {tabs.map((x) => (
-                <button
-                  key={x}
-                  type="button"
-                  role="tab"
-                  aria-selected={shown === x}
-                  onClick={() => setTab(x)}
-                  className={`min-h-12 flex-1 px-2 text-sm font-semibold ${shown === x ? "border-b-2 border-accent text-accent" : "text-muted"}`}
-                >
-                  {t.tabs[x]}
-                </button>
-              ))}
-            </div>
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3">
-              {shown === "seat" && <SeatPanel key={selected} seatId={selected} onRemoved={() => setSelected(null)} />}
-              {shown === "night" && (
-                <NightPanel steps={steps} currentId={currentStep?.id ?? null} focusId={focusStep} onFocus={setFocusStep} onNext={advance} />
+        {state.drawing ? (
+          <DrawView />
+        ) : (
+          <>
+            <div className="flex flex-wrap items-center gap-2">
+              {!fullscreen && (
+                <Link href="/admin/grimoary" className="text-sm text-muted hover:underline">
+                  {t.back}
+                </Link>
               )}
-              {shown === "setup" && (
-                <SetupPanel
-                  scripts={scripts}
-                  onSelectSeat={(seatId) => {
+              <h1 className="min-w-0 truncate text-lg font-bold">{name}</h1>
+              <span className="rounded-full border border-border bg-card px-2.5 py-0.5 text-sm font-semibold" data-testid="phase">
+                {phaseLabel}
+              </span>
+              <span className={`text-xs ${statusClass[save.status]}`} role="status" data-testid="save-status">
+                {canEdit ? t.saveStatus[save.status] : t.readOnly}
+              </span>
+              <span className="ml-auto flex flex-wrap items-center gap-2">
+                {canEdit && (
+                  <button
+                    type="button"
+                    onClick={() => dispatch({ type: "undo" })}
+                    disabled={history.past.length === 0}
+                    className="min-h-11 rounded-lg border border-border bg-card px-3 text-sm font-medium disabled:opacity-40"
+                  >
+                    ↶ {t.undo}
+                  </button>
+                )}
+                {canEdit && nextLabel && (
+                  <button type="button" onClick={advance} className="min-h-11 rounded-lg bg-accent px-3 text-sm font-semibold text-accent-foreground">
+                    {nextLabel}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => (fullscreen ? document.exitFullscreen() : root.current?.requestFullscreen())?.catch(() => {})}
+                  className="min-h-11 rounded-lg border border-border bg-card px-3 text-sm"
+                  aria-label={fullscreen ? t.exitFullscreen : t.fullscreen}
+                  title={fullscreen ? t.exitFullscreen : t.fullscreen}
+                >
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+                    {fullscreen ? (
+                      <path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" />
+                    ) : (
+                      <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />
+                    )}
+                  </svg>
+                </button>
+              </span>
+            </div>
+
+            {save.conflict && (
+              <div className="flex flex-wrap items-center gap-2 rounded-lg border border-accent/50 bg-accent/10 px-3 py-2 text-sm">
+                <span className="flex-1">{t.conflict}</span>
+                <button
+                  type="button"
+                  className="min-h-10 rounded-lg border border-border bg-card px-3"
+                  onClick={() => {
+                    const theirs = save.takeTheirs();
+                    if (theirs) dispatch({ type: "replace", state: theirs });
+                  }}
+                >
+                  {t.conflictTheirs}
+                </button>
+                <button type="button" className="min-h-10 rounded-lg bg-accent px-3 text-accent-foreground" onClick={save.keepMine}>
+                  {t.conflictMine}
+                </button>
+              </div>
+            )}
+
+            <div className="flex min-h-0 flex-1 flex-col gap-3 lg:flex-row">
+              <div className="relative min-h-0 basis-[55%] lg:basis-auto lg:flex-1">
+                <Town
+                  selectedId={shown === "seat" ? selected : null}
+                  highlightIds={focused?.seatIds ?? []}
+                  onSelect={(seatId) => {
                     setSelected(seatId);
                     setTab("seat");
                   }}
+                  center={<TownCenter phaseLabel={phaseLabel} />}
                 />
-              )}
-              {shown === "game" && <GamePanel id={id} session={session} recorded={recorded} canEdit={canEdit} />}
+              </div>
+              <aside className="flex min-h-0 flex-1 flex-col rounded-xl border border-border bg-card lg:w-[25rem] lg:flex-none">
+                <div className="flex border-b border-border" role="tablist">
+                  {tabs.map((x) => (
+                    <button
+                      key={x}
+                      type="button"
+                      role="tab"
+                      aria-selected={shown === x}
+                      onClick={() => setTab(x)}
+                      className={`min-h-12 flex-1 px-2 text-sm font-semibold ${shown === x ? "border-b-2 border-accent text-accent" : "text-muted"}`}
+                    >
+                      {t.tabs[x]}
+                    </button>
+                  ))}
+                </div>
+                <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3">
+                  {shown === "seat" && <SeatPanel key={selected} seatId={selected} onRemoved={() => setSelected(null)} onSelect={setSelected} />}
+                  {shown === "night" && (
+                    <NightPanel steps={steps} currentId={currentStep?.id ?? null} focusId={focusStep} onFocus={setFocusStep} onNext={advance} />
+                  )}
+                  {shown === "setup" && (
+                    <SetupPanel
+                      scripts={scripts}
+                      onSelectSeat={(seatId) => {
+                        setSelected(seatId);
+                        setTab("seat");
+                      }}
+                    />
+                  )}
+                  {shown === "game" && <GamePanel id={id} session={session} recorded={recorded} canEdit={canEdit} />}
+                </div>
+              </aside>
             </div>
-          </aside>
-        </div>
+          </>
+        )}
       </div>
     </GrimoireContext.Provider>
   );

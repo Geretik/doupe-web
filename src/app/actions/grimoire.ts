@@ -6,6 +6,8 @@ import { getDict } from "@/i18n/server";
 import { requireAdmin } from "@/lib/admin-auth";
 import { grimoireStateSchema } from "@/lib/grimoire/schema";
 import { createGrimoire, deleteGrimoire, getGrimoire, saveGrimoire, type SaveResult } from "@/lib/grimoire/service";
+import type { GrimoireState } from "@/lib/grimoire/state";
+import { parseScriptFile } from "@/lib/scripts";
 import { parseId } from "@/lib/validation";
 
 function optionalId(v: FormDataEntryValue | null) {
@@ -49,4 +51,19 @@ export async function deleteGrimoireAction(id: number) {
   const deleted = await deleteGrimoire(me, id);
   if (deleted?.sessionId) revalidatePath(`/admin/termin/${deleted.sessionId}`);
   redirect("/admin/grimoary");
+}
+
+export type ReadScriptResult = { ok: true; script: GrimoireState["script"]; extras: string[] } | { error: string };
+
+/** A script pasted or picked as a file in the grimoire: its name and the characters this site knows; nothing is saved. */
+export async function readGrimoireScriptAction(text: string): Promise<ReadScriptResult> {
+  await requireAdmin();
+  const { t } = await getDict();
+  const errors = t.scripts.errors;
+  if (typeof text !== "string" || !text.trim()) return { error: errors.noFile };
+  const parsed = parseScriptFile(text);
+  if (!parsed.ok) return { error: errors[parsed.error] };
+  if (parsed.script.roleIds.length === 0) return { error: errors.noCharacters };
+  const name = (parsed.script.meta.name ?? t.grimoire.jsonScript).slice(0, 200);
+  return { ok: true, script: { id: null, json: true, name, roleIds: parsed.script.roleIds }, extras: parsed.script.extras };
 }

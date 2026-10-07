@@ -2,10 +2,21 @@
 
 import { useState } from "react";
 import { botcRoles, findRole, linkedRoleOf } from "@/lib/botc-roles";
-import { charactersInPlay, MAX_REMINDERS, uid, type GrimoireSeat, type GrimoireState } from "@/lib/grimoire/state";
+import {
+  charactersInPlay,
+  gapKinds,
+  MAX_REMINDERS,
+  MAX_SEATS,
+  newGap,
+  uid,
+  type GapKind,
+  type GrimoireSeat,
+  type GrimoireState,
+} from "@/lib/grimoire/state";
 import { fill } from "@/lib/grimoire/text";
 import { nameOf, RoleIcon, useGrimoire } from "./context";
 import { RoleGrid } from "./role-grid";
+import { gapIcon } from "./town";
 
 const travellers = botcRoles.filter((r) => r.team === "traveller").map((r) => r.id);
 
@@ -26,25 +37,33 @@ export function holders(state: GrimoireState, exceptSeatId?: string) {
   return names;
 }
 
-/** Everything about the seat tapped in the town: name, character, death, vote, reminders, place. */
-export function SeatPanel({ seatId, onRemoved }: { seatId: string | null; onRemoved: () => void }) {
-  const { state, update, readOnly, characters, locale, t } = useGrimoire();
+/** Everything about the place tapped in the town: a player's name, character, death, vote, reminders, place; or a gap. */
+export function SeatPanel({ seatId, onRemoved, onSelect }: { seatId: string | null; onRemoved: () => void; onSelect: (seatId: string) => void }) {
+  const { state, update, readOnly, characters, sessionPlayers, locale, t } = useGrimoire();
   const index = state.seats.findIndex((s) => s.id === seatId);
   const seat = index >= 0 ? state.seats[index] : null;
   const [picking, setPicking] = useState<"role" | "linked" | "reminder" | null>(null);
   const [custom, setCustom] = useState("");
   if (!seat) return <p className="text-sm text-muted">{t.pickSeat}</p>;
 
+  if (seat.gap) return <GapPanel seat={{ ...seat, gap: seat.gap }} index={index} onRemoved={onRemoved} />;
+
   const set = (change: (seat: GrimoireSeat) => GrimoireSeat) => update((s) => changeSeat(s, seat.id, change));
   const linked = linkedRoleOf(seat.role);
   const others = holders(state, seat.id);
-  const move = (by: number) =>
-    update((s) => {
-      const seats = [...s.seats];
-      const to = (index + by + seats.length) % seats.length;
-      [seats[index], seats[to]] = [seats[to], seats[index]];
-      return { ...s, seats };
-    });
+  // a session player not seated elsewhere: typing their nickname links the seat to their sign-up
+  const seatedElsewhere = new Set(state.seats.filter((x) => x.id !== seat.id).map((x) => x.registrationId));
+  const free = sessionPlayers.filter((p) => !seatedElsewhere.has(p.id) && p.id !== seat.registrationId);
+  const setName = (name: string) => {
+    const match = sessionPlayers.find((p) => !seatedElsewhere.has(p.id) && p.nickname.toLowerCase() === name.toLowerCase());
+    set((x) => ({ ...x, name, registrationId: match?.id ?? null }));
+  };
+  const pickPlayer = (player: { id: number; nickname: string }) => {
+    set((x) => ({ ...x, name: player.nickname, registrationId: player.id }));
+    // naming the circle after a draw: on to the next place without a name, clockwise
+    const next = [...state.seats.slice(index + 1), ...state.seats.slice(0, index)].find((x) => !x.gap && !x.name);
+    if (next) onSelect(next.id);
+  };
   const addReminder = (roleId: string | null, text: string) => {
     set((x) => ({ ...x, reminders: [...x.reminders, { id: uid(), roleId, text }].slice(0, MAX_REMINDERS) }));
     setPicking(null);
@@ -52,7 +71,20 @@ export function SeatPanel({ seatId, onRemoved }: { seatId: string | null; onRemo
 
   return (
     <div className="flex flex-col gap-4" data-testid="seat-panel">
-      <SeatName key={seat.id} name={seat.name} onSave={(name) => set((x) => ({ ...x, name }))} />
+      <SeatName key={`${seat.id}-${seat.name}`} name={seat.name} onSave={setName} />
+      {seat.registrationId && <p className="-mt-3 text-xs text-muted">✓ {t.linkedToSession}</p>}
+      {!readOnly && free.length > 0 && (
+        <section className="-mt-1 flex flex-col gap-1.5">
+          <h3 className="text-xs font-semibold tracking-wide text-muted uppercase">{t.fromSession}</h3>
+          <div className="flex flex-wrap gap-1.5">
+            {free.map((p) => (
+              <button key={p.id} type="button" onClick={() => pickPlayer(p)} className="min-h-10 rounded-full border border-border bg-card px-3 text-sm hover:border-accent/50">
+                {p.nickname}
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="flex flex-col gap-2">
         <h3 className="text-xs font-semibold tracking-wide text-muted uppercase">{t.role}</h3>
@@ -186,28 +218,80 @@ export function SeatPanel({ seatId, onRemoved }: { seatId: string | null; onRemo
         )}
       </section>
 
-      {!readOnly && (
-        <section className="flex flex-wrap gap-2 border-t border-border pt-3">
-          <button type="button" className={plain} onClick={() => move(-1)} disabled={state.seats.length < 2}>
-            {t.moveBack}
-          </button>
-          <button type="button" className={plain} onClick={() => move(1)} disabled={state.seats.length < 2}>
-            {t.moveOn}
-          </button>
-          <button
-            type="button"
-            className={`${big} ml-auto border-accent text-accent hover:bg-accent/10`}
-            onClick={() => {
-              if (!confirm(fill(t.removeSeatConfirm, { name: seat.name }))) return;
-              update((s) => ({ ...s, seats: s.seats.filter((x) => x.id !== seat.id) }));
-              onRemoved();
-            }}
-          >
-            {t.removeSeat}
-          </button>
+      <PlaceControls seat={seat} index={index} onRemoved={onRemoved} />
+    </div>
+  );
+}
+
+/** A gap in the circle: what it is, and its place. */
+function GapPanel({ seat, index, onRemoved }: { seat: GrimoireSeat & { gap: GapKind }; index: number; onRemoved: () => void }) {
+  const { t } = useGrimoire();
+  return (
+    <div className="flex flex-col gap-4" data-testid="seat-panel">
+      <h3 className="flex items-center gap-2 text-xl font-bold">
+        <span aria-hidden>{gapIcon[seat.gap]}</span>
+        {t.gaps[seat.gap]}
+      </h3>
+      <p className="text-sm text-muted">{t.gapHints[seat.gap]}</p>
+      <PlaceControls seat={seat} index={index} onRemoved={onRemoved} />
+    </div>
+  );
+}
+
+/** Moving a place around the circle, putting a gap after a player, taking the place out of the circle. */
+function PlaceControls({ seat, index, onRemoved }: { seat: GrimoireSeat; index: number; onRemoved: () => void }) {
+  const { state, update, readOnly, t } = useGrimoire();
+  if (readOnly) return null;
+  const move = (by: number) =>
+    update((s) => {
+      const seats = [...s.seats];
+      const to = (index + by + seats.length) % seats.length;
+      [seats[index], seats[to]] = [seats[to], seats[index]];
+      return { ...s, seats };
+    });
+  const insertGap = (gap: GapKind) =>
+    update((s) => (s.seats.length >= MAX_SEATS ? s : { ...s, seats: [...s.seats.slice(0, index + 1), newGap(gap), ...s.seats.slice(index + 1)] }));
+  const hasStoryteller = state.seats.some((s) => s.gap === "storyteller");
+  return (
+    <>
+      {!seat.gap && (
+        <section className="flex flex-col gap-2 border-t border-border pt-3">
+          <h3 className="text-xs font-semibold tracking-wide text-muted uppercase">{t.insertAfter}</h3>
+          <div className="flex flex-wrap gap-2">
+            {gapKinds.map((gap) => (
+              <button
+                key={gap}
+                type="button"
+                className={plain}
+                onClick={() => insertGap(gap)}
+                disabled={state.seats.length >= MAX_SEATS || (gap === "storyteller" && hasStoryteller)}
+              >
+                {gapIcon[gap]} {t.gaps[gap]}
+              </button>
+            ))}
+          </div>
         </section>
       )}
-    </div>
+      <section className="flex flex-wrap gap-2 border-t border-border pt-3">
+        <button type="button" className={plain} onClick={() => move(-1)} disabled={state.seats.length < 2}>
+          {t.moveBack}
+        </button>
+        <button type="button" className={plain} onClick={() => move(1)} disabled={state.seats.length < 2}>
+          {t.moveOn}
+        </button>
+        <button
+          type="button"
+          className={`${big} ml-auto border-accent text-accent hover:bg-accent/10`}
+          onClick={() => {
+            if (!seat.gap && !confirm(fill(t.removeSeatConfirm, { name: seat.name }))) return;
+            update((s) => ({ ...s, seats: s.seats.filter((x) => x.id !== seat.id) }));
+            onRemoved();
+          }}
+        >
+          {t.removeSeat}
+        </button>
+      </section>
+    </>
   );
 }
 
@@ -227,6 +311,7 @@ function SeatName({ name, onSave }: { name: string; onSave: (name: string) => vo
       onBlur={save}
       onKeyDown={(e) => e.key === "Enter" && (e.currentTarget as HTMLInputElement).blur()}
       aria-label={t.seatName}
+      placeholder={t.seatName}
       maxLength={60}
       className="min-h-11 rounded-lg border border-border bg-card px-3 text-xl font-bold"
     />
