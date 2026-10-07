@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import { adminLogin, createAdminUser, createSession, resetDb, sql } from "./helpers";
 
 test.describe.configure({ mode: "serial" });
@@ -326,4 +326,38 @@ test("grimoire: players dragged to other places in the circle, then the seating 
   // unlocked again; the last place next to the first goes the short way round, a swap
   await drag("Zbyněk", "Petr");
   await stored(names, ["Zbyněk", "Olga", "Jana", "Petr"]);
+});
+
+test("grimoire: the bag counts each team against the setup for the players, also over the whole screen", async ({ page }) => {
+  await page.setViewportSize({ width: 1180, height: 820 }); // a tablet on its side
+  const sessionId = await sessionWithPlayers(["Ada", "Bára", "Cyril", "Dan", "Eva", "Filip", "Gita"]);
+  await adminLogin(page);
+  await page.goto(`/admin/termin/${sessionId}`);
+  await page.getByRole("button", { name: "Nový grimoár z tohoto termínu" }).click();
+  await expect(page.getByTestId("seat")).toHaveCount(7);
+  const count = (scope: Page | Locator, team: string) => scope.locator(`[data-team=${team}] [data-testid=bag-team-count]`);
+  await expect(count(page, "townsfolk")).toHaveText("0 / 5");
+
+  await page.getByRole("button", { name: "Na celou obrazovku" }).click();
+  const screen = page.getByTestId("bag-screen");
+  await expect(screen).toContainText("Rozložení pro 7 hráčů");
+  for (const name of ["Pradlena", "Empat", "Mnich", "Strážkyně krkavců", "Panna", "Travič", "Baron"]) {
+    await screen.getByRole("button", { name: `Do pytlíku: ${name}` }).click();
+  }
+  await expect(screen.locator("h2")).toHaveText("Pytlík: 7 z 7");
+  await expect(count(screen, "townsfolk")).toHaveText("5 / 5");
+  await expect(count(screen, "outsider")).toHaveText("0 / 0");
+  await expect(count(screen, "minion")).toHaveText("2 / 1");
+  await expect(count(screen, "demon")).toHaveText("0 / 1");
+  await expect(screen).toContainText("Baron: [+2 Podivíni]");
+  // the whole script on the tablet without scrolling
+  expect(await screen.evaluate((el) => el.scrollHeight <= el.clientHeight)).toBe(true);
+
+  // the Imp instead of the Baron, handed out from the full screen, which then closes
+  await screen.getByRole("button", { name: "Do pytlíku: Baron" }).click();
+  await screen.getByRole("button", { name: "Do pytlíku: Čert" }).click();
+  await expect(count(screen, "demon")).toHaveText("1 / 1");
+  await screen.getByRole("button", { name: "Rozdat náhodně" }).click();
+  await expect(screen).toHaveCount(0);
+  await expect(page.getByTestId("town")).not.toContainText("bez postavy");
 });

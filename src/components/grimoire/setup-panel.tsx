@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
+import { createPortal } from "react-dom";
 import { readGrimoireScriptAction } from "@/app/actions/grimoire";
-import { BLUFF_COUNT, botcRoles, findRole, linkedRoleOf } from "@/lib/botc-roles";
+import { BLUFF_COUNT, botcRoles, findRole, linkedRoleOf, type RoleTeam } from "@/lib/botc-roles";
 import {
   bluffCandidates,
   dealBag,
@@ -22,12 +23,20 @@ import {
 } from "@/lib/grimoire/state";
 import { groupHeadingClass } from "@/components/draft/team-section";
 import { fill } from "@/lib/grimoire/text";
-import { nameOf, RoleIcon, useGrimoire } from "./context";
+import { nameOf, RoleIcon, useGrimoire, type GrimoireContextValue } from "./context";
 import { RoleGrid } from "./role-grid";
 import { holders } from "./seat-panel";
 import { gapIcon } from "./town";
 
 export type ScriptChoice = { id: number; name: string; roleIds: string[] };
+
+/** Characters in the bag or at the table that change the setup, with their note ("[+2 Outsiders]"). */
+function setupChangesOf(state: GrimoireState, characters: GrimoireContextValue["characters"]) {
+  return [...new Set([...state.bag, ...state.seats.map((s) => s.role)])].flatMap((id) => {
+    const note = id && characters[id]?.setup ? setupNote(characters[id].ability) : null;
+    return id && note ? [{ id, note }] : [];
+  });
+}
 
 const allCharacterIds = botcRoles.filter((r) => r.team !== "traveller").map((r) => r.id);
 const button = "min-h-11 rounded-lg border px-3 py-2 text-sm font-medium disabled:opacity-40";
@@ -39,16 +48,13 @@ export function SetupPanel({ scripts, onSelectSeat }: { scripts: ScriptChoice[];
   const { state, update, readOnly, characters, locale, t } = useGrimoire();
   const [newName, setNewName] = useState("");
   const [bluffSlot, setBluffSlot] = useState<number | null>(null);
+  const [bagOpen, setBagOpen] = useState(false);
   const players = playerSeats(state).length;
   const inCircle = state.seats.filter(isPlayer);
   const expected = distribution(players);
   const assigned = teamCounts(state.seats.map((s) => s.role));
   const inBag = teamCounts(state.bag);
-  const bagSet = new Set(state.bag);
-  const setupChanges = [...new Set([...state.bag, ...state.seats.map((s) => s.role)])].flatMap((id) => {
-    const note = id && characters[id]?.setup ? setupNote(characters[id].ability) : null;
-    return id && note ? [{ id, note }] : [];
-  });
+  const setupChanges = setupChangesOf(state, characters);
   const missingLinked = state.seats.filter((s) => linkedRoleOf(s.role) && !s.believedRole);
 
   const addPlayer = () => {
@@ -57,17 +63,7 @@ export function SetupPanel({ scripts, onSelectSeat }: { scripts: ScriptChoice[];
     update((s) => ({ ...s, seats: [...s.seats, newSeat(name)] }));
     setNewName("");
   };
-  const toggleBag = (id: string) => update((s) => ({ ...s, bag: s.bag.includes(id) ? s.bag.filter((x) => x !== id) : [...s.bag, id] }));
   const emptySeat = [...inCircle].reverse().find((x) => !x.name && !x.role && !x.registrationId);
-  const blocked = undrawable(state.bag);
-  const startDraw = () => {
-    if (playerSeats(state).some((x) => x.role) && !confirm(t.drawConfirm)) return;
-    update(startDrawing);
-  };
-  const deal = () => {
-    if (state.seats.some((s) => s.role) && !confirm(t.dealConfirm)) return;
-    update((s) => dealBag(s) ?? s);
-  };
   const setBluff = (slot: number, roleId: string | null) => {
     update((s) => ({ ...s, bluffs: s.bluffs.map((b, i) => (i === slot ? roleId : b)) }));
     setBluffSlot(null);
@@ -219,32 +215,24 @@ export function SetupPanel({ scripts, onSelectSeat }: { scripts: ScriptChoice[];
 
       {!readOnly && (
         <section className="flex flex-col gap-2">
-          <h3 className={heading}>{fill(t.bag, { n: state.bag.length, m: players })}</h3>
-          <p className="text-xs text-muted">{t.bagHint}</p>
-          <div className="flex flex-wrap gap-2">
-            <button type="button" className={`${button} border-accent bg-accent text-accent-foreground`} onClick={deal} disabled={!state.bag.length || state.bag.length !== players}>
-              {t.deal}
-            </button>
-            {state.phase === "setup" && (
-              <button type="button" className={`${button} border-accent text-accent`} onClick={startDraw} disabled={!state.bag.length || state.bag.length !== players || blocked.length > 0}>
-                {t.draw}
-              </button>
-            )}
-            <button type="button" className={plain} onClick={() => update((s) => ({ ...s, bag: [] }))} disabled={!state.bag.length}>
-              {t.emptyBag}
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className={heading}>{fill(t.bag, { n: state.bag.length, m: players })}</h3>
+            <button type="button" className={`${plain} ml-auto flex items-center gap-1.5`} onClick={() => setBagOpen(true)}>
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+                <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />
+              </svg>
+              {t.bagFullscreen}
             </button>
           </div>
+          <p className="text-xs text-muted">{t.bagHint}</p>
+          <BagActions />
           {state.phase === "setup" && <p className="text-xs text-muted">{t.drawSetupHint}</p>}
-          {blocked.length > 0 && <p className="text-sm text-accent">{fill(t.undrawable, { roles: blocked.map((id) => nameOf(id, locale)).join(", ") })}</p>}
-          <RoleGrid
-            roleIds={state.script.roleIds.filter((id) => findRole(id)?.team !== "traveller")}
-            marked={bagSet}
-            notes={holders(state)}
-            label={t.bagLabel}
-            onPick={toggleBag}
-          />
+          <BagGrid />
         </section>
       )}
+      {bagOpen &&
+        // over the whole screen like the draw: in full screen only the grimoire is shown, so the box goes there
+        createPortal(<BagScreen onClose={() => setBagOpen(false)} />, document.fullscreenElement ?? document.body)}
 
       <section className="flex flex-col gap-2">
         <h3 className={heading}>{t.bluffsTitle}</h3>
@@ -284,6 +272,106 @@ export function SetupPanel({ scripts, onSelectSeat }: { scripts: ScriptChoice[];
           </>
         )}
       </section>
+    </div>
+  );
+}
+
+/** Hands the bag out at random, lets the players draw from it, empties it; `onDealt` after a deal. */
+function BagActions({ onDealt }: { onDealt?: () => void }) {
+  const { state, update, locale, t } = useGrimoire();
+  const players = playerSeats(state).length;
+  const blocked = undrawable(state.bag);
+  const ready = state.bag.length > 0 && state.bag.length === players;
+  const deal = () => {
+    if (state.seats.some((s) => s.role) && !confirm(t.dealConfirm)) return;
+    update((s) => dealBag(s) ?? s);
+    onDealt?.();
+  };
+  const startDraw = () => {
+    if (playerSeats(state).some((x) => x.role) && !confirm(t.drawConfirm)) return;
+    update(startDrawing);
+  };
+  return (
+    <>
+      <div className="flex flex-wrap gap-2">
+        <button type="button" className={`${button} border-accent bg-accent text-accent-foreground`} onClick={deal} disabled={!ready}>
+          {t.deal}
+        </button>
+        {state.phase === "setup" && (
+          <button type="button" className={`${button} border-accent text-accent`} onClick={startDraw} disabled={!ready || blocked.length > 0}>
+            {t.draw}
+          </button>
+        )}
+        <button type="button" className={plain} onClick={() => update((s) => ({ ...s, bag: [] }))} disabled={!state.bag.length}>
+          {t.emptyBag}
+        </button>
+      </div>
+      {blocked.length > 0 && <p className="text-sm text-accent">{fill(t.undrawable, { roles: blocked.map((id) => nameOf(id, locale)).join(", ") })}</p>}
+    </>
+  );
+}
+
+/** The script's characters to put in the bag, each team with how many are in it and how many the rules want. */
+function BagGrid({ wide = false }: { wide?: boolean }) {
+  const { state, update, t } = useGrimoire();
+  const expected = distribution(playerSeats(state).length);
+  const inBag = teamCounts(state.bag);
+  const count = (team: RoleTeam) => {
+    if (team === "traveller") return null;
+    const want = expected?.[team] ?? null;
+    const off = state.bag.length > 0 && want !== null && inBag[team] !== want;
+    return (
+      <span className={`text-sm tracking-normal ${off ? "font-bold text-accent" : "text-foreground"}`} title={`${t.inBag} / ${t.expected}`} data-testid="bag-team-count">
+        {inBag[team]}
+        {want !== null && ` / ${want}`}
+      </span>
+    );
+  };
+  return (
+    <RoleGrid
+      roleIds={state.script.roleIds.filter((id) => findRole(id)?.team !== "traveller")}
+      marked={new Set(state.bag)}
+      notes={holders(state)}
+      teamNote={count}
+      label={t.bagLabel}
+      onPick={(id) => update((s) => ({ ...s, bag: s.bag.includes(id) ? s.bag.filter((x) => x !== id) : [...s.bag, id] }))}
+      wide={wide}
+    />
+  );
+}
+
+/** The bag over the whole screen, so a script's characters fit on a tablet without scrolling. */
+function BagScreen({ onClose }: { onClose: () => void }) {
+  const { state, characters, locale, t } = useGrimoire();
+  const players = playerSeats(state).length;
+  const setupChanges = setupChangesOf(state, characters);
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    document.addEventListener("keydown", key);
+    return () => document.removeEventListener("keydown", key);
+  }, [onClose]);
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col gap-3 overflow-y-auto overscroll-contain bg-background p-4" role="dialog" aria-modal="true" aria-label={t.bagTitle} data-testid="bag-screen">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <h2 className="text-lg font-bold">{fill(t.bag, { n: state.bag.length, m: players })}</h2>
+        <span className="text-sm text-muted">{distribution(players) ? fill(t.distribution, { n: players }) : t.distributionTooFew}</span>
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          <BagActions onDealt={onClose} />
+          <button type="button" className={plain} onClick={onClose}>
+            {t.bagDone}
+          </button>
+        </div>
+      </div>
+      {setupChanges.length > 0 && (
+        <ul className="flex flex-wrap gap-x-4 text-sm">
+          {setupChanges.map((c) => (
+            <li key={c.id}>
+              ⚠️ {nameOf(c.id, locale)}: {c.note}
+            </li>
+          ))}
+        </ul>
+      )}
+      <BagGrid wide />
     </div>
   );
 }

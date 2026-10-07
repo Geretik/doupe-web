@@ -31,6 +31,10 @@ export const changelog: ChangelogEntry[] = [
       },
       { for: "organizers", text: "Grimoár: hráče jde v kruhu přetáhnout na jiné místo; hotové rozesazení zamkne zámek 🔓 v rohu kruhu." },
       {
+        for: "organizers",
+        text: "Grimoár: u pytlíku je u každého týmu, kolik postav v něm je a kolik jich podle pravidel patří k počtu hráčů; pytlík jde otevřít na celou obrazovku, kde se script vejde na tablet bez posouvání.",
+      },
+      {
         for: "players",
         text: "Na konci úvodní stránky je formulář „Nech nám vzkaz“; vzkaz přijde organizátorům e-mailem a odpovídá se rovnou z pošty.",
         href: "/#vzkaz",
