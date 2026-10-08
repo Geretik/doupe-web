@@ -177,6 +177,8 @@ async function writeGameRecord(tx: Tx, g: Grimoire, sessionId: number, state: Gr
     // the game form takes 5–20 players
     players: count >= 5 && count <= 20 ? count : null,
     demonBluffs: bluffs.length ? bluffs : null,
+    // a grimoire ended before it had a note leaves the record's own note alone
+    ...(state.notes !== undefined ? { notes: state.notes.trim() || null } : {}),
   };
   let gameId = g.gameId;
   if (gameId) {

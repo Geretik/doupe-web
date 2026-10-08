@@ -65,6 +65,17 @@ export function SeatPanel({ seatId, onRemoved, onSelect }: { seatId: string | nu
     const next = [...state.seats.slice(index + 1), ...state.seats.slice(0, index)].find((x) => !x.gap && !x.name);
     if (next) onSelect(next.id);
   };
+  // a once-per-game ability (the Slayer's shot…) is marked used with the character's "No ability" token, or one of the grimoire's own
+  const c = seat.role ? characters[seat.role] : undefined;
+  const usedText = c ? (Object.keys(c.tokenKinds).find((text) => c.tokenKinds[text] === "noAbility") ?? (c.once ? t.abilityUsed : null)) : null;
+  const used = !!usedText && seat.reminders.some((r) => r.roleId === seat.role && r.text === usedText);
+  const toggleUsed = () =>
+    set((x) => ({
+      ...x,
+      reminders: used
+        ? x.reminders.filter((r) => !(r.roleId === x.role && r.text === usedText))
+        : [...x.reminders, { id: uid(), roleId: x.role, text: usedText! }].slice(0, MAX_REMINDERS),
+    }));
   const addReminder = (roleId: string | null, text: string) => {
     set((x) => ({ ...x, reminders: [...x.reminders, { id: uid(), roleId, text }].slice(0, MAX_REMINDERS) }));
     setPicking(null);
@@ -99,6 +110,17 @@ export function SeatPanel({ seatId, onRemoved, onSelect }: { seatId: string | nu
           )}
         </div>
         {seat.role && characters[seat.role] && <p className="text-sm leading-snug text-muted">{characters[seat.role].ability}</p>}
+        {usedText && !readOnly && (
+          <button
+            type="button"
+            className={`${big} ${used ? "border-border bg-border/40 text-muted" : "border-accent text-accent"}`}
+            aria-pressed={used}
+            onClick={toggleUsed}
+            data-testid="ability-used"
+          >
+            {used ? `✓ ${t.abilityUsed}` : t.abilityUse}
+          </button>
+        )}
         {picking === "role" && (
           <>
             {seat.role && (

@@ -31,6 +31,32 @@ export const changelog: ChangelogEntry[] = [
         text: "Grimoár: s Opilcem v pytlíku se počítá jeden Měšťan navíc (s Marionetou dobrá postava navíc, Blázen může mít druhého Démona). Kdo ho při rozdání nebo losování dostane, je Opilec a myslí si, že je tím Měšťanem; Marioneta vždy sedí vedle Démona. Losovat jde i s Opilcem v pytlíku.",
         href: "/admin/grimoary",
       },
+      {
+        for: "organizers",
+        text: "Grimoár: „🎲 Naplnit náhodně“ naplní pytlík náhodnými postavami ze scriptu tak, aby seděly počty (i s Baronem, Opilcem…) – nic nerozdá, jde to zkoušet znovu a upravit. Blafy Démona jdou vybrat i vylosovat (🎲) a nabízí se jen dobré postavy mimo pytlík.",
+        href: "/admin/grimoary",
+      },
+      {
+        for: "organizers",
+        text: "Grimoár: pytlík na celou obrazovku má i blafy Démona a − / + pro počet hráčů; grimoár zabírá celou šířku okna.",
+      },
+      {
+        for: "organizers",
+        text: "Grimoár: Příprava a Konec hry jsou tlačítka dole pod panelem místo záložek. Příprava se otevře přes celou obrazovku (i se „Začít hru“), Konec hry v okně, kde vybereš vítěze, napíšeš poznámku ke hře (zapíše se k odehrané hře) a hru ukončíš.",
+      },
+      {
+        for: "organizers",
+        text: "Grimoár, noc: u kroku postavy jsou její žetony – ťukneš na žeton a pak na hráče (Travič otráví, Mnich chrání, Démon zabije); žeton, který má postava jen jeden, se přesune k novému hráči. Krok upozorní, když je hráč otrávený nebo opilý, Kuchařovo a Empatovo číslo spočítá sám.",
+        href: "/admin/grimoary",
+      },
+      {
+        for: "organizers",
+        text: "Grimoár: po rozdání postav je v panelu vedle kruhu ještě před hrou karta „1. noc“ – info pro Pradlenu, Knihovníka, Vyšetřovatele a další si připravíš dopředu (žeton na správného hráče a na někoho jiného) a v noci je u kroku napsané, co ukázat.",
+      },
+      {
+        for: "organizers",
+        text: "Grimoár: u hráče s jednorázovou schopností (Zabiják, Umělec, Čaroděj, Panna…) tlačítko „Použil/a schopnost“; v kruhu je pak u hráče žeton.",
+      },
     ],
   },
   {

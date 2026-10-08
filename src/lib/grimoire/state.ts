@@ -51,6 +51,8 @@ export type GrimoireState = {
   drawing?: boolean;
   /** The seating is done: the places in the town can no longer be dragged */
   seatsLocked?: boolean;
+  /** The Storyteller's note on the game, written when it ends; goes into the game record */
+  notes?: string;
 };
 
 /** Up to this many places in the circle; the official game goes to 15 players and a few travellers, then the gaps. */
@@ -377,13 +379,58 @@ export function charactersInPlay(state: Pick<GrimoireState, "seats">) {
   return ids;
 }
 
-/** Good characters of the script that nobody has: what the Demon may be shown. */
-export function bluffCandidates(state: GrimoireState) {
-  const inPlay = new Set(state.seats.map((s) => s.role));
+/** Good characters of the script that nobody has, nobody thinks they are and that are not in the bag: what the Demon may be shown. */
+export function bluffCandidates(state: Pick<GrimoireState, "seats" | "bag" | "script">) {
+  const taken = new Set([...state.bag, ...charactersInPlay(state)]);
   return state.script.roleIds.filter((id) => {
     const team = findRole(id)?.team;
-    return team && bluffTeams.includes(team) && !inPlay.has(id);
+    return team && bluffTeams.includes(team) && !taken.has(id);
   });
+}
+
+function shuffled<T>(items: T[], random: () => number) {
+  const out = [...items];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
+/** Three random bluffs for the Demon (bluffCandidates); fewer when the script has fewer. */
+export function randomBluffs(state: Pick<GrimoireState, "seats" | "bag" | "script">, random: () => number = Math.random): (string | null)[] {
+  const picked = shuffled(bluffCandidates(state), random).slice(0, BLUFF_COUNT);
+  return Array.from({ length: BLUFF_COUNT }, (_, i) => picked[i] ?? null);
+}
+
+/**
+ * A random bag of the script's characters that fits the players: the Demon first, then as many Minions and
+ * Outsiders as the characters so far allow (a Baron's two more…), a second Demon for a Lunatic, Townsfolk for
+ * the rest and a Drunk's extra one. Tried again until every team's number fits the setup (a Townsfolk that
+ * changes it, like the Atheist, rarely does). Null under 5 players or when the script cannot fill it.
+ */
+export function randomBag(state: Pick<GrimoireState, "seats" | "script">, random: () => number = Math.random): string[] | null {
+  const n = playerSeats(state).length;
+  if (!distribution(n)) return null;
+  const pool = (team: RoleTeam) => state.script.roleIds.filter((id) => findRole(id)?.team === team);
+  const pick = (e: ExpectedCount) => (e.values ? e.values[Math.floor(random() * e.values.length)] : e.base);
+  for (let attempt = 0; attempt < 300; attempt++) {
+    const bag: string[] = [];
+    const add = (team: RoleTeam, k: number) => {
+      const picked = shuffled(pool(team).filter((id) => !bag.includes(id)), random).slice(0, Math.max(0, k));
+      bag.push(...picked);
+      return picked.length === Math.max(0, k);
+    };
+    if (!add("demon", pick(expectedSetup(n, bag, true)!.demon))) continue;
+    if (!add("minion", pick(expectedSetup(n, bag, true)!.minion))) continue;
+    if (!add("outsider", pick(expectedSetup(n, bag, true)!.outsider))) continue;
+    if (bag.includes("lunatic")) add("demon", 1);
+    if (!add("townsfolk", n + hiddenInBag(bag).length - bag.length)) continue;
+    const expected = expectedSetup(n, bag, true)!;
+    const counts = teamCounts(bag);
+    if (setupTeams.every((team) => !offCount(expected[team], counts[team]))) return bag;
+  }
+  return null;
 }
 
 export const specialSteps = ["dusk", "minionInfo", "demonInfo", "dawn"] as const;
@@ -439,8 +486,8 @@ export function nextPhase(state: GrimoireState): GrimoireState {
   return state;
 }
 
-export function endGame(state: GrimoireState, winner: GameWinner | null): GrimoireState {
-  return { ...state, phase: "ended", winner };
+export function endGame(state: GrimoireState, winner: GameWinner | null, notes = state.notes): GrimoireState {
+  return { ...state, phase: "ended", winner, notes };
 }
 
 /** Back into the game after it was ended by mistake: the day of the last round. */
@@ -453,6 +500,61 @@ export function voteMath(state: Pick<GrimoireState, "seats">) {
   const alive = players(state).filter((s) => !s.dead).length;
   const votes = players(state).filter((s) => !s.dead || !s.voteUsed).length;
   return { alive, votes, toExecute: Math.ceil(alive / 2) };
+}
+
+/**
+ * A character's reminder token put on a player. A character has as many of a token as its reminders list
+ * (mostly one), so when all are out the new one is moved there: the Poisoner's poison goes to tonight's player.
+ */
+export function placeReminder(state: GrimoireState, seatId: string, roleId: string, text: string, copies = 1): GrimoireState {
+  const placed = state.seats.flatMap((s) => s.reminders.filter((r) => r.roleId === roleId && r.text === text).map((r) => ({ seatId: s.id, id: r.id })));
+  if (placed.some((p) => p.seatId === seatId)) return state;
+  const moved = placed.length >= Math.max(1, copies) ? placed[0].id : null;
+  return {
+    ...state,
+    seats: state.seats.map((s) => {
+      let reminders = moved ? s.reminders.filter((r) => r.id !== moved) : s.reminders;
+      if (s.id === seatId) reminders = [...reminders, { id: uid(), roleId, text }].slice(0, MAX_REMINDERS);
+      return reminders === s.reminders ? s : { ...s, reminders };
+    }),
+  };
+}
+
+/** A character's reminder tokens in the town, with the players they lie at. */
+export function remindersOf(state: Pick<GrimoireState, "seats">, roleId: string) {
+  return state.seats.flatMap((seat) => seat.reminders.filter((r) => r.roleId === roleId).map((reminder) => ({ seat, reminder })));
+}
+
+/** Pairs of evil players sitting next to each other: the Chef's number (as the characters are, without misregistering). */
+export function evilPairs(state: Pick<GrimoireState, "seats">) {
+  const ring = players(state);
+  if (ring.length < 3) return 0;
+  return ring.filter((s, i) => seatSide(s) === "evil" && seatSide(ring[(i + 1) % ring.length]) === "evil").length;
+}
+
+/** Evil players among a player's nearest living neighbours: the Empath's number. */
+export function evilLivingNeighbours(state: Pick<GrimoireState, "seats">, seatId: string) {
+  const ring = players(state);
+  const i = ring.findIndex((s) => s.id === seatId);
+  if (i < 0) return 0;
+  const nearest = (step: number) => {
+    for (let k = 1; k < ring.length; k++) {
+      const s = ring[(((i + step * k) % ring.length) + ring.length) % ring.length];
+      if (!s.dead) return s;
+    }
+    return null;
+  };
+  return [...new Set([nearest(-1), nearest(1)])].filter((s) => s && s.id !== seatId && seatSide(s) === "evil").length;
+}
+
+/** Why a player's information may be false: they are the Drunk, or lie under a token that makes them drunk or poisoned. */
+export function impairment(seat: Pick<GrimoireSeat, "role" | "reminders">, characters: Record<string, GrimoireCharacter>): "drunk" | "poisoned" | null {
+  if (seat.role === "drunk") return "drunk";
+  for (const r of seat.reminders) {
+    const kind = r.roleId ? characters[r.roleId]?.tokenKinds[r.text] : undefined;
+    if (kind === "poisoned" || kind === "drunk") return kind;
+  }
+  return null;
 }
 
 /** Good, evil or neither (a traveller, no character) – the colour of a seat. */

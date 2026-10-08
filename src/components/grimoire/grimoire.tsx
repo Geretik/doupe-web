@@ -2,17 +2,18 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { Locale } from "@/i18n/dictionaries";
 import type { GrimoireCharacter } from "@/lib/grimoire/characters";
-import { moveSeat, nextPhase, nightSteps, type GrimoireState } from "@/lib/grimoire/state";
+import { isPlayer, moveSeat, nextPhase, nightSteps, placeReminder, type GrimoireState } from "@/lib/grimoire/state";
 import { useAutosave, type SaveStatus } from "./autosave";
 import { DrawView } from "./draw";
 import { fill } from "@/lib/grimoire/text";
-import { GrimoireContext, type GrimoireContextValue, type GrimoireTexts } from "./context";
-import { GamePanel } from "./game-panel";
-import { NightPanel } from "./night-panel";
+import { GrimoireContext, nameOf, type GrimoireContextValue, type GrimoireTexts } from "./context";
+import { GameButton } from "./game-panel";
+import { NightPanel, type Placing } from "./night-panel";
 import { SeatPanel } from "./seat-panel";
-import { SetupPanel, type ScriptChoice } from "./setup-panel";
+import { SetupScreen, type ScriptChoice } from "./setup-panel";
 import { Town, TownCenter } from "./town";
 
 const UNDO_LIMIT = 100;
@@ -27,7 +28,7 @@ function reducer(h: History, a: Change): History {
   return next === h.present ? h : { present: next, past: [...h.past, h.present].slice(-UNDO_LIMIT) };
 }
 
-type Tab = "seat" | "night" | "setup" | "game";
+type Tab = "seat" | "night";
 
 const statusClass: Record<SaveStatus, string> = {
   saved: "text-muted",
@@ -69,7 +70,11 @@ export function Grimoire({
 }) {
   const [history, dispatch] = useReducer(reducer, { present: initial.state, past: [] });
   const state = history.present;
-  const [tab, setTab] = useState<Tab>(initial.state.phase === "night" ? "night" : initial.state.phase === "setup" ? "setup" : "seat");
+  const [tab, setTab] = useState<Tab>(initial.state.phase === "night" ? "night" : "seat");
+  const [setupOpen, setSetupOpen] = useState(false);
+  const [placing, setPlacing] = useState<Placing | null>(null);
+  // the players' draw started from the setup takes the screen
+  if (setupOpen && state.drawing) setSetupOpen(false);
   const [selected, setSelected] = useState<string | null>(null);
   const [focusStep, setFocusStep] = useState<string | null>(null);
   const [recorded, setRecorded] = useState(initiallyRecorded);
@@ -106,8 +111,13 @@ export function Grimoire({
     return () => document.removeEventListener("fullscreenchange", change);
   }, []);
 
-  const steps = useMemo(() => (state.phase === "night" ? nightSteps(state, characters, state.round === 1) : []), [state, characters]);
-  const currentStep = steps.find((s) => !state.nightDone.includes(s.id)) ?? null;
+  // before the game, once characters are handed out, the first night to prepare the information characters' tokens
+  const preview = state.phase === "setup" && state.seats.some((s) => s.role);
+  const steps = useMemo(
+    () => (state.phase === "night" ? nightSteps(state, characters, state.round === 1) : preview ? nightSteps(state, characters, true) : []),
+    [state, characters, preview],
+  );
+  const currentStep = state.phase === "night" ? (steps.find((s) => !state.nightDone.includes(s.id)) ?? null) : null;
   const focused = steps.find((s) => s.id === focusStep) ?? currentStep;
 
   const context: GrimoireContextValue = { state, update, readOnly: !canEdit || state.phase === "ended", characters, sessionPlayers, locale, t };
@@ -116,8 +126,24 @@ export function Grimoire({
     const next = nextPhase(state);
     update(() => next);
     setFocusStep(null);
+    setPlacing(null);
     if (next.phase === "night") setTab("night");
-    else if (tab === "night" || tab === "setup") setTab("seat");
+    else if (tab === "night") setTab("seat");
+  };
+  const selectSeat = (seatId: string) => {
+    setSelected(seatId);
+    setTab("seat");
+  };
+  // a tap in the town: puts the token being placed there, else opens the player
+  const tapSeat = (seatId: string) => {
+    const seat = state.seats.find((s) => s.id === seatId);
+    if (placing && seat && isPlayer(seat)) {
+      const copies = characters[placing.roleId]?.reminders.filter((x) => x === placing.text).length ?? 1;
+      update((s) => placeReminder(s, seatId, placing.roleId, placing.text, copies));
+      setPlacing(null);
+      return;
+    }
+    selectSeat(seatId);
   };
   const moveTo = (seatId: string, to: number) =>
     update((s) => {
@@ -128,15 +154,18 @@ export function Grimoire({
     state.phase === "setup" ? t.phases.setup : state.phase === "ended" ? t.phases.ended : fill(t.phases[state.phase], { n: state.round });
   const nextLabel =
     state.phase === "setup" ? t.startGame : state.phase === "night" ? fill(t.toDay, { n: state.round }) : state.phase === "day" ? fill(t.toNight, { n: state.round + 1 }) : null;
-  const tabs: Tab[] = state.phase === "night" ? ["night", "seat", "setup", "game"] : ["seat", "setup", "game"];
+  // the setup and the game's end are buttons under the panel: the setup is done once, the end comes once
+  const tabs: Tab[] = state.phase === "night" || preview ? ["night", "seat"] : ["seat"];
   // after "undo" out of a night the night tab is gone
   const shown = tabs.includes(tab) ? tab : "seat";
 
   return (
     <GrimoireContext.Provider value={context}>
+      {/* the whole width of the window, not the admin's column under the header: the town and the panel get the room
+          (the admin's column is centred on the window, so is this) */}
       <div
         ref={root}
-        className="grimoire flex h-[calc(100dvh-10rem)] min-h-[34rem] touch-manipulation flex-col gap-2 bg-background"
+        className="grimoire relative left-1/2 flex h-[calc(100dvh-10rem)] min-h-[34rem] w-[calc(100vw-2rem)] -translate-x-1/2 touch-manipulation flex-col gap-2 bg-background"
         data-testid="grimoire"
       >
         {state.drawing ? (
@@ -214,13 +243,18 @@ export function Grimoire({
                 <Town
                   selectedId={shown === "seat" ? selected : null}
                   highlightIds={focused?.seatIds ?? []}
-                  onSelect={(seatId) => {
-                    setSelected(seatId);
-                    setTab("seat");
-                  }}
+                  onSelect={tapSeat}
                   onMove={context.readOnly || state.seatsLocked ? undefined : moveTo}
                   center={<TownCenter phaseLabel={phaseLabel} />}
                 />
+                {placing && (
+                  <div className="absolute inset-x-0 top-0 z-20 mx-auto flex w-fit max-w-full flex-wrap items-center gap-2 rounded-full border border-accent bg-card px-3 py-1.5 text-sm shadow-md" data-testid="placing">
+                    <span>{fill(t.placeHint, { token: placing.text, role: nameOf(placing.roleId, locale) })}</span>
+                    <button type="button" onClick={() => setPlacing(null)} className="min-h-9 rounded-full border border-border px-3 text-xs">
+                      {t.cancel}
+                    </button>
+                  </div>
+                )}
                 {!context.readOnly && state.seats.length > 1 && (
                   // the seating done, the circle is locked so a finger in the game does not move anybody
                   <button
@@ -237,7 +271,7 @@ export function Grimoire({
                 )}
               </div>
               <aside className="flex min-h-0 flex-1 flex-col rounded-xl border border-border bg-card lg:w-[25rem] lg:flex-none">
-                <div className="flex border-b border-border" role="tablist">
+                <div className={`border-b border-border ${tabs.length > 1 ? "flex" : "hidden"}`} role="tablist">
                   {tabs.map((x) => (
                     <button
                       key={x}
@@ -247,31 +281,64 @@ export function Grimoire({
                       onClick={() => setTab(x)}
                       className={`min-h-12 flex-1 px-2 text-sm font-semibold ${shown === x ? "border-b-2 border-accent text-accent" : "text-muted"}`}
                     >
-                      {t.tabs[x]}
+                      {x === "night" && preview ? t.tabs.prep : t.tabs[x]}
                     </button>
                   ))}
                 </div>
                 <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3">
                   {shown === "seat" && <SeatPanel key={selected} seatId={selected} onRemoved={() => setSelected(null)} onSelect={setSelected} />}
                   {shown === "night" && (
-                    <NightPanel steps={steps} currentId={currentStep?.id ?? null} focusId={focusStep} onFocus={setFocusStep} onNext={advance} />
-                  )}
-                  {shown === "setup" && (
-                    <SetupPanel
-                      scripts={scripts}
-                      onSelectSeat={(seatId) => {
-                        setSelected(seatId);
-                        setTab("seat");
-                      }}
+                    <NightPanel
+                      steps={steps}
+                      currentId={currentStep?.id ?? null}
+                      focusId={focusStep}
+                      onFocus={setFocusStep}
+                      onNext={advance}
+                      preview={preview}
+                      placing={placing}
+                      onPlace={setPlacing}
                     />
                   )}
-                  {shown === "game" && <GamePanel id={id} session={session} recorded={recorded} canEdit={canEdit} canDelete={canDelete} />}
+                </div>
+                <div className="grid grid-cols-2 gap-2 border-t border-border p-2">
+                  <button
+                    type="button"
+                    onClick={() => setSetupOpen(true)}
+                    className={`min-h-11 rounded-lg border px-3 text-sm font-semibold ${
+                      state.phase === "setup" && canEdit ? "border-accent bg-accent text-accent-foreground" : "border-border bg-card hover:border-accent/50"
+                    }`}
+                    data-testid="setup-button"
+                  >
+                    ⚙️ {t.tabs.setup}
+                  </button>
+                  <GameButton id={id} session={session} recorded={recorded} canEdit={canEdit} canDelete={canDelete} />
                 </div>
               </aside>
             </div>
           </>
         )}
       </div>
+      {setupOpen &&
+        // over the whole screen: the grimoire is transformed, which would trap a fixed box inside it
+        createPortal(
+          <SetupScreen
+            scripts={scripts}
+            onSelectSeat={(seatId) => {
+              selectSeat(seatId);
+              setSetupOpen(false);
+            }}
+            onStart={
+              canEdit && state.phase === "setup"
+                ? () => {
+                    setSetupOpen(false);
+                    advance();
+                  }
+                : undefined
+            }
+            onClose={() => setSetupOpen(false)}
+          />,
+          document.fullscreenElement ?? document.body,
+        )}
     </GrimoireContext.Provider>
   );
 }

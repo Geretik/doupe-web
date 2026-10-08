@@ -18,6 +18,8 @@ import {
   newSeat,
   offCount,
   playerSeats,
+  randomBag,
+  randomBluffs,
   setupNote,
   setupRoles,
   setupTeams,
@@ -73,8 +75,49 @@ const button = "min-h-11 rounded-lg border px-3 py-2 text-sm font-medium disable
 const plain = `${button} border-border bg-card hover:border-accent/50`;
 const heading = "text-xs font-semibold tracking-wide text-muted uppercase";
 
+/**
+ * The setup over the whole screen, opened from the grimoire's panel: needed before the game, hardly after.
+ * Starting the game from here closes it.
+ */
+export function SetupScreen({
+  scripts,
+  onSelectSeat,
+  onStart,
+  onClose,
+}: {
+  scripts: ScriptChoice[];
+  onSelectSeat: (seatId: string) => void;
+  /** Starts the first night; only before the game */
+  onStart?: () => void;
+  onClose: () => void;
+}) {
+  const { t } = useGrimoire();
+  return (
+    <div className="fixed inset-0 z-40 overflow-y-auto overscroll-contain bg-background" role="dialog" aria-modal="true" aria-label={t.tabs.setup} data-testid="setup-screen">
+      <div className="sticky top-0 z-10 border-b border-border bg-background">
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-2 px-4 py-3 sm:px-8">
+          <h2 className="text-lg font-bold">{t.tabs.setup}</h2>
+          <span className="ml-auto flex flex-wrap gap-2">
+            {onStart && (
+              <button type="button" className={`${button} border-accent bg-accent text-accent-foreground`} onClick={onStart}>
+                {t.startGame}
+              </button>
+            )}
+            <button type="button" className={plain} onClick={onClose}>
+              {t.bagDone}
+            </button>
+          </span>
+        </div>
+      </div>
+      <div className="mx-auto max-w-5xl px-4 py-4 sm:px-8">
+        <SetupPanel scripts={scripts} onSelectSeat={onSelectSeat} wide />
+      </div>
+    </div>
+  );
+}
+
 /** Before the game (and for changes during it): script, players, the setup counts, the bag, the Demon's bluffs. */
-export function SetupPanel({ scripts, onSelectSeat }: { scripts: ScriptChoice[]; onSelectSeat: (seatId: string) => void }) {
+export function SetupPanel({ scripts, onSelectSeat, wide = false }: { scripts: ScriptChoice[]; onSelectSeat: (seatId: string) => void; wide?: boolean }) {
   const { state, update, readOnly, characters, locale, t } = useGrimoire();
   const [newName, setNewName] = useState("");
   const [bluffSlot, setBluffSlot] = useState<number | null>(null);
@@ -94,11 +137,6 @@ export function SetupPanel({ scripts, onSelectSeat }: { scripts: ScriptChoice[];
     update((s) => ({ ...s, seats: [...s.seats, newSeat(name)] }));
     setNewName("");
   };
-  const emptySeat = [...inCircle].reverse().find((x) => !x.name && !x.role && !x.registrationId);
-  const setBluff = (slot: number, roleId: string | null) => {
-    update((s) => ({ ...s, bluffs: s.bluffs.map((b, i) => (i === slot ? roleId : b)) }));
-    setBluffSlot(null);
-  };
 
   return (
     <div className="flex flex-col gap-5" data-testid="setup-panel">
@@ -109,24 +147,7 @@ export function SetupPanel({ scripts, onSelectSeat }: { scripts: ScriptChoice[];
           <h3 className={heading}>{fill(t.players, { n: inCircle.length })}</h3>
           {!readOnly && (
             <>
-              <button
-                type="button"
-                className={`${plain} w-11 px-0 text-lg`}
-                aria-label={t.fewer}
-                onClick={() => update((s) => ({ ...s, seats: s.seats.filter((x) => x.id !== emptySeat?.id) }))}
-                disabled={!emptySeat}
-              >
-                −
-              </button>
-              <button
-                type="button"
-                className={`${plain} w-11 px-0 text-lg`}
-                aria-label={t.more}
-                onClick={() => update((s) => ({ ...s, seats: [...s.seats, newSeat("")] }))}
-                disabled={state.seats.length >= MAX_SEATS}
-              >
-                +
-              </button>
+              <PlayerCountButtons />
               <button
                 type="button"
                 className={`${plain} ml-auto`}
@@ -262,7 +283,7 @@ export function SetupPanel({ scripts, onSelectSeat }: { scripts: ScriptChoice[];
           <BagActions />
           <UndrawableWarning />
           {state.phase === "setup" && <p className="text-xs text-muted">{t.drawSetupHint}</p>}
-          <BagGrid />
+          <BagGrid wide={wide} />
         </section>
       )}
       {bagOpen &&
@@ -270,50 +291,22 @@ export function SetupPanel({ scripts, onSelectSeat }: { scripts: ScriptChoice[];
         createPortal(<BagScreen onClose={() => setBagOpen(false)} />, document.fullscreenElement ?? document.body)}
 
       <section className="flex flex-col gap-2">
-        <h3 className={heading}>{t.bluffsTitle}</h3>
-        <p className="text-xs text-muted">{t.bluffsHint}</p>
-        <div className="grid grid-cols-3 gap-2">
-          {Array.from({ length: BLUFF_COUNT }, (_, i) => {
-            const b = state.bluffs[i] ?? null;
-            return (
-              <button
-                key={i}
-                type="button"
-                disabled={readOnly}
-                onClick={() => setBluffSlot(bluffSlot === i ? null : i)}
-                aria-expanded={bluffSlot === i}
-                aria-label={`${t.bluffsTitle} ${i + 1}`}
-                className={`flex min-h-20 flex-col items-center justify-center gap-1 rounded-lg border p-1 text-center text-xs ${bluffSlot === i ? "border-accent" : "border-border"} bg-card`}
-              >
-                {b ? <RoleIcon roleId={b} size={36} /> : <span className="text-lg text-muted">+</span>}
-                <span className="leading-tight">{b ? nameOf(b, locale) : t.bluffEmpty}</span>
-              </button>
-            );
-          })}
+        <div className="flex flex-wrap items-center gap-2">
+          <h3 className={heading}>{t.bluffsTitle}</h3>
+          {!readOnly && <RandomBluffsButton onDone={() => setBluffSlot(null)} />}
         </div>
-        {bluffSlot !== null && (
-          <>
-            {state.bluffs[bluffSlot] && (
-              <button type="button" className={plain} onClick={() => setBluff(bluffSlot, null)}>
-                {t.bluffClear}
-              </button>
-            )}
-            <RoleGrid
-              roleIds={bluffCandidates(state).filter((id) => !state.bluffs.includes(id))}
-              marked={new Set()}
-              label={t.bluffsTitle}
-              onPick={(id) => setBluff(bluffSlot, id)}
-            />
-          </>
-        )}
+        <p className="text-xs text-muted">{t.bluffsHint}</p>
+        <BluffSlots selected={bluffSlot} onSelect={setBluffSlot} />
+        {bluffSlot !== null && <BluffChoices slot={bluffSlot} onDone={() => setBluffSlot(null)} wide={wide} />}
       </section>
     </div>
   );
 }
 
-/** Hands the bag out at random, lets the players draw from it, empties it; `onDealt` after a deal. */
+/** Fills the bag at random, hands it out at random, lets the players draw from it, empties it; `onDealt` after a deal. */
 function BagActions({ onDealt }: { onDealt?: () => void }) {
   const { state, update, t } = useGrimoire();
+  const [failed, setFailed] = useState(false);
   const players = playerSeats(state).length;
   const blocked = undrawable(state.bag);
   const ready = state.bag.length > 0 && bagTokens(state.bag).length === players;
@@ -326,8 +319,17 @@ function BagActions({ onDealt }: { onDealt?: () => void }) {
     if (playerSeats(state).some((x) => x.role) && !confirm(t.drawConfirm)) return;
     update(startDrawing);
   };
+  // a new random bag on every tap; the grimoire's undo brings the previous one back
+  const fillAtRandom = () => {
+    const bag = randomBag(state);
+    setFailed(!bag);
+    if (bag) update((s) => ({ ...s, bag }));
+  };
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="flex flex-wrap items-center gap-2">
+      <button type="button" className={plain} onClick={fillAtRandom} disabled={players < 5}>
+        🎲 {t.randomBag}
+      </button>
       <button type="button" className={`${button} border-accent bg-accent text-accent-foreground`} onClick={deal} disabled={!ready}>
         {t.deal}
       </button>
@@ -339,6 +341,116 @@ function BagActions({ onDealt }: { onDealt?: () => void }) {
       <button type="button" className={plain} onClick={() => update((s) => ({ ...s, bag: [] }))} disabled={!state.bag.length}>
         {t.emptyBag}
       </button>
+      {failed && <span className="text-sm text-accent">{t.randomBagFailed}</span>}
+    </div>
+  );
+}
+
+/** − and + for the number of players: + adds an empty place to the circle, − takes the last empty one away. */
+function PlayerCountButtons() {
+  const { state, update, t } = useGrimoire();
+  const emptySeat = [...state.seats.filter(isPlayer)].reverse().find((x) => !x.name && !x.role && !x.registrationId);
+  return (
+    <>
+      <button
+        type="button"
+        className={`${plain} w-11 px-0 text-lg`}
+        aria-label={t.fewer}
+        onClick={() => update((s) => ({ ...s, seats: s.seats.filter((x) => x.id !== emptySeat?.id) }))}
+        disabled={!emptySeat}
+      >
+        −
+      </button>
+      <button
+        type="button"
+        className={`${plain} w-11 px-0 text-lg`}
+        aria-label={t.more}
+        onClick={() => update((s) => ({ ...s, seats: [...s.seats, newSeat("")] }))}
+        disabled={state.seats.length >= MAX_SEATS}
+      >
+        +
+      </button>
+    </>
+  );
+}
+
+/** The Demon's bluffs as three places to tap; the `selected` one is being chosen. */
+function BluffSlots({ selected, onSelect, compact = false }: { selected: number | null; onSelect: (slot: number | null) => void; compact?: boolean }) {
+  const { state, readOnly, locale, t } = useGrimoire();
+  return (
+    <div className="grid grid-cols-3 gap-2">
+      {Array.from({ length: BLUFF_COUNT }, (_, i) => {
+        const b = state.bluffs[i] ?? null;
+        return (
+          <button
+            key={i}
+            type="button"
+            disabled={readOnly}
+            onClick={() => onSelect(selected === i ? null : i)}
+            aria-expanded={selected === i}
+            aria-label={`${t.bluffsTitle} ${i + 1}`}
+            className={`flex items-center rounded-lg border bg-card text-xs ${selected === i ? "border-accent ring-2 ring-accent/40" : "border-border"} ${
+              compact ? "min-h-11 min-w-0 gap-1 px-1 text-left" : "min-h-20 flex-col justify-center gap-1 p-1 text-center"
+            }`}
+          >
+            {b ? <RoleIcon roleId={b} size={compact ? 26 : 36} /> : <span className={`text-lg text-muted ${compact ? "w-full text-center" : ""}`}>+</span>}
+            {(b || !compact) && <span className={`leading-tight ${compact ? "truncate" : ""}`}>{b ? nameOf(b, locale) : t.bluffEmpty}</span>}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Three random bluffs of the good characters not in play and not in the bag; `compact` shows only the die. */
+function RandomBluffsButton({ onDone, compact = false }: { onDone: () => void; compact?: boolean }) {
+  const { state, update, t } = useGrimoire();
+  return (
+    <button
+      type="button"
+      className={`${plain} ml-auto ${compact ? "min-h-9 w-11 px-0 py-1" : "min-h-9 py-1"}`}
+      onClick={() => {
+        update((s) => ({ ...s, bluffs: randomBluffs(s) }));
+        onDone();
+      }}
+      disabled={bluffCandidates(state).length === 0}
+      aria-label={`🎲 ${t.randomBluffs}`}
+      title={t.randomBluffs}
+    >
+      {compact ? "🎲" : `🎲 ${t.randomBluffs}`}
+    </button>
+  );
+}
+
+/** The good characters to pick for a bluff place (none of the other bluffs), and taking the bluff away. */
+function BluffChoices({ slot, onDone, wide = false }: { slot: number; onDone: () => void; wide?: boolean }) {
+  const { state, update, t } = useGrimoire();
+  const setBluff = (roleId: string | null) => {
+    update((s) => ({ ...s, bluffs: s.bluffs.map((b, i) => (i === slot ? roleId : b)) }));
+    onDone();
+  };
+  return (
+    <div className="flex flex-col gap-2" data-testid="bluff-choices">
+      <div className="flex flex-wrap items-center gap-2">
+        {wide && <h3 className="text-lg font-semibold">{fill(t.bluffPick, { n: slot + 1 })}</h3>}
+        {state.bluffs[slot] && (
+          <button type="button" className={plain} onClick={() => setBluff(null)}>
+            {t.bluffClear}
+          </button>
+        )}
+        {wide && (
+          <button type="button" className={`${plain} ml-auto`} onClick={onDone}>
+            {t.bluffBack}
+          </button>
+        )}
+      </div>
+      <RoleGrid
+        roleIds={bluffCandidates(state).filter((id) => !state.bluffs.includes(id))}
+        marked={new Set()}
+        label={t.bluffsTitle}
+        onPick={(id) => setBluff(id)}
+        wide={wide}
+      />
     </div>
   );
 }
@@ -393,6 +505,7 @@ function BagGrid({ wide = false }: { wide?: boolean }) {
 /** The bag over the whole screen, so a script's characters fit on a tablet without scrolling. */
 function BagScreen({ onClose }: { onClose: () => void }) {
   const { state, characters, locale, t } = useGrimoire();
+  const [bluffSlot, setBluffSlot] = useState<number | null>(null);
   const players = playerSeats(state).length;
   const expected = expectedSetup(players, setupRoles(state), true);
   const inBag = teamCounts(state.bag);
@@ -412,7 +525,10 @@ function BagScreen({ onClose }: { onClose: () => void }) {
     >
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         <h2 className="text-lg font-bold">{fill(t.bag, { n: state.bag.length, m: bagSize(state) })}</h2>
-        <span className="text-sm text-muted">{expected ? fill(t.distribution, { n: players }) : t.distributionTooFew}</span>
+        <span className="flex items-center gap-2 text-sm text-muted">
+          {expected ? fill(t.distribution, { n: players }) : t.distributionTooFew}
+          <PlayerCountButtons />
+        </span>
         <div className="ml-auto flex flex-wrap items-center gap-2">
           <BagActions onDealt={onClose} />
           <button type="button" className={plain} onClick={onClose}>
@@ -421,7 +537,8 @@ function BagScreen({ onClose }: { onClose: () => void }) {
         </div>
       </div>
       {/* in the bag against the rules, big: what the Storyteller checks while filling it */}
-      <div className="grid grid-cols-2 gap-2 lg:grid-cols-4" data-testid="bag-summary">
+      {/* the bluffs a little wider than a team: three characters side by side */}
+      <div className="grid grid-cols-2 gap-2 lg:grid-cols-[repeat(4,minmax(0,1fr))_minmax(0,1.5fr)]" data-testid="bag-summary">
         {setupTeams.map((team) => {
           const want = expected?.[team];
           const off = state.bag.length > 0 && offCount(want, inBag[team]);
@@ -443,6 +560,13 @@ function BagScreen({ onClose }: { onClose: () => void }) {
             </div>
           );
         })}
+        <div className="col-span-2 flex flex-col gap-1.5 rounded-xl border border-border bg-card px-3 py-2 lg:col-span-1" data-testid="bag-bluffs">
+          <div className="flex items-center gap-2">
+            <span className="truncate text-sm font-semibold tracking-wide text-muted uppercase">{t.bluffsTitle}</span>
+            <RandomBluffsButton compact onDone={() => setBluffSlot(null)} />
+          </div>
+          <BluffSlots compact selected={bluffSlot} onSelect={setBluffSlot} />
+        </div>
       </div>
       {setupChanges.length > 0 && (
         <ul className="flex flex-wrap gap-x-4 text-sm">
@@ -454,7 +578,7 @@ function BagScreen({ onClose }: { onClose: () => void }) {
         </ul>
       )}
       <UndrawableWarning />
-      <BagGrid wide />
+      {bluffSlot === null ? <BagGrid wide /> : <BluffChoices slot={bluffSlot} onDone={() => setBluffSlot(null)} wide />}
     </div>
   );
 }

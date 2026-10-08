@@ -50,4 +50,8 @@ body {
 .grimoire:fullscreen {
   padding: 0.75rem;
   background: var(--background);
+  /* not shifted to the window's centre like on the page: the browser puts it over the whole screen */
+  left: 0;
+  width: 100%;
+  transform: none;
 }
