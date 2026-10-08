@@ -36,6 +36,7 @@ export function Town({
   onMove,
   center,
   hideRoles = false,
+  onBackground,
 }: {
   selectedId: string | null;
   /** Seats that wake on the night step in focus */
@@ -46,6 +47,8 @@ export function Town({
   center: React.ReactNode;
   /** The players hold the tablet (the draw): characters face down, no reminders */
   hideRoles?: boolean;
+  /** A tap on the square where there is no place, e.g. to let go of the selected player */
+  onBackground?: () => void;
 }) {
   const { state, t } = useGrimoire();
   const ref = useRef<HTMLDivElement>(null);
@@ -130,7 +133,7 @@ export function Town({
   });
 
   return (
-    <div ref={ref} className="absolute inset-0 select-none" data-testid="town">
+    <div ref={ref} className="absolute inset-0 select-none" data-testid="town" onClick={(e) => e.target === e.currentTarget && onBackground?.()}>
       {w > 0 && (
         <>
           <div

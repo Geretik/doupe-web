@@ -36,6 +36,19 @@ async function openSetup(page: Page) {
 }
 const closeSetup = (page: Page) => page.getByTestId("setup-screen").getByRole("button", { name: "Hotovo", exact: true }).click();
 
+/** The token selection over the whole screen, from the setup: tokens into the bag, the Demon's bluffs. */
+async function openTokens(page: Page) {
+  await page.getByTestId("setup-screen").getByRole("button", { name: "🎒 Výběr žetonů" }).click();
+  return page.getByTestId("bag-screen");
+}
+const closeTokens = (page: Page) => page.getByTestId("bag-screen").getByRole("button", { name: "Hotovo", exact: true }).click();
+
+/** Deals the bag at random from the bottom of the setup, saying yes to "really at random?". */
+async function dealAtRandom(page: Page) {
+  page.once("dialog", (d) => d.accept());
+  await page.getByTestId("setup-screen").getByRole("button", { name: "Rozdat náhodně" }).click();
+}
+
 /** Ends the game in the dialog of the button under the grimoire's panel; the dialog stays open with the result. */
 async function endTheGame(page: Page, winner: "😇 Dobro" | "😈 Zlo" | "Nevím", notes?: string) {
   await page.getByTestId("game-button").click();
@@ -75,17 +88,29 @@ test("grimoire: from a session, hand out the bag, the first night, a death and a
   await expect(page.locator("#grimoire-script option:checked")).toHaveText("Trouble Brewing");
   await expect(page.getByTestId("distribution")).toContainText("Rozložení pro 7 hráčů");
 
-  // five Townsfolk, a Minion and the Demon into the bag, handed out at random
+  // five Townsfolk, a Minion and the Demon chosen into the bag; the setup only shows them, and the bluffs
+  const tokens = await openTokens(page);
   for (const name of ["Pradlena", "Empat", "Mnich", "Strážkyně krkavců", "Panna", "Travič", "Čert"]) {
-    await page.getByRole("button", { name: `Do pytlíku: ${name}` }).click();
+    await tokens.getByRole("button", { name: `Do pytlíku: ${name}` }).click();
   }
+  await tokens.getByTestId("bag-bluffs").getByRole("button", { name: "Blafy Démona 1" }).click();
+  await tokens.getByRole("button", { name: "Blafy Démona: Vědma" }).click();
+  await expect(tokens.getByRole("button", { name: "Rozdat náhodně" })).toHaveCount(0);
+  await closeTokens(page);
   await expect(page.getByTestId("setup-screen")).toContainText("Pytlík: 7 z 7");
-  await page.getByRole("button", { name: "Rozdat náhodně" }).click();
+  await expect(page.getByTestId("bag-contents")).toContainText("Strážkyně krkavců");
+  await expect(page.getByTestId("bag-contents").getByRole("button")).toHaveCount(0);
+  await expect(page.getByTestId("bluffs-view")).toHaveText("Vědma");
+
+  // handed out at random, after saying that it should be random
+  page.once("dialog", (d) => d.dismiss());
+  await page.getByTestId("setup-screen").getByRole("button", { name: "Rozdat náhodně" }).click();
+  await expect(page.getByTestId("town")).toContainText("bez postavy");
+  await dealAtRandom(page);
   await expect(page.getByTestId("town")).not.toContainText("bez postavy");
   // Ada becomes the Drunk below, so the Poisoner and the Demon must be someone else's: deal again until they are
   for (let i = 0; i < 30 && /Travič|Čert/.test((await seat(page, "Ada").textContent()) ?? ""); i++) {
-    page.once("dialog", (d) => d.accept());
-    await page.getByRole("button", { name: "Rozdat náhodně" }).click();
+    await dealAtRandom(page);
     await expect(page.getByTestId("town")).not.toContainText("bez postavy");
   }
   await expect(seat(page, "Ada")).not.toContainText(/Travič|Čert/);
@@ -101,10 +126,16 @@ test("grimoire: from a session, hand out the bag, the first night, a death and a
   await panel.getByRole("button", { name: "Myslí si, že je: Kuchař" }).click();
   await expect(seat(page, "Ada")).toContainText("Opilec");
 
-  // the Demon's bluffs, and the game starts right from the setup
+  // the player let go of: ✕ in the panel, or a second tap on them
+  await page.getByTestId("deselect").click();
+  await expect(panel).toHaveCount(0);
+  await seat(page, "Ada").click();
+  await expect(panel).toBeVisible();
+  await seat(page, "Ada").click();
+  await expect(panel).toHaveCount(0);
+
+  // the game starts right from the setup
   const setup = await openSetup(page);
-  await setup.getByRole("button", { name: "Blafy Démona 1" }).click();
-  await setup.getByRole("button", { name: "Blafy Démona: Vědma" }).click();
 
   // the first night: only the steps of the characters in play, the Drunk under the Chef
   await setup.getByRole("button", { name: "Začít hru → 1. noc" }).click();
@@ -280,8 +311,10 @@ test("grimoire: the door and the Storyteller's spot, a pasted script, players dr
   await expect(page.getByTestId("setup-panel")).toContainText("Web nezná (v grimoáru nebudou): Homebrew Hrdina");
 
   // the bag, then the players draw: the grimoire hides, each taps their place
-  for (const name of ["Pradlena", "Kuchař", "Empat", "Travič", "Čert"]) await page.getByRole("button", { name: `Do pytlíku: ${name}` }).click();
-  await page.getByRole("button", { name: "Losování hráči" }).click();
+  const tokens = await openTokens(page);
+  for (const name of ["Pradlena", "Kuchař", "Empat", "Travič", "Čert"]) await tokens.getByRole("button", { name: `Do pytlíku: ${name}` }).click();
+  await closeTokens(page);
+  await page.getByTestId("setup-screen").getByRole("button", { name: "Losování hráči" }).click();
   await expect(page.locator("h1")).toHaveText("Losování postav");
   await expect(page.getByTestId("draw-left")).toHaveText("V pytlíku zbývá 5");
   const dialog = page.getByTestId("draw-dialog");
@@ -362,6 +395,17 @@ test("grimoire: players dragged to other places in the circle, then the seating 
   // unlocked again; the last place next to the first goes the short way round, a swap
   await drag("Zbyněk", "Petr");
   await stored(names, ["Zbyněk", "Olga", "Jana", "Petr"]);
+
+  // full screen: only the grimoire – the site's header, the admin menu and the footer go away, and come back
+  await expect(page.locator("[data-admin-nav]")).toBeVisible();
+  await page.getByRole("button", { name: "Celá obrazovka" }).click();
+  await expect(page.locator("[data-admin-nav]")).toBeHidden();
+  await expect(page.locator("body > header")).toBeHidden();
+  await expect(page.locator("body > footer")).toBeHidden();
+  await expect(page.getByTestId("town")).toBeVisible();
+  await page.getByRole("button", { name: "Zrušit celou obrazovku" }).click();
+  await expect(page.locator("[data-admin-nav]")).toBeVisible();
+  await expect(page.locator("body > header")).toBeVisible();
 });
 
 test("grimoire: the bag counts each team against the setup for the players, also over the whole screen", async ({ page }) => {
@@ -373,16 +417,16 @@ test("grimoire: the bag counts each team against the setup for the players, also
   await expect(page.getByTestId("seat")).toHaveCount(7);
   const count = (scope: Page | Locator, team: string) => scope.locator(`[data-team=${team}] [data-testid=bag-team-count]`);
   await openSetup(page);
-  await expect(count(page, "townsfolk")).toHaveText("0 / 5");
+  await expect(page.getByTestId("setup-screen")).toContainText("V pytlíku zatím nic není");
 
-  await page.getByRole("button", { name: "Na celou obrazovku" }).click();
-  const screen = page.getByTestId("bag-screen");
+  const screen = await openTokens(page);
+  await expect(count(screen, "townsfolk")).toHaveText("0 / 5");
   await expect(screen).toContainText("Rozložení pro 7 hráčů");
   for (const name of ["Pradlena", "Empat", "Mnich", "Strážkyně krkavců", "Panna", "Travič", "Baron"]) {
     await screen.getByRole("button", { name: `Do pytlíku: ${name}` }).click();
   }
   // the Baron counts: two Outsiders instead of two Townsfolk, and says so
-  await expect(screen.locator("h2")).toHaveText("Pytlík: 7 z 7");
+  await expect(screen.locator("h2")).toHaveText("Výběr žetonů: 7 z 7");
   await expect(count(screen, "townsfolk")).toHaveText("5 / 3");
   await expect(count(screen, "outsider")).toHaveText("0 / 2");
   await expect(count(screen, "minion")).toHaveText("2 / 1");
@@ -394,14 +438,15 @@ test("grimoire: the bag counts each team against the setup for the players, also
   // the whole script on the tablet without scrolling
   expect(await screen.evaluate((el) => el.scrollHeight <= el.clientHeight)).toBe(true);
 
-  // the Imp instead of the Baron, handed out from the full screen, which then closes
+  // the Imp instead of the Baron; the setup shows the bag as it is, and deals it
   await screen.getByRole("button", { name: "Do pytlíku: Baron" }).click();
   await screen.getByRole("button", { name: "Do pytlíku: Čert" }).click();
   await expect(count(screen, "demon")).toHaveText("1 / 1");
   await expect(count(screen, "townsfolk")).toHaveText("5 / 5");
   await expect(screen.getByTestId("bag-summary-by")).toHaveCount(0);
-  await screen.getByRole("button", { name: "Rozdat náhodně" }).click();
-  await expect(screen).toHaveCount(0);
+  await closeTokens(page);
+  await expect(count(page.getByTestId("bag-contents"), "demon")).toHaveText("1 / 1");
+  await dealAtRandom(page);
   await expect(page.getByTestId("town")).not.toContainText("bez postavy");
 });
 
@@ -416,8 +461,7 @@ test("grimoire: the bag filled at random by the rules, the number of players and
   expect((await page.getByTestId("grimoire").boundingBox())!.width).toBeGreaterThan(1500);
 
   await openSetup(page);
-  await page.getByRole("button", { name: "Na celou obrazovku" }).click();
-  const screen = page.getByTestId("bag-screen");
+  const screen = await openTokens(page);
   // one more player and back
   await screen.getByRole("button", { name: "Přidat místo" }).click();
   await expect(screen).toContainText("Rozložení pro 8 hráčů");
@@ -432,7 +476,7 @@ test("grimoire: the bag filled at random by the rules, the number of players and
   // filled at random, again and again: always as many as the bag needs and no team against the rules
   for (let i = 0; i < 5; i++) {
     await screen.getByRole("button", { name: "🎲 Naplnit náhodně" }).click();
-    await expect(screen.locator("h2")).toHaveText(/^Pytlík: (\d+) z \1$/);
+    await expect(screen.locator("h2")).toHaveText(/^Výběr žetonů: (\d+) z \1$/);
     await expect(screen.locator("[data-testid=bag-summary-count].text-accent")).toHaveCount(0);
   }
   await expect.poll(async () => (await stored()).bag.length).toBeGreaterThanOrEqual(7);
@@ -466,14 +510,16 @@ test("grimoire: the Drunk brings an extra Townsfolk into the bag, whoever gets i
   await openSetup(page);
 
   // six players: three Townsfolk and the Drunk as the Outsider, plus the Townsfolk the Drunk will think they are
+  const tokens = await openTokens(page);
   for (const name of ["Pradlena", "Kuchař", "Empat", "Mnich", "Opilec", "Travič", "Čert"]) {
-    await page.getByRole("button", { name: `Do pytlíku: ${name}` }).click();
+    await tokens.getByRole("button", { name: `Do pytlíku: ${name}` }).click();
   }
+  await expect(tokens.getByRole("button", { name: "Do pytlíku: Opilec" }).getByTestId("role-badge")).toHaveText("+1 Měšťan");
+  await closeTokens(page);
   await expect(page.getByTestId("setup-screen")).toContainText("Pytlík: 7 z 7");
   const count = (team: string) => page.locator(`[data-team=${team}] [data-testid=bag-team-count]`);
   await expect(count("townsfolk")).toHaveText("4 / 4");
   await expect(count("outsider")).toHaveText("1 / 1");
-  await expect(page.getByRole("button", { name: "Do pytlíku: Opilec" }).getByTestId("role-badge")).toHaveText("+1 Měšťan");
   await expect(page.getByTestId("distribution")).toContainText("Opilec: Do pytlíku patří navíc jeden Měšťan.");
 
   /** The tokens the players got (the Drunk's is the Townsfolk they think they are) and how many Drunks there are */
@@ -485,7 +531,7 @@ test("grimoire: the Drunk brings an extra Townsfolk into the bag, whoever gets i
     };
   };
   const all = { tokens: ["chef", "empath", "imp", "monk", "poisoner", "washerwoman"], drunks: 1 };
-  await page.getByRole("button", { name: "Rozdat náhodně" }).click();
+  await dealAtRandom(page);
   await expect(page.getByTestId("town")).toContainText("Opilec");
   await expect.poll(dealt).toEqual(all);
 
@@ -513,11 +559,13 @@ test("grimoire: the first night prepared before the game, the Poisoner's token a
   await adminLogin(page);
   await page.goto(`/admin/termin/${sessionId}`);
   await page.getByRole("button", { name: "Nový grimoár z tohoto termínu" }).click();
-  const setup = await openSetup(page);
+  await openSetup(page);
+  const tokens = await openTokens(page);
   for (const name of ["Pradlena", "Kuchař", "Empat", "Zabiják", "Mnich", "Travič", "Čert"]) {
-    await setup.getByRole("button", { name: `Do pytlíku: ${name}` }).click();
+    await tokens.getByRole("button", { name: `Do pytlíku: ${name}` }).click();
   }
-  await setup.getByRole("button", { name: "Rozdat náhodně" }).click();
+  await closeTokens(page);
+  await dealAtRandom(page);
   await closeSetup(page);
 
   /** The stored seats: name, character, reminders */

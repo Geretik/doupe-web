@@ -32,7 +32,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     // The public site is narrow (max-w-3xl in the root layout); the admin breaks out of that
     // column and uses up to 80rem so tables with names and e-mails fit without scrolling.
     <div className="relative left-1/2 flex w-[min(calc(100vw-2rem),80rem)] -translate-x-1/2 flex-col gap-6">
-      <nav aria-label={n.label} className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border pb-3 text-sm print:hidden">
+      <nav aria-label={n.label} className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border pb-3 text-sm print:hidden" data-admin-nav>
         {/* sections grouped by module, the current page marked; on a phone each group is a line of its own */}
         <div className="-mx-2 flex flex-wrap items-center gap-x-2 gap-y-1">
           {/* wraps between links on a narrow phone, never inside one */}

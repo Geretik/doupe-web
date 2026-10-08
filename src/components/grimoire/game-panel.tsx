@@ -42,7 +42,7 @@ export function GameButton(props: GameProps) {
       </button>
       {open &&
         // over the whole screen: the admin's column is transformed, which would trap a fixed box inside it
-        createPortal(<GameDialog {...props} onClose={() => setOpen(false)} />, document.fullscreenElement ?? document.body)}
+        createPortal(<GameDialog {...props} onClose={() => setOpen(false)} />, document.body)}
     </>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import { createPortal } from "react-dom";
 import type { Locale } from "@/i18n/dictionaries";
 import type { GrimoireCharacter } from "@/lib/grimoire/characters";
@@ -73,13 +73,15 @@ export function Grimoire({
   const [tab, setTab] = useState<Tab>(initial.state.phase === "night" ? "night" : "seat");
   const [setupOpen, setSetupOpen] = useState(false);
   const [placing, setPlacing] = useState<Placing | null>(null);
-  // the players' draw started from the setup takes the screen
-  if (setupOpen && state.drawing) setSetupOpen(false);
   const [selected, setSelected] = useState<string | null>(null);
+  // the players' draw started from the setup takes the screen; afterwards nobody is selected
+  if (state.drawing && (setupOpen || selected)) {
+    setSetupOpen(false);
+    setSelected(null);
+  }
   const [focusStep, setFocusStep] = useState<string | null>(null);
   const [recorded, setRecorded] = useState(initiallyRecorded);
   const [fullscreen, setFullscreen] = useState(false);
-  const root = useRef<HTMLDivElement>(null);
 
   const update = useCallback((change: (s: GrimoireState) => GrimoireState) => canEdit && dispatch({ type: "apply", change }), [canEdit]);
   const save = useAutosave({
@@ -105,11 +107,26 @@ export function Grimoire({
     };
   }, []);
 
+  // full screen: only the grimoire, without the site's header, menus and footer (a class on <html>, see globals.css),
+  // and the browser's full screen where it has one (an iPhone has none: the grimoire still fills the window)
   useEffect(() => {
-    const change = () => setFullscreen(document.fullscreenElement === root.current);
+    if (!fullscreen) return;
+    const html = document.documentElement;
+    html.classList.add("grimoire-focus");
+    window.scrollTo(0, 0);
+    // leaving the browser's full screen (Esc, a swipe) leaves the grimoire's too
+    const change = () => !document.fullscreenElement && setFullscreen(false);
     document.addEventListener("fullscreenchange", change);
-    return () => document.removeEventListener("fullscreenchange", change);
-  }, []);
+    return () => {
+      html.classList.remove("grimoire-focus");
+      document.removeEventListener("fullscreenchange", change);
+      if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    };
+  }, [fullscreen]);
+  const toggleFullscreen = () => {
+    if (!fullscreen) document.documentElement.requestFullscreen?.().catch(() => {});
+    setFullscreen(!fullscreen);
+  };
 
   // before the game, once characters are handed out, the first night to prepare the information characters' tokens
   const preview = state.phase === "setup" && state.seats.some((s) => s.role);
@@ -134,7 +151,7 @@ export function Grimoire({
     setSelected(seatId);
     setTab("seat");
   };
-  // a tap in the town: puts the token being placed there, else opens the player
+  // a tap in the town: puts the token being placed there, else opens the player – or lets go of them when they are open
   const tapSeat = (seatId: string) => {
     const seat = state.seats.find((s) => s.id === seatId);
     if (placing && seat && isPlayer(seat)) {
@@ -143,7 +160,8 @@ export function Grimoire({
       setPlacing(null);
       return;
     }
-    selectSeat(seatId);
+    if (seatId === selected && shown === "seat") setSelected(null);
+    else selectSeat(seatId);
   };
   const moveTo = (seatId: string, to: number) =>
     update((s) => {
@@ -164,8 +182,9 @@ export function Grimoire({
       {/* the whole width of the window, not the admin's column under the header: the town and the panel get the room
           (the admin's column is centred on the window, so is this) */}
       <div
-        ref={root}
-        className="grimoire relative left-1/2 flex h-[calc(100dvh-10rem)] min-h-[34rem] w-[calc(100vw-2rem)] -translate-x-1/2 touch-manipulation flex-col gap-2 bg-background"
+        className={`grimoire relative left-1/2 flex min-h-[34rem] w-[calc(100vw-2rem)] -translate-x-1/2 touch-manipulation flex-col gap-2 bg-background ${
+          fullscreen ? "h-[calc(100dvh-1.5rem)]" : "h-[calc(100dvh-10rem)]"
+        }`}
         data-testid="grimoire"
       >
         {state.drawing ? (
@@ -203,7 +222,7 @@ export function Grimoire({
                 )}
                 <button
                   type="button"
-                  onClick={() => (fullscreen ? document.exitFullscreen() : root.current?.requestFullscreen())?.catch(() => {})}
+                  onClick={toggleFullscreen}
                   className="min-h-11 rounded-lg border border-border bg-card px-3 text-sm"
                   aria-label={fullscreen ? t.exitFullscreen : t.fullscreen}
                   title={fullscreen ? t.exitFullscreen : t.fullscreen}
@@ -244,6 +263,7 @@ export function Grimoire({
                   selectedId={shown === "seat" ? selected : null}
                   highlightIds={focused?.seatIds ?? []}
                   onSelect={tapSeat}
+                  onBackground={() => (placing ? setPlacing(null) : setSelected(null))}
                   onMove={context.readOnly || state.seatsLocked ? undefined : moveTo}
                   center={<TownCenter phaseLabel={phaseLabel} />}
                 />
@@ -286,7 +306,9 @@ export function Grimoire({
                   ))}
                 </div>
                 <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3">
-                  {shown === "seat" && <SeatPanel key={selected} seatId={selected} onRemoved={() => setSelected(null)} onSelect={setSelected} />}
+                  {shown === "seat" && (
+                    <SeatPanel key={selected} seatId={selected} onRemoved={() => setSelected(null)} onSelect={setSelected} onClose={() => setSelected(null)} />
+                  )}
                   {shown === "night" && (
                     <NightPanel
                       steps={steps}
@@ -337,7 +359,7 @@ export function Grimoire({
             }
             onClose={() => setSetupOpen(false)}
           />,
-          document.fullscreenElement ?? document.body,
+          document.body,
         )}
     </GrimoireContext.Provider>
   );

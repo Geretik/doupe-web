@@ -39,7 +39,18 @@ export function holders(state: GrimoireState, exceptSeatId?: string) {
 }
 
 /** Everything about the place tapped in the town: a player's name, character, death, vote, reminders, place; or a gap. */
-export function SeatPanel({ seatId, onRemoved, onSelect }: { seatId: string | null; onRemoved: () => void; onSelect: (seatId: string) => void }) {
+export function SeatPanel({
+  seatId,
+  onRemoved,
+  onSelect,
+  onClose,
+}: {
+  seatId: string | null;
+  onRemoved: () => void;
+  onSelect: (seatId: string) => void;
+  /** Lets go of the player: nobody selected in the town */
+  onClose: () => void;
+}) {
   const { state, update, readOnly, characters, sessionPlayers, locale, t } = useGrimoire();
   const index = state.seats.findIndex((s) => s.id === seatId);
   const seat = index >= 0 ? state.seats[index] : null;
@@ -47,7 +58,7 @@ export function SeatPanel({ seatId, onRemoved, onSelect }: { seatId: string | nu
   const [custom, setCustom] = useState("");
   if (!seat) return <p className="text-sm text-muted">{t.pickSeat}</p>;
 
-  if (seat.gap) return <GapPanel seat={{ ...seat, gap: seat.gap }} index={index} onRemoved={onRemoved} />;
+  if (seat.gap) return <GapPanel seat={{ ...seat, gap: seat.gap }} index={index} onRemoved={onRemoved} onClose={onClose} />;
 
   const set = (change: (seat: GrimoireSeat) => GrimoireSeat) => update((s) => changeSeat(s, seat.id, change));
   const linked = linkedRoleOf(seat.role);
@@ -83,7 +94,12 @@ export function SeatPanel({ seatId, onRemoved, onSelect }: { seatId: string | nu
 
   return (
     <div className="flex flex-col gap-4" data-testid="seat-panel">
-      <SeatName key={`${seat.id}-${seat.name}`} name={seat.name} onSave={setName} />
+      <div className="flex items-start gap-2">
+        <div className="flex min-w-0 flex-1 flex-col">
+          <SeatName key={`${seat.id}-${seat.name}`} name={seat.name} onSave={setName} />
+        </div>
+        <CloseButton onClose={onClose} />
+      </div>
       {seat.registrationId && <p className="-mt-3 text-xs text-muted">✓ {t.linkedToSession}</p>}
       {!readOnly && free.length > 0 && (
         <section className="-mt-1 flex flex-col gap-1.5">
@@ -247,14 +263,44 @@ export function SeatPanel({ seatId, onRemoved, onSelect }: { seatId: string | nu
 }
 
 /** A gap in the circle: what it is, and its place. */
-function GapPanel({ seat, index, onRemoved }: { seat: GrimoireSeat & { gap: GapKind }; index: number; onRemoved: () => void }) {
+/** ✕ at the top of the panel: nobody selected, so in the day no player stays lit up in the town. */
+function CloseButton({ onClose }: { onClose: () => void }) {
+  const { t } = useGrimoire();
+  return (
+    <button
+      type="button"
+      onClick={onClose}
+      aria-label={t.deselect}
+      title={t.deselect}
+      className="flex size-11 shrink-0 items-center justify-center rounded-full border border-border bg-card text-lg hover:border-accent/50"
+      data-testid="deselect"
+    >
+      ✕
+    </button>
+  );
+}
+
+function GapPanel({
+  seat,
+  index,
+  onRemoved,
+  onClose,
+}: {
+  seat: GrimoireSeat & { gap: GapKind };
+  index: number;
+  onRemoved: () => void;
+  onClose: () => void;
+}) {
   const { t } = useGrimoire();
   return (
     <div className="flex flex-col gap-4" data-testid="seat-panel">
-      <h3 className="flex items-center gap-2 text-xl font-bold">
-        <span aria-hidden>{gapIcon[seat.gap]}</span>
-        {t.gaps[seat.gap]}
-      </h3>
+      <div className="flex items-center gap-2">
+        <h3 className="flex flex-1 items-center gap-2 text-xl font-bold">
+          <span aria-hidden>{gapIcon[seat.gap]}</span>
+          {t.gaps[seat.gap]}
+        </h3>
+        <CloseButton onClose={onClose} />
+      </div>
       <p className="text-sm text-muted">{t.gapHints[seat.gap]}</p>
       <PlaceControls seat={seat} index={index} onRemoved={onRemoved} />
     </div>

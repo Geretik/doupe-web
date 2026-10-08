@@ -57,6 +57,13 @@ export const changelog: ChangelogEntry[] = [
         for: "organizers",
         text: "Grimoár: u hráče s jednorázovou schopností (Zabiják, Umělec, Čaroděj, Panna…) tlačítko „Použil/a schopnost“; v kruhu je pak u hráče žeton.",
       },
+      {
+        for: "organizers",
+        text: "Grimoár: pytlík na celou obrazovku se jmenuje „Výběr žetonů“ – vybírají se v něm žetony i blafy a naplní se tam náhodně. Příprava je jen ukazuje a dole má Rozdání: Losování hráči, nebo Rozdat náhodně, které se nejdřív zeptá, jestli opravdu náhodně.",
+        href: "/admin/grimoary",
+      },
+      { for: "organizers", text: "Grimoár: celá obrazovka skryje hlavičku, menu i patičku webu – i na telefonu, kde prohlížeč celou obrazovku neumí." },
+      { for: "organizers", text: "Grimoár: výběr hráče zrušíš ✕ v panelu, dalším ťuknutím na hráče nebo ťuknutím do prázdného místa v kruhu." },
     ],
   },
   {

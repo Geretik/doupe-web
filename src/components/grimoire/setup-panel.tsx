@@ -120,7 +120,6 @@ export function SetupScreen({
 export function SetupPanel({ scripts, onSelectSeat, wide = false }: { scripts: ScriptChoice[]; onSelectSeat: (seatId: string) => void; wide?: boolean }) {
   const { state, update, readOnly, characters, locale, t } = useGrimoire();
   const [newName, setNewName] = useState("");
-  const [bluffSlot, setBluffSlot] = useState<number | null>(null);
   const [bagOpen, setBagOpen] = useState(false);
   const players = playerSeats(state).length;
   const inCircle = state.seats.filter(isPlayer);
@@ -268,81 +267,141 @@ export function SetupPanel({ scripts, onSelectSeat, wide = false }: { scripts: S
         ))}
       </section>
 
-      {!readOnly && (
-        <section className="flex flex-col gap-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 className={heading}>{fill(t.bag, { n: state.bag.length, m: bagSize(state) })}</h3>
-            <button type="button" className={`${plain} ml-auto flex items-center gap-1.5`} onClick={() => setBagOpen(true)}>
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
-                <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />
-              </svg>
-              {t.bagFullscreen}
-            </button>
-          </div>
-          <p className="text-xs text-muted">{t.bagHint}</p>
-          <BagActions />
-          <UndrawableWarning />
-          {state.phase === "setup" && <p className="text-xs text-muted">{t.drawSetupHint}</p>}
-          <BagGrid wide={wide} />
-        </section>
-      )}
-      {bagOpen &&
-        // over the whole screen like the draw: in full screen only the grimoire is shown, so the box goes there
-        createPortal(<BagScreen onClose={() => setBagOpen(false)} />, document.fullscreenElement ?? document.body)}
-
+      {/* the tokens and bluffs only to look at: they are chosen in the token selection over the whole screen */}
       <section className="flex flex-col gap-2">
         <div className="flex flex-wrap items-center gap-2">
-          <h3 className={heading}>{t.bluffsTitle}</h3>
-          {!readOnly && <RandomBluffsButton onDone={() => setBluffSlot(null)} />}
+          <h3 className={heading}>{fill(t.bag, { n: state.bag.length, m: bagSize(state) })}</h3>
+          {!readOnly && (
+            <button type="button" className={`${button} ml-auto border-accent text-accent`} onClick={() => setBagOpen(true)}>
+              🎒 {t.tokenPick}
+            </button>
+          )}
         </div>
-        <p className="text-xs text-muted">{t.bluffsHint}</p>
-        <BluffSlots selected={bluffSlot} onSelect={setBluffSlot} />
-        {bluffSlot !== null && <BluffChoices slot={bluffSlot} onDone={() => setBluffSlot(null)} wide={wide} />}
+        <BagContents wide={wide} />
       </section>
+      {bagOpen &&
+        // over the whole screen, outside the grimoire's transformed column
+        createPortal(<BagScreen onClose={() => setBagOpen(false)} />, document.body)}
+
+      <section className="flex flex-col gap-2">
+        <h3 className={heading}>{t.bluffsTitle}</h3>
+        {state.bluffs.some(Boolean) ? (
+          <ul className="flex flex-wrap gap-1.5" data-testid="bluffs-view">
+            {state.bluffs.flatMap((b) =>
+              b
+                ? [
+                    <li key={b} className={chip}>
+                      <RoleIcon roleId={b} size={26} />
+                      {nameOf(b, locale)}
+                    </li>,
+                  ]
+                : [],
+            )}
+          </ul>
+        ) : (
+          <p className="text-sm text-muted">{t.bluffsNone}</p>
+        )}
+      </section>
+
+      {!readOnly && (
+        <section className="flex flex-col gap-2 border-t border-border pt-4">
+          <h3 className={heading}>{t.dealTitle}</h3>
+          <p className="text-xs text-muted">{t.bagHint}</p>
+          <DealActions />
+          <UndrawableWarning />
+          {state.phase === "setup" && <p className="text-xs text-muted">{t.drawSetupHint}</p>}
+        </section>
+      )}
     </div>
   );
 }
 
-/** Fills the bag at random, hands it out at random, lets the players draw from it, empties it; `onDealt` after a deal. */
-function BagActions({ onDealt }: { onDealt?: () => void }) {
+const chip = "flex items-center gap-1.5 rounded-full border border-border bg-card py-0.5 pr-2.5 pl-1 text-sm";
+
+/** The tokens in the bag by team, each with how many are in it and how many the rules want; nothing to tap. */
+function BagContents({ wide }: { wide: boolean }) {
+  const { state, locale, t } = useGrimoire();
+  const expected = expectedSetup(playerSeats(state).length, setupRoles(state), true);
+  const inBag = teamCounts(state.bag);
+  if (!state.bag.length) return <p className="text-sm text-muted">{t.bagEmpty}</p>;
+  return (
+    <div className={`grid gap-2 ${wide ? "sm:grid-cols-2" : ""}`} data-testid="bag-contents">
+      {setupTeams.map((team) => {
+        const want = expected?.[team];
+        const off = offCount(want, inBag[team]);
+        return (
+          <div key={team} className={`rounded-xl border p-2 ${teamBox[team]}`} data-team={team}>
+            <h4 className={`mb-1.5 flex items-baseline justify-between gap-2 px-1 text-xs font-semibold tracking-wide uppercase ${groupHeadingClass(team)}`}>
+              {t.teams[team]}
+              <span className={`text-sm tracking-normal ${off ? "font-bold text-accent" : "text-foreground"}`} title={`${t.inBag} / ${t.expected}`} data-testid="bag-team-count">
+                {inBag[team]}
+                {want && ` / ${wanted(want, t)}`}
+              </span>
+            </h4>
+            <ul className="flex flex-wrap gap-1.5">
+              {state.bag
+                .filter((id) => findRole(id)?.team === team)
+                .map((id) => (
+                  <li key={id} className={chip}>
+                    <RoleIcon roleId={id} size={26} />
+                    {nameOf(id, locale)}
+                  </li>
+                ))}
+            </ul>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Handing the bag out: the players draw from it themselves, or it is dealt at random after a confirmation. */
+function DealActions() {
   const { state, update, t } = useGrimoire();
-  const [failed, setFailed] = useState(false);
   const players = playerSeats(state).length;
   const blocked = undrawable(state.bag);
   const ready = state.bag.length > 0 && bagTokens(state.bag).length === players;
   const deal = () => {
-    if (state.seats.some((s) => s.role) && !confirm(t.dealConfirm)) return;
+    if (!confirm(state.seats.some((s) => s.role) ? t.dealConfirm : t.dealRandomConfirm)) return;
     update((s) => dealBag(s) ?? s);
-    onDealt?.();
   };
   const startDraw = () => {
     if (playerSeats(state).some((x) => x.role) && !confirm(t.drawConfirm)) return;
     update(startDrawing);
   };
-  // a new random bag on every tap; the grimoire's undo brings the previous one back
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {state.phase === "setup" && (
+        <button type="button" className={`${button} border-accent text-accent`} onClick={startDraw} disabled={!ready || blocked.length > 0}>
+          {t.draw}
+        </button>
+      )}
+      <button type="button" className={`${button} border-accent bg-accent text-accent-foreground`} onClick={deal} disabled={!ready}>
+        {t.deal}
+      </button>
+    </div>
+  );
+}
+
+/** In the token selection: a bag filled at random by the rules (again on every tap; undo brings the last one back), or emptied. */
+function PickActions() {
+  const { state, update, t } = useGrimoire();
+  const [failed, setFailed] = useState(false);
   const fillAtRandom = () => {
     const bag = randomBag(state);
     setFailed(!bag);
     if (bag) update((s) => ({ ...s, bag }));
   };
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <button type="button" className={plain} onClick={fillAtRandom} disabled={players < 5}>
+    <>
+      <button type="button" className={plain} onClick={fillAtRandom} disabled={playerSeats(state).length < 5}>
         🎲 {t.randomBag}
       </button>
-      <button type="button" className={`${button} border-accent bg-accent text-accent-foreground`} onClick={deal} disabled={!ready}>
-        {t.deal}
-      </button>
-      {state.phase === "setup" && (
-        <button type="button" className={`${button} border-accent text-accent`} onClick={startDraw} disabled={!ready || blocked.length > 0}>
-          {t.draw}
-        </button>
-      )}
       <button type="button" className={plain} onClick={() => update((s) => ({ ...s, bag: [] }))} disabled={!state.bag.length}>
         {t.emptyBag}
       </button>
       {failed && <span className="text-sm text-accent">{t.randomBagFailed}</span>}
-    </div>
+    </>
   );
 }
 
@@ -520,17 +579,17 @@ function BagScreen({ onClose }: { onClose: () => void }) {
       className="fixed inset-0 z-50 flex flex-col gap-4 overflow-y-auto overscroll-contain bg-background px-4 py-4 sm:px-8 sm:py-6"
       role="dialog"
       aria-modal="true"
-      aria-label={t.bagTitle}
+      aria-label={t.tokenPick}
       data-testid="bag-screen"
     >
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-        <h2 className="text-lg font-bold">{fill(t.bag, { n: state.bag.length, m: bagSize(state) })}</h2>
+        <h2 className="text-lg font-bold">{fill(t.tokenPickCount, { n: state.bag.length, m: bagSize(state) })}</h2>
         <span className="flex items-center gap-2 text-sm text-muted">
           {expected ? fill(t.distribution, { n: players }) : t.distributionTooFew}
           <PlayerCountButtons />
         </span>
         <div className="ml-auto flex flex-wrap items-center gap-2">
-          <BagActions onDealt={onClose} />
+          <PickActions />
           <button type="button" className={plain} onClick={onClose}>
             {t.bagDone}
           </button>

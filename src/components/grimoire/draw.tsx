@@ -55,8 +55,7 @@ export function DrawView() {
       </div>
 
       {open &&
-        // over the whole screen: the admin's column is transformed, which would trap a fixed box inside it;
-        // in full screen only the grimoire is shown, so the box goes there
+        // over the whole screen: the admin's column is transformed, which would trap a fixed box inside it
         createPortal(
           <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-6 bg-background p-6 text-center" role="dialog" aria-modal="true" data-testid="draw-dialog">
             {open.taken ? (
@@ -98,7 +97,7 @@ export function DrawView() {
               </>
             )}
           </div>,
-        document.fullscreenElement ?? document.body,
+        document.body,
       )}
     </>
   );
