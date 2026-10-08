@@ -87,6 +87,54 @@ export const changelog: ChangelogEntry[] = [
       },
       { for: "organizers", text: "Grimoár: nový grimoár ukáže na tlačítko Příprava, kde začít; na telefonu k němu posune stránku." },
       { for: "organizers", text: "Grimoár: texty kroků noci se zalamují na řádky místo „<br/>“." },
+      {
+        for: "organizers",
+        text: "Grimoár: se Špehem nebo Samotářem ve hře ukáže krok Kuchaře a Empata všechna čísla, která můžou vyjít (Špeh se může jevit jako dobrý, Samotář jako zlý – u každé dvojice a každého souseda zvlášť), a Pradlena, Knihovník a Vyšetřovatel všechny postavy, kterými se může jevit; opilý nebo otrávený Špeh či Samotář se jinak nejeví.",
+        href: "/admin/grimoary",
+      },
+      {
+        for: "organizers",
+        text: "Grimoár: když Démon zemře ve dne a naživu je aspoň 5 hráčů, stane se Démonem Šarlatová žena a v noci se probudí, aby se to dozvěděla. Smrt označenou omylem vrátí „Oživit“ ještě týž den i se Šarlatovou ženou.",
+      },
+      {
+        for: "organizers",
+        text: "Grimoár, démoni z Bad Moon Rising a Sects & Violets: Zombuul poprvé jen vypadá mrtvý (u hráče pak „☠ Zemřel/a doopravdy“) a v noci je napsané, jestli dnes někdo zemřel; Shabaloth zabíjí dva a žetonem „Živý“ vyvrhne jednoho zpět; Pó po noci bez volby zabije tři; Fang Gu přeskočí na prvního zabitého Podivína a sám zemře; Přisluhovač zabitý Vigormortisem si nechá schopnost a otráví sousedního Měšťana; No Dashii otráví nejbližšího Měšťana z každé strany; s Vortoxem musí Měšťan dostat nepravdivou informaci a ve dne je připomínka, že bez popravy vyhrává zlo. Kmotr: v noci je napsané, jestli dnes zemřel Podivín; Profesorův žeton „Živý“ oživí mrtvého Měšťana.",
+        href: "/admin/grimoary",
+      },
+      {
+        for: "organizers",
+        text: "Grimoár: záložka Kronika – po nocích a dnech, kdo zemřel (a čí schopností), kdo přežil útok Démona a díky komu, kdo ožil a kdo se stal Démonem. Při ukončení hry se z ní předvyplní poznámka ke hře.",
+      },
+      {
+        for: "organizers",
+        text: "Grimoár: Příprava a Výběr žetonů upozorní na jinxy mezi postavami v pytlíku nebo ve hře (text jinxu anglicky – české překlady ve script toolu jsou zčásti zastaralé).",
+      },
+      { for: "organizers", text: "Grimoár: žetony „Mrtvý“ Yaggababble v noci zabíjejí jako u ostatních Démonů." },
+      {
+        for: "organizers",
+        text: "Grimoár, experimentální démoni: Al-Hadikhia – žeton „Chose death“ zabije, „Chose life“ oživí mrtvého a tři životy zabijí všechny tři; Pijavice nezemře, dokud žije hostitel, a zemře s ním; Ojo – v kroku vybereš postavu a její hráč zemře; Lil' Monsta nikdo nedostane (o Přisluhovače víc), Přisluhovači se v noci budí vybrat, kdo ji hlídá; Legie jde do pytlíku vícekrát a pro Vyšetřovatele je i Přisluhovač; Pán bouře – zlí se při rozdání posadí do řady kolem něj (jinde je v Přípravě tlačítko); Kazali – kolik Přisluhovačů vytvoří; 3. den se z Přisluhovačů stane Riot; Leviathan – počítá dny a popravené dobré hráče. Ve dne jsou ve středu kruhu jejich pravidla pro ten den.",
+        href: "/admin/grimoary",
+      },
+      {
+        for: "organizers",
+        text: "Grimoár: změna postavy hráče během hry (Kazali, Ježibaba…) se zapíše do kroniky; žeton položený znovu na stejného hráče další noc platí pro tuto noc.",
+      },
+      {
+        for: "organizers",
+        text: "Grimoár, Přisluhovači: Travičův jed a opilost od Cvičitele opic, Námořníka a Hostinského platí jen do soumraku (pak žeton zmizí), stejně prokletí Čarodějnice; žeton „Mrtvý“ Kmotra v noci zabije (Mnich ani Voják před ním nechrání, Hostinský, Námořník a Šašek ano) a Nájemného vraha zabije vždy, i Pijavici; Vezír ve dne nezemře, stejně hráč Ďáblova advokáta; komu Mezefeles obrátil stranu („Turns evil“), je zlý i pro Kuchaře a Empata; na noc X Xaana jsou Měšťané otrávení; Démon se budí i v kroku postavy, jejíž schopnost mu dal Boffin (vybereš u Boffina). Ve dne střed kruhu připomene Čarodějnici, Strůjce, Zlé dvojče, Boomdandyho a Skřeta.",
+        href: "/admin/grimoary",
+      },
+      { for: "players", text: "Odehrané hry: u Boffina je vidět, čí schopnost dal Démonovi, u Alchymisty, čí schopnost měl.", href: "/botc/archiv" },
+      {
+        for: "organizers",
+        text: "Grimoár, Podivíni: žeton „Mrtvý“ v noci zabíjí u všech postav (Dítě měsíce a Vlkodlak jen dobrého hráče, Dráteník, Drbna, Gambler, Akrobat…) – Mnich a Voják před tím nechrání, Hostinský, Námořník a Šašek ano; kdo první v noci vybere Hňupa, je do soumraku opilý a jeho volba nic neudělá; Zlobr je na straně svého přítele (i pro Kuchaře a Empata); Poustevník má schopnosti Podivínů ze scriptu (budí se u nich, jeví se jako Samotář); Blázen hraje Démona jen ve svém kroku. V noci připomene Holiče, Kloboučníka, Zlatíčko a Dítě měsíce, ve dne popraveného Světce, Nešiku, Dítě měsíce, Zlatíčko a Sluhova pána, při konci hry Heretika a Politika.",
+        href: "/admin/grimoary",
+      },
+      {
+        for: "organizers",
+        text: "Grimoár, Měšťané: Námořník a Šašek (poprvé) nezemřou ani při popravě, sousedé Čajové dámy se počítají sami (oba dobří = nemůžou zemřít); Babička zemře se zabitým vnoučetem; postava, kterou si vzal Filozof, je opilá; Přisluhovač na kázání Kazatele nemá schopnost; opilost od Lichotníka trvá 3 noci a 3 dny; Zaklínač hadů, který vybere Démona, si s ním prohodí postavu; Kanibal se budí jako poslední popravený (zlý = otrávený); Alchymista má schopnost Přisluhovače (vybereš u něj). Spočítá Hodináře, Věštce, Shugenju a Hrobníka (i se Špehem a Samotářem), u Vědmy kdo je pro ni Démon, u Strážkyně krkavců, Mudrce, Zpěváčka, Krále a Farmáře co dělat. U Démona upozorní na Exorcistu, Princeznu, Vlkodlaka a útok na Starostu, u infa pro zlé na Kouzelníka a Makovou panenku, ve dne na Ateistu, Starostu se 3 živými, Pacifistu, Pannu a Smrtonošku.",
+        href: "/admin/grimoary",
+      },
     ],
   },
   {

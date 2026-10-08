@@ -1,10 +1,11 @@
 import { z } from "zod";
 import { gameWinners } from "@/db/schema";
 import { BLUFF_COUNT, findRole } from "@/lib/botc-roles";
-import { gapKinds, MAX_REMINDERS, MAX_SEATS, type GrimoireState } from "./state";
+import { eventKinds, gapKinds, MAX_EVENTS, MAX_REMINDERS, MAX_SEATS, type GrimoireState } from "./state";
 
 const roleId = z.string().max(40).refine((id) => findRole(id) !== undefined);
 const shortId = z.string().min(1).max(20);
+const round = z.number().int().min(0).max(99);
 
 /** A grimoire state as the page sends it: only known characters, bounded sizes, unknown fields dropped. */
 export const grimoireStateSchema: z.ZodType<GrimoireState> = z.object({
@@ -26,7 +27,7 @@ export const grimoireStateSchema: z.ZodType<GrimoireState> = z.object({
         dead: z.boolean(),
         voteUsed: z.boolean(),
         reminders: z
-          .array(z.object({ id: shortId, roleId: roleId.nullable(), text: z.string().trim().min(1).max(80), round: z.number().int().min(0).max(99).optional() }))
+          .array(z.object({ id: shortId, roleId: roleId.nullable(), text: z.string().trim().min(1).max(80), round: round.optional() }))
           .max(MAX_REMINDERS),
       }),
     )
@@ -34,11 +35,26 @@ export const grimoireStateSchema: z.ZodType<GrimoireState> = z.object({
   bag: z.array(roleId).max(MAX_SEATS),
   bluffs: z.array(roleId.nullable()).length(BLUFF_COUNT),
   phase: z.enum(["setup", "night", "day", "ended"]),
-  round: z.number().int().min(0).max(99),
+  round,
   winner: z.enum(gameWinners).nullable(),
   nightDone: z.array(z.string().max(40)).max(200),
   drawing: z.boolean().optional(),
   seatsLocked: z.boolean().optional(),
   // as long as the game form's note
   notes: z.string().trim().max(1000).optional(),
+  log: z
+    .array(
+      z.object({
+        round,
+        day: z.boolean().optional(),
+        kind: z.enum(eventKinds),
+        seatId: shortId,
+        name: z.string().trim().max(60),
+        role: roleId.nullable(),
+        by: roleId.optional(),
+        fake: z.boolean().optional(),
+      }),
+    )
+    .max(MAX_EVENTS)
+    .optional(),
 });

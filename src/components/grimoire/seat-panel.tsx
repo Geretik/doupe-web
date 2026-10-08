@@ -3,13 +3,17 @@
 import { useState } from "react";
 import { botcRoles, findRole, linkedRoleOf } from "@/lib/botc-roles";
 import {
+  changeRole,
   charactersInPlay,
   gapKinds,
+  lleechHost,
   MAX_REMINDERS,
   MAX_SEATS,
   moveSeat,
   newGap,
+  registersDead,
   setDead,
+  survives,
   toggleReminder,
   uid,
   usedToken,
@@ -136,7 +140,7 @@ export function SeatPanel({
         {picking === "role" && (
           <>
             {seat.role && (
-              <button type="button" className={plain} onClick={() => (set((x) => ({ ...x, role: null, believedRole: null })), setPicking(null))}>
+              <button type="button" className={plain} onClick={() => (update((s) => changeRole(s, seat.id, null)), setPicking(null))}>
                 {t.noRoleOption}
               </button>
             )}
@@ -146,7 +150,8 @@ export function SeatPanel({
               notes={others}
               label={t.role}
               onPick={(role) => {
-                set((x) => ({ ...x, role, believedRole: role === x.role ? x.believedRole : null }));
+                // during the game logged in the chronicle (the Kazali's Minions, a Pit-Hag…)
+                update((s) => changeRole(s, seat.id, role));
                 setPicking(null);
               }}
             />
@@ -198,8 +203,20 @@ export function SeatPanel({
               {seat.voteUsed ? t.voteBack : t.voteSpend}
             </button>
           )}
+          {registersDead(state, seat) && (
+            // the Zombuul after their first death: alive, so they can still die
+            <button
+              type="button"
+              className={`${big} col-span-2 border-accent bg-accent text-accent-foreground`}
+              onClick={() => update((s) => setDead(s, seat.id, true, characters))}
+            >
+              {t.killForReal}
+            </button>
+          )}
         </section>
       )}
+      {registersDead(state, seat) && <p className="-mt-2 text-sm font-medium text-accent">{fill(t.registersDead, { name: seat.name || "?" })}</p>}
+      <SurvivalNote seat={seat} />
       {seat.dead && <p className="-mt-2 text-sm text-muted">{seat.voteUsed ? t.voteUsed : t.ghostVote}</p>}
 
       <section className="flex flex-col gap-2">
@@ -260,6 +277,30 @@ export function SeatPanel({
 
 /** A gap in the circle: what it is, and its place. */
 /** ✕ at the top of the panel: nobody selected, so in the day no player stays lit up in the town. */
+/**
+ * Why the player does not die now though killed (survives: the Lleech's host, the Sailor, the Fool, the Tea Lady's
+ * neighbours, the Vizier by day, the Devil's Advocate's choice), and the Psychopath's roshambo by day.
+ */
+function SurvivalNote({ seat }: { seat: GrimoireSeat }) {
+  const { state, characters, t } = useGrimoire();
+  if (seat.dead) return null;
+  const why = survives(state, seat, characters);
+  const host = why === "lleech" ? lleechHost(state, characters) : null;
+  const note =
+    why === "lleech" && host
+      ? fill(t.lleechHost, { name: host.name || "?" })
+      : why === "vizier"
+        ? t.vizierDay
+        : why === "devilsadvocate"
+          ? t.devilsAdvocateDay
+          : why === "sailor" || why === "fool" || why === "tealady"
+            ? t.cannotDie[why]
+            : seat.role === "psychopath" && state.phase === "day"
+              ? t.psychopathDay
+              : null;
+  return note ? <p className="-mt-2 text-sm font-medium text-accent">{note}</p> : null;
+}
+
 function CloseButton({ onClose }: { onClose: () => void }) {
   const { t } = useGrimoire();
   return (

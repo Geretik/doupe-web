@@ -8,9 +8,12 @@ import type { GameWinner } from "@/db/schema";
 import { endGame, reopenGame } from "@/lib/grimoire/state";
 import { fill } from "@/lib/grimoire/text";
 import { useGrimoire } from "./context";
+import { chronicleText } from "./chronicle";
 import { DeleteGrimoireButton } from "./delete-grimoire";
 
 const button = "min-h-12 rounded-lg border px-3 py-2 text-sm font-semibold";
+/** As long as the game form's note */
+const NOTES_MAX = 1000;
 
 type GameProps = {
   id: number;
@@ -49,9 +52,11 @@ export function GameButton(props: GameProps) {
 
 /** Who won and a note on the game, which writes the session's game record; once over: back into it, the next game, delete. */
 function GameDialog({ id, session, recorded, canEdit, canDelete, onClose }: GameProps & { onClose: () => void }) {
-  const { state, update, readOnly, t } = useGrimoire();
+  const { state, update, readOnly, locale, t } = useGrimoire();
   const [winner, setWinner] = useState<GameWinner | "unknown" | null>(null);
-  const [notes, setNotes] = useState(state.notes ?? "");
+  // a game ended for the first time: the note starts as the chronicle
+  const [fromChronicle] = useState(() => (state.notes === undefined ? chronicleText(state, locale, t, NOTES_MAX) : ""));
+  const [notes, setNotes] = useState(state.notes ?? fromChronicle);
   const ended = state.phase === "ended";
   useEffect(() => {
     const key = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -89,6 +94,8 @@ function GameDialog({ id, session, recorded, canEdit, canDelete, onClose }: Game
             <>
               <h2 className="text-xl font-bold">{t.endTitle}</h2>
               <p className="text-sm text-muted">{session ? fill(t.endRecords, { title: session.title }) : t.endNoSession}</p>
+              {state.seats.some((s) => s.role === "heretic") && <p className="text-sm font-medium text-accent">⚠️ {t.hereticEnd}</p>}
+              {state.seats.some((s) => s.role === "politician") && <p className="text-sm font-medium text-accent">⚠️ {t.politicianEnd}</p>}
               <fieldset className="flex flex-col gap-2">
                 <legend className="mb-2 text-sm font-semibold">{t.whoWon}</legend>
                 <div className="grid grid-cols-3 gap-2">
@@ -110,11 +117,12 @@ function GameDialog({ id, session, recorded, canEdit, canDelete, onClose }: Game
                 <textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  maxLength={1000}
+                  maxLength={NOTES_MAX}
                   rows={4}
                   placeholder={t.gameNotesPlaceholder}
                   className="rounded-lg border border-border bg-card px-3 py-2 text-base font-normal"
                 />
+                {fromChronicle && <span className="text-xs font-normal text-muted">{t.gameNotesChronicle}</span>}
               </label>
               <div className="flex flex-wrap gap-2">
                 <button

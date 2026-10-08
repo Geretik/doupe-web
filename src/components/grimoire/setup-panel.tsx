@@ -12,6 +12,7 @@ import {
   gapKinds,
   hiddenInBag,
   isPlayer,
+  lineUpTyphon,
   marionetteApart,
   MAX_SEATS,
   newGap,
@@ -25,11 +26,13 @@ import {
   setupTeams,
   startDrawing,
   teamCounts,
+  typhonInLine,
   undrawable,
   type ExpectedCount,
   type GrimoireState,
 } from "@/lib/grimoire/state";
 import { groupHeadingClass } from "@/components/draft/team-section";
+import { jinxesAmong } from "@/lib/grimoire/characters";
 import { fill } from "@/lib/grimoire/text";
 import { nameOf, RoleIcon, useGrimoire, type GrimoireContextValue, type GrimoireTexts } from "./context";
 import { RoleGrid, teamBox } from "./role-grid";
@@ -260,9 +263,20 @@ export function SetupPanel({ scripts, onSelectSeat, wide = false }: { scripts: S
           </ul>
         )}
         {marionetteApart(state) && <p className="text-sm text-accent">{t.marionetteApart}</p>}
+        {typhonInLine(state) === false && (
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-sm text-accent">{t.typhonApart}</p>
+            {!readOnly && (
+              <button type="button" className={plain} onClick={() => update((s) => lineUpTyphon(s))}>
+                {t.typhonLineUp}
+              </button>
+            )}
+          </div>
+        )}
+        <JinxWarnings />
         {missingLinked.map((s) => (
           <button key={s.id} type="button" onClick={() => onSelectSeat(s.id)} className="text-left text-sm text-accent underline">
-            {fill(t.linkedNeeded, { name: s.name, role: nameOf(s.role, locale) })}
+            {fill(t.linkedNeeded, { name: s.name, role: nameOf(s.role, locale), what: t.linked[linkedRoleOf(s.role)!.kind] })}
           </button>
         ))}
       </section>
@@ -522,6 +536,53 @@ function UndrawableWarning() {
   return <p className="text-sm text-accent">{fill(t.undrawable, { roles: blocked.map((id) => nameOf(id, locale)).join(", ") })}</p>;
 }
 
+/** Legion in the bag: most players are Legion, as many of its tokens as the Storyteller likes. */
+function LegionCount() {
+  const { state, update, t } = useGrimoire();
+  const n = state.bag.filter((id) => id === "legion").length;
+  if (!n) return null;
+  const set = (k: number) => update((s) => ({ ...s, bag: [...s.bag.filter((id) => id !== "legion"), ...Array<string>(k).fill("legion")] }));
+  return (
+    <div className="flex flex-wrap items-center gap-2 text-sm" data-testid="legion-count">
+      <RoleIcon roleId="legion" size={28} />
+      <span className="font-semibold">{fill(t.legionCount, { n })}</span>
+      <button type="button" className={`${plain} w-11 px-0 text-lg`} aria-label={t.legionFewer} onClick={() => set(n - 1)} disabled={n <= 1}>
+        −
+      </button>
+      <button type="button" className={`${plain} w-11 px-0 text-lg`} aria-label={t.legionMore} onClick={() => set(n + 1)} disabled={state.bag.length >= MAX_SEATS}>
+        +
+      </button>
+      <span className="text-muted">{fill(t.legionHint, { n: Math.floor(playerSeats(state).length / 2) + 1 })}</span>
+    </div>
+  );
+}
+
+/** Characters in the bag (or at the table) with a jinx between them: how the two work together. */
+function JinxWarnings() {
+  const { state, characters, locale, t } = useGrimoire();
+  const jinxes = jinxesAmong(setupRoles(state), characters);
+  if (!jinxes.length) return null;
+  return (
+    <div className="flex flex-col gap-1 rounded-lg border border-accent/40 bg-accent/5 px-3 py-2 text-sm" data-testid="jinxes">
+      <h4 className="font-semibold text-accent">⚠️ {t.jinxes}</h4>
+      <ul className="flex flex-col gap-1">
+        {jinxes.map(({ a, b, reason }) => (
+          <li key={`${a}-${b}`} className="flex flex-wrap items-center gap-1.5">
+            <RoleIcon roleId={a} size={22} />
+            <RoleIcon roleId={b} size={22} />
+            <span>
+              <span className="font-semibold">
+                {nameOf(a, locale)} + {nameOf(b, locale)}:
+              </span>{" "}
+              <span lang="en">{reason}</span>
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 /** The script's characters to put in the bag, each team with how many are in it and how many the rules want. */
 function BagGrid({ wide = false }: { wide?: boolean }) {
   const { state, update, characters, t } = useGrimoire();
@@ -637,6 +698,8 @@ function BagScreen({ onClose }: { onClose: () => void }) {
         </ul>
       )}
       <UndrawableWarning />
+      <JinxWarnings />
+      <LegionCount />
       {bluffSlot === null ? <BagGrid wide /> : <BluffChoices slot={bluffSlot} onDone={() => setBluffSlot(null)} wide />}
     </div>
   );

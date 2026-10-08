@@ -182,10 +182,11 @@ export const bluffTeams: readonly RoleTeam[] = ["townsfolk", "outsider"];
 
 /**
  * Characters tied to a second one, and the teams it can be from: who a Drunk, Lunatic or Marionette
- * thinks they are ("as"), which in-play Townsfolk the Pixie learns ("knows"), whose ability the Philosopher or
- * the Apprentice (a Townsfolk's when good, a Minion's when evil) takes.
+ * thinks they are ("as"), which in-play Townsfolk the Pixie learns ("knows"), whose ability the Philosopher,
+ * the Apprentice (a Townsfolk's when good, a Minion's when evil) or the Alchemist (a Minion's) takes, the
+ * not-in-play good character whose ability the Boffin gives the Demon ("gives").
  */
-export type LinkedKind = "as" | "knows" | "ability";
+export type LinkedKind = "as" | "knows" | "ability" | "gives";
 const linkedRoles: Partial<Record<string, { kind: LinkedKind; teams: readonly RoleTeam[] }>> = {
   drunk: { kind: "as", teams: ["townsfolk"] },
   lunatic: { kind: "as", teams: ["demon"] },
@@ -193,6 +194,8 @@ const linkedRoles: Partial<Record<string, { kind: LinkedKind; teams: readonly Ro
   pixie: { kind: "knows", teams: ["townsfolk"] },
   philosopher: { kind: "ability", teams: ["townsfolk", "outsider"] },
   apprentice: { kind: "ability", teams: ["townsfolk", "minion"] },
+  alchemist: { kind: "ability", teams: ["minion"] },
+  boffin: { kind: "gives", teams: ["townsfolk", "outsider"] },
 };
 
 /** The second character a character is tied to, or undefined when it has none. */

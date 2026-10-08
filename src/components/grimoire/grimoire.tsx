@@ -7,6 +7,7 @@ import type { Locale } from "@/i18n/dictionaries";
 import type { GrimoireCharacter } from "@/lib/grimoire/characters";
 import { isPlayer, moveSeat, nextPhase, nightSteps, putToken, type GrimoireState } from "@/lib/grimoire/state";
 import { useAutosave, type SaveStatus } from "./autosave";
+import { ChroniclePanel } from "./chronicle";
 import { DrawView } from "./draw";
 import { fill } from "@/lib/grimoire/text";
 import { GrimoireContext, nameOf, type GrimoireContextValue, type GrimoireTexts } from "./context";
@@ -28,7 +29,7 @@ function reducer(h: History, a: Change): History {
   return next === h.present ? h : { present: next, past: [...h.past, h.present].slice(-UNDO_LIMIT) };
 }
 
-type Tab = "seat" | "night";
+type Tab = "seat" | "night" | "log";
 
 const statusClass: Record<SaveStatus, string> = {
   saved: "text-muted",
@@ -143,7 +144,7 @@ export function Grimoire({
   const context: GrimoireContextValue = { state, update, readOnly: !canEdit || state.phase === "ended", characters, sessionPlayers, locale, t };
 
   const advance = () => {
-    const next = nextPhase(state);
+    const next = nextPhase(state, characters);
     update(() => next);
     setFocusStep(null);
     setPlacing(null);
@@ -175,7 +176,7 @@ export function Grimoire({
   const nextLabel =
     state.phase === "setup" ? t.startGame : state.phase === "night" ? fill(t.toDay, { n: state.round }) : state.phase === "day" ? fill(t.toNight, { n: state.round + 1 }) : null;
   // the setup and the game's end are buttons under the panel: the setup is done once, the end comes once
-  const tabs: Tab[] = state.phase === "night" || preview ? ["night", "seat"] : ["seat"];
+  const tabs: Tab[] = [...(state.phase === "night" || preview ? ["night" as const] : []), "seat", ...(state.phase === "setup" ? [] : ["log" as const])];
   // after "undo" out of a night the night tab is gone
   const shown = tabs.includes(tab) ? tab : "seat";
   const setupHint = canEdit && !setupSeen && state.phase === "setup" && state.bag.length === 0 && !state.seats.some((s) => s.role);
@@ -320,6 +321,7 @@ export function Grimoire({
                   {shown === "seat" && (
                     <SeatPanel key={selected} seatId={selected} onRemoved={() => setSelected(null)} onSelect={setSelected} onClose={() => setSelected(null)} />
                   )}
+                  {shown === "log" && <ChroniclePanel />}
                   {shown === "night" && (
                     <NightPanel
                       steps={steps}

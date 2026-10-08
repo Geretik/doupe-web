@@ -2,9 +2,25 @@
 
 import { useEffect, useRef, useState } from "react";
 import { linkedRoleOf } from "@/lib/botc-roles";
-import { moveSeat, players, seatSide, voteMath, type GapKind, type GrimoireSeat } from "@/lib/grimoire/state";
+import {
+  abilityWorks,
+  diedLately,
+  hermitHas,
+  moveSeat,
+  players,
+  remindersOf,
+  seatSide,
+  tokenOf,
+  voteMath,
+  vortoxWorks,
+  type GapKind,
+  type GrimoireSeat,
+  type GrimoireState,
+} from "@/lib/grimoire/state";
+import { findRole } from "@/lib/botc-roles";
+import type { GrimoireCharacter } from "@/lib/grimoire/characters";
 import { fill } from "@/lib/grimoire/text";
-import { nameOf, RoleIcon, useGrimoire } from "./context";
+import { nameOf, RoleIcon, useGrimoire, type GrimoireTexts } from "./context";
 
 const LABEL = 22;
 const PILL_W = 104;
@@ -263,7 +279,7 @@ function SeatToken({
   onClick: () => void;
   hidden: boolean;
 } & Moving) {
-  const { locale, t } = useGrimoire();
+  const { state, characters, locale, t } = useGrimoire();
   if (hidden) {
     // face down: whether the place has drawn, never what
     return (
@@ -286,7 +302,7 @@ function SeatToken({
       </button>
     );
   }
-  const side = seatSide(seat);
+  const side = seatSide(seat, characters, state);
   const border = side ? sideBorder[side] : seat.role ? "border-muted" : "border-dashed border-border";
   const ring = selected ? "outline-4 outline-offset-2 outline-accent" : highlighted ? "outline-4 outline-offset-2 outline-amber-400" : "";
   const linked = seat.believedRole && linkedRoleOf(seat.role) ? seat.believedRole : null;
@@ -336,9 +352,54 @@ function SeatToken({
   );
 }
 
+/**
+ * What living characters do to today: no execution with the Vortox, the Leviathan's days, Legion's votes, Riot;
+ * the Witch's cursed player, the Mastermind's extra day, the Evil Twin, the Boomdandy executed, the Goblin's claim;
+ * the Saint executed, the Klutz, Moonchild and Sweetheart who died, the Butler's master; the Atheist executed, the
+ * Mayor with three alive, the Pacifist, the Virgin not nominated yet, the Banshee killed by the Demon.
+ */
+function dayRules(state: GrimoireState, characters: Record<string, GrimoireCharacter>, t: GrimoireTexts) {
+  const alive = (role: string) => players(state).some((s) => s.role === role && !s.dead);
+  const executed = tokenOf(characters.leviathan, "goodExecuted");
+  const rules: string[] = [];
+  if (vortoxWorks(state, characters)) rules.push(t.vortoxDay);
+  if (alive("leviathan")) rules.push(fill(t.leviathanDay, { n: state.round, k: remindersOf(state, "leviathan").filter(({ reminder }) => reminder.text === executed).length }));
+  if (alive("legion")) rules.push(t.legionDay);
+  if (alive("riot") && state.round === 3) rules.push(t.riotDay);
+  const cursed = remindersOf(state, "witch").find(({ seat, reminder }) => !seat.dead && characters.witch?.tokenKinds[reminder.text] === "cursed")?.seat;
+  if (cursed && abilityWorks(state, "witch", characters)) rules.push(fill(t.witchDay, { name: cursed.name || "?" }));
+  // a Demon died by day, today or yesterday, and none lives
+  const demonDied = (state.log ?? []).some((e) => e.kind === "death" && e.day && !e.fake && state.round - e.round <= 1 && findRole(e.role)?.team === "demon");
+  const demonLives = players(state).some((s) => !s.dead && findRole(s.role)?.team === "demon");
+  if (demonDied && !demonLives && abilityWorks(state, "mastermind", characters)) rules.push(t.mastermindDay);
+  const twin = remindersOf(state, "eviltwin")[0]?.seat;
+  if (twin && !twin.dead && alive("eviltwin")) rules.push(fill(t.evilTwinDay, { name: twin.name || "?" }));
+  if ((state.log ?? []).some((e) => e.kind === "death" && e.day && e.round === state.round && e.role === "boomdandy")) rules.push(t.boomdandyDay);
+  const claimed = remindersOf(state, "goblin").some(({ seat, reminder }) => seat.role === "goblin" && !seat.dead && reminder.round === state.round);
+  if (claimed) rules.push(t.goblinDay);
+  // the Outsiders: the Saint executed, who learns they died, the Butler's master
+  const today = diedLately(state);
+  const saint = (e: (typeof today)[number]) => e.role === "saint" || (e.role === "hermit" && hermitHas(state, { role: "hermit" }, "saint"));
+  if (today.some((e) => e.day && saint(e))) rules.push(t.saintDay);
+  if (today.some((e) => e.role === "klutz")) rules.push(t.klutzDay);
+  if (today.some((e) => e.role === "moonchild")) rules.push(t.moonchildDay);
+  if (today.some((e) => e.role === "sweetheart")) rules.push(t.sweetheartDay);
+  // the Townsfolk: the Atheist executed, the Mayor's last three, the Pacifist, the Virgin, the Banshee
+  if (today.some((e) => e.day && e.role === "atheist")) rules.push(t.atheistDay);
+  if (abilityWorks(state, "mayor", characters) && players(state).filter((s) => !s.dead).length === 3) rules.push(t.mayorDay);
+  if (abilityWorks(state, "pacifist", characters)) rules.push(t.pacifistDay);
+  if (players(state).some((s) => s.role === "virgin" && !s.dead && !s.reminders.some((r) => r.roleId === "virgin"))) rules.push(t.virginDay);
+  const banshee = (state.log ?? []).find((e) => e.kind === "death" && e.role === "banshee" && findRole(e.by)?.team === "demon");
+  if (banshee) rules.push(fill(t.bansheeDay, { name: banshee.name || "?" }));
+  const butler = players(state).find((s) => s.role === "butler" && !s.dead);
+  const master = remindersOf(state, "butler")[0]?.seat;
+  if (butler && master) rules.push(fill(t.butlerDay, { name: butler.name || "?", master: master.name || "?" }));
+  return rules;
+}
+
 /** The middle of the town: the phase and the numbers a Storyteller keeps asking for. */
 export function TownCenter({ phaseLabel }: { phaseLabel: string }) {
-  const { state, t } = useGrimoire();
+  const { state, characters, t } = useGrimoire();
   const { alive, votes, toExecute } = voteMath(state);
   const count = players(state).length;
   const bluffs = state.bluffs.filter((b): b is string => b !== null);
@@ -351,6 +412,12 @@ export function TownCenter({ phaseLabel }: { phaseLabel: string }) {
         </span>
       )}
       {state.phase === "day" && alive > 0 && <span className="text-sm font-semibold">{fill(t.toExecute, { n: toExecute })}</span>}
+      {state.phase === "day" &&
+        dayRules(state, characters, t).map((rule) => (
+          <span key={rule} className="max-w-56 text-xs font-semibold text-accent">
+            {rule}
+          </span>
+        ))}
       {bluffs.length > 0 && (
         <span className="mt-1 flex items-center gap-1 text-xs text-muted">
           {t.bluffs}:{" "}

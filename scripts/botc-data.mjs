@@ -1,5 +1,5 @@
 // `npm run botc-data [path]`: copies what the grimoire needs about each character – ability, night order with
-// the Storyteller's texts, reminder tokens – from the club's script tool (github.com/Geretik/boardgames,
+// the Storyteller's texts, reminder tokens, jinxes – from the club's script tool (github.com/Geretik/boardgames,
 // apps/botc/src/data) into src/data/botc-characters.json, in English and Czech. Run it after the script tool's
 // data changes; the new file goes live with the next deploy. Only characters the site knows (lib/botc-roles)
 // are copied, so no Fabled or Loric.
@@ -24,6 +24,15 @@ function readLiteral(file) {
 
 const english = new Map(readLiteral("roles.en.ts").map((r) => [r.id, r]));
 const czech = readLiteral("roles.cs.overrides.ts");
+const known = new Set(botcRoles.map((r) => r.id));
+
+/**
+ * Jinxes by the character listing them: the other character and the reason, in English only – the script tool's
+ * Czech ones are partly of older jinxes (Spy & Damsel: "Only 1 jinxed character…") or of a pair the other way round.
+ */
+const jinxes = new Map(
+  readLiteral("jinxes.en.ts").map((j) => [j.id, j.hatred.filter((h) => known.has(h.id)).map((h) => ({ id: h.id, reason: h.reason }))]),
+);
 
 const texts = (r) => ({
   ability: r.ability ?? "",
@@ -44,7 +53,8 @@ for (const { id } of botcRoles) {
   const base = texts(en);
   // a Czech text the script tool has not translated yet stays English
   const cs = Object.fromEntries(Object.entries(base).map(([k, v]) => [k, czech[id]?.[k] ?? v]));
-  characters[id] = { firstNight: en.firstNight ?? 0, otherNight: en.otherNight ?? 0, setup: Boolean(en.setup), en: base, cs };
+  const jinxed = jinxes.get(id) ?? [];
+  characters[id] = { firstNight: en.firstNight ?? 0, otherNight: en.otherNight ?? 0, setup: Boolean(en.setup), en: base, cs, ...(jinxed.length ? { jinxes: jinxed } : {}) };
 }
 if (missing.length) {
   console.error(`Ve script toolu chybí postavy: ${missing.join(", ")}`);
