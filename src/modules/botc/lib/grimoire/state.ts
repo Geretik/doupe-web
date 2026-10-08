@@ -35,6 +35,15 @@ export type GrimoireSeat = {
 
 export type GrimoirePhase = "setup" | "night" | "day" | "ended";
 
+/** A script's homebrew character, only to read: no player gets it in the grimoire. `team` as the script says, if it is a known one. */
+export type HomebrewCharacter = { name: string; team: string | null; ability: string };
+
+/** What a script brings of its own, which the Bootlegger stands for: its rules (the official "_meta.bootlegger") and characters. */
+export type Homebrew = { rules: string[]; characters: HomebrewCharacter[] };
+
+/** Bounds of a script's homebrew kept in a grimoire */
+export const HOMEBREW_LIMITS = { rules: 20, characters: 50, name: 80, text: 600 } as const;
+
 export const eventKinds = ["death", "survived", "revived", "became"] as const;
 
 /**
@@ -58,8 +67,11 @@ export type GrimoireEvent = {
 };
 
 export type GrimoireState = {
-  /** The characters to play with: a script of the club's library (id), one pasted as JSON (json), else every character */
-  script: { id: number | null; json?: boolean; name: string; roleIds: string[] };
+  /**
+   * The characters to play with: a script of the club's library (id), one pasted as JSON (json), else every
+   * character; `fabled`: its Fabled and Loric, `homebrew`: its own rules and characters (the Bootlegger's)
+   */
+  script: { id: number | null; json?: boolean; name: string; roleIds: string[]; fabled?: string[]; homebrew?: Homebrew };
   /** The circle in seating order, clockwise: the players and the gaps between them */
   seats: GrimoireSeat[];
   /** Characters the Storyteller put in the bag to hand out at random */
@@ -80,6 +92,8 @@ export type GrimoireState = {
   notes?: string;
   /** What happened, in order (GrimoireEvent); the oldest go beyond MAX_EVENTS */
   log?: GrimoireEvent[];
+  /** The Storyteller's Fabled and Loric in the game: the script's, and the ones added for this table */
+  fabled?: string[];
 };
 
 /** Up to this many places in the circle; the official game goes to 15 players and a few travellers, then the gaps. */
@@ -124,7 +138,20 @@ export function players(state: Pick<GrimoireState, "seats">) {
 }
 
 export function newGrimoireState(script: GrimoireState["script"], seats: GrimoireSeat[]): GrimoireState {
-  return { script, seats, bag: [], bluffs: Array(BLUFF_COUNT).fill(null), phase: "setup", round: 0, winner: null, nightDone: [] };
+  const fabled = script.fabled?.length ? { fabled: [...script.fabled] } : {};
+  return { script, seats, bag: [], bluffs: Array(BLUFF_COUNT).fill(null), phase: "setup", round: 0, winner: null, nightDone: [], ...fabled };
+}
+
+/** Another script for the game: the bag keeps only its characters, the old script's Fabled and Loric make way for the new one's. */
+export function withScript(state: GrimoireState, script: GrimoireState["script"]): GrimoireState {
+  const old = new Set(state.script.fabled ?? []);
+  const fabled = [...new Set([...(state.fabled ?? []).filter((id) => !old.has(id)), ...(script.fabled ?? [])])];
+  return { ...state, script, bag: state.bag.filter((id) => script.roleIds.includes(id)), fabled };
+}
+
+/** The Fabled or Loric is in the game. */
+export function hasFabled(state: Partial<Pick<GrimoireState, "fabled">>, id: string) {
+  return !!state.fabled?.includes(id);
 }
 
 /** The four teams a game is set up from; travellers come on top. */
@@ -180,6 +207,8 @@ const SETUP_EFFECTS: Record<string, { options?: Partial<Record<CountTeam, number
   // the players: one Minion more and no Demon; the bag holds Lil' Monsta on top (STAND_INS)
   lilmonsta: { options: [{ minion: 1, demon: -1 }] },
   legion: { open: ["outsider", "minion", "demon"] },
+  // the Fabled: there might be one Outsider more or fewer
+  sentinel: { options: [{}, { outsider: 1 }, { outsider: -1 }] },
 };
 
 /** A team's number for a game: the rulebook's, the values the characters allow (several when one leaves a choice; null = any), and who changed it. */
@@ -243,6 +272,28 @@ export function expectedSetup(players: number, roleIds: (string | null)[], bag =
 /** Lil' Monsta: the Demon nobody is – the Minions choose each night who babysits its token. */
 export const LIL_MONSTA = "lilmonsta";
 
+/** The Loric with duplicate good characters in play */
+export const POPE = "pope";
+
+/**
+ * A good character the Pope may put in play twice; not one who thinks they are someone else (the Drunk, the
+ * Lunatic), as the bag holds them through a stand-in.
+ */
+export function duplicable(id: string) {
+  const team = findRole(id)?.team;
+  return (team === "townsfolk" || team === "outsider") && linkedRoleOf(id)?.kind !== "as";
+}
+
+/**
+ * A tap on a character in the token selection: into the bag, or out of it; with the Pope a good character goes in
+ * a second time before it comes out. Legion's number has its own buttons.
+ */
+export function tapBag(state: GrimoireState, id: string): GrimoireState {
+  const n = state.bag.filter((x) => x === id).length;
+  const again = n === 1 && hasFabled(state, POPE) && duplicable(id);
+  return { ...state, bag: n === 0 || again ? [...state.bag, id] : state.bag.filter((x) => x !== id) };
+}
+
 /**
  * Characters in the bag through a stand-in, as in the rulebook: the player who gets the extra token of the team
  * they think they are (STAND_INS) is them, and thinks they are that token. The Lunatic only with a second Demon
@@ -264,9 +315,9 @@ export function bagTokens(bag: string[]) {
   return bag.filter((id) => !hidden.has(id));
 }
 
-/** The characters the setup counts with: the bag while it is being filled, else the seats'. */
-export function setupRoles(state: Pick<GrimoireState, "bag" | "seats">) {
-  return state.bag.length ? state.bag : state.seats.map((s) => s.role);
+/** The characters the setup counts with: the bag while it is being filled, else the seats'; and the Fabled (the Sentinel). */
+export function setupRoles(state: Pick<GrimoireState, "bag" | "seats" | "fabled">) {
+  return [...(state.bag.length ? state.bag : state.seats.map((s) => s.role)), ...(state.fabled ?? [])];
 }
 
 /** A number of a team that the setup does not allow */
@@ -475,9 +526,12 @@ export function charactersInPlay(state: Pick<GrimoireState, "seats">) {
   return ids;
 }
 
-/** Good characters of the script that nobody has, nobody thinks they are and that are not in the bag: what the Demon may be shown. */
-export function bluffCandidates(state: Pick<GrimoireState, "seats" | "bag" | "script">) {
-  const taken = new Set([...state.bag, ...charactersInPlay(state)]);
+/**
+ * Good characters of the script that nobody has, nobody thinks they are and that are not in the bag: what the Demon
+ * may be shown. With the Pope the duplicate good characters in play might also be bluffs: any good character.
+ */
+export function bluffCandidates(state: Pick<GrimoireState, "seats" | "bag" | "script"> & Partial<Pick<GrimoireState, "fabled">>) {
+  const taken = new Set(hasFabled(state, POPE) ? [] : [...state.bag, ...charactersInPlay(state)]);
   return state.script.roleIds.filter((id) => {
     const team = findRole(id)?.team;
     return team && bluffTeams.includes(team) && !taken.has(id);
@@ -494,7 +548,7 @@ function shuffled<T>(items: T[], random: () => number) {
 }
 
 /** Three random bluffs for the Demon (bluffCandidates); fewer when the script has fewer. */
-export function randomBluffs(state: Pick<GrimoireState, "seats" | "bag" | "script">, random: () => number = Math.random): (string | null)[] {
+export function randomBluffs(state: Pick<GrimoireState, "seats" | "bag" | "script"> & Partial<Pick<GrimoireState, "fabled">>, random: () => number = Math.random): (string | null)[] {
   const picked = shuffled(bluffCandidates(state), random).slice(0, BLUFF_COUNT);
   return Array.from({ length: BLUFF_COUNT }, (_, i) => picked[i] ?? null);
 }
@@ -502,10 +556,11 @@ export function randomBluffs(state: Pick<GrimoireState, "seats" | "bag" | "scrip
 /**
  * A random bag of the script's characters that fits the players: the Demon first, then as many Minions and
  * Outsiders as the characters so far allow (a Baron's two more…), a second Demon for a Lunatic, Townsfolk for
- * the rest and a Drunk's extra one. Tried again until every team's number fits the setup (a Townsfolk that
- * changes it, like the Atheist, rarely does). Null under 5 players or when the script cannot fill it.
+ * the rest and a Drunk's extra one; with the Pope one Townsfolk twice. Tried again until every team's number fits
+ * the setup (a Townsfolk that changes it, like the Atheist, rarely does). Null under 5 players or when the script
+ * cannot fill it.
  */
-export function randomBag(state: Pick<GrimoireState, "seats" | "script">, random: () => number = Math.random): string[] | null {
+export function randomBag(state: Pick<GrimoireState, "seats" | "script" | "fabled">, random: () => number = Math.random): string[] | null {
   const n = playerSeats(state).length;
   if (!distribution(n)) return null;
   // how many are Legion is the Storyteller's to choose
@@ -518,12 +573,19 @@ export function randomBag(state: Pick<GrimoireState, "seats" | "script">, random
       bag.push(...picked);
       return picked.length === Math.max(0, k);
     };
-    if (!add("demon", pick(expectedSetup(n, bag, true)!.demon))) continue;
-    if (!add("minion", pick(expectedSetup(n, bag, true)!.minion))) continue;
-    if (!add("outsider", pick(expectedSetup(n, bag, true)!.outsider))) continue;
+    const setup = () => expectedSetup(n, [...bag, ...(state.fabled ?? [])], true)!;
+    if (!add("demon", pick(setup().demon))) continue;
+    if (!add("minion", pick(setup().minion))) continue;
+    if (!add("outsider", pick(setup().outsider))) continue;
     if (bag.includes("lunatic")) add("demon", 1);
     if (!add("townsfolk", n + hiddenInBag(bag).length - bag.length)) continue;
-    const expected = expectedSetup(n, bag, true)!;
+    // the Pope's duplicate: a Townsfolk in place of another
+    const doubles = bag.filter((id) => findRole(id)?.team === "townsfolk" && duplicable(id));
+    if (hasFabled(state, POPE) && doubles.length >= 2) {
+      const [twice, out] = shuffled(doubles, random);
+      bag[bag.indexOf(out)] = twice;
+    }
+    const expected = setup();
     const counts = teamCounts(bag);
     if (setupTeams.every((team) => !offCount(expected[team], counts[team]))) return bag;
   }
@@ -548,10 +610,16 @@ export type NightStep = { id: string; order: number; roleId: string | null; spec
  * also under the ability they took, a Scarlet Woman who became the Demon by day also as herself (to learn it),
  * the living Minions for Lil' Monsta (they choose its babysitter), the Demon also under the ability the Boffin
  * gave it, the Hermit under every Outsider of the script, the Cannibal under their last executee. The Lunatic acts
- * their Demon at their own step only.
+ * their Demon at their own step only. The Fabled and Loric that act at night have their step too: the Storm
+ * Catcher's wakes the evil players, the Duchess's her visitors. With fewer than 7 players the evil players do
+ * not learn each other (no Minion and Demon info), unless the Toymaker gives them their starting info.
  * Dead players' steps stay in (some act when they die).
  */
-export function nightSteps(state: Pick<GrimoireState, "seats" | "bag" | "round" | "log"> & Partial<Pick<GrimoireState, "script">>, characters: Record<string, GrimoireCharacter>, first: boolean): NightStep[] {
+export function nightSteps(
+  state: Pick<GrimoireState, "seats" | "bag" | "round" | "log"> & Partial<Pick<GrimoireState, "script" | "fabled">>,
+  characters: Record<string, GrimoireCharacter>,
+  first: boolean,
+): NightStep[] {
   const steps = new Map<string, NightStep>();
   const wake = (roleId: string, seatId: string) => {
     const c = characters[roleId];
@@ -577,14 +645,27 @@ export function nightSteps(state: Pick<GrimoireState, "seats" | "bag" | "round" 
   const becameToday = (state.log ?? []).filter((e) => e.kind === "became" && e.day && e.round === state.round - 1 && e.role === "scarletwoman");
   if (!first) becameToday.forEach((e) => wake("scarletwoman", e.seatId));
   if (lilMonstaInPlay(state)) players(state).forEach((s) => !s.dead && findRole(s.role)?.team === "minion" && wake(LIL_MONSTA, s.id));
+  for (const id of state.fabled ?? []) {
+    const c = characters[id];
+    const at = c ? (first ? c.firstNight : c.otherNight) : 0;
+    if (!at) continue;
+    const seatIds =
+      id === "stormcatcher"
+        ? players(state).filter((s) => seatSide(s, characters, state) === "evil").map((s) => s.id)
+        : id === "duchess"
+          ? [...new Set(remindersOf(state, id).map(({ seat }) => seat.id))]
+          : [];
+    steps.set(id, { id, order: at, roleId: id, special: null, seatIds });
+  }
   const teamSeats = (team: RoleTeam) =>
     state.seats
       .filter((s) => findRole(s.role)?.team === team || (linkedRoleOf(s.role)?.kind === "as" && findRole(s.believedRole)?.team === team))
       .map((s) => s.id);
   const order = first ? SPECIAL_ORDER.first : SPECIAL_ORDER.other;
+  const evilInfo = playerSeats(state).length >= 7 || hasFabled(state, "toymaker");
   for (const special of specialSteps) {
     const at = order[special];
-    if (!at) continue;
+    if (!at || (!evilInfo && (special === "minionInfo" || special === "demonInfo"))) continue;
     const seatIds = special === "minionInfo" ? teamSeats("minion") : special === "demonInfo" ? teamSeats("demon") : [];
     steps.set(special, { id: special, order: at, roleId: null, special, seatIds });
   }
@@ -607,7 +688,8 @@ const UNTIL_DUSK: Record<string, TokenKind[]> = {
 /**
  * The phase after this one: setup → night 1 → day 1 → night 2 …; at dusk the Minstrel's token of yesterday goes
  * and so do the tokens of last night that last until dusk (UNTIL_DUSK), the Courtier's after its third day; at
- * dawn the Po's "3 attacks" once it attacked tonight; at the dawn of day 3 the Minions become Riot.
+ * dawn the Po's "3 attacks" once it attacked tonight and the Duchess's tokens of yesterday's visitors (they have
+ * learned their number); at the dawn of day 3 the Minions become Riot.
  */
 export function nextPhase(state: GrimoireState, characters: Record<string, GrimoireCharacter>): GrimoireState {
   const without = (gone: (r: GrimoireReminder) => boolean) =>
@@ -623,8 +705,9 @@ export function nextPhase(state: GrimoireState, characters: Record<string, Grimo
   if (state.phase === "night") {
     const po = characters.po;
     const attacked = remindersOf(state, "po").some(({ reminder }) => po?.tokenKinds[reminder.text] === "dead" && reminder.round === state.round);
-    const seats = attacked ? without((r) => r.roleId === "po" && po?.tokenKinds[r.text] === "charged" && (r.round ?? 0) < state.round) : state.seats;
-    const day: GrimoireState = { ...state, seats, phase: "day" };
+    const spent = (r: GrimoireReminder) => attacked && r.roleId === "po" && po?.tokenKinds[r.text] === "charged" && (r.round ?? 0) < state.round;
+    const visited = (r: GrimoireReminder) => r.roleId === "duchess" && (r.round ?? 0) < state.round;
+    const day: GrimoireState = { ...state, seats: without((r) => spent(r) || visited(r)), phase: "day" };
     // on day 3 the Minions become Riot
     if (state.round !== 3 || !players(state).some((s) => s.role === "riot" && !s.dead)) return day;
     return players(state)
@@ -648,6 +731,11 @@ export function voteMath(state: Pick<GrimoireState, "seats">) {
   const alive = players(state).filter((s) => !s.dead).length;
   const votes = players(state).filter((s) => !s.dead || !s.voteUsed).length;
   return { alive, votes, toExecute: Math.ceil(alive / 2) };
+}
+
+/** The Ferryman's final day: every dead player has their vote token again. */
+export function returnVotes(state: GrimoireState): GrimoireState {
+  return { ...state, seats: state.seats.map((s) => (s.dead && s.voteUsed ? { ...s, voteUsed: false } : s)) };
 }
 
 /**
@@ -1048,12 +1136,19 @@ export function demonProtection(state: Pick<GrimoireState, "seats">, seatId: str
   return SAFE_FROM_DEMON.find((id) => protects(id) && hasAbility(seat, id) && (id !== "fool" || !seat.reminders.some((r) => r.roleId === "fool"))) ?? null;
 }
 
+/** The player of the character the Storm Catcher named (its "Stormcaught"): they can only die by execution. */
+export function stormcaught(state: Pick<GrimoireState, "fabled">, seat: Pick<GrimoireSeat, "reminders">, characters: Record<string, GrimoireCharacter>) {
+  return hasFabled(state, "stormcatcher") && seat.reminders.some((r) => r.roleId === "stormcatcher" && characters.stormcatcher?.tokenKinds[r.text] === "stormcaught");
+}
+
 /**
- * Why a player does not die now though killed: the Lleech while its host lives, the Sailor, the Fool the first
- * time, the Tea Lady's good neighbours, the Vizier by day, the player the Devil's Advocate chose last night when
- * executed today (a death by day counts as one); null = they die. Only while that ability works.
+ * Why a player does not die now though killed: the Storm Catcher's player at night, the Lleech while its host
+ * lives, the Sailor, the Fool the first time, the Tea Lady's good neighbours, the Vizier by day, the player the
+ * Devil's Advocate chose last night when executed today (a death by day counts as one); null = they die. Only
+ * while that ability works.
  */
 export function survives(state: GrimoireState, seat: GrimoireSeat, characters: Record<string, GrimoireCharacter>): string | null {
+  if (state.phase !== "day" && stormcaught(state, seat, characters)) return "stormcatcher";
   const works = (id: string) => hasAbility(seat, id) && !impairment(state, seat, characters);
   const host = lleechHost(state, characters);
   if (works("lleech") && host && host.id !== seat.id && !host.dead) return "lleech";
@@ -1277,8 +1372,9 @@ export function poCharged(state: Pick<GrimoireState, "seats" | "round">, charact
 
 /**
  * How many of a character's token there are: as many as its reminders list, but the Shabaloth's two "Dead", the
- * Po's three when it chose nobody last time (poCharged), the Al-Hadikhia's three choices of each kind and a
- * Vigormortis poison for each Minion it killed.
+ * Po's three when it chose nobody last time (poCharged), the Al-Hadikhia's three choices of each kind, a
+ * Vigormortis poison for each Minion it killed, the Angel's protection of every new player and the Duchess's two
+ * visitors besides the one with false information.
  */
 function tokenCopies(state: Pick<GrimoireState, "seats" | "round">, roleId: string, text: string, characters: Record<string, GrimoireCharacter>) {
   const c = characters[roleId];
@@ -1286,6 +1382,9 @@ function tokenCopies(state: Pick<GrimoireState, "seats" | "round">, roleId: stri
   if (roleId === "shabaloth" && kind === "dead") return 2;
   if (roleId === "alhadikhia" && (kind === "choseDeath" || kind === "choseLife")) return 3;
   if (roleId === "po" && kind === "dead") return poCharged(state, characters) ? 3 : 1;
+  // the Angel's first token, "Protect"
+  if (roleId === "angel" && text === c?.reminders[0]) return MAX_SEATS;
+  if (roleId === "duchess" && kind === "visitor") return 2;
   if (roleId === "vigormortis" && kind === "poisoned") {
     return Math.max(1, remindersOf(state, roleId).filter(({ reminder }) => c?.tokenKinds[reminder.text] === "hasAbility").length);
   }

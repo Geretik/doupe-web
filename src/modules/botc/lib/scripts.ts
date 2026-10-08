@@ -2,6 +2,8 @@ import { and, desc, eq, ne, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { adminUsers, scripts, type AdminUser, type LibraryScript, type ScriptLink } from "@/db/schema";
 import { hasRole } from "@/lib/admin-auth";
+import { matchStorytellerId } from "./botc-roles";
+import { HOMEBREW_LIMITS, type Homebrew } from "./grimoire/state";
 import { matchRoleId, sortRoleIds } from "./draft/roles";
 import { scriptToolLinkForJson } from "./draft/script";
 
@@ -22,9 +24,15 @@ export type ParsedScript = {
   meta: { name: string | null; author: string | null };
   /** The characters this site knows, sorted */
   roleIds: string[];
-  /** Entries it does not know (Fabled, Loric, homebrew), by name or id */
+  /** Entries that are no player's character (Fabled, Loric, homebrew), by name or id */
   extras: string[];
+  /** The Fabled and Loric among them that the site knows, by id: the grimoire has them */
+  fabled: string[];
+  /** Its own rules and characters with their abilities, for the Bootlegger in the grimoire */
+  homebrew: Homebrew;
 };
+
+const HOMEBREW_TEAMS = ["townsfolk", "outsider", "minion", "demon", "traveller", "fabled", "loric"];
 
 export type ScriptFileError = "tooLarge" | "notJson" | "notScript" | "noCharacters";
 
@@ -50,18 +58,40 @@ export function parseScriptFile(text: string): { ok: true; script: ParsedScript 
   if (!Array.isArray(data) || data.some((item) => entryId(item) === null)) return { ok: false, error: "notScript" };
   const meta = data.find(isMeta);
   const str = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : null);
+  const clip = (v: unknown, max: number) => str(v)?.slice(0, max) ?? null;
   const roleIds: string[] = [];
   const extras: string[] = [];
+  const fabled: string[] = [];
+  const homebrew: Homebrew = { rules: [], characters: [] };
+  if (Array.isArray(meta?.bootlegger)) {
+    homebrew.rules = meta.bootlegger.flatMap((rule) => clip(rule, HOMEBREW_LIMITS.text) ?? []).slice(0, HOMEBREW_LIMITS.rules);
+  }
   for (const item of data) {
     if (isMeta(item)) continue;
     const id = matchRoleId(entryId(item)!);
-    if (id) roleIds.push(id);
-    else extras.push(str((item as { name?: unknown })?.name) ?? entryId(item)!);
+    if (id) {
+      roleIds.push(id);
+      continue;
+    }
+    extras.push(str((item as { name?: unknown })?.name) ?? entryId(item)!);
+    // the official Fabled or Loric: not a homebrew character of a player's team that happens to share its id
+    const storyteller = matchStorytellerId(entryId(item)!);
+    const team = (item as { team?: unknown })?.team;
+    if (storyteller && (team === undefined || team === "fabled" || team === "loric")) {
+      if (!fabled.includes(storyteller)) fabled.push(storyteller);
+      continue;
+    }
+    // a homebrew character: one with its own ability
+    const ability = clip((item as { ability?: unknown })?.ability, HOMEBREW_LIMITS.text);
+    if (ability && homebrew.characters.length < HOMEBREW_LIMITS.characters) {
+      const name = clip((item as { name?: unknown }).name, HOMEBREW_LIMITS.name) ?? entryId(item)!.slice(0, HOMEBREW_LIMITS.name);
+      homebrew.characters.push({ name, team: typeof team === "string" && HOMEBREW_TEAMS.includes(team) ? team : null, ability });
+    }
   }
   if (roleIds.length + extras.length === 0) return { ok: false, error: "noCharacters" };
   return {
     ok: true,
-    script: { items: data, meta: { name: str(meta?.name), author: str(meta?.author) }, roleIds: sortRoleIds(new Set(roleIds)), extras },
+    script: { items: data, meta: { name: str(meta?.name), author: str(meta?.author) }, roleIds: sortRoleIds(new Set(roleIds)), extras, fabled, homebrew },
   };
 }
 
@@ -73,10 +103,25 @@ export function scriptText(items: unknown[], name: string, author: string | null
   return JSON.stringify([meta, ...items.filter((item) => !isMeta(item))], null, 2);
 }
 
-/** Entries of a saved script that the site does not know, for showing them under the characters. */
+/** Entries of a saved script that are no player's character, for showing them under the characters. */
 export function scriptExtras(script: Pick<LibraryScript, "json">): string[] {
   const parsed = parseScriptFile(script.json);
   return parsed.ok ? parsed.script.extras : [];
+}
+
+/** What a grimoire takes from a script besides its characters: its Fabled and Loric, its homebrew; only what it has. */
+export function grimoireScriptExtras(script: Pick<ParsedScript, "fabled" | "homebrew">) {
+  const { fabled, homebrew } = script;
+  return {
+    ...(fabled.length ? { fabled } : {}),
+    ...(homebrew.rules.length || homebrew.characters.length ? { homebrew } : {}),
+  };
+}
+
+/** The same of a saved script. */
+export function libraryScriptExtras(script: Pick<LibraryScript, "json">) {
+  const parsed = parseScriptFile(script.json);
+  return parsed.ok ? grimoireScriptExtras(parsed.script) : {};
 }
 
 export function libraryScriptToolLink(script: Pick<LibraryScript, "json">) {

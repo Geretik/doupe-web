@@ -93,8 +93,9 @@ export function nextPlayer(state: Pick<GrimoireState, "seats">, seatId: string) 
 /**
  * What a night step shows its players, as far as the town tells: the Minions their Demon and each other, the
  * Demon its Minions and bluffs (a working Magician among both, a working Poppy Grower keeps them apart), the
- * Washerwoman's, Librarian's and Investigator's character and two players, the Chef's and Empath's numbers…
- * One card for each player when each learns their own. Left empty what the Storyteller must choose (a Spy's
+ * Washerwoman's, Librarian's and Investigator's character and two players, the Chef's and Empath's numbers, the
+ * Storm Catcher's player to the evil players, the Duchess's number to each visitor… One card for each player
+ * when each learns their own. Left empty what the Storyteller must choose (a Spy's
  * character, false information under the Vortox, the Fortune Teller's answer); null: nothing to show.
  */
 export function stepCards(
@@ -157,5 +158,16 @@ export function stepCards(
   if (roleId === "ravenkeeper" || roleId === "dreamer") return one([line("thisPlayerIs")]);
   // the Pixie learns a Townsfolk in play: the one she thinks she may be
   if (roleId === "pixie") return each((s) => [line(null, { roles: s.believedRole ? [s.believedRole] : [] })]);
+  // the evil players learn the player of the character the Storm Catcher named, or that it is not in play
+  if (roleId === "stormcatcher") {
+    const caught = remindersOf(state, roleId).find(({ reminder }) => c.tokenKinds[reminder.text] === "stormcaught")?.seat;
+    return one([caught ? line("thisPlayerIs", { seatIds: [caught.id], roles: caught.role ? [caught.role] : [] }) : line("notInPlay")]);
+  }
+  // each of the Duchess's visitors: how many of them are evil; the one with false information is told another number
+  if (roleId === "duchess") {
+    const evil = new Set(woken.filter((s) => seatSide(s, characters, state) === "evil").map((s) => s.id)).size;
+    const told = (s: GrimoireSeat) => s.reminders.some((r) => r.roleId === roleId && c.tokenKinds[r.text] === "falseInfo");
+    return each((s) => [line("selectedYou", { roles: [roleId] }), line(null, { number: told(s) ? null : evil })]);
+  }
   return one([line(null)]);
 }

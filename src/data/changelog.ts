@@ -14,8 +14,34 @@ export type ChangelogEntry = { /** YYYY-MM-DD */ date: string; title: string; it
 export const changelog: ChangelogEntry[] = [
   {
     date: "2026-10-08",
-    title: "Přehled klubu v adminu, grimoár: Ukázat hráči a hra bez sítě; přihlášení QR kódem a odkazem z e-mailu",
+    title: "Přehled klubu v adminu, grimoár: Ukázat hráči, hra bez sítě, Báje a Loric; přihlášení QR kódem a odkazem z e-mailu",
     items: [
+      {
+        for: "organizers",
+        text: "Grimoár zná Báje a Loric (Džin, Duch slonoviny, Strážný, Pašerák, Lapač bouří…): ty ze scriptu se přidají samy, další přidáš v Přípravě. Jsou v rohu města – ťuknutím uvidíš schopnost a jejich žetony položíš na hráče. Džin ukáže jinxy scriptu, Převozník vrátí mrtvým hlasy.",
+        href: "/admin/botc/grimoary",
+      },
+      {
+        for: "organizers",
+        text: "Grimoár, pravidla Bájí a Loric: se Strážným může být o Podivína víc nebo míň (i v pytlíku), Lapač bouří budí zlé a jeho hráč v noci nezemře, Vévodkyně v noci budí své návštěvníky a karta jim ukáže počet zlých; Anděl, Budha, Hračkář a Tor mají své kroky noci, Budha a Převozník nápovědu ve dne.",
+        href: "/admin/botc/grimoary",
+      },
+      {
+        for: "organizers",
+        text: "Grimoár, Papež: s Papežem ve hře dáš dobrou postavu do pytlíku dvakrát (druhým ťuknutím, třetím ji odebereš), „Naplnit náhodně“ dá jednoho Měšťana dvakrát a blafy Démona můžou být i postavy ve hře.",
+        href: "/admin/botc/grimoary",
+      },
+      {
+        for: "organizers",
+        text: "Grimoár, Pašerák: ukáže homebrew pravidla scriptu (z „bootlegger“ v JSONu scriptu) a jeho homebrew postavy se schopnostmi.",
+        href: "/admin/botc/grimoary",
+      },
+      {
+        for: "organizers",
+        text: "Grimoár: s 5 nebo 6 hráči už první noc nemá kroky Info pro Přisluhovače a Info pro Démona – podle pravidel se pod 7 hráčů vynechávají. S Hračkářem ve hře zůstanou.",
+        href: "/admin/botc/grimoary",
+      },
+      { for: "organizers", text: "Termín v adminu: přihlášené jde seřadit podle toho, kdy dorazí (Seřadit: podle přihlášení / podle příchodu).", href: "/admin/botc" },
       {
         for: "organizers",
         text: "Admin začíná přehledem klubu (Přehled v menu): nejbližší termíny, drafty, kde jsi na tahu, tvoje rozehrané grimoáry a poslední novinky. Krvavka má v adminu vlastní adresy (/admin/botc/…) – seznam termínů je v menu pod Termíny, staré odkazy z e-mailů a záložky dál fungují a přesměrují.",
@@ -44,7 +70,7 @@ export const changelog: ChangelogEntry[] = [
       { for: "organizers", text: "Profil (vpravo v menu místo Změnit heslo): skenování QR kódu, změna hesla a „Odhlásit ze všech ostatních zařízení“.", href: "/admin/profil" },
       {
         for: "organizers",
-        text: "Přihlášení odkazem z e-mailu: na přihlášení do adminu „Přihlásit odkazem z e-mailu“ pošle na tvůj e-mail odkaz, který tě bez hesla přihlásí na zařízení, kde ho otevřeš. Platí 15 minut a jde použít jednou.",
+        text: "Přihlášení odkazem z e-mailu: na přihlášení do adminu tlačítko „Přihlásit odkazem z e-mailu“ (hned nad přihlášením QR kódem, stejně velké) pošle na tvůj e-mail odkaz, který tě bez hesla přihlásí na zařízení, kde ho otevřeš. Platí 15 minut a jde použít jednou.",
       },
       {
         for: "organizers",

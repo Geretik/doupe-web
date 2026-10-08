@@ -1,7 +1,7 @@
 import type { Locale } from "@/i18n/dictionaries";
 
 /**
- * Characters a player can have in a game – no Fabled or Loric, those belong to the Storyteller.
+ * Characters a player can have in a game – no Fabled or Loric, those belong to the Storyteller (storytellerRoles).
  * Ids as in the official script tool; Czech names from the club's script tool (boardgames, roles.cs.overrides.ts).
  * Icons: public/botc/roles/<id>.webp, the official character icons from wiki.bloodontheclocktower.com that the
  * club's script tool shows too (© The Pandemonium Institute), cropped and shrunk to 64 px.
@@ -209,8 +209,63 @@ export function findRole(id: string | null | undefined) {
   return id ? byId.get(id) : undefined;
 }
 
-export function roleName(role: BotcRole, locale: Locale) {
+export function roleName(role: Pick<BotcRole, "en" | "cs">, locale: Locale) {
   return locale === "en" ? role.en : role.cs;
+}
+
+/**
+ * The Storyteller's characters, which no player has: the Fabled (the script tool's "Báje") change the game for
+ * the players, the Loric its rules. They go in a grimoire, never in game records or drafts. Czech names from the
+ * club's script tool, English where it has none; icons as for the players' characters.
+ */
+export type StorytellerTeam = "fabled" | "loric";
+export type StorytellerRole = { id: string; team: StorytellerTeam; en: string; cs: string };
+
+/** Sorted by team, then by the Czech name */
+export const storytellerRoles: readonly StorytellerRole[] = [
+  { id: "angel", team: "fabled", en: "Angel", cs: "Anděl" },
+  { id: "buddhist", team: "fabled", en: "Buddhist", cs: "Budha" },
+  { id: "deusexfiasco", team: "fabled", en: "Deus ex Fiasco", cs: "Deus ex Fiasco" },
+  { id: "spiritofivory", team: "fabled", en: "Spirit of Ivory", cs: "Duch slonoviny" },
+  { id: "djinn", team: "fabled", en: "Djinn", cs: "Džin" },
+  { id: "fiddler", team: "fabled", en: "Fiddler", cs: "Houslista" },
+  { id: "toymaker", team: "fabled", en: "Toymaker", cs: "Hračkář" },
+  { id: "fibbin", team: "fabled", en: "Fibbin", cs: "Lhář" },
+  { id: "hellslibrarian", team: "fabled", en: "Hell's Librarian", cs: "Pekelná knihovnice" },
+  { id: "ferryman", team: "fabled", en: "Ferryman", cs: "Převozník" },
+  { id: "revolutionary", team: "fabled", en: "Revolutionary", cs: "Revolucionář" },
+  { id: "sentinel", team: "fabled", en: "Sentinel", cs: "Strážný" },
+  { id: "duchess", team: "fabled", en: "Duchess", cs: "Vévodkyně" },
+  { id: "doomsayer", team: "fabled", en: "Doomsayer", cs: "Věštec zkázy" },
+  { id: "godofug", team: "loric", en: "God of Ug", cs: "God of Ug" },
+  { id: "hindu", team: "loric", en: "Hindu", cs: "Hindu" },
+  { id: "knaves", team: "loric", en: "Knaves", cs: "Knaves" },
+  { id: "stormcatcher", team: "loric", en: "Storm Catcher", cs: "Lapač bouří" },
+  { id: "pope", team: "loric", en: "Pope", cs: "Papež" },
+  { id: "bootlegger", team: "loric", en: "Bootlegger", cs: "Pašerák" },
+  { id: "tor", team: "loric", en: "Tor", cs: "Tor" },
+  { id: "bigwig", team: "loric", en: "Big Wig", cs: "Velké zvíře" },
+  { id: "ventriloquist", team: "loric", en: "Ventriloquist", cs: "Ventriloquist" },
+  { id: "zenomancer", team: "loric", en: "Zenomancer", cs: "Zenomancer" },
+  { id: "gardener", team: "loric", en: "Gardener", cs: "Zahradník" },
+];
+
+const storytellerById = new Map(storytellerRoles.map((r) => [r.id, r]));
+
+export function findStorytellerRole(id: string | null | undefined) {
+  return id ? storytellerById.get(id) : undefined;
+}
+
+/** A Storyteller's character from a script entry: its id ("djinn", the official tool's "spirit_of_ivory") or its name. */
+export function matchStorytellerId(text: string) {
+  const key = text.toLowerCase().replace(/[^a-z0-9]/g, "");
+  return storytellerRoles.find((r) => r.id === key || r.en.toLowerCase().replace(/[^a-z0-9]/g, "") === key)?.id ?? null;
+}
+
+/** A character's name, a player's or the Storyteller's; the id when it is neither. */
+export function characterName(id: string | null | undefined, locale: Locale) {
+  const role = findRole(id) ?? findStorytellerRole(id);
+  return role ? roleName(role, locale) : (id ?? "");
 }
 
 export function roleIcon(id: string) {

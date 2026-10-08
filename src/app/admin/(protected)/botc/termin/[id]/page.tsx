@@ -25,7 +25,7 @@ import { discordConfigured } from "@/lib/discord";
 import { getFormSuggestions } from "@/modules/botc/lib/form-suggestions";
 import { listGrimoires } from "@/modules/botc/lib/grimoire/service";
 import { getSessionWithCount, listGamesForSession, listRegistrationsForSession } from "@/modules/botc/lib/queries";
-import { presenceByHour } from "@/modules/botc/lib/presence";
+import { byArrival, presenceByHour } from "@/modules/botc/lib/presence";
 import { countPendingReminders } from "@/modules/botc/lib/reminders";
 import { dateToPragueLocal, formatDate, formatShortDate, formatTime } from "@/lib/time";
 import { effectiveRegistrationState, scheduledOpening } from "@/modules/botc/lib/registration-state";
@@ -74,11 +74,15 @@ function EraseButton({ registrationId, t }: { registrationId: number; t: Dict["a
 
 export default async function AdminSessionPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  /** poradi=prichod: the signed-up players in the order they come */
+  searchParams: Promise<{ poradi?: string }>;
 }) {
   const me = await requireAdmin();
   const numId = parseId((await params).id);
+  const byArrivalOrder = (await searchParams).poradi === "prichod";
   if (!numId) notFound();
   const [{ locale, t: dict }, session, regs, pendingReminders, playedGames, suggestions, storytellers, sessionGrimoires] = await Promise.all([
     getDict(),
@@ -111,6 +115,8 @@ export default async function AdminSessionPage({
   const unconfirmed = past ? 0 : confirmed.filter((r) => !r.confirmationSentAt && hasEmail(r.email)).length;
   const full = confirmed.length >= session.capacity;
   const presence = presenceByHour(session, confirmed);
+  const listed = byArrivalOrder ? byArrival(session, confirmed) : confirmed;
+  const sortLink = (on: boolean) => `rounded-full border px-3 py-1 ${on ? "border-accent bg-accent/10 font-semibold" : "border-border bg-card hover:border-accent/50"}`;
   const gameLabels: GameFormLabels = {
     gameScript: t.gameScript,
     gameScriptCustom: t.gameScriptCustom,
@@ -307,6 +313,18 @@ export default async function AdminSessionPage({
           />
         </Card>
         {confirmed.length === 0 && <p className="text-muted">{t.nobody}</p>}
+        {confirmed.length > 1 && (
+          // the page stays where it is: only the table changes
+          <div className="flex flex-wrap items-center gap-2 text-sm" data-testid="player-order">
+            <span className="text-muted">{t.sortBy}</span>
+            <Link href={`/admin/botc/termin/${session.id}`} scroll={false} replace className={sortLink(!byArrivalOrder)} aria-current={!byArrivalOrder || undefined}>
+              {t.sortSignup}
+            </Link>
+            <Link href={`/admin/botc/termin/${session.id}?poradi=prichod`} scroll={false} replace className={sortLink(byArrivalOrder)} aria-current={byArrivalOrder || undefined}>
+              {t.sortArrival}
+            </Link>
+          </div>
+        )}
         {confirmed.length > 0 && (
           <div className="@container overflow-x-auto rounded-xl border border-border bg-card">
             <table className="w-full text-sm">
@@ -323,7 +341,7 @@ export default async function AdminSessionPage({
                 </tr>
               </thead>
               <tbody>
-                {confirmed.map((r) => {
+                {listed.map((r) => {
                   const cells = (
                     <>
                       <td className="p-3 whitespace-nowrap">{fullName(r) ?? <span className="text-muted">–</span>}</td>
@@ -376,7 +394,7 @@ export default async function AdminSessionPage({
                   <tr className="bg-border/20 text-xs text-muted">
                     <td colSpan={columns} className="p-3">
                       <strong>{t.playerNote}:</strong>{" "}
-                      {confirmed.filter((r) => r.note).map((r) => `${r.nickname}: „${r.note}“`).join(" · ")}
+                      {listed.filter((r) => r.note).map((r) => `${r.nickname}: „${r.note}“`).join(" · ")}
                     </td>
                   </tr>
                 )}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { findRole } from "@/modules/botc/lib/botc-roles";
+import { findRole, findStorytellerRole } from "@/modules/botc/lib/botc-roles";
 import {
   becomeDemon,
   demonProtection,
@@ -203,10 +203,13 @@ function StepHelp({
   const pass = roleId === "imp" && state.phase === "night" ? starPass(state, characters) : null;
   const imp = nameOf("imp", locale);
   if (pass && !pass.heir && !pass.choices.length) info.push(t.noHeir);
-  const warnings = woken.flatMap((s) => {
-    const why = impairment(state, s, characters);
-    return why ? [fill(t.impaired[why], { name: s.name || "?" })] : [];
-  });
+  // a Fabled's or Loric's step is the Storyteller's: a drunk player woken for it (the Storm Catcher's evil) learns the truth
+  const warnings = findStorytellerRole(roleId)
+    ? []
+    : woken.flatMap((s) => {
+        const why = impairment(state, s, characters);
+        return why ? [fill(t.impaired[why], { name: s.name || "?" })] : [];
+      });
   if (falseInfo(state, woken, characters)) warnings.push(t.vortox);
   if (!info.length && !notes.length && !warnings.length && !tokens.length) return null;
   return (

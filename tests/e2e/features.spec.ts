@@ -3,6 +3,7 @@ import { expect, test } from "@playwright/test";
 import { E2E } from "../../playwright.config";
 import { createMyGamesToken } from "../../src/modules/botc/lib/my-games-token";
 import { adminLogin, createAdminUser, createSession, pragueToday, register, resetDb, sql } from "./helpers";
+import { pragueLocalToDate } from "../../src/lib/time";
 
 test.describe.configure({ mode: "serial" });
 
@@ -976,6 +977,37 @@ test("phone is optional but validated, normalised and shown only to organisers; 
   // a player without name or phone still shows up in the admin table
   await page.goto(`/admin/botc/termin/${other}`);
   await expect(page.locator("main table")).toContainText("Bez");
+});
+
+test("admin: the signed-up players in the order they come, also after midnight; with the 'later' tick those coming later last", async ({ page }) => {
+  // 22:00–02:00 Prague time, signed up in another order than they come
+  const day = new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Prague" }).format(new Date(Date.now() + 7 * 864e5));
+  const id = await createSession({ capacity: 10, startsAt: pragueLocalToDate(`${day}T22:00`)! });
+  for (const [i, [nick, arrival]] of [["Půlnoc", "00:30"], ["Brzy", null], ["Pozdě", "23:30"], ["Hned", "22:30"]].entries()) {
+    await sql("insert into registrations (session_id, nickname, email, edit_token, arrival_time) values ($1, $2, $3, $4, $5)", [id, nick, `p${i}@example.com`, `order-${i}`, arrival]);
+  }
+  const order = async (names: string[]) => {
+    const text = (await page.locator("main table").first().textContent()) ?? "";
+    return [...names].sort((a, b) => text.indexOf(a) - text.indexOf(b));
+  };
+  await adminLogin(page);
+  await page.goto(`/admin/botc/termin/${id}`);
+  expect(await order(["Půlnoc", "Brzy", "Pozdě", "Hned"])).toEqual(["Půlnoc", "Brzy", "Pozdě", "Hned"]);
+  const sort = page.getByTestId("player-order");
+  await sort.getByRole("link", { name: "podle příchodu" }).click();
+  await expect(page).toHaveURL(/poradi=prichod/);
+  await expect(sort.getByRole("link", { name: "podle příchodu" })).toHaveAttribute("aria-current", "true");
+  await expect.poll(() => order(["Půlnoc", "Brzy", "Pozdě", "Hned"])).toEqual(["Brzy", "Hned", "Pozdě", "Půlnoc"]);
+  await sort.getByRole("link", { name: "podle přihlášení" }).click();
+  await expect.poll(() => order(["Půlnoc", "Brzy", "Pozdě", "Hned"])).toEqual(["Půlnoc", "Brzy", "Pozdě", "Hned"]);
+
+  // only "I'll come later": they go last, the rest in the order they signed up
+  const late = await createSession({ capacity: 10, arrivalMode: "late" });
+  for (const [i, [nick, arrivesLate]] of ([["Opožděný", true], ["Včas", false], ["Taky včas", false]] as const).entries()) {
+    await sql("insert into registrations (session_id, nickname, email, edit_token, arrives_late) values ($1, $2, $3, $4, $5)", [late, nick, `l${i}@example.com`, `late-${i}`, arrivesLate]);
+  }
+  await page.goto(`/admin/botc/termin/${late}?poradi=prichod`);
+  expect(await order(["Opožděný", "Včas", "Taky včas"])).toEqual(["Včas", "Taky včas", "Opožděný"]);
 });
 
 test("session settings: 'arrive later' checkbox instead of times, required phone, privacy note", async ({ page }) => {

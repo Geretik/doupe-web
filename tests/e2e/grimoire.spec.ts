@@ -1,6 +1,7 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { grimoireCharacters, jinxesAmong } from "../../src/modules/botc/lib/grimoire/characters";
 import {
+  bluffCandidates,
   changeRole,
   diedLately,
   dealBag,
@@ -21,17 +22,22 @@ import {
   noDashiiPoisoned,
   poCharged,
   putToken,
+  randomBag,
   registersAs,
   registersDead,
   remainingBag,
+  remindersOf,
   setDead,
   shownAs,
   starPass,
+  tapBag,
   toggleReminder,
   typhonInLine,
   vortoxWorks,
+  withScript,
   type GrimoireState,
 } from "../../src/modules/botc/lib/grimoire/state";
+import { grimoireStateSchema } from "../../src/modules/botc/lib/grimoire/schema";
 import { findRole, roleName } from "../../src/modules/botc/lib/botc-roles";
 import { stepCards, youAreCard } from "../../src/modules/botc/lib/grimoire/show";
 import { adminLogin, createAdminUser, createSession, resetDb, sql } from "./helpers";
@@ -677,6 +683,104 @@ test("jinxes: pairs of characters with a jinx, whichever of the two lists it", (
   expect(jinxesAmong(["spy", "damsel", "chef"], characters)).toEqual([{ a: "spy", b: "damsel", reason }]);
   expect(jinxesAmong(["damsel", null, "spy"], characters)).toEqual([{ a: "damsel", b: "spy", reason }]);
   expect(jinxesAmong(["chef", "empath"], characters)).toEqual([]);
+});
+
+test("Fabled and Loric: the script's in a new game and after another script, the Sentinel's Outsider, the evil's info under 7 players only with the Toymaker, their night steps", () => {
+  const fresh = newGrimoireState({ id: 1, name: "A", roleIds: ["chef", "imp"], fabled: ["djinn"] }, []);
+  expect(fresh.fabled).toEqual(["djinn"]);
+  // another script: the old one's Fabled make way for the new one's, the ones added for the table stay
+  const other = withScript({ ...fresh, fabled: ["djinn", "spiritofivory"] }, { id: 2, name: "B", roleIds: ["chef"], fabled: ["bootlegger"] });
+  expect(other.fabled).toEqual(["spiritofivory", "bootlegger"]);
+  // stored with their tokens and deeds; an unknown one is refused
+  const saved = { ...nightOf(["imp", "chef"]), fabled: ["stormcatcher"] };
+  const caught = putToken(saved, at(saved, "chef").id, "stormcatcher", "Chycen bouří", characters);
+  expect(grimoireStateSchema.safeParse({ ...caught, log: [{ round: 2, kind: "survived", seatId: "x", name: "A", role: "chef", by: "stormcatcher" }] }).success).toBe(true);
+  expect(grimoireStateSchema.safeParse({ ...saved, fabled: ["chef"] }).success).toBe(false);
+
+  // 8 players have 1 Outsider; with the Sentinel 0 to 2
+  expect(expectedSetup(8, ["imp", "sentinel"])!.outsider).toEqual({ base: 1, values: [0, 1, 2], by: ["sentinel"] });
+
+  // 6 players: no Minion or Demon info, unless the Toymaker gives the evil their starting info
+  const ids = (state: GrimoireState, first = true) => nightSteps(state, characters, first).map((x) => x.id);
+  const six = nightOf(["imp", "poisoner", "chef", "empath", "monk", "saint"], 1);
+  expect(ids(six)).not.toContain("minionInfo");
+  expect(ids(six)).not.toContain("demonInfo");
+  expect(ids(nightOf(["imp", "poisoner", "chef", "empath", "monk", "saint", "mayor"], 1))).toContain("minionInfo");
+  const toymaker = { ...six, fabled: ["toymaker", "angel", "buddhist", "spiritofivory"] };
+  // the Fabled who act at night, right after dusk; the Spirit of Ivory never wakes
+  expect(ids(toymaker).slice(0, 4)).toEqual(["dusk", "angel", "buddhist", "toymaker"]);
+  expect(ids(toymaker)).toContain("minionInfo");
+  expect(ids(toymaker)).toContain("demonInfo");
+  expect(ids(toymaker)).not.toContain("spiritofivory");
+  expect(ids({ ...toymaker, round: 2 }, false).filter((id) => ["toymaker", "angel", "buddhist"].includes(id))).toEqual(["toymaker"]);
+});
+
+test("Fabled and Loric: the Storm Catcher's player only dies by execution and the evil learn who it is; the Duchess's visitors learn how many of them are evil", () => {
+  let state: GrimoireState = { ...nightOf(["imp", "poisoner", "chef", "empath", "monk", "saint", "mayor"], 1), fabled: ["stormcatcher"] };
+  const id = (role: string) => at(state, role).id;
+  const storm = () => nightSteps(state, characters, true).find((x) => x.id === "stormcatcher")!;
+  const cards = () => stepCards(state, storm(), characters).map((x) => x.card.lines);
+  // the evil players wake; the character it named is not in play, or this player is it
+  expect(storm().seatIds).toEqual([id("imp"), id("poisoner")]);
+  expect(cards()).toEqual([[{ title: "notInPlay", roles: [], seatIds: [] }]]);
+  state = putToken(state, id("chef"), "stormcatcher", "Chycen bouří", characters);
+  expect(cards()).toEqual([[{ title: "thisPlayerIs", roles: ["chef"], seatIds: [id("chef")] }]]);
+  // the Demon's attack does not kill them; executed by day they die
+  state = putToken({ ...state, round: 2 }, id("chef"), "imp", "Mrtvý", characters);
+  expect(at(state, "chef").dead).toBe(false);
+  expect(state.log?.at(-1)).toMatchObject({ kind: "survived", by: "stormcatcher" });
+  state = setDead(nextPhase(state), id("chef"), true, characters);
+  expect(at(state, "chef").dead).toBe(true);
+
+  // the visitors of the day: two Visitors and one with False Info
+  let duchess: GrimoireState = { ...nightOf(["imp", "poisoner", "chef", "empath", "monk", "saint", "mayor"], 1), phase: "day", fabled: ["duchess"] };
+  const visit = (role: string, text: string) => (duchess = putToken(duchess, at(duchess, role).id, "duchess", text, characters));
+  visit("imp", "Návštěvník");
+  visit("chef", "Návštěvník");
+  visit("empath", "Falešná informace");
+  expect(remindersOf(duchess, "duchess")).toHaveLength(3);
+  duchess = nextPhase(duchess);
+  const step = nightSteps(duchess, characters, false).find((x) => x.id === "duchess")!;
+  expect(step.seatIds).toEqual([at(duchess, "imp").id, at(duchess, "chef").id, at(duchess, "empath").id]);
+  const told = (number: number | null) => [
+    { title: "selectedYou", roles: ["duchess"], seatIds: [] },
+    { title: null, roles: [], seatIds: [], number },
+  ];
+  // one of them is evil; the one with false information gets a number the Storyteller picks
+  expect(stepCards(duchess, step, characters).map((x) => x.card.lines)).toEqual([told(1), told(1), told(null)]);
+  // at dawn the visits are over
+  expect(remindersOf(nextPhase(duchess), "duchess")).toEqual([]);
+});
+
+test("Fabled and Loric: the Pope's duplicate good characters – twice in the bag, at random too, both woken; bluffs among the characters in play", () => {
+  const seats = Array.from({ length: 7 }, (_, i) => newSeat(`P${i}`));
+  let state: GrimoireState = { ...newGrimoireState({ id: null, name: "TB", roleIds: TROUBLE_BREWING }, seats), fabled: ["pope"] };
+  // a second tap puts a good character in twice, a third takes it out; never an evil one or the Drunk
+  state = tapBag(tapBag(state, "empath"), "empath");
+  expect(state.bag).toEqual(["empath", "empath"]);
+  expect(tapBag(state, "empath").bag).toEqual([]);
+  expect(tapBag(tapBag(state, "imp"), "imp").bag).toEqual(["empath", "empath"]);
+  expect(tapBag(tapBag(state, "drunk"), "drunk").bag).toEqual(["empath", "empath"]);
+  // without the Pope the second tap takes it out
+  expect(tapBag({ ...state, fabled: [] }, "empath").bag).toEqual([]);
+
+  // at random: a Townsfolk twice
+  const townsfolk = (bag: string[]) => bag.filter((id) => findRole(id)?.team === "townsfolk");
+  for (let i = 0; i < 20; i++) {
+    const bag = randomBag(state)!;
+    expect(new Set(townsfolk(bag)).size).toBe(townsfolk(bag).length - 1);
+  }
+  const plain = randomBag({ ...state, fabled: [] })!;
+  expect(new Set(townsfolk(plain)).size).toBe(townsfolk(plain).length);
+
+  // dealt: two Empaths wake at its step, each learns their own number
+  const dealt = dealBag({ ...state, bag: ["empath", "empath", "chef", "washerwoman", "monk", "poisoner", "imp"] })!;
+  const empaths = nightSteps(dealt, characters, true).find((x) => x.id === "empath")!;
+  expect(empaths.seatIds).toHaveLength(2);
+  expect(stepCards(dealt, empaths, characters)).toHaveLength(2);
+  // the Demon may be shown a character in play
+  expect(bluffCandidates(dealt)).toContain("empath");
+  expect(bluffCandidates({ ...dealt, fabled: [] })).not.toContain("empath");
 });
 
 test("grimoire: from a session, hand out the bag, the first night, a death and a reminder, the game into the session's games", async ({ page }) => {
@@ -1576,4 +1680,74 @@ test("grimoire: only administrators delete grimoires, also another account's fin
   await page.getByRole("button", { name: "Smazat grimoár: Zkušební hra" }).click();
   await expect(page.locator("main")).not.toContainText("Zkušební hra");
   expect(await sql("select id from grimoires")).toHaveLength(0);
+});
+
+test("grimoire: Fabled and Loric – the script's come by themselves, more from the setup, in the town's corner with their ability and tokens", async ({ page }) => {
+  await page.setViewportSize({ width: 1180, height: 820 });
+  await adminLogin(page);
+  await newGrimoire(page);
+
+  // a script with a jinx and its Djinn, as the club's script tool makes it
+  const setup = page.getByTestId("setup-screen");
+  await setup.getByRole("button", { name: "Vložit JSON nebo soubor" }).click();
+  // and a homebrew character with a rule of its own, so the Bootlegger
+  const script = [
+    { id: "_meta", name: "Se Džinem", bootlegger: ["Mrtví smí šeptat jen u okna."] },
+    ...["chef", "spy", "damsel", "imp", "djinn", "bootlegger"],
+    { id: "hrdina", name: "Hrdina", team: "townsfolk", ability: "Jednou za hru zachráníš hráče." },
+  ];
+  await setup.getByRole("textbox", { name: "Vložit JSON nebo soubor" }).fill(JSON.stringify(script));
+  await setup.getByRole("button", { name: "Použít script" }).click();
+  await expect(page.locator("#grimoire-script option:checked")).toHaveText("Se Džinem (JSON)");
+  const fabled = page.getByTestId("fabled-setup");
+  await expect(fabled.getByRole("button", { name: "Odebrat ze hry: Džin" })).toContainText("ze scriptu");
+  await expect(fabled.getByRole("button", { name: "Odebrat ze hry: Pašerák" })).toContainText("ze scriptu");
+  await expect(setup.getByText(/^Web nezná/)).toHaveText("Web nezná (v grimoáru nebudou): Hrdina");
+  // the Storm Catcher and the Pope added for this table
+  await fabled.getByRole("button", { name: "+ Přidat" }).click();
+  await fabled.getByRole("button", { name: "Přidat do hry: Lapač bouří" }).click();
+  await fabled.getByRole("button", { name: "Přidat do hry: Papež" }).click();
+
+  // the Pope: a good character into the bag twice, out with the third tap
+  const tokens = await openTokens(page);
+  await expect(tokens.getByTestId("pope-hint")).toBeVisible();
+  const chef = tokens.getByRole("button", { name: "Do pytlíku: Kuchař" });
+  await chef.click();
+  await chef.click();
+  await expect(chef).toContainText("2× v pytlíku");
+  await stored((st) => (st as unknown as { bag: string[] }).bag, ["chef", "chef"]);
+  await chef.click();
+  await stored((st) => (st as unknown as { bag: string[] }).bag, []);
+  await closeTokens(page);
+  await fabled.getByRole("button", { name: "Odebrat ze hry: Papež" }).click();
+  await closeSetup(page);
+  await stored((st) => (st as unknown as { fabled?: string[] }).fabled, ["djinn", "bootlegger", "stormcatcher"]);
+
+  // in the town's corner; the Djinn shows its ability and the script's jinxes, the Bootlegger its homebrew
+  const corner = page.getByTestId("fabled-tokens");
+  await expect(corner.getByRole("button")).toHaveCount(3);
+  await corner.getByRole("button", { name: "Pašerák", exact: true }).click();
+  const homebrew = page.getByTestId("homebrew");
+  await expect(homebrew).toContainText("Mrtví smí šeptat jen u okna.");
+  await expect(homebrew).toContainText("Hrdina · Měšťané");
+  await expect(homebrew).toContainText("Jednou za hru zachráníš hráče.");
+  await corner.getByRole("button", { name: "Džin", exact: true }).click();
+  const panel = page.getByTestId("fabled-panel");
+  await expect(panel).toContainText("Použij speciální pravidlo Džina");
+  await expect(panel.getByTestId("djinn-jinxes")).toContainText("Kráska + Špeh");
+
+  // the Storm Catcher's token on a player, who then only dies by execution
+  await corner.getByRole("button", { name: "Lapač bouří", exact: true }).click();
+  await panel.getByRole("button", { name: "Chycen bouří →" }).click();
+  await seat(page, "Jana").click();
+  await expect(panel).toContainText("Chycen bouří: Jana");
+  await stored((st) => st.seats.map((x) => x.reminders.map((r) => r.text)), [["Chycen bouří"], []]);
+  await seat(page, "Jana").click();
+  await expect(page.getByTestId("seat-panel")).toContainText("Chycen bouří: může zemřít jen popravou.");
+
+  // taken out of the game, its token goes too
+  await corner.getByRole("button", { name: "Lapač bouří", exact: true }).click();
+  await panel.getByRole("button", { name: "Odebrat ze hry" }).click();
+  await expect(corner.getByRole("button")).toHaveCount(2);
+  await stored((st) => st.seats.map((x) => x.reminders.length), [0, 0]);
 });

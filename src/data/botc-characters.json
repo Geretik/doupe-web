@@ -4094,5 +4094,520 @@
    "reminders": [],
    "remindersGlobal": []
   }
+ },
+ "angel": {
+  "firstNight": 2,
+  "otherNight": 0,
+  "setup": false,
+  "en": {
+   "ability": "Something bad might happen to whoever is most responsible for the death of a new player.",
+   "firstNightReminder": "Announce which players are protected by the Angel. ⏺",
+   "otherNightReminder": "",
+   "reminders": [
+    "Protect",
+    "Something Bad"
+   ],
+   "remindersGlobal": []
+  },
+  "cs": {
+   "ability": "Tomu, kdo je nejvíce zodpovědný za smrt nového hráče, se může stát něco špatného.",
+   "firstNightReminder": "Announce which players are protected by the Angel. ⏺",
+   "otherNightReminder": "",
+   "reminders": [
+    "Chránit",
+    "Něco špatného"
+   ],
+   "remindersGlobal": []
+  }
+ },
+ "buddhist": {
+  "firstNight": 3,
+  "otherNight": 0,
+  "setup": false,
+  "en": {
+   "ability": "For the first 2 minutes of each day, veteran players may not talk.",
+   "firstNightReminder": "Announce which players are affected by the Buddhist.",
+   "otherNightReminder": "",
+   "reminders": [],
+   "remindersGlobal": []
+  },
+  "cs": {
+   "ability": "Během prvních 2 minut každého dne nesmějí zkušení hráči mluvit.",
+   "firstNightReminder": "Announce which players are affected by the Buddhist.",
+   "otherNightReminder": "",
+   "reminders": [],
+   "remindersGlobal": []
+  }
+ },
+ "deusexfiasco": {
+  "firstNight": 0,
+  "otherNight": 0,
+  "setup": true,
+  "en": {
+   "ability": "At least once per game, the Storyteller will make a mistake, correct it, and publicly admit to it.",
+   "firstNightReminder": "",
+   "otherNightReminder": "",
+   "reminders": [],
+   "remindersGlobal": []
+  },
+  "cs": {
+   "ability": "Alespoň jednou za hru udělá Vypravěč chybu, opraví ji a veřejně se k ní přizná.",
+   "firstNightReminder": "",
+   "otherNightReminder": "",
+   "reminders": [],
+   "remindersGlobal": []
+  }
+ },
+ "spiritofivory": {
+  "firstNight": 0,
+  "otherNight": 0,
+  "setup": false,
+  "en": {
+   "ability": "There can't be more than 1 extra evil player.",
+   "firstNightReminder": "",
+   "otherNightReminder": "",
+   "reminders": [
+    "No extra evil"
+   ],
+   "remindersGlobal": []
+  },
+  "cs": {
+   "ability": "Nemůže být více než 1 extra zlý hráč.",
+   "firstNightReminder": "",
+   "otherNightReminder": "",
+   "reminders": [
+    "Žádné extra zlo"
+   ],
+   "remindersGlobal": []
+  }
+ },
+ "djinn": {
+  "firstNight": 0,
+  "otherNight": 0,
+  "setup": false,
+  "en": {
+   "ability": "Use the Djinn's special rule. All players know what it is.",
+   "firstNightReminder": "",
+   "otherNightReminder": "",
+   "reminders": [],
+   "remindersGlobal": []
+  },
+  "cs": {
+   "ability": "Použij speciální pravidlo Džina. Všichni hráči vědí, jaké je.",
+   "firstNightReminder": "",
+   "otherNightReminder": "",
+   "reminders": [],
+   "remindersGlobal": []
+  }
+ },
+ "fiddler": {
+  "firstNight": 0,
+  "otherNight": 0,
+  "setup": false,
+  "en": {
+   "ability": "Once per game, the Demon secretly chooses an opposing player: all players choose which of these 2 players win.",
+   "firstNightReminder": "",
+   "otherNightReminder": "",
+   "reminders": [],
+   "remindersGlobal": []
+  },
+  "cs": {
+   "ability": "Jednou za hru si Démon tajně zvolí protivníka: všichni hráči zvolí, který z těchto 2 hráčů vyhraje.",
+   "firstNightReminder": "",
+   "otherNightReminder": "",
+   "reminders": [],
+   "remindersGlobal": []
+  }
+ },
+ "toymaker": {
+  "firstNight": 4,
+  "otherNight": 3,
+  "setup": false,
+  "en": {
+   "ability": "The Demon may choose not to attack & must do this at least once per game. Evil players get normal starting info.",
+   "firstNightReminder": "Resolve Minion Info and Demon Info, even though there are fewer than 7 players.",
+   "otherNightReminder": "If a Demon attack could end the game, and the Demon is marked *FINAL NIGHT: NO ATTACK*, do not wake the Demon.",
+   "reminders": [
+    "Final Night: No Attack"
+   ],
+   "remindersGlobal": []
+  },
+  "cs": {
+   "ability": "Démon se může rozhodnout neútočit a musí to udělat alespoň jednou za hru. Zlí hráči dostanou normální počáteční informace.",
+   "firstNightReminder": "Resolve Minion Info and Demon Info, even though there are fewer than 7 players.",
+   "otherNightReminder": "Pokud je to noc, kdy by útok Démona mohl ukončit hru, a Démon je označen „Poslední noc: Bez útoku\", pak Démon dnes v noci nejedná. (Nebuďte ho.)",
+   "reminders": [
+    "Poslední noc: Bez útoku"
+   ],
+   "remindersGlobal": []
+  }
+ },
+ "fibbin": {
+  "firstNight": 0,
+  "otherNight": 0,
+  "setup": false,
+  "en": {
+   "ability": "Once per game, 1 good player might get incorrect information.",
+   "firstNightReminder": "",
+   "otherNightReminder": "",
+   "reminders": [
+    "Used"
+   ],
+   "remindersGlobal": []
+  },
+  "cs": {
+   "ability": "Jednou za hru může 1 dobrý hráč dostat falešnou informaci.",
+   "firstNightReminder": "",
+   "otherNightReminder": "",
+   "reminders": [
+    "Použito"
+   ],
+   "remindersGlobal": []
+  }
+ },
+ "hellslibrarian": {
+  "firstNight": 0,
+  "otherNight": 0,
+  "setup": false,
+  "en": {
+   "ability": "Something bad might happen to whoever talks when the Storyteller has asked for silence.",
+   "firstNightReminder": "",
+   "otherNightReminder": "",
+   "reminders": [
+    "Something Bad"
+   ],
+   "remindersGlobal": []
+  },
+  "cs": {
+   "ability": "Tomu, kdo mluví, když Vypravěč požádal o ticho, se může stát něco špatného.",
+   "firstNightReminder": "",
+   "otherNightReminder": "",
+   "reminders": [
+    "Něco špatného"
+   ],
+   "remindersGlobal": []
+  }
+ },
+ "ferryman": {
+  "firstNight": 0,
+  "otherNight": 0,
+  "setup": false,
+  "en": {
+   "ability": "On the final day, all dead players regain their vote token.",
+   "firstNightReminder": "",
+   "otherNightReminder": "",
+   "reminders": [],
+   "remindersGlobal": []
+  },
+  "cs": {
+   "ability": "V poslední den obdrží všichni mrtví hráči zpět svůj hlasovací žeton.",
+   "firstNightReminder": "",
+   "otherNightReminder": "",
+   "reminders": [],
+   "remindersGlobal": []
+  }
+ },
+ "revolutionary": {
+  "firstNight": 0,
+  "otherNight": 0,
+  "setup": false,
+  "en": {
+   "ability": "2 neighboring players are known to be the same alignment. Once per game, 1 of them registers falsely.",
+   "firstNightReminder": "",
+   "otherNightReminder": "",
+   "reminders": [
+    "Used"
+   ],
+   "remindersGlobal": []
+  },
+  "cs": {
+   "ability": "2 sousedící hráči jsou známí jako stejné Příslušnosti. Jednou za hru se jeden z nich může registrovat falešně.",
+   "firstNightReminder": "",
+   "otherNightReminder": "",
+   "reminders": [
+    "Použito"
+   ],
+   "remindersGlobal": []
+  }
+ },
+ "sentinel": {
+  "firstNight": 0,
+  "otherNight": 0,
+  "setup": true,
+  "en": {
+   "ability": "There might be 1 extra or 1 fewer Outsider in play.",
+   "firstNightReminder": "",
+   "otherNightReminder": "",
+   "reminders": [],
+   "remindersGlobal": []
+  },
+  "cs": {
+   "ability": "Ve hře může být o 1 Podivína více nebo méně.",
+   "firstNightReminder": "",
+   "otherNightReminder": "",
+   "reminders": [],
+   "remindersGlobal": []
+  }
+ },
+ "duchess": {
+  "firstNight": 0,
+  "otherNight": 2,
+  "setup": false,
+  "en": {
+   "ability": "Each day, 3 players may choose to visit you. At night*, each visitor learns how many visitors are evil, but 1 gets false info.",
+   "firstNightReminder": "",
+   "otherNightReminder": "One at a time: Wake each player marked VISITOR or FALSE INFO. Show the THIS CHARACTER SELECTED YOU & Duchess tokens, then give a finger signal.",
+   "reminders": [
+    "Visitor",
+    "False Info"
+   ],
+   "remindersGlobal": []
+  },
+  "cs": {
+   "ability": "Každý den se tě mohou 3 hráči rozhodnout navštívit. V noci* se každý návštěvník dozví, kolik návštěvníků je zlých, ale 1 dostane falešnou informaci.",
+   "firstNightReminder": "",
+   "otherNightReminder": "Probuďte každého hráče označeného „Návštěvník\" nebo „Falešná informace\" jednoho po druhém. Ukažte jim žeton Vévodkyně, pak prsty (1, 2, 3) odpovídající počtu zlých hráčů označených „Návštěvník\" nebo, pokud budíte hráče označeného „Falešná informace\", ukažte jim libovolný počet prstů kromě počtu zlých hráčů označených „Návštěvník\".",
+   "reminders": [
+    "Návštěvník",
+    "Falešná informace"
+   ],
+   "remindersGlobal": []
+  }
+ },
+ "doomsayer": {
+  "firstNight": 0,
+  "otherNight": 0,
+  "setup": false,
+  "en": {
+   "ability": "If 4 or more players live, each living player may publicly choose (once per game) that a player of their own alignment dies.",
+   "firstNightReminder": "",
+   "otherNightReminder": "",
+   "reminders": [],
+   "remindersGlobal": []
+  },
+  "cs": {
+   "ability": "Pokud žijí 4 nebo více hráčů, každý živý hráč může veřejně zvolit (jednou za hru), že hráč stejné Příslušnosti zemře.",
+   "firstNightReminder": "",
+   "otherNightReminder": "",
+   "reminders": [],
+   "remindersGlobal": []
+  }
+ },
+ "godofug": {
+  "firstNight": 0,
+  "otherNight": 0,
+  "setup": false,
+  "en": {
+   "ability": "One Ug hat. When wear Ug hat, must speak one sound at a time but vote twice. If fail, pass Ug hat.",
+   "firstNightReminder": "",
+   "otherNightReminder": "",
+   "reminders": [],
+   "remindersGlobal": []
+  },
+  "cs": {
+   "ability": "One Ug hat. When wear Ug hat, must speak one sound at a time but vote twice. If fail, pass Ug hat.",
+   "firstNightReminder": "",
+   "otherNightReminder": "",
+   "reminders": [],
+   "remindersGlobal": []
+  }
+ },
+ "hindu": {
+  "firstNight": 0,
+  "otherNight": 0,
+  "setup": false,
+  "en": {
+   "ability": "The first 4 players to die are immediately reincarnated as Travellers of the same alignment.",
+   "firstNightReminder": "",
+   "otherNightReminder": "",
+   "reminders": [],
+   "remindersGlobal": []
+  },
+  "cs": {
+   "ability": "První 4 hráči, kteří zemřou, jsou okamžitě reinkarnováni jako Pocestní stejné příslušnosti.",
+   "firstNightReminder": "",
+   "otherNightReminder": "",
+   "reminders": [],
+   "remindersGlobal": []
+  }
+ },
+ "knaves": {
+  "firstNight": 0,
+  "otherNight": 0,
+  "setup": false,
+  "en": {
+   "ability": "There are 2 Storytellers: one lies & one tells the truth. Once per game, at dusk, they might switch.",
+   "firstNightReminder": "",
+   "otherNightReminder": "",
+   "reminders": [],
+   "remindersGlobal": []
+  },
+  "cs": {
+   "ability": "There are 2 Storytellers: one lies & one tells the truth. Once per game, at dusk, they might switch.",
+   "firstNightReminder": "",
+   "otherNightReminder": "",
+   "reminders": [],
+   "remindersGlobal": []
+  }
+ },
+ "stormcatcher": {
+  "firstNight": 5,
+  "otherNight": 0,
+  "setup": false,
+  "en": {
+   "ability": "Name a good character. If in play, they can only die by execution, but evil players learn which player it is.",
+   "firstNightReminder": "Announce which character is stormcaught. If that character is in play, mark that player as STORMCAUGHT. Wake each evil player and show them the character token, then the marked player.  If not in play, wake each evil player, show them the THESE CHARACTERS ARE NOT IN PLAY token & the relevant character token.",
+   "otherNightReminder": "",
+   "reminders": [
+    "Stormcaught"
+   ],
+   "remindersGlobal": []
+  },
+  "cs": {
+   "ability": "Pojmenuj dobrou postavu. Pokud je ve hře, může zemřít pouze popravou, ale zlí hráči se dozví, který hráč to je.",
+   "firstNightReminder": "Na začátku noci oznamte, která postava je chycena bouří. Pokud je ve hře, označte tohoto hráče jako CHYCENÝ BOUŘÍ. Probuďte každého zlého hráče a ukažte mu žeton postavy, pak označeného hráče. Pokud není ve hře, probuďte každého zlého hráče, ukažte jim žeton TYTO POSTAVY NEJSOU VE HŘE a příslušný žeton postavy.",
+   "otherNightReminder": "",
+   "reminders": [
+    "Chycen bouří"
+   ],
+   "remindersGlobal": []
+  }
+ },
+ "pope": {
+  "firstNight": 0,
+  "otherNight": 0,
+  "setup": true,
+  "en": {
+   "ability": "There are duplicate good characters in play. They might also be bluffs.",
+   "firstNightReminder": "",
+   "otherNightReminder": "",
+   "reminders": [],
+   "remindersGlobal": []
+  },
+  "cs": {
+   "ability": "Ve hře jsou duplicitní dobré postavy. Mohou být také blafy.",
+   "firstNightReminder": "",
+   "otherNightReminder": "",
+   "reminders": [],
+   "remindersGlobal": []
+  }
+ },
+ "bootlegger": {
+  "firstNight": 0,
+  "otherNight": 0,
+  "setup": false,
+  "en": {
+   "ability": "This script has homebrew characters or rules.",
+   "firstNightReminder": "",
+   "otherNightReminder": "",
+   "reminders": [],
+   "remindersGlobal": []
+  },
+  "cs": {
+   "ability": "Tento scénář má homebrew postavy nebo pravidla.",
+   "firstNightReminder": "",
+   "otherNightReminder": "",
+   "reminders": [],
+   "remindersGlobal": []
+  }
+ },
+ "tor": {
+  "firstNight": 0,
+  "otherNight": 74,
+  "setup": true,
+  "en": {
+   "ability": "Players don't know their character or alignment. They learn them when they die.",
+   "firstNightReminder": "",
+   "otherNightReminder": "If a player died tonight, show the YOU ARE info token, their character token, & a thumbs up or thumbs down.",
+   "reminders": [],
+   "remindersGlobal": []
+  },
+  "cs": {
+   "ability": "Hráči neznají svou Postavu ani Příslušnost. Dozvídají se je když zemřou.",
+   "firstNightReminder": "",
+   "otherNightReminder": "Pokud hráč zemře v noci, probuďte ho, ukažte mu žeton JSI, jeho žeton postavy, znovu žeton JSI a nakonec palec nahoru nebo palec dolů.",
+   "reminders": [],
+   "remindersGlobal": []
+  }
+ },
+ "bigwig": {
+  "firstNight": 0,
+  "otherNight": 0,
+  "setup": false,
+  "en": {
+   "ability": "Each nominee chooses a player: until voting, only they may speak & they are mad the nominee is good or they might die.",
+   "firstNightReminder": "",
+   "otherNightReminder": "",
+   "reminders": [],
+   "remindersGlobal": []
+  },
+  "cs": {
+   "ability": "Každý nominovaný si zvolí hráče: až do hlasování může mluvit pouze obhájce & je 'Posedlý' představou, že nominovaný je dobrý, jinak může zemřít.",
+   "firstNightReminder": "",
+   "otherNightReminder": "",
+   "reminders": [],
+   "remindersGlobal": []
+  }
+ },
+ "ventriloquist": {
+  "firstNight": 0,
+  "otherNight": 0,
+  "setup": false,
+  "en": {
+   "ability": "If a player is mad as a fresh character during their nomination, they might not die if executed today.",
+   "firstNightReminder": "",
+   "otherNightReminder": "",
+   "reminders": [
+    "Mad"
+   ],
+   "remindersGlobal": []
+  },
+  "cs": {
+   "ability": "If a player is mad as a fresh character during their nomination, they might not die if executed today.",
+   "firstNightReminder": "",
+   "otherNightReminder": "",
+   "reminders": [
+    "Mad"
+   ],
+   "remindersGlobal": []
+  }
+ },
+ "zenomancer": {
+  "firstNight": 0,
+  "otherNight": 0,
+  "setup": false,
+  "en": {
+   "ability": "One or more players each have a goal. When achieved, that player learns a piece of true info.",
+   "firstNightReminder": "",
+   "otherNightReminder": "",
+   "reminders": [],
+   "remindersGlobal": []
+  },
+  "cs": {
+   "ability": "Jeden nebo více hráčů má každý cíl. Když je dosaženo, tento hráč se dozví kus pravdivé informace.",
+   "firstNightReminder": "",
+   "otherNightReminder": "",
+   "reminders": [],
+   "remindersGlobal": []
+  }
+ },
+ "gardener": {
+  "firstNight": 0,
+  "otherNight": 0,
+  "setup": false,
+  "en": {
+   "ability": "The Storyteller assigns 1 or more players' characters.",
+   "firstNightReminder": "",
+   "otherNightReminder": "",
+   "reminders": [],
+   "remindersGlobal": []
+  },
+  "cs": {
+   "ability": "Vypravěč přiřadí 1 nebo více hráčům jejich postavy.",
+   "firstNightReminder": "",
+   "otherNightReminder": "",
+   "reminders": [],
+   "remindersGlobal": []
+  }
  }
 }

@@ -34,7 +34,8 @@ export type GrimoireCharacter = {
  * Professor's "Alive" (brought back), the Fang Gu's "Once" (it jumped), the Vigormortis's "Has ability" (a
  * Minion it killed), the Po's "3 attacks" (it chose nobody), the Al-Hadikhia's "Chose death" and "Chose life",
  * Lil' Monsta's "Is the Demon" (its babysitter), the Leviathan's "Good player executed", the Mezepheles's
- * "Turns evil" and the Witch's "Cursed".
+ * "Turns evil" and the Witch's "Cursed"; the Storm Catcher's "Stormcaught" and the Duchess's "Visitor" and
+ * "False Info".
  */
 export type TokenKind =
   | "poisoned"
@@ -52,7 +53,10 @@ export type TokenKind =
   | "babysitter"
   | "goodExecuted"
   | "turnsEvil"
-  | "cursed";
+  | "cursed"
+  | "stormcaught"
+  | "visitor"
+  | "falseInfo";
 
 function tokenKind(en: string): TokenKind | null {
   if (en === "Poisoned") return "poisoned";
@@ -71,6 +75,9 @@ function tokenKind(en: string): TokenKind | null {
   if (en === "Good player executed") return "goodExecuted";
   if (en === "Turns evil") return "turnsEvil";
   if (en === "Cursed") return "cursed";
+  if (en === "Stormcaught") return "stormcaught";
+  if (en === "Visitor") return "visitor";
+  if (en === "False Info") return "falseInfo";
   return null;
 }
 
@@ -95,7 +102,7 @@ export function jinxesAmong(roleIds: (string | null)[], characters: Record<strin
   );
 }
 
-/** Every character of modules/botc/lib/botc-roles in the page's language; the grimoire page hands it to the browser. */
+/** Every character of modules/botc/lib/botc-roles (the Fabled and Loric too) in the page's language; the grimoire page hands it to the browser. */
 export function grimoireCharacters(locale: Locale): Record<string, GrimoireCharacter> {
   const characters = data as Record<string, CharacterData>;
   return Object.fromEntries(

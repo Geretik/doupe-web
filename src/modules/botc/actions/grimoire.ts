@@ -7,7 +7,8 @@ import { requireAdmin } from "@/lib/admin-auth";
 import { grimoireStateSchema } from "@/modules/botc/lib/grimoire/schema";
 import { createGrimoire, deleteGrimoire, getGrimoire, saveGrimoire, type SaveResult } from "@/modules/botc/lib/grimoire/service";
 import type { GrimoireState } from "@/modules/botc/lib/grimoire/state";
-import { parseScriptFile } from "@/modules/botc/lib/scripts";
+import { grimoireScriptExtras, parseScriptFile } from "@/modules/botc/lib/scripts";
+import { matchStorytellerId } from "@/modules/botc/lib/botc-roles";
 import { parseId } from "@/lib/validation";
 
 function optionalId(v: FormDataEntryValue | null) {
@@ -55,7 +56,7 @@ export async function deleteGrimoireAction(id: number) {
 
 export type ReadScriptResult = { ok: true; script: GrimoireState["script"]; extras: string[] } | { error: string };
 
-/** A script pasted or picked as a file in the grimoire: its name and the characters this site knows; nothing is saved. */
+/** A script pasted or picked as a file in the grimoire: its name, the characters this site knows, its Fabled and Loric and its homebrew; nothing is saved. */
 export async function readGrimoireScriptAction(text: string): Promise<ReadScriptResult> {
   await requireAdmin();
   const { t } = await getDict();
@@ -65,5 +66,8 @@ export async function readGrimoireScriptAction(text: string): Promise<ReadScript
   if (!parsed.ok) return { error: errors[parsed.error] };
   if (parsed.script.roleIds.length === 0) return { error: errors.noCharacters };
   const name = (parsed.script.meta.name ?? t.grimoire.jsonScript).slice(0, 200);
-  return { ok: true, script: { id: null, json: true, name, roleIds: parsed.script.roleIds }, extras: parsed.script.extras };
+  const { roleIds, fabled } = parsed.script;
+  // the Fabled and Loric come into the grimoire too; homebrew characters only to read at the Bootlegger
+  const extras = parsed.script.extras.filter((x) => !fabled.includes(matchStorytellerId(x) ?? ""));
+  return { ok: true, script: { id: null, json: true, name, roleIds, ...grimoireScriptExtras(parsed.script) }, extras };
 }

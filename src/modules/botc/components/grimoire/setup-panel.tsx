@@ -8,6 +8,8 @@ import {
   bagTokens,
   bluffCandidates,
   dealBag,
+  hasFabled,
+  POPE,
   expectedSetup,
   gapKinds,
   hiddenInBag,
@@ -25,9 +27,11 @@ import {
   setupRoles,
   setupTeams,
   startDrawing,
+  tapBag,
   teamCounts,
   typhonInLine,
   undrawable,
+  withScript,
   type ExpectedCount,
   type GrimoireState,
 } from "@/modules/botc/lib/grimoire/state";
@@ -37,11 +41,13 @@ import { jinxesAmong } from "@/modules/botc/lib/grimoire/characters";
 import { fill } from "@/modules/botc/lib/grimoire/text";
 import { nameOf, RoleIcon, useGrimoire, type GrimoireContextValue, type GrimoireTexts } from "./context";
 import { RoleGrid, teamBox } from "./role-grid";
+import { FabledSetup } from "./fabled";
 import { ShowButton } from "./show";
 import { holders } from "./seat-panel";
 import { gapIcon } from "./town";
 
-export type ScriptChoice = { id: number; name: string; roleIds: string[] };
+/** A script of the club's library: its characters, and its Fabled and Loric */
+export type ScriptChoice = GrimoireState["script"] & { id: number };
 
 /** A team's number the setup wants: "5", "0–2" or "1 nebo 3" when characters leave a choice, "?" when any; null under 5 players. */
 function wanted(e: ExpectedCount | undefined, t: GrimoireTexts) {
@@ -121,7 +127,7 @@ export function SetupScreen({
   );
 }
 
-/** Before the game (and for changes during it): script, players, the setup counts, the bag, the Demon's bluffs. */
+/** Before the game (and for changes during it): script, Fabled and Loric, players, the setup counts, the bag, the Demon's bluffs. */
 export function SetupPanel({ scripts, onSelectSeat, wide = false }: { scripts: ScriptChoice[]; onSelectSeat: (seatId: string) => void; wide?: boolean }) {
   const { state, update, readOnly, characters, locale, t } = useGrimoire();
   const [newName, setNewName] = useState("");
@@ -145,6 +151,7 @@ export function SetupPanel({ scripts, onSelectSeat, wide = false }: { scripts: S
   return (
     <div className="flex flex-col gap-5" data-testid="setup-panel">
       <ScriptPicker scripts={scripts} />
+      <FabledSetup wide={wide} />
 
       <section className="flex flex-col gap-1.5">
         <div className="flex flex-wrap items-center gap-2">
@@ -357,8 +364,9 @@ function BagContents({ wide }: { wide: boolean }) {
             <ul className="flex flex-wrap gap-1.5">
               {state.bag
                 .filter((id) => findRole(id)?.team === team)
-                .map((id) => (
-                  <li key={id} className={chip}>
+                .map((id, i) => (
+                  // the Pope's duplicates twice
+                  <li key={`${id}-${i}`} className={chip}>
                     <RoleIcon roleId={id} size={26} />
                     {nameOf(id, locale)}
                   </li>
@@ -594,12 +602,14 @@ function BagGrid({ wide = false }: { wide?: boolean }) {
   const expected = expectedSetup(playerSeats(state).length, setupRoles(state), true);
   const inBag = teamCounts(state.bag);
   const roleIds = state.script.roleIds.filter((id) => findRole(id)?.team !== "traveller");
-  // what a character does to the setup, on its tile: "+2 Podivíni", "+1 Měšťan" for the Drunk's extra token
+  // what a character does to the setup, on its tile: "+2 Podivíni", "+1 Měšťan" for the Drunk's extra token; the Pope's duplicates "2×"
   const setupNotes = new Map(
     roleIds.flatMap((id) => {
       const standIn = t.standInBadge[id as keyof GrimoireTexts["standInBadge"]];
       const note = characters[id]?.setup ? setupNote(characters[id].ability) : null;
-      return standIn ? [[id, standIn] as const] : note ? [[id, note.slice(1, -1).trim()] as const] : [];
+      const n = state.bag.filter((x) => x === id).length;
+      const badge = [standIn ?? (note ? note.slice(1, -1).trim() : null), n > 1 && id !== "legion" ? fill(t.popeTwice, { n }) : null].filter(Boolean).join(" · ");
+      return badge ? [[id, badge] as const] : [];
     }),
   );
   const count = (team: RoleTeam) => {
@@ -621,7 +631,7 @@ function BagGrid({ wide = false }: { wide?: boolean }) {
       badges={setupNotes}
       teamNote={count}
       label={t.bagLabel}
-      onPick={(id) => update((s) => ({ ...s, bag: s.bag.includes(id) ? s.bag.filter((x) => x !== id) : [...s.bag, id] }))}
+      onPick={(id) => update((s) => tapBag(s, id))}
       wide={wide}
     />
   );
@@ -705,6 +715,7 @@ function BagScreen({ onClose }: { onClose: () => void }) {
       <UndrawableWarning />
       <JinxWarnings />
       <LegionCount />
+      {hasFabled(state, POPE) && <p className="text-sm" data-testid="pope-hint">⚠️ {t.popeHint}</p>}
       {bluffSlot === null ? <BagGrid wide /> : <BluffChoices slot={bluffSlot} onDone={() => setBluffSlot(null)} wide />}
     </div>
   );
@@ -718,7 +729,7 @@ function ScriptPicker({ scripts }: { scripts: ScriptChoice[] }) {
   const [error, setError] = useState<string | null>(null);
   const [extras, setExtras] = useState<string[]>([]);
   const [pending, startTransition] = useTransition();
-  const applyScript = (script: GrimoireState["script"]) => update((s) => ({ ...s, script, bag: s.bag.filter((id) => script.roleIds.includes(id)) }));
+  const applyScript = (script: GrimoireState["script"]) => update((s) => withScript(s, script));
   const value = state.script.id !== null ? String(state.script.id) : state.script.json ? "json" : "";
   const read = (raw: string) =>
     startTransition(async () => {

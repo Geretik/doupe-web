@@ -1,9 +1,21 @@
 import { z } from "zod";
 import { gameWinners } from "@/db/schema";
-import { BLUFF_COUNT, findRole } from "@/modules/botc/lib/botc-roles";
-import { eventKinds, gapKinds, MAX_EVENTS, MAX_REMINDERS, MAX_SEATS, type GrimoireState } from "./state";
+import { BLUFF_COUNT, findRole, findStorytellerRole, storytellerRoles } from "@/modules/botc/lib/botc-roles";
+import { eventKinds, gapKinds, HOMEBREW_LIMITS, MAX_EVENTS, MAX_REMINDERS, MAX_SEATS, type GrimoireState } from "./state";
 
 const roleId = z.string().max(40).refine((id) => findRole(id) !== undefined);
+/** A Fabled or Loric */
+const fabledId = z.string().max(40).refine((id) => findStorytellerRole(id) !== undefined);
+/** A character whose tokens lie in the town or whose ability did something: a player's or the Storyteller's */
+const anyRoleId = z.union([roleId, fabledId]);
+const fabledList = z.array(fabledId).max(storytellerRoles.length);
+const homebrewText = z.string().trim().min(1).max(HOMEBREW_LIMITS.text);
+const homebrew = z.object({
+  rules: z.array(homebrewText).max(HOMEBREW_LIMITS.rules),
+  characters: z
+    .array(z.object({ name: z.string().trim().min(1).max(HOMEBREW_LIMITS.name), team: z.string().max(20).nullable(), ability: homebrewText }))
+    .max(HOMEBREW_LIMITS.characters),
+});
 const shortId = z.string().min(1).max(20);
 const round = z.number().int().min(0).max(99);
 
@@ -14,6 +26,8 @@ export const grimoireStateSchema: z.ZodType<GrimoireState> = z.object({
     json: z.boolean().optional(),
     name: z.string().trim().min(1).max(200),
     roleIds: z.array(roleId).max(300),
+    fabled: fabledList.optional(),
+    homebrew: homebrew.optional(),
   }),
   seats: z
     .array(
@@ -27,7 +41,7 @@ export const grimoireStateSchema: z.ZodType<GrimoireState> = z.object({
         dead: z.boolean(),
         voteUsed: z.boolean(),
         reminders: z
-          .array(z.object({ id: shortId, roleId: roleId.nullable(), text: z.string().trim().min(1).max(80), round: round.optional() }))
+          .array(z.object({ id: shortId, roleId: anyRoleId.nullable(), text: z.string().trim().min(1).max(80), round: round.optional() }))
           .max(MAX_REMINDERS),
       }),
     )
@@ -51,10 +65,11 @@ export const grimoireStateSchema: z.ZodType<GrimoireState> = z.object({
         seatId: shortId,
         name: z.string().trim().max(60),
         role: roleId.nullable(),
-        by: roleId.optional(),
+        by: anyRoleId.optional(),
         fake: z.boolean().optional(),
       }),
     )
     .max(MAX_EVENTS)
     .optional(),
+  fabled: fabledList.optional(),
 });

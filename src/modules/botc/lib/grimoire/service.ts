@@ -5,7 +5,7 @@ import { hasRole } from "@/lib/admin-auth";
 import { botcRoles, linkedRoleOf } from "@/modules/botc/lib/botc-roles";
 import { saveRoster } from "@/modules/botc/lib/game-roster";
 import { scriptToolLinkForJson } from "@/modules/botc/lib/draft/script";
-import { libraryScriptToolLink } from "@/modules/botc/lib/scripts";
+import { libraryScriptExtras, libraryScriptToolLink } from "@/modules/botc/lib/scripts";
 import type { RosterValue } from "@/lib/validation";
 import { newGap, newGrimoireState, newSeat, players, type GrimoireState } from "./state";
 
@@ -30,12 +30,13 @@ export function allCharactersScript(name: string): GrimoireState["script"] {
   return { id: null, name, roleIds: botcRoles.filter((r) => r.team !== "traveller").map((r) => r.id) };
 }
 
-/** The club's library, for picking a grimoire's script. */
-export async function grimoireScripts() {
-  return db
-    .select({ id: scripts.id, name: scripts.name, roleIds: scripts.roleIds })
+/** The club's library, for picking a grimoire's script: its characters, its Fabled and Loric, its homebrew. */
+export async function grimoireScripts(): Promise<(GrimoireState["script"] & { id: number })[]> {
+  const rows = await db
+    .select({ id: scripts.id, name: scripts.name, roleIds: scripts.roleIds, json: scripts.json })
     .from(scripts)
     .orderBy(sql`lower(${scripts.name})`);
+  return rows.map(({ json, ...script }) => ({ ...script, ...libraryScriptExtras({ json }) }));
 }
 
 /** Sessions a new grimoire can start from: the last week's and the coming weeks'. */
@@ -120,12 +121,15 @@ export async function createGrimoire(
   let seats: GrimoireState["seats"] = [];
   let sessionId = input.sessionId;
   let script: GrimoireState["script"] | null = null;
+  // the next game at the same table keeps the Fabled and Loric the Storyteller added
+  let fabled: string[] | undefined;
   if (input.fromId) {
     const from = await db.query.grimoires.findFirst({ where: eq(grimoires.id, input.fromId) });
     if (!from || !canEditGrimoire(me, from)) return null;
     seats = from.state.seats.map((s) => (s.gap ? newGap(s.gap) : newSeat(s.name, s.registrationId)));
     sessionId = from.sessionId;
     script = from.state.script;
+    fabled = from.state.fabled;
   }
   const session = sessionId ? await db.query.sessions.findFirst({ where: eq(sessions.id, sessionId) }) : undefined;
   if (sessionId && !session) return null;
@@ -148,9 +152,10 @@ export async function createGrimoire(
     const [{ n }] = await db.select({ n: sql<number>`count(*)::int` }).from(grimoires).where(eq(grimoires.sessionId, session.id));
     name = texts.nthGame(session.title, n + 1);
   }
+  const state = newGrimoireState(script, seats);
   const [row] = await db
     .insert(grimoires)
-    .values({ name: name || texts.untitled, ownerId: me.id, sessionId: session?.id ?? null, state: newGrimoireState(script, seats) })
+    .values({ name: name || texts.untitled, ownerId: me.id, sessionId: session?.id ?? null, state: fabled?.length ? { ...state, fabled } : state })
     .returning({ id: grimoires.id });
   return row.id;
 }

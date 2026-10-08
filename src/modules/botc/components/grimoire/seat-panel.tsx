@@ -13,6 +13,7 @@ import {
   newGap,
   registersDead,
   setDead,
+  stormcaught,
   survives,
   toggleReminder,
   uid,
@@ -282,11 +283,13 @@ export function SeatPanel({
 /** ✕ at the top of the panel: nobody selected, so in the day no player stays lit up in the town. */
 /**
  * Why the player does not die now though killed (survives: the Lleech's host, the Sailor, the Fool, the Tea Lady's
- * neighbours, the Vizier by day, the Devil's Advocate's choice), and the Psychopath's roshambo by day.
+ * neighbours, the Vizier by day, the Devil's Advocate's choice), the Storm Catcher's player who only dies by
+ * execution, and the Psychopath's roshambo by day.
  */
 function SurvivalNote({ seat }: { seat: GrimoireSeat }) {
   const { state, characters, t } = useGrimoire();
   if (seat.dead) return null;
+  if (stormcaught(state, seat, characters)) return <p className="-mt-2 text-sm font-medium text-accent">{t.stormcaught}</p>;
   const why = survives(state, seat, characters);
   const host = why === "lleech" ? lleechHost(state, characters) : null;
   const note =
@@ -421,10 +424,10 @@ function SeatName({ name, onSave }: { name: string; onSave: (name: string) => vo
   );
 }
 
-/** The reminder tokens of the characters in play, and the ones any character of the script may hand out. */
+/** The reminder tokens of the characters in play (the Fabled and Loric too), and the ones any character of the script may hand out. */
 function ReminderChoices({ onPick }: { onPick: (roleId: string, text: string) => void }) {
   const { state, characters, locale } = useGrimoire();
-  const inPlay = charactersInPlay(state);
+  const inPlay = new Set([...charactersInPlay(state), ...(state.fabled ?? [])]);
   const options = [...new Set([...inPlay, ...state.script.roleIds])]
     .map((id) => {
       const c = characters[id];

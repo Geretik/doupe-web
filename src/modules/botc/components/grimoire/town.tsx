@@ -5,6 +5,7 @@ import { linkedRoleOf } from "@/modules/botc/lib/botc-roles";
 import {
   abilityWorks,
   diedLately,
+  hasFabled,
   hermitHas,
   moveSeat,
   players,
@@ -356,7 +357,8 @@ function SeatToken({
  * What living characters do to today: no execution with the Vortox, the Leviathan's days, Legion's votes, Riot;
  * the Witch's cursed player, the Mastermind's extra day, the Evil Twin, the Boomdandy executed, the Goblin's claim;
  * the Saint executed, the Klutz, Moonchild and Sweetheart who died, the Butler's master; the Atheist executed, the
- * Mayor with three alive, the Pacifist, the Virgin not nominated yet, the Banshee killed by the Demon.
+ * Mayor with three alive, the Pacifist, the Virgin not nominated yet, the Banshee killed by the Demon; the
+ * Buddhist's silence, the Ferryman's final day.
  */
 function dayRules(state: GrimoireState, characters: Record<string, GrimoireCharacter>, t: GrimoireTexts) {
   const alive = (role: string) => players(state).some((s) => s.role === role && !s.dead);
@@ -394,6 +396,9 @@ function dayRules(state: GrimoireState, characters: Record<string, GrimoireChara
   const butler = players(state).find((s) => s.role === "butler" && !s.dead);
   const master = remindersOf(state, "butler")[0]?.seat;
   if (butler && master) rules.push(fill(t.butlerDay, { name: butler.name || "?", master: master.name || "?" }));
+  // the Fabled
+  if (hasFabled(state, "buddhist")) rules.push(t.buddhistDay);
+  if (hasFabled(state, "ferryman") && players(state).filter((s) => !s.dead).length === 3) rules.push(t.ferrymanDay);
   return rules;
 }
 
