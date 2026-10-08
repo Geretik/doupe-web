@@ -188,7 +188,7 @@ export default async function DraftPage({ params }: { params: Promise<{ id: stri
       {status === "active" && !onTurn && <AutoRefresh seconds={30} />}
 
       <div className="flex flex-col gap-2">
-        <Link href="/admin/drafty" className="text-sm text-muted hover:underline">{d.back}</Link>
+        <Link href="/admin/botc/drafty" className="text-sm text-muted hover:underline">{d.back}</Link>
         <h1 className="flex flex-wrap items-center gap-3 text-2xl font-bold">
           {draft.name}
           <StatusBadge t={t} status={status} prepState={review?.prepState} />
@@ -444,12 +444,12 @@ export default async function DraftPage({ params }: { params: Promise<{ id: stri
                       </span>
                     </p>
                     <span className="flex flex-wrap items-center gap-2">
-                      <Link href={`/admin/drafty/script/${script.id}`} className={pill}>
+                      <Link href={`/admin/botc/drafty/script/${script.id}`} className={pill}>
                         {script.createdBy === me.id ? d.editScript : d.scriptTitle}
                       </Link>
                       <a href={scriptToolLink(script)} target="_blank" rel="noopener noreferrer" className={pill}>{d.openInTool}</a>
-                      <a href={`/admin/drafty/script/${script.id}/script.json`} className={pill}>{d.downloadJson}</a>
-                      {script.libraryScriptId && <Link href={`/admin/scripty/${script.libraryScriptId}`} className={pill}>{d.inLibrary}</Link>}
+                      <a href={`/admin/botc/drafty/script/${script.id}/script.json`} className={pill}>{d.downloadJson}</a>
+                      {script.libraryScriptId && <Link href={`/admin/botc/scripty/${script.libraryScriptId}`} className={pill}>{d.inLibrary}</Link>}
                       {script.createdBy === me.id && (
                         <>
                           <ActionButton

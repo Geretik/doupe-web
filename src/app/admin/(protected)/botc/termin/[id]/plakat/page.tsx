@@ -26,7 +26,7 @@ export default async function PosterPage({ params }: { params: Promise<{ id: str
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center gap-2 print:hidden">
-        <Link href={`/admin/termin/${session.id}`} className={buttonClass}>{p.back}</Link>
+        <Link href={`/admin/botc/termin/${session.id}`} className={buttonClass}>{p.back}</Link>
         <PrintButton label={p.print} />
         <a href={`/botc/termin/${session.id}/qr.svg`} download={`termin-${session.id}-qr.svg`} className={buttonClass}>{p.downloadSvg}</a>
         <a href={`/botc/termin/${session.id}/qr.png`} download={`termin-${session.id}-qr.png`} className={buttonClass}>{p.downloadPng}</a>

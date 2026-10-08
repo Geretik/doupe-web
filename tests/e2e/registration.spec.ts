@@ -156,7 +156,7 @@ test("admin: login, create/edit session with scripts, manage registrations, dele
   await expect(page.locator("main")).toContainText("Nesprávný e-mail nebo heslo");
   await adminLogin(page);
 
-  await page.goto("/admin/novy");
+  await page.goto("/admin/botc/novy");
   await page.fill("#title", "Herní večer #2");
   await page.fill("#date", "2030-12-05");
   await page.selectOption("#startTime", "18:00");
@@ -167,7 +167,7 @@ test("admin: login, create/edit session with scripts, manage registrations, dele
   await page.fill("input[name=scriptName] >> nth=0", "Trouble Brewing");
   await page.fill("input[name=scriptUrl] >> nth=0", "botcscripts.com/script/Trouble_Brewing/1/");
   await page.click("button:has-text('Vytvořit termín')");
-  await page.waitForURL(/\/admin$/);
+  await page.waitForURL(/\/admin\/botc$/);
   const [s] = await sql<{ id: number; starts_at: Date; scripts: { name: string; url: string }[] }>(
     "select id, starts_at, scripts from sessions where title='Herní večer #2'",
   );
@@ -178,7 +178,7 @@ test("admin: login, create/edit session with scripts, manage registrations, dele
   await page.goto("/botc");
   // one to the session, one next to the heading to the page's intro text
   await expect(page.getByTestId("edit-pencil")).toHaveCount(2);
-  await expect(page.locator(`[data-testid=edit-pencil][href="/admin/termin/${s.id}"]`)).toHaveCount(1);
+  await expect(page.locator(`[data-testid=edit-pencil][href="/admin/botc/termin/${s.id}"]`)).toHaveCount(1);
   await expect(page.locator("main")).toContainText("Trouble Brewing");
   await expect(page.locator("main")).toContainText("🎩");
   await expect(page.locator("main")).toContainText("Vypravěč: Honza");
@@ -186,7 +186,7 @@ test("admin: login, create/edit session with scripts, manage registrations, dele
   // register two players, admin sees them, cancels and restores one
   await register(page, s.id, { nick: "P1", email: "p1@example.com", note: "přijdu s kamarádem" });
   await register(page, s.id, { nick: "P2", email: "p2@example.com" });
-  await page.goto(`/admin/termin/${s.id}`);
+  await page.goto(`/admin/botc/termin/${s.id}`);
   await expect(page.locator("main")).toContainText("Přihlášení (2 / 10)");
   await expect(page.locator("main")).toContainText("Poznámka hráče: P1: „přijdu s kamarádem“");
   await expect(page.locator("main")).toContainText("p1@example.com");
@@ -218,7 +218,7 @@ test("admin: login, create/edit session with scripts, manage registrations, dele
 
   page.on("dialog", (d) => d.accept());
   await page.click("button:has-text('Smazat termín')");
-  await page.waitForURL(/\/admin$/);
+  await page.waitForURL(/\/admin\/botc$/);
   expect((await sql("select id from sessions"))).toHaveLength(0);
 
   await page.click("button:has-text('Odhlásit')");

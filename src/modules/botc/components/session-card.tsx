@@ -33,7 +33,7 @@ export function SessionCard({
       <div className="flex min-w-0 flex-col gap-1">
         <h2 className="flex flex-wrap items-center gap-2 text-lg font-semibold">
           {s.title}
-          {admin && <EditPencil href={`/admin/termin/${s.id}`} title={t.session.editPencil} />}
+          {admin && <EditPencil href={`/admin/botc/termin/${s.id}`} title={t.session.editPencil} />}
         </h2>
         <p className="text-sm">
           <span aria-hidden className="mr-1.5">📅</span>

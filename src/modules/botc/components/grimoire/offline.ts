@@ -5,7 +5,7 @@ import { botcRoles, roleIcon } from "@/modules/botc/lib/botc-roles";
 import type { GrimoireState } from "@/modules/botc/lib/grimoire/state";
 
 /** The grimoire pages the service worker keeps for opening without a connection (public/grimoar-sw.js). */
-export const GRIMOIRE_SCOPE = "/admin/grimoary";
+export const GRIMOIRE_SCOPE = "/admin/botc/grimoary";
 
 const travellers = botcRoles.filter((r) => r.team === "traveller").map((r) => r.id);
 

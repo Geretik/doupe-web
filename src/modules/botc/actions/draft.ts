@@ -86,7 +86,7 @@ export async function createDraftAction(_prev: FormState, formData: FormData): P
   if (!parsed.values) return { error: t.draft.errors.checkForm, fieldErrors: parsed.fieldErrors };
   const { draftId } = await service.createDraft(me, parsed.values, locale);
   revalidateDrafts();
-  redirect(`/admin/drafty/${draftId}`);
+  redirect(`/admin/botc/drafty/${draftId}`);
 }
 
 export type MessageState = FormState & { message?: string };
@@ -109,7 +109,7 @@ export async function deleteDraftAction(draftId: number): Promise<SimpleResult> 
   const r = await service.deleteDraft(me, draftId);
   if (!r.ok) return { message: errorText(t.draft, r.error) };
   revalidateDrafts();
-  redirect("/admin/drafty");
+  redirect("/admin/botc/drafty");
 }
 
 // ─── Preparing ───────────────────────────────────────────────────────────────
@@ -207,7 +207,7 @@ export async function createScriptAction(sessionId: number, poolId: number): Pro
   const r = await service.createScript(me, sessionId, poolId);
   if (!r.ok) return { message: errorText(t.draft, r.error) };
   revalidateDrafts();
-  redirect(`/admin/drafty/script/${r.scriptId}`);
+  redirect(`/admin/botc/drafty/script/${r.scriptId}`);
 }
 
 export async function saveScriptAction(scriptId: number, _prev: MessageState, formData: FormData): Promise<MessageState> {
@@ -238,5 +238,5 @@ export async function deleteScriptAction(scriptId: number): Promise<SimpleResult
   const r = await service.deleteScript(me, scriptId);
   if (!r.ok) return { message: errorText(t.draft, r.error) };
   revalidateDrafts();
-  redirect(`/admin/drafty/${r.draftId}`);
+  redirect(`/admin/botc/drafty/${r.draftId}`);
 }

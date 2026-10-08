@@ -17,6 +17,12 @@ const MOVED_TO_BOTC = ["/termin", "/archiv", "/o-hre", "/r", "/moje-hry"];
 /** Of those, the ones that are pages on their own too (/termin and /r only ever had pages below them). */
 const MOVED_PAGES = ["/archiv", "/o-hre", "/moje-hry"];
 
+/**
+ * Admin pages of Blood on the Clocktower that lived right under /admin before the admin became the club's overview
+ * (October 2026): links in sent e-mails (drafts, a session's sign-ups), the organisers' calendar and bookmarks.
+ */
+const MOVED_TO_ADMIN_BOTC = ["/admin/termin", "/admin/novy", "/admin/drafty", "/admin/grimoary", "/admin/scripty", "/admin/statistiky"];
+
 const nextConfig: NextConfig = {
   async headers() {
     return [
@@ -49,6 +55,10 @@ const nextConfig: NextConfig = {
       // the bare path gets its own rule: on Vercel an empty `:rest*` leaves a trailing slash, one redirect more
       ...MOVED_PAGES.map((path) => ({ source: path, destination: `/botc${path}`, permanent: true })),
       ...MOVED_TO_BOTC.map((path) => ({ source: `${path}/:rest+`, destination: `/botc${path}/:rest+`, permanent: true })),
+      ...MOVED_TO_ADMIN_BOTC.flatMap((path) => [
+        { source: path, destination: path.replace("/admin", "/admin/botc"), permanent: true },
+        { source: `${path}/:rest+`, destination: `${path.replace("/admin", "/admin/botc")}/:rest+`, permanent: true },
+      ]),
       // the list of sessions has no page of its own, it is the module's home
       { source: "/termin", destination: "/botc", permanent: true },
       // the club page became the home page

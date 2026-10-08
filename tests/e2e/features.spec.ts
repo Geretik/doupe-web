@@ -66,7 +66,7 @@ test("waitlist: raising the capacity in admin promotes waitlisted players", asyn
   await register(page, id, { nick: "B", email: "b@example.com" });
   await register(page, id, { nick: "C", email: "c@example.com" });
   await adminLogin(page);
-  await page.goto(`/admin/termin/${id}`);
+  await page.goto(`/admin/botc/termin/${id}`);
   await expect(page.locator("main")).toContainText("Náhradníci (2)");
   await page.fill("#capacity", "2");
   await page.click("button:has-text('Uložit změny')");
@@ -105,7 +105,7 @@ test("storyteller / newbie flags are stored and shown", async ({ page }) => {
   await expect(page.locator("main li:has-text('Sára')")).toContainText("🎩");
 
   await adminLogin(page);
-  await page.goto(`/admin/termin/${id}`);
+  await page.goto(`/admin/botc/termin/${id}`);
   await expect(page.locator("main")).toContainText("vypravěči: 1");
   await expect(page.locator("main")).toContainText("nováčci: 1");
 });
@@ -160,7 +160,7 @@ test("reminders: cron is protected, sends once per player within the window", as
 
   // admin can trigger reminders for a session outside the window
   await adminLogin(page);
-  await page.goto(`/admin/termin/${later}`);
+  await page.goto(`/admin/botc/termin/${later}`);
   page.on("dialog", (d) => d.accept());
   await page.click("button:has-text('Poslat připomínku (1)')");
   await expect(page.locator("main")).toContainText("Připomínka odeslána 1×");
@@ -174,9 +174,9 @@ test("admin: CSV export, attendance, broadcast e-mail, duplicate, stats, Discord
   await register(page, id, { nick: "Q", email: "q@example.com" });
 
   // export requires admin
-  expect((await request.get(`/admin/termin/${id}/export.csv`)).status()).toBe(401);
+  expect((await request.get(`/admin/botc/termin/${id}/export.csv`)).status()).toBe(401);
   await adminLogin(page);
-  const csv = await page.request.get(`/admin/termin/${id}/export.csv`);
+  const csv = await page.request.get(`/admin/botc/termin/${id}/export.csv`);
   expect(csv.status()).toBe(200);
   expect(csv.headers()["content-type"]).toContain("text/csv");
   const csvText = await csv.text();
@@ -184,10 +184,10 @@ test("admin: CSV export, attendance, broadcast e-mail, duplicate, stats, Discord
   expect(csvText).toContain("Petr;Novák;Péťa;petr@example.com;+420777123456;přihlášen");
   // a typed value that Excel would run as a formula is turned into text (a phone number stays as it is)
   await sql("update registrations set note = '=1+2' where email = 'q@example.com'");
-  expect(await (await page.request.get(`/admin/termin/${id}/export.csv`)).text()).toContain(";'=1+2;");
+  expect(await (await page.request.get(`/admin/botc/termin/${id}/export.csv`)).text()).toContain(";'=1+2;");
 
   // attendance toggle
-  await page.goto(`/admin/termin/${id}`);
+  await page.goto(`/admin/botc/termin/${id}`);
   await page.click("tr:has-text('petr@example.com') button[title='Dorazil/a']");
   await expect(page.locator("tr:has-text('petr@example.com') button[title='Dorazil/a']")).toHaveAttribute("aria-pressed", "true");
   await page.click("tr:has-text('q@example.com') button[title='Nedorazil/a']");
@@ -214,7 +214,7 @@ test("admin: CSV export, attendance, broadcast e-mail, duplicate, stats, Discord
 
   // duplicate prefills form with date one week later
   await page.click("a:has-text('Duplikovat termín')");
-  await expect(page).toHaveURL(new RegExp(`/admin/novy\\?from=${id}$`));
+  await expect(page).toHaveURL(new RegExp(`/admin/botc/novy\\?from=${id}$`));
   await expect(page.locator("#title")).toHaveValue("Adminový večer");
   await expect(page.locator("#place")).toHaveValue("Klubovna");
   const [orig] = await sql<{ starts_at: Date }>("select starts_at from sessions where id=$1", [id]);
@@ -223,11 +223,11 @@ test("admin: CSV export, attendance, broadcast e-mail, duplicate, stats, Discord
     new Date(expectedDay.getTime() + 2 * 3600_000).toISOString().slice(0, 10), // Prague local date
   );
   await page.click("button:has-text('Vytvořit termín')");
-  await page.waitForURL(/\/admin$/);
+  await page.waitForURL(/\/admin\/botc$/);
   expect(await sql("select id from sessions where title='Adminový večer'")).toHaveLength(2);
 
   // stats page renders
-  await page.goto("/admin/statistiky");
+  await page.goto("/admin/botc/statistiky");
   await expect(page.locator("h1")).toHaveText("Statistiky");
   await expect(page.locator("main")).toContainText("Nadcházejících");
 });
@@ -261,10 +261,12 @@ test("admin is available in English after switching the language", async ({ page
 
   // the header language switch sets the cookie shared with the public site
   await page.click("header button:has-text('English')");
-  await expect(page.locator("main h1")).toHaveText("Upcoming sessions");
+  await expect(page.locator("main h1")).toHaveText("Hi, Správce");
   await expect(page.locator("main nav")).toContainText("Statistics");
+  await page.goto("/admin/botc");
+  await expect(page.locator("main h1")).toHaveText("Upcoming sessions");
 
-  await page.goto(`/admin/termin/${id}`);
+  await page.goto(`/admin/botc/termin/${id}`);
   await expect(page.locator("main")).toContainText("Signed up (1 / 3)");
   await expect(page.locator("main")).toContainText("Edit session");
   await page.click("button:has-text('Save changes')");
@@ -277,7 +279,7 @@ test("admin is available in English after switching the language", async ({ page
   await page.click("button:has-text('Save changes')");
   await expect(page.locator("main")).toContainText("The sign-up opening time must be in the future");
 
-  await page.goto("/admin/statistiky");
+  await page.goto("/admin/botc/statistiky");
   await expect(page.locator("h1")).toHaveText("Statistics");
 
   // and back to Czech
@@ -379,13 +381,13 @@ test("one city: no city filter or Prague on the site, a single calendar feed", a
   expect(ics).toMatch(/X-WR-CALNAME:DoUPě Olomouc\r?\n/);
 
   await adminLogin(page);
-  await page.goto("/admin/novy");
+  await page.goto("/admin/botc/novy");
   await expect(page.locator("#city")).toHaveCount(0);
 });
 
 test("sign-up state: publish a session with sign-ups not open yet, open and pause them; the server enforces it", async ({ page }) => {
   await adminLogin(page);
-  await page.goto("/admin/novy");
+  await page.goto("/admin/botc/novy");
   await page.fill("#title", "Tajný večer");
   await page.fill("#date", "2031-02-10");
   await page.selectOption("#startTime", "18:00");
@@ -393,7 +395,7 @@ test("sign-up state: publish a session with sign-ups not open yet, open and paus
   await page.fill("#place", "Klubovna");
   await page.selectOption("#registrationState", "not_open");
   await page.click("button:has-text('Vytvořit termín')");
-  await page.waitForURL(/\/admin$/);
+  await page.waitForURL(/\/admin\/botc$/);
   await expect(page.locator("main a:has-text('Tajný večer')")).toContainText("neotevřeno");
   const [{ id }] = await sql<{ id: number }>("select id from sessions where title = 'Tajný večer'");
 
@@ -405,7 +407,7 @@ test("sign-up state: publish a session with sign-ups not open yet, open and paus
   await expect(page.locator("#nickname")).toHaveCount(0);
 
   // admin opens them with one click
-  await page.goto(`/admin/termin/${id}`);
+  await page.goto(`/admin/botc/termin/${id}`);
   await page.click("button:has-text('Otevřít registrace')");
   await expect(page.locator("button:has-text('Pozastavit registrace')")).toBeVisible();
   await register(page, id, { nick: "První", email: "prvni@example.com" });
@@ -429,7 +431,7 @@ test("sign-up state: publish a session with sign-ups not open yet, open and paus
 
 test("scheduled sign-up opening: closed until the time, then the open page shows the form by itself", async ({ page }) => {
   await adminLogin(page);
-  await page.goto("/admin/novy");
+  await page.goto("/admin/botc/novy");
   await page.fill("#title", "Časovaný večer");
   await page.fill("#date", "2031-03-10");
   await page.selectOption("#startTime", "18:00");
@@ -439,12 +441,12 @@ test("scheduled sign-up opening: closed until the time, then the open page shows
   await page.fill("#opensAtDate", "2031-03-01");
   await page.selectOption("#opensAtTime", "18:00");
   await page.click("button:has-text('Vytvořit termín')");
-  await page.waitForURL(/\/admin$/);
+  await page.waitForURL(/\/admin\/botc$/);
   await expect(page.locator("main a:has-text('Časovaný večer')")).toContainText("otevře se");
   const [{ id }] = await sql<{ id: number }>("select id from sessions where title = 'Časovaný večer'");
 
   // an opening time in the past is refused (the calendar starts today, so midnight today)
-  await page.goto(`/admin/termin/${id}`);
+  await page.goto(`/admin/botc/termin/${id}`);
   await expect(page.locator("main")).toContainText("Registrace se automaticky otevřou");
   await expect(page.locator("#opensAtDate")).toHaveValue("2031-03-01");
   await expect(page.locator("#opensAtTime")).toHaveValue("18:00");
@@ -464,7 +466,7 @@ test("scheduled sign-up opening: closed until the time, then the open page shows
   await register(page, id, { nick: "Rychlík", email: "rychlik@example.com" });
 
   // admin sees the sign-ups as open now
-  await page.goto(`/admin/termin/${id}`);
+  await page.goto(`/admin/botc/termin/${id}`);
   await expect(page.locator("button:has-text('Pozastavit registrace')")).toBeVisible();
   await expect(page.locator("#registrationState")).toHaveValue("open");
 });
@@ -473,7 +475,7 @@ test("one-click open / pause: the edit form below follows, so saving it keeps th
   const id = await createSession({ title: "Přepínaný večer", capacity: 10 });
   await sql("update sessions set registration_state = 'not_open', registration_opens_at = starts_at - interval '1 day' where id = $1", [id]);
   await adminLogin(page);
-  await page.goto(`/admin/termin/${id}`);
+  await page.goto(`/admin/botc/termin/${id}`);
   await expect(page.locator("#opensAtDate")).not.toHaveValue("");
   await page.click("button:has-text('Otevřít hned')");
   await expect(page.locator("button:has-text('Pozastavit registrace')")).toBeVisible();
@@ -501,9 +503,9 @@ test("QR code: public SVG and PNG of the sign-up link, printable poster in admin
   expect((await page.request.get("/botc/termin/99999/qr.svg")).status()).toBe(404);
 
   await adminLogin(page);
-  await page.goto(`/admin/termin/${id}`);
+  await page.goto(`/admin/botc/termin/${id}`);
   await page.click("a:has-text('QR kód a plakát')");
-  await expect(page).toHaveURL(new RegExp(`/admin/termin/${id}/plakat$`));
+  await expect(page).toHaveURL(new RegExp(`/admin/botc/termin/${id}/plakat$`));
   await expect(page.locator("article h1")).toHaveText("Plakátový večer");
   await expect(page.locator("article")).toContainText("Naskenuj a přihlas se");
   const img = page.locator(`article img[src="/botc/termin/${id}/qr.svg"]`);
@@ -563,7 +565,7 @@ test("admin: erasing a player on request deletes everything in all their sign-up
   );
 
   await adminLogin(page);
-  await page.goto(`/admin/termin/${upcoming}`);
+  await page.goto(`/admin/botc/termin/${upcoming}`);
   page.on("dialog", (d) => d.accept());
   await page.click("button[title='Smazat všechny údaje hráče (na jeho žádost)']");
   // the row moves to the cancelled list under the placeholder nickname
@@ -580,7 +582,7 @@ test("admin: erasing a player on request deletes everything in all their sign-up
   for (const r of rows) expect(r.email).toMatch(/^erased-[0-9a-f]{24}@anonym\.invalid$/);
   // the two sign-ups are no longer tied together
   expect(rows[0].email).not.toBe(rows[1].email);
-  await page.goto("/admin/statistiky");
+  await page.goto("/admin/botc/statistiky");
   await expect(page.locator("main")).not.toContainText("(smazáno)");
 });
 
@@ -617,11 +619,11 @@ test("personal data is deleted 14 days after the session; nickname, attendance a
 
   // admin: deleted data is not shown; stats still see one player with two sessions and one game
   await adminLogin(page);
-  await page.goto(`/admin/termin/${old}`);
+  await page.goto(`/admin/botc/termin/${old}`);
   await expect(page.locator("main")).toContainText("byly 14 dní po termínu smazány");
   await expect(page.locator("main")).toContainText("Honza");
   await expect(page.locator("main")).not.toContainText("anonym.invalid");
-  await page.goto("/admin/statistiky");
+  await page.goto("/admin/botc/statistiky");
   const row = page.locator("main tr:has-text('Honza')");
   await expect(row).toHaveCount(1);
   await expect(row.locator("td").nth(1)).toHaveText("honza@example.com");
@@ -691,7 +693,7 @@ test("organisers' calendar feed is private and lists players; cron endpoint runs
   expect((await page.request.get("/admin/kalendar.ics?key=wrong")).status()).toBe(401);
 
   await adminLogin(page);
-  await page.goto("/admin");
+  await page.goto("/admin/botc");
   const feedUrl = await page.locator("main code").last().textContent();
   expect(feedUrl).toMatch(/\/admin\/kalendar\.ics\?key=[0-9a-f]{32}$/);
   const anon = await page.context().browser()!.newContext();
@@ -726,7 +728,7 @@ test("organisers' calendar feed is private and lists players; cron endpoint runs
 
 test("new session form: calendars from today, times kept and reused, an end after midnight is the next day", async ({ page }) => {
   await adminLogin(page);
-  await page.goto("/admin/novy");
+  await page.goto("/admin/botc/novy");
   await expect(page.locator("#date")).toHaveAttribute("min", pragueToday());
   await expect(page.locator("#opensAtDate")).toHaveAttribute("min", pragueToday());
   // an opening picked by mistake can be cleared again
@@ -746,7 +748,7 @@ test("new session form: calendars from today, times kept and reused, an end afte
   await expect(page.locator("#endTime")).toHaveValue("01:30");
   await page.fill("#place", "Klubovna");
   await page.click("button:has-text('Vytvořit termín')");
-  await page.waitForURL(/\/admin$/);
+  await page.waitForURL(/\/admin\/botc$/);
   const [s] = await sql<{ starts_at: Date; ends_at: Date; registration_opens_at: Date | null }>(
     "select starts_at, ends_at, registration_opens_at from sessions where title = 'Dlouhá noc'",
   );
@@ -755,7 +757,7 @@ test("new session form: calendars from today, times kept and reused, an end afte
   expect(s.registration_opens_at).toBeNull();
 
   // the next new session starts with the same times and no date
-  await page.goto("/admin/novy");
+  await page.goto("/admin/botc/novy");
   await expect(page.locator("#date")).toHaveValue("");
   await expect(page.locator("#startTime")).toHaveValue("20:00");
   await expect(page.locator("#endTime")).toHaveValue("01:30");
@@ -769,7 +771,7 @@ test("session form offers earlier places, storytellers and scripts; a known scri
   ]);
   await sql("insert into games (session_id, script_name, script_url) values ($1, 'Bad Moon Rising', 'https://botcscripts.com/script/Bad_Moon_Rising/1/')", [id]);
   await adminLogin(page);
-  await page.goto("/admin/novy");
+  await page.goto("/admin/botc/novy");
   await expect(page.locator("#place-suggestions option[value='Čajovna Ponorka']")).toHaveCount(1);
   await expect(page.locator("#storyteller-suggestions option[value='Honza']")).toHaveCount(1);
   await expect(page.locator("#storyteller-suggestions option[value='Správce']")).toHaveCount(1); // organiser account
@@ -791,7 +793,7 @@ test("session form offers earlier places, storytellers and scripts; a known scri
 
 test("recurring sessions, games record (editable after saving) shown in archive and stats", async ({ page }) => {
   await adminLogin(page);
-  await page.goto("/admin/novy");
+  await page.goto("/admin/botc/novy");
   await page.fill("#title", "Úterky");
   await page.fill("#date", "2031-03-04");
   await page.selectOption("#startTime", "18:00");
@@ -800,14 +802,14 @@ test("recurring sessions, games record (editable after saving) shown in archive 
   await page.selectOption("#repeatWeeks", "2");
   await page.fill("#repeatCount", "3");
   await page.click("button:has-text('Vytvořit termín')");
-  await page.waitForURL(/\/admin$/);
+  await page.waitForURL(/\/admin\/botc$/);
   const rows = await sql<{ starts_at: Date }>("select starts_at from sessions where title='Úterky' order by starts_at");
   expect(rows.map((r) => r.starts_at.toISOString().slice(0, 10))).toEqual(["2031-03-04", "2031-03-18", "2031-04-01"]);
 
   // a past session gets two games recorded
   const pastId = await createSession({ title: "Hraný večer", capacity: 8, daysAhead: -3 });
   await sql("update sessions set scripts=$1 where id=$2", [JSON.stringify([{ name: "Trouble Brewing", url: "https://botcscripts.com/tb" }]), pastId]);
-  await page.goto(`/admin/termin/${pastId}`);
+  await page.goto(`/admin/botc/termin/${pastId}`);
   await page.selectOption("#winner", "good");
   await page.fill("#players", "9");
   await page.click("button:has-text('Přidat hru')");
@@ -848,7 +850,7 @@ test("recurring sessions, games record (editable after saving) shown in archive 
   await expect(page.locator("main")).toContainText("Hra 1 · Trouble Brewing · 10 hráčů😇 vyhrálo dobro");
   await expect(page.locator("main")).toContainText("Hra 2 · Bad Moon Rising · 7 hráčů😇 vyhrálo dobro");
 
-  await page.goto("/admin/statistiky");
+  await page.goto("/admin/botc/statistiky");
   await expect(page.locator("main")).toContainText("Her celkem2");
   await expect(page.locator("main")).toContainText("Trouble Brewing11 / 0");
 });
@@ -962,7 +964,7 @@ test("phone is optional but validated, normalised and shown only to organisers; 
   await expect(page.locator("main")).not.toContainText("777123456");
 
   await adminLogin(page);
-  await page.goto(`/admin/termin/${id}`);
+  await page.goto(`/admin/botc/termin/${id}`);
   await expect(page.locator("main table")).toContainText("+420777123456");
   const rows = page.getByTestId("presence").locator("li");
   await expect(rows).toHaveCount(4);
@@ -972,7 +974,7 @@ test("phone is optional but validated, normalised and shown only to organisers; 
   await expect(rows.nth(1)).toContainText("všichni");
 
   // a player without name or phone still shows up in the admin table
-  await page.goto(`/admin/termin/${other}`);
+  await page.goto(`/admin/botc/termin/${other}`);
   await expect(page.locator("main table")).toContainText("Bez");
 });
 
@@ -1006,7 +1008,7 @@ test("session settings: 'arrive later' checkbox instead of times, required phone
   expect(r).toEqual({ arrives_late: true, arrival_time: null, phone: "777000111" });
 
   await adminLogin(page);
-  await page.goto(`/admin/termin/${id}`);
+  await page.goto(`/admin/botc/termin/${id}`);
   await expect(page.locator("#arrivalMode")).toHaveValue("late");
   await expect(page.locator("#phoneRequired")).toBeChecked();
   await expect(page.locator("main table")).toContainText("později");
@@ -1017,9 +1019,9 @@ test("game language: picked per session in admin, shown to players in both UI la
   const id = await createSession({ title: "Anglický večer" });
   await createSession({ title: "Dvojjazyčný večer", gameLanguage: "both" });
   await adminLogin(page);
-  await page.goto("/admin/novy");
+  await page.goto("/admin/botc/novy");
   await expect(page.locator("#gameLanguage")).toHaveValue("cs");
-  await page.goto(`/admin/termin/${id}`);
+  await page.goto(`/admin/botc/termin/${id}`);
   await expect(page.locator("#gameLanguage")).toHaveValue("cs");
   await page.selectOption("#gameLanguage", "en");
   await page.click("button:has-text('Uložit změny')");
@@ -1034,9 +1036,9 @@ test("game language: picked per session in admin, shown to players in both UI la
   await page.click("header button:has-text('English')");
   await expect(page.locator("main")).toContainText("Language: English");
 
-  await page.goto(`/admin/termin/${id}/plakat`);
+  await page.goto(`/admin/botc/termin/${id}/plakat`);
   await expect(page.locator("article")).toContainText("Language: English");
-  await page.goto(`/admin/novy?from=${id}`);
+  await page.goto(`/admin/botc/novy?from=${id}`);
   await expect(page.locator("#gameLanguage")).toHaveValue("en");
 });
 
@@ -1144,6 +1146,46 @@ test("Blood on the Clocktower lives under /botc with its own menu; old addresses
   expect((await page.request.get("/r", { maxRedirects: 0 })).status()).toBe(404);
   // subscribed calendars keep polling the feed at its old address
   expect((await page.request.get("/kalendar.ics", { maxRedirects: 0 })).status()).toBe(200);
+});
+
+test("admin: the club's overview at /admin, Krvavka under /admin/botc; the old admin addresses redirect there", async ({ page }) => {
+  const id = await createSession({ title: "Přehledový večer" });
+  await adminLogin(page);
+  await expect(page.locator("main h1")).toHaveText("Ahoj, Správce");
+  await expect(page.locator("main nav a[aria-current=page]")).toHaveText("Přehled");
+  await expect(page.getByTestId("overview-sessions")).toContainText("Přehledový večer");
+  await page.getByTestId("overview-sessions").getByRole("link", { name: /Přehledový večer/ }).click();
+  await expect(page).toHaveURL(new RegExp(`/admin/botc/termin/${id}$`));
+  await expect(page.locator("main nav a[aria-current=page]")).toHaveText("Termíny");
+  await page.goto("/admin");
+  await page.getByRole("link", { name: "Všechny termíny →" }).click();
+  await expect(page).toHaveURL(/\/admin\/botc$/);
+  await expect(page.locator("main h1")).toHaveText("Nadcházející termíny");
+
+  // links in sent e-mails (drafts, a session's sign-ups), the organisers' calendar and bookmarks
+  const moved: [string, string][] = [
+    [`/admin/termin/${id}`, `/admin/botc/termin/${id}`],
+    [`/admin/termin/${id}/plakat`, `/admin/botc/termin/${id}/plakat`],
+    ["/admin/novy?z=3", "/admin/botc/novy?z=3"],
+    ["/admin/drafty", "/admin/botc/drafty"],
+    ["/admin/drafty/7", "/admin/botc/drafty/7"],
+    ["/admin/drafty/session/9", "/admin/botc/drafty/session/9"],
+    ["/admin/grimoary/4", "/admin/botc/grimoary/4"],
+    ["/admin/scripty", "/admin/botc/scripty"],
+    ["/admin/statistiky", "/admin/botc/statistiky"],
+  ];
+  for (const [from, to] of moved) {
+    const res = await page.request.get(from, { maxRedirects: 0 });
+    expect(res.status(), from).toBe(308);
+    expect(res.headers()["location"], from).toBe(to);
+  }
+  await page.goto(`/admin/termin/${id}`);
+  await expect(page).toHaveURL(new RegExp(`/admin/botc/termin/${id}$`));
+  await expect(page.locator("main h1")).toContainText("Přehledový večer");
+  // the club's own admin pages stay where they were
+  for (const path of ["/admin/web", "/admin/novinky", "/admin/ucty", "/admin/profil"]) {
+    expect((await page.request.get(path, { maxRedirects: 0 })).status(), path).toBe(200);
+  }
 });
 
 test("admin home warns when the daily jobs did not run and CONTACT_EMAIL is missing", async ({ page }) => {
@@ -1476,7 +1518,7 @@ test("registration form keeps what was typed when the server refuses it; the hon
 
 test("a weekly series keeps its Prague time across the end of daylight saving time", async ({ page }) => {
   await adminLogin(page);
-  await page.goto("/admin/novy");
+  await page.goto("/admin/botc/novy");
   await page.fill("#title", "Podzimní série");
   // summer time ends on Sunday 26 October 2031
   await page.fill("#date", "2031-10-20");
@@ -1486,7 +1528,7 @@ test("a weekly series keeps its Prague time across the end of daylight saving ti
   await page.selectOption("#repeatWeeks", "1");
   await page.fill("#repeatCount", "2");
   await page.click("button:has-text('Vytvořit termín')");
-  await page.waitForURL(/\/admin$/);
+  await page.waitForURL(/\/admin\/botc$/);
   const rows = await sql<{ starts_at: Date }>("select starts_at from sessions where title = 'Podzimní série' order by starts_at");
   expect(rows.map((r) => r.starts_at.toISOString())).toEqual([
     "2031-10-20T17:00:00.000Z", // 19:00 CEST
@@ -1497,7 +1539,7 @@ test("a weekly series keeps its Prague time across the end of daylight saving ti
 test("playlist: an organiser pastes a table of songs, players see it folded away on the session page", async ({ page }) => {
   const id = await createSession({ title: "Hudební večer", capacity: 5 });
   await adminLogin(page);
-  await page.goto(`/admin/termin/${id}`);
+  await page.goto(`/admin/botc/termin/${id}`);
   const paste = (html: string, text: string) =>
     page.locator("#playlistPaste").evaluate(
       (el, [h, t]) => {
@@ -1556,12 +1598,12 @@ test("playlist: an organiser pastes a table of songs, players see it folded away
   await page.setViewportSize({ width: 1280, height: 720 });
 
   // a markdown table from a chat works too; pasting again replaces the playlist, duplicating copies it
-  await page.goto(`/admin/termin/${id}`);
+  await page.goto(`/admin/botc/termin/${id}`);
   await paste("", "| # | Skladba | Autor | Licence | Stažení |\n|---|---|---|---|---|\n| 1 | Darkest Hour | Indieteur | CC0 | [MP3 / WAV](https://example.com/dark) |");
   await expect(page.getByTestId("playlist-preview").locator("tbody tr")).toHaveCount(1);
   await page.click("button:has-text('Uložit změny')");
   await expect(page.locator("main")).toContainText("Uloženo.");
-  await page.goto(`/admin/novy?from=${id}`);
+  await page.goto(`/admin/botc/novy?from=${id}`);
   await expect(page.getByTestId("playlist-preview")).toContainText("Darkest Hour");
   await expect(page.getByTestId("playlist-preview").locator("table a")).toHaveAttribute("href", "https://example.com/dark");
 });
@@ -1572,7 +1614,7 @@ test("quick sign-up in admin: a nickname is enough, a full session gets one more
   await register(page, id, { nick: "B", email: "qb@example.com" });
   await register(page, id, { nick: "C", email: "qc@example.com" });
   await adminLogin(page);
-  await page.goto(`/admin/termin/${id}`);
+  await page.goto(`/admin/botc/termin/${id}`);
   const main = page.locator("main");
   await expect(main).toContainText("Náhradníci (1)");
   await expect(main).toContainText("Termín je plný – s dalším hráčem se kapacita zvýší na 3.");
@@ -1645,7 +1687,7 @@ test("organiser edits a player with the pencil, also after the session; deleted 
   const walkIn = await insert(upcoming, "Kolemjdoucí", "walkin-a@bez-emailu.invalid");
   await insert(upcoming, "Bára", "bara@example.com");
   await adminLogin(page);
-  await page.goto(`/admin/termin/${upcoming}`);
+  await page.goto(`/admin/botc/termin/${upcoming}`);
   await page.getByRole("button", { name: "Upravit údaje hráče Kolemjdoucí" }).click();
   await expect(form).toContainText("Na nový e-mail přijde potvrzení");
   await expect(page.locator(`#player${walkIn}-email`)).toHaveValue("");
@@ -1671,7 +1713,7 @@ test("organiser edits a player with the pencil, also after the session; deleted 
 
   // after the session: everything can still be changed, nothing is e-mailed and no "confirmation not sent" warning
   const recent = await insert(past, "Honza", "walkin-b@bez-emailu.invalid");
-  await page.goto(`/admin/termin/${past}`);
+  await page.goto(`/admin/botc/termin/${past}`);
   await page.getByRole("button", { name: "Upravit údaje hráče Honza" }).click();
   await expect(form).not.toContainText("Na nový e-mail přijde potvrzení");
   await page.fill(`#player${recent}-nickname`, "Honzík");
@@ -1692,7 +1734,7 @@ test("organiser edits a player with the pencil, also after the session; deleted 
   await request.get("/api/cron/reminders", { headers: { authorization: "Bearer e2e-cron" } });
   const [{ email: before }] = await sql<{ email: string }>("select email from registrations where id=$1", [older]);
   expect(before).toMatch(/@anonym\.invalid$/);
-  await page.goto(`/admin/termin/${old}`);
+  await page.goto(`/admin/botc/termin/${old}`);
   await page.getByRole("button", { name: "Upravit údaje hráče Kolemjdoucí" }).click();
   await expect(form).toContainText("Zadaný e-mail se neuloží");
   await expect(page.locator(`#player${older}-firstName`)).toHaveCount(0);
@@ -1705,7 +1747,7 @@ test("organiser edits a player with the pencil, also after the session; deleted 
   const [{ email: after }] = await sql<{ email: string }>("select email from registrations where id=$1", [older]);
   expect(after).toMatch(/^[0-9a-f]{24}@anonym\.invalid$/);
   expect(after).not.toBe(before);
-  await page.goto("/admin/statistiky");
+  await page.goto("/admin/botc/statistiky");
   const stats = page.locator("main tr:has-text('Honzík')");
   await expect(stats).toHaveCount(1);
   await expect(stats.locator("td").nth(1)).toHaveText("honza@example.com");
@@ -1724,7 +1766,7 @@ test("who played what: a character or 'sat out' per player of each game, shown w
     ids[nick] = r.id;
   }
   await adminLogin(page);
-  await page.goto(`/admin/termin/${id}`);
+  await page.goto(`/admin/botc/termin/${id}`);
 
   // a new game: the roster is folded away; Trouble Brewing's characters come first, by team
   await page.click("form:has(#scriptPick) summary:has-text('Kdo co hrál')");
@@ -1794,7 +1836,7 @@ test("who played what: a character or 'sat out' per player of each game, shown w
   await page.goto("/botc/archiv");
   const card = page.locator("li", { hasText: "Večer s rolemi" });
   // the signed-in organiser gets a pencil straight to the session's games
-  await expect(card.getByTestId("edit-pencil")).toHaveAttribute("href", `/admin/termin/${id}#hry`);
+  await expect(card.getByTestId("edit-pencil")).toHaveAttribute("href", `/admin/botc/termin/${id}#hry`);
   // each game in its own box: the storyteller, then the players by side
   await expect(card).toContainText("Hra 1 · Trouble Brewing😇 vyhrálo dobro🎩Vypravěč: Cyril");
   await expect(card).toContainText("Dobro 4Anna· PradlenaEva· Víla (zná: Kuchař)Filip· Filozof (schopnost: Mnich)Dan· Opilec (jako Mnich)");
@@ -1805,7 +1847,7 @@ test("who played what: a character or 'sat out' per player of each game, shown w
   await expect(card.locator("img[src='/botc/roles/imp.webp']")).toBeVisible();
   await expect(page.locator("main")).toContainText("The Pandemonium Institute");
   await card.getByTestId("edit-pencil").click();
-  await page.waitForURL(`**/admin/termin/${id}#hry`);
+  await page.waitForURL(`**/admin/botc/termin/${id}#hry`);
   await expect(page.locator("#hry")).toBeInViewport();
   // players see no pencil
   await page.context().clearCookies();
@@ -1844,12 +1886,12 @@ test("storytellers: how often each one ran a game, from the games' rosters, in a
   await signUp(next, "Hráč");
 
   await adminLogin(page);
-  await page.goto(`/admin/termin/${next}`);
+  await page.goto(`/admin/botc/termin/${next}`);
   await expect(page.locator("tr:has-text('honza@example.com')")).toContainText(/🎩 vyprávěl\/a 3 hry · naposledy \S+ \d+\. \d+\./);
   await expect(page.locator("tr:has-text('novacek@example.com')")).toContainText("🎩 zatím nevyprávěl/a");
   await expect(page.locator("tr:has-text('hrac@example.com')")).not.toContainText("vyprávěl");
 
-  await page.goto("/admin/statistiky");
+  await page.goto("/admin/botc/statistiky");
   const rows = page.locator("section:has(h2:has-text('Vypravěči')) tbody tr");
   await expect(rows).toHaveCount(2);
   await expect(rows.nth(0).locator("td")).toHaveText([
@@ -1862,8 +1904,11 @@ test("admin menu groups the sections and marks the current page", async ({ page 
   const id = await createSession({ title: "Menu večer" });
   await adminLogin(page);
   const current = page.locator("main nav a[aria-current=page]");
+  await expect(current).toHaveText("Přehled");
+  await page.click("main nav a:has-text('Termíny')");
+  await expect(page).toHaveURL(/\/admin\/botc$/);
   await expect(current).toHaveText("Termíny");
-  await page.goto(`/admin/termin/${id}`);
+  await page.goto(`/admin/botc/termin/${id}`);
   await expect(current).toHaveText("Termíny");
   await page.click("main nav a:has-text('Statistiky')");
   await expect(current).toHaveText("Statistiky");
@@ -1872,9 +1917,9 @@ test("admin menu groups the sections and marks the current page", async ({ page 
   await expect(current).toHaveText("Texty webu");
   await page.click("main nav a:has-text('Účty')");
   await expect(current).toHaveText("Účty");
-  await page.goto("/admin");
+  await page.goto("/admin/botc");
   await page.click("main a:has-text('+ Nový termín')");
-  await expect(page).toHaveURL(/\/admin\/novy$/);
+  await expect(page).toHaveURL(/\/admin\/botc\/novy$/);
   await expect(current).toHaveText("Termíny");
 });
 
@@ -1987,7 +2032,7 @@ test("site texts: HTML, scripts, images and javascript: links from the admin nev
 test("script vote: organisers offer scripts, players vote through their sign-up link, only counts are public", async ({ page }) => {
   const id = await createSession({ title: "Hlasovací večer", capacity: 5 });
   await adminLogin(page);
-  await page.goto(`/admin/termin/${id}`);
+  await page.goto(`/admin/botc/termin/${id}`);
   // a link is optional, the same name twice is offered once
   await page.getByLabel("Script k hlasování 1", { exact: true }).fill("Trouble Brewing");
   await page.getByLabel("Odkaz na script k hlasování 1", { exact: true }).fill("botcscripts.com/tb");
@@ -2037,7 +2082,7 @@ test("script vote: organisers offer scripts, players vote through their sign-up 
   await expect(summary).not.toContainText("Anna");
 
   // admin: who voted for what; ending the vote is refused even from a page left open
-  await page.goto(`/admin/termin/${id}`);
+  await page.goto(`/admin/botc/termin/${id}`);
   const card = page.locator("#hlasovani");
   await expect(card).toContainText("Hlasovalo 2 z 2 přihlášených a náhradníků.");
   await expect(card.locator("li", { hasText: "Sects & Violets" })).toContainText("Anna, Bob");
@@ -2053,7 +2098,7 @@ test("script vote: organisers offer scripts, players vote through their sign-up 
   await expect(vote.locator("button")).toHaveCount(0);
 
   // reopening from the admin; a cancelled player's vote stops counting
-  await page.goto(`/admin/termin/${id}`);
+  await page.goto(`/admin/botc/termin/${id}`);
   await expect(card).toContainText("Hlasování je ukončené");
   await card.locator("button:has-text('Znovu otevřít hlasování')").click();
   await expect(card.locator("button:has-text('Ukončit hlasování')")).toBeVisible();
@@ -2062,6 +2107,6 @@ test("script vote: organisers offer scripts, players vote through their sign-up 
   await expect(summary.locator("li", { hasText: "Sects & Violets" })).toContainText("1 hlas");
 
   // duplicating offers the same scripts, without the votes
-  await page.goto(`/admin/novy?from=${id}`);
+  await page.goto(`/admin/botc/novy?from=${id}`);
   await expect(page.getByLabel("Script k hlasování 2", { exact: true })).toHaveValue("Sects & Violets");
 });

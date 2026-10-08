@@ -1,87 +1,123 @@
 import Link from "next/link";
-import { rotateFeedKeyAction } from "@/modules/botc/actions/sessions";
-import { ActionButton } from "@/components/admin/action-button";
+import { cookies } from "next/headers";
 import { SetupWarnings } from "@/components/admin/setup-warnings";
 import { Card } from "@/components/ui";
+import { changelog, changelogStamp } from "@/data/changelog";
 import { getDict } from "@/i18n/server";
-import { requireAdmin } from "@/lib/admin-auth";
+import { hasRole, requireAdmin } from "@/lib/admin-auth";
+import { NEWS_COOKIE } from "@/lib/news";
+import { formatShortDate, formatTime } from "@/lib/time";
+import { GrimoireLink } from "@/modules/botc/components/grimoire/grimoire-link";
+import { countDraftAttention } from "@/modules/botc/lib/draft/queries";
+import { listGrimoires } from "@/modules/botc/lib/grimoire/service";
 import { listAllSessions } from "@/modules/botc/lib/queries";
-import { effectiveRegistrationState, scheduledOpening } from "@/modules/botc/lib/registration-state";
-import { formatDate, formatShortDate, formatTime } from "@/lib/time";
-import { orgFeedUrl } from "@/modules/botc/lib/org-feed";
 
-export default async function AdminHomePage() {
+const NEXT_SESSIONS = 3;
+const link = "text-sm font-medium text-accent hover:underline";
+
+/**
+ * The admin's home: the club at a glance, each module a section. Krvavka: the next sessions, drafts waiting for
+ * this account, its grimoires in play; the club: the latest news and the club's pages.
+ */
+export default async function AdminOverviewPage() {
   const me = await requireAdmin();
-  const [{ locale, t }, sessions, feedUrl] = await Promise.all([getDict(), listAllSessions(), orgFeedUrl(me)]);
-  const a = t.admin.list;
+  const [{ locale, t }, sessions, attention, grimoires, jar] = await Promise.all([
+    getDict(),
+    listAllSessions(),
+    countDraftAttention(me.id),
+    listGrimoires(me),
+    cookies(),
+  ]);
+  const o = t.admin.overview;
+  const n = t.admin.nav;
   const now = new Date();
-  const upcoming = sessions.filter((s) => s.endsAt >= now);
-  const past = sessions.filter((s) => s.endsAt < now).reverse();
-
-  /** Only for closed sign-ups: "not open", "paused" or when they open on their own */
-  const StateBadge = ({ s }: { s: (typeof sessions)[number] }) => {
-    if (effectiveRegistrationState(s) === "open") return null;
-    const opens = scheduledOpening(s);
-    return (
-      <span className="rounded-full border border-border px-2 py-0.5 text-xs font-medium text-muted">
-        {opens
-          ? a.opensShort(formatShortDate(opens, locale), formatTime(opens, locale))
-          : s.registrationState === "paused"
-            ? a.pausedShort
-            : a.notOpenShort}
-      </span>
-    );
-  };
-
-  const Row = ({ s }: { s: (typeof sessions)[number] }) => (
-    <Link href={`/admin/termin/${s.id}`} className="block">
-      <Card className="flex flex-col gap-1 hover:border-accent/50 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="flex items-center gap-2 font-semibold">
-            {s.title}
-            <StateBadge s={s} />
-          </p>
-          <p className="text-sm text-muted">
-            <span>{formatDate(s.startsAt, locale)}</span>, {formatTime(s.startsAt, locale)}–{formatTime(s.endsAt, locale)} · {s.place}
-          </p>
-        </div>
-        <p className="text-sm font-medium">
-          {s.confirmedCount} / {s.capacity}
-          {s.waitlistedCount > 0 && <span className="ml-2 text-xs text-muted">{a.waitlistShort(s.waitlistedCount)}</span>}
-        </p>
-      </Card>
-    </Link>
-  );
+  const next = sessions.filter((s) => s.endsAt >= now).slice(0, NEXT_SESSIONS);
+  const playing = grimoires.filter((g) => g.ownerId === me.id && !g.endedAt).slice(0, 3);
+  const [latest] = changelog;
+  const newsUnread = jar.get(NEWS_COOKIE)?.value !== changelogStamp();
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-6">
       <SetupWarnings t={t} locale={locale} />
-      <section className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-2xl font-bold">{a.upcoming}</h1>
-          <Link href="/admin/novy" className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:opacity-90">
-            {a.createNew}
-          </Link>
-        </div>
-        {upcoming.length === 0 && <p className="text-muted">{a.none}</p>}
-        {upcoming.map((s) => <Row key={s.id} s={s} />)}
-      </section>
-      {past.length > 0 && (
-        <section className="flex flex-col gap-3">
-          <h2 className="text-xl font-bold text-muted">{a.past}</h2>
-          {past.map((s) => <Row key={s.id} s={s} />)}
-        </section>
-      )}
-      {feedUrl && (
-        <div className="flex flex-col gap-1 text-sm text-muted">
-          <a href={feedUrl} className="underline hover:text-accent">{a.orgCalendar}</a>
-          <span className="text-xs">{a.orgCalendarHint}</span>
-          <code className="select-all break-all text-xs">{feedUrl}</code>
-          <span>
-            <ActionButton action={rotateFeedKeyAction} label={a.orgCalendarRotate} confirmText={a.orgCalendarRotateConfirm} />
-          </span>
-        </div>
-      )}
+      <h1 className="text-2xl font-bold">{o.hello(me.nickname)}</h1>
+      <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
+        <Card className="flex flex-col gap-5" id="krvavka">
+          <h2 className="text-xl font-bold">🕰 {n.botc}</h2>
+
+          <section className="flex flex-col gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h3 className="font-semibold">{o.nextSessions}</h3>
+              <Link href="/admin/botc/novy" className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-accent-foreground hover:opacity-90">
+                {t.admin.list.createNew}
+              </Link>
+            </div>
+            {next.length === 0 && <p className="text-sm text-muted">{o.noSessions}</p>}
+            <ul className="flex flex-col gap-1.5" data-testid="overview-sessions">
+              {next.map((s) => (
+                <li key={s.id}>
+                  <Link href={`/admin/botc/termin/${s.id}`} className="flex flex-wrap items-baseline justify-between gap-x-3 rounded-lg border border-border px-3 py-2 hover:border-accent/50">
+                    <span className="font-medium">{s.title}</span>
+                    <span className="text-sm text-muted">
+                      {formatShortDate(s.startsAt, locale)} {formatTime(s.startsAt, locale)} · {s.confirmedCount} / {s.capacity}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+            <Link href="/admin/botc" className={link}>
+              {o.allSessions}
+            </Link>
+          </section>
+
+          {(attention.turns > 0 || attention.invites > 0) && (
+            <Link href="/admin/botc/drafty" className="rounded-lg border border-accent/50 bg-accent/10 px-3 py-2 text-sm font-medium" data-testid="overview-drafts">
+              {[attention.turns > 0 && o.draftTurns(attention.turns), attention.invites > 0 && o.draftInvites(attention.invites)].filter(Boolean).join(" · ")} →
+            </Link>
+          )}
+
+          {playing.length > 0 && (
+            <section className="flex flex-col gap-2">
+              <h3 className="font-semibold">{o.grimoires}</h3>
+              {playing.map((g) => (
+                <GrimoireLink key={g.id} item={g} t={t} locale={locale} />
+              ))}
+            </section>
+          )}
+
+          <div className="flex flex-wrap gap-x-4 gap-y-1 border-t border-border pt-3">
+            <Link href="/admin/botc" className={link}>{n.sessions}</Link>
+            <Link href="/admin/botc/statistiky" className={link}>{n.stats}</Link>
+            <Link href="/admin/botc/drafty" className={link}>{n.drafts}</Link>
+            <Link href="/admin/botc/scripty" className={link}>{n.scripts}</Link>
+            <Link href="/admin/botc/grimoary" className={link}>{n.grimoires}</Link>
+          </div>
+        </Card>
+
+        <Card className="flex flex-col gap-5" id="klub">
+          <h2 className="text-xl font-bold">🎲 {n.club}</h2>
+          {latest && (
+            <section className="flex flex-col gap-1">
+              <h3 className="flex items-center gap-2 font-semibold">
+                {n.news}
+                {newsUnread && <span className="inline-block size-2 rounded-full bg-accent" title={n.newsUnread} aria-label={n.newsUnread} />}
+              </h3>
+              <p className="text-sm">
+                <span className="text-muted">{formatShortDate(new Date(`${latest.date}T12:00:00Z`), locale)} –</span> {latest.title}
+              </p>
+              <Link href="/admin/novinky" className={link}>
+                {t.admin.news.open}
+              </Link>
+            </section>
+          )}
+          <div className="flex flex-col gap-1 border-t border-border pt-3">
+            <Link href="/admin/web" className={link}>{n.web}</Link>
+            {hasRole(me, "admin") && <Link href="/admin/ucty" className={link}>{n.accounts}</Link>}
+            <Link href="/admin/profil" className={link}>{n.profile}</Link>
+            <Link href="/" className={link}>{o.clubPage}</Link>
+            <Link href="/hry" className={link}>{o.games}</Link>
+          </div>
+        </Card>
+      </div>
     </div>
   );
 }

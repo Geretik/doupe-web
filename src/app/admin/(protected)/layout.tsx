@@ -36,11 +36,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         {/* sections grouped by module, the current page marked; on a phone each group is a line of its own */}
         <div className="-mx-2 flex flex-wrap items-center gap-x-2 gap-y-1">
           {/* wraps between links on a narrow phone, never inside one */}
-          <div className="flex flex-wrap items-center gap-1">
+          <NavLink href="/admin" className={linkClass}>{n.overview}</NavLink>
+          <div className="flex flex-wrap items-center gap-1 sm:border-l sm:border-border sm:pl-2">
             <span className={groupClass}>{n.botc}</span>
-            <NavLink href="/admin" prefixes={["/admin/termin", "/admin/novy"]} className={linkClass}>{n.sessions}</NavLink>
-            <NavLink href="/admin/statistiky" className={linkClass}>{n.stats}</NavLink>
-            <NavLink href="/admin/drafty" prefixes={["/admin/drafty"]} className={linkClass}>
+            <NavLink href="/admin/botc" prefixes={["/admin/botc/termin", "/admin/botc/novy"]} className={linkClass}>{n.sessions}</NavLink>
+            <NavLink href="/admin/botc/statistiky" className={linkClass}>{n.stats}</NavLink>
+            <NavLink href="/admin/botc/drafty" prefixes={["/admin/botc/drafty"]} className={linkClass}>
               {n.drafts}
               {draftBadge > 0 && (
                 <span
@@ -53,8 +54,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                 </span>
               )}
             </NavLink>
-            <NavLink href="/admin/scripty" prefixes={["/admin/scripty"]} className={linkClass}>{n.scripts}</NavLink>
-            <NavLink href="/admin/grimoary" prefixes={["/admin/grimoary"]} className={linkClass}>{n.grimoires}</NavLink>
+            <NavLink href="/admin/botc/scripty" prefixes={["/admin/botc/scripty"]} className={linkClass}>{n.scripts}</NavLink>
+            <NavLink href="/admin/botc/grimoary" prefixes={["/admin/botc/grimoary"]} className={linkClass}>{n.grimoires}</NavLink>
           </div>
           <div className="flex items-center gap-1 whitespace-nowrap sm:border-l sm:border-border sm:pl-2">
             <span className={groupClass}>{n.club}</span>

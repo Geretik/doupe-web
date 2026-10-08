@@ -30,7 +30,7 @@ export async function GET(req: Request) {
     if (s.storyteller) parts.push(`🎩 Vypravěč: ${s.storyteller}`);
     if (confirmed.length) parts.push(confirmed.map((r) => `${r.nickname}${r.canStorytell ? " 🎩" : ""}${r.isNewbie ? " 🌱" : ""}${shownEmail(r.email) ? ` <${r.email}>` : ""}`).join("\n"));
     if (s.note) parts.push(s.note);
-    parts.push(`${siteUrl()}/admin/termin/${s.id}`, sessionUrl(s.id));
+    parts.push(`${siteUrl()}/admin/botc/termin/${s.id}`, sessionUrl(s.id));
     return parts.join("\n\n");
   };
   const body = buildIcs(list, `${siteName()} – organizátoři`, new Date(), describe);

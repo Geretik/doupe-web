@@ -354,7 +354,7 @@ export async function cancelRegistrationAction(token: string, reason?: string): 
       `${updated.nickname} se odhlásil/a z termínu „${session.title}“ (${formatRange(session.startsAt, session.endsAt, "cs")}), tedy méně než ${LATE_CANCEL_HOURS} h před hrou.` +
         (cleanReason ? `\nDůvod: ${cleanReason}` : "") +
         (promoted.length ? `\nMísto automaticky dostal/a náhradník: ${promoted.map((p) => p.nickname).join(", ")}.` : "\nŽádný náhradník není, místo je volné.") +
-        `\n${siteUrl()}/admin/termin/${session.id}`,
+        `\n${siteUrl()}/admin/botc/termin/${session.id}`,
     );
   }
   return { ok: true };

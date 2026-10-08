@@ -27,7 +27,8 @@ dostane potvrzení s tajným odkazem, přes který může registraci upravit neb
 - `/ochrana-udaju` – zásady ochrany osobních údajů (co se sbírá, zpracovatelé, mazání po 14 dnech, práva); v adminu u hráče 🗑️ smaže na žádost všechny jeho údaje ve všech registracích
 - `/botc/r/[token]` – úprava / zrušení registrace přes odkaz z e-mailu
 - Staré adresy z doby, kdy byl web jen pro Krvavku (`/termin/…`, `/r/…`, `/moje-hry/…`, `/archiv`, `/o-hre`, `/klub`; samotné `/termin` vede na `/botc`), trvale přesměrují na nové (`next.config.ts`), takže fungují odkazy z odeslaných e-mailů, Discordu i QR kódy na vytištěných plakátech
-- `/admin` – správa termínů a přehled přihlášených (účty organizátorů s hashovanými hesly, role správce / organizátor)
+- `/admin` – přehled klubu: nejbližší termíny, drafty, kde je organizátor na tahu, jeho rozehrané grimoáry, poslední novinky a stránky klubu (účty organizátorů s hashovanými hesly, role správce / organizátor)
+- `/admin/botc` – Krvavka v adminu: správa termínů a přehled přihlášených (`/admin/botc/termin/[id]`), statistiky, drafty, scripty a grimoáry pod `/admin/botc/…`. Staré adresy z doby, kdy byly přímo pod `/admin` (`/admin/termin/…`, `/admin/drafty/…`, `/admin/grimoary/…`, `/admin/scripty/…`, `/admin/statistiky`, `/admin/novy`), trvale přesměrují na nové (`next.config.ts`), takže fungují odkazy z odeslaných e-mailů i záložky
 - `/admin/ucty` – účty a pozvánky (jen správce): pozvánka vygeneruje jednorázový odkaz, na kterém si nový organizátor založí účet
 - Přihlášení do adminu: po 10 špatných pokusech z jedné sítě se na 15 minut odmítá (i se správným heslem); počítá se i heslo ze serveru při zakládání prvního účtu a současné heslo při jeho změně, správné přihlášení mezi tím dřívější špatné pokusy nesmaže. Každá chráněná stránka adminu ověřuje přihlášení sama (ne jen layout, který se při navigaci nevykresluje znovu).
 - Hesla organizátorů: `/admin/heslo` – změna vlastního hesla; zapomenuté heslo – na přihlašovací stránce „Zapomenuté heslo?“ (`/admin/zapomenute-heslo`) pošle na e-mail účtu jednorázový odkaz `/admin/nove-heslo/…` (platí 2 hodiny; odpověď je stejná, ať účet existuje, nebo ne), případně ho správce vytvoří v `/admin/ucty` (platí 3 dny). Změna i obnova hesla odhlásí účet na ostatních zařízeních. Když nefunguje e-mail a heslo zapomene jediný správce, viz `scripts/reset-link.mjs` níže.
@@ -36,12 +37,12 @@ dostane potvrzení s tajným odkazem, přes který může registraci upravit neb
 - Hráči: poznámka pro organizátory, výběr příchodu/odchodu po 15 minutách v rámci termínu, zrušení s důvodem, stránka `/botc/moje-hry` (odkaz na přehled registrací e-mailem; stejně jako zapomenuté heslo nejvýš jeden e-mail na adresu za 10 minut a 10 žádostí za hodinu z jedné sítě), sdílení termínu, PWA
 - Registrace u termínu: otevřené / zatím neotevřené (termín je vidět, přihlásit se ještě nejde) / pozastavené; v adminu jedním kliknutím „Otevřít“ / „Pozastavit“, server nové registrace mimo „otevřené“ odmítne, přihlášení mohou dál upravovat a rušit
 - Časované otevření registrací: u zavřeného termínu čas „Automaticky otevřít“; stav se vyhodnocuje při každém požadavku (bez cronu), otevřená stránka termínu si v tu chvíli sama načte formulář
-- QR kód termínu: `/botc/termin/[id]/qr.svg` a `qr.png` (odkaz na registraci), v adminu tisknutelný plakát A4 `/admin/termin/[id]/plakat`
+- QR kód termínu: `/botc/termin/[id]/qr.svg` a `qr.png` (odkaz na registraci), v adminu tisknutelný plakát A4 `/admin/botc/termin/[id]/plakat`
 - Organizátoři: jazyk hry u každého termínu (čeština / angličtina / obojí – hráči ho vidí u termínu, v potvrzovacím e-mailu a v oznámení na Discordu), přehled „kolik lidí bude v kterou hodinu“ podle příchodů a odchodů, vypravěč u termínu, playlist k termínu (v adminu se vloží zkopírovaná tabulka skladeb i s odkazy ke stažení – z dokumentu, tabulky, webu nebo chatu; hráči ho vidí u termínu na rozkliknutí), opakující se termíny, evidence odehraných her (archiv, statistiky), soukromý iCal `/admin/kalendar.ics?key=…` (každý organizátor má vlastní odkaz, jde vyměnit za nový a se smazáním účtu přestane fungovat), ✉️ nové poslání odkazu hráči, ⚠️ u registrací bez potvrzení
 - Automatika: 14 dní po termínu se hráčům smaže jméno, e-mail a telefon (zůstane přezdívka, docházka, poznámka a důvod odhlášení; e-mail nahradí pseudonym, aby statistiky poznaly stejného hráče), volitelně Discord post „zbývá míst“ dva dny před hrou (`DISCORD_SPOTS_LEFT=1`), upozornění organizátorům (e-mail + Discord) při pozdním odhlášení přihlášeného hráče (<24 h), selhání e-mailu nebo cronu; denní cron také posune náhradníky na volná místa, kdyby to po odhlášení selhalo; limit registrací z jedné sítě (`REGISTRATION_RATE_LIMIT`, výchozí 10/h)
 - Hlasování o scriptu: organizátor u termínu nabídne scripty (odkaz je nepovinný), přihlášení hráči i náhradníci na odkazu ke své registraci zaškrtnou, co by chtěli hrát (klidně víc), a hlas můžou měnit. Hlasuje se do začátku termínu, nebo dokud ho organizátor v adminu neukončí (jde i znovu otevřít). U termínu jsou veřejně jen počty hlasů, v adminu i kdo jak hlasoval. Pozvánka s odkazem je v potvrzovacím e-mailu, e-mailu náhradníkovi a v připomínce, dokud hlasování běží; kdo se přihlásil dřív, dostane odkaz hromadným e-mailem. Nabídka se při duplikaci termínu zkopíruje, hlasy ne.
-- `/admin/statistiky` – obsazenost, docházka, pravidelní hráči
-- `/admin/scripty` – knihovna scriptů klubu: JSON (soubor nebo vložený text) ze script toolu, botcscripts.com či oficiální aplikace. Vidí ji všechny účty, upravit nebo smazat script může ten, kdo ho přidal, a správci. Název a autor se zapíšou do `_meta` souboru, postavy, které web nezná (Fabled, homebrew), zůstávají v JSONu. U scriptu: postavy po týmech, „Otevřít ve script toolu“, stažení JSONu. Formulář termínu nabízí scripty z knihovny i v hlasování a odkaz do script toolu doplní sám (`src/modules/botc/lib/scripts.ts`)
+- `/admin/botc/statistiky` – obsazenost, docházka, pravidelní hráči
+- `/admin/botc/scripty` – knihovna scriptů klubu: JSON (soubor nebo vložený text) ze script toolu, botcscripts.com či oficiální aplikace. Vidí ji všechny účty, upravit nebo smazat script může ten, kdo ho přidal, a správci. Název a autor se zapíšou do `_meta` souboru, postavy, které web nezná (Fabled, homebrew), zůstávají v JSONu. U scriptu: postavy po týmech, „Otevřít ve script toolu“, stažení JSONu. Formulář termínu nabízí scripty z knihovny i v hlasování a odkaz do script toolu doplní sám (`src/modules/botc/lib/scripts.ts`)
 - `/api/cron/reminders` – denní připomínky (Vercel Cron, viz níže)
 
 Náhradníci:
@@ -62,6 +63,13 @@ Pravidla:
 - E-maily se nikdy neposílají dvakrát: potvrzení jde jednou na každou (re)aktivaci registrace, opakované "už jsi registrovaný" nejdřív po 10 minutách, připomínka nejvýš jednou na registraci. Úprava ani zrušení registrace e-mail neposílají (zrušení může poslat e-mail *náhradníkovi*, který místo dostal).
 - Připomínka „zítra je hra“ odchází hráčům termínů, které začínají do 36 hodin. Cron běží denně v 8:00 UTC (`vercel.json`), takže e-mail přijde den před hrou dopoledne.
 - Časy se zobrazují i zadávají v časové zóně `Europe/Prague`.
+
+## Kód
+
+- `src/app` – stránky (Next.js App Router); Krvavka má veřejné stránky pod `src/app/botc`, admin pod `src/app/admin/(protected)/botc`
+- `src/modules/botc` – modul Krvavky: `lib` (postavy, termíny a přihlášky, čekací listina, připomínky, statistiky, scripty, drafty, grimoár…), `components` a server akce `actions`
+- `src/lib`, `src/components`, `src/app/actions` – společné části webu klubu: účty a přihlášení, e-mail, Discord, denní úlohy, texty webu, ochrana údajů
+- `src/i18n` – texty obou jazyků (i Krvavky), `src/db/schema.ts` – celé schéma databáze
 
 ## Lokální vývoj
 

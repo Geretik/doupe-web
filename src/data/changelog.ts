@@ -14,22 +14,27 @@ export type ChangelogEntry = { /** YYYY-MM-DD */ date: string; title: string; it
 export const changelog: ChangelogEntry[] = [
   {
     date: "2026-10-08",
-    title: "Grimoár: Ukázat hráči a hra bez sítě; přihlášení QR kódem a odkazem z e-mailu",
+    title: "Přehled klubu v adminu, grimoár: Ukázat hráči a hra bez sítě; přihlášení QR kódem a odkazem z e-mailu",
     items: [
       {
         for: "organizers",
+        text: "Admin začíná přehledem klubu (Přehled v menu): nejbližší termíny, drafty, kde jsi na tahu, tvoje rozehrané grimoáry a poslední novinky. Krvavka má v adminu vlastní adresy (/admin/botc/…) – seznam termínů je v menu pod Termíny, staré odkazy z e-mailů a záložky dál fungují a přesměrují.",
+        href: "/admin",
+      },
+      {
+        for: "organizers",
         text: "Grimoár, 👁️ Ukázat hráči: místo papírových žetonů otočíš tablet k hráči a ten uvidí jen velkou tmavou kartu – „Jsi …“, „Tohle je Démon“, „Tito jsou tví Přisluhovači“, blafy, Pradlenina postava a dva hráči, Kuchařovo číslo, ano / ne Vědmy… U kroku noci je karta předvyplněná podle grimoáru, před ukázáním ji jde upravit (nadpis, postavy, hráči, číslo, tým, text). Ťuknutím se vrátíš k úpravě karty, ne do grimoáru.",
-        href: "/admin/grimoary",
+        href: "/admin/botc/grimoary",
       },
       {
         for: "organizers",
         text: "Grimoár bez sítě: grimoár, který jsi na tabletu (nebo telefonu) už jednou otevřel/a, se otevře i bez připojení – i po zavření nebo obnovení stránky, s posledním stavem hry z tabletu. Hraje se normálně, ukládá se do tabletu a na server, jakmile se síť vrátí. Když se web mezitím aktualizuje, grimoár napíše „načti stránku znovu“ a nic se neztratí.",
-        href: "/admin/grimoary",
+        href: "/admin/botc/grimoary",
       },
       {
         for: "organizers",
         text: "Grimoár: po rozdání „Ukázat hráčům jejich postavy“ v Přípravě – každému ukážeš „Jsi …“ a „Další: jméno →“ přejde k dalšímu hráči v kruhu. Opilec uvidí Měšťana, za kterého se považuje.",
-        href: "/admin/grimoary",
+        href: "/admin/botc/grimoary",
       },
       {
         for: "organizers",
@@ -44,12 +49,12 @@ export const changelog: ChangelogEntry[] = [
       {
         for: "organizers",
         text: "Grimoár: s Opilcem v pytlíku se počítá jeden Měšťan navíc (s Marionetou dobrá postava navíc, Blázen může mít druhého Démona). Kdo ho při rozdání nebo losování dostane, je Opilec a myslí si, že je tím Měšťanem; Marioneta vždy sedí vedle Démona. Losovat jde i s Opilcem v pytlíku.",
-        href: "/admin/grimoary",
+        href: "/admin/botc/grimoary",
       },
       {
         for: "organizers",
         text: "Grimoár: „🎲 Naplnit náhodně“ naplní pytlík náhodnými postavami ze scriptu tak, aby seděly počty (i s Baronem, Opilcem…) – nic nerozdá, jde to zkoušet znovu a upravit. Blafy Démona jdou vybrat i vylosovat (🎲) a nabízí se jen dobré postavy mimo pytlík.",
-        href: "/admin/grimoary",
+        href: "/admin/botc/grimoary",
       },
       {
         for: "organizers",
@@ -62,7 +67,7 @@ export const changelog: ChangelogEntry[] = [
       {
         for: "organizers",
         text: "Grimoár, noc: u kroku postavy jsou její žetony – ťukneš na žeton a pak na hráče (Travič otráví, Mnich chrání, Démon zabije); žeton, který má postava jen jeden, se přesune k novému hráči. Krok upozorní, když je hráč otrávený nebo opilý, Kuchařovo a Empatovo číslo spočítá sám.",
-        href: "/admin/grimoary",
+        href: "/admin/botc/grimoary",
       },
       {
         for: "organizers",
@@ -75,14 +80,14 @@ export const changelog: ChangelogEntry[] = [
       {
         for: "organizers",
         text: "Grimoár: pytlík na celou obrazovku se jmenuje „Výběr žetonů“ – vybírají se v něm žetony i blafy a naplní se tam náhodně. Příprava je jen ukazuje a dole má Rozdání: Losování hráči, nebo Rozdat náhodně, které se nejdřív zeptá, jestli opravdu náhodně.",
-        href: "/admin/grimoary",
+        href: "/admin/botc/grimoary",
       },
       { for: "organizers", text: "Grimoár: celá obrazovka skryje hlavičku, menu i patičku webu – i na telefonu, kde prohlížeč celou obrazovku neumí." },
       { for: "organizers", text: "Grimoár: výběr hráče zrušíš ✕ v panelu, dalším ťuknutím na hráče nebo ťuknutím do prázdného místa v kruhu." },
       {
         for: "organizers",
         text: "Grimoár, noc: hráč, na kterého Démon položí žeton „Mrtvý“, zemře – ledaže ho chrání Mnich, Hostinský nebo Čajová dáma, nebo je to Voják, Námořník či Šašek (ten poprvé). U kroku Démona je napsané, kdo nezemřel a proč; opilý nebo otrávený ochránce nechrání.",
-        href: "/admin/grimoary",
+        href: "/admin/botc/grimoary",
       },
       {
         for: "organizers",
@@ -105,7 +110,7 @@ export const changelog: ChangelogEntry[] = [
       {
         for: "organizers",
         text: "Grimoár: se Špehem nebo Samotářem ve hře ukáže krok Kuchaře a Empata všechna čísla, která můžou vyjít (Špeh se může jevit jako dobrý, Samotář jako zlý – u každé dvojice a každého souseda zvlášť), a Pradlena, Knihovník a Vyšetřovatel všechny postavy, kterými se může jevit; opilý nebo otrávený Špeh či Samotář se jinak nejeví.",
-        href: "/admin/grimoary",
+        href: "/admin/botc/grimoary",
       },
       {
         for: "organizers",
@@ -114,7 +119,7 @@ export const changelog: ChangelogEntry[] = [
       {
         for: "organizers",
         text: "Grimoár, démoni z Bad Moon Rising a Sects & Violets: Zombuul poprvé jen vypadá mrtvý (u hráče pak „☠ Zemřel/a doopravdy“) a v noci je napsané, jestli dnes někdo zemřel; Shabaloth zabíjí dva a žetonem „Živý“ vyvrhne jednoho zpět; Pó po noci bez volby zabije tři; Fang Gu přeskočí na prvního zabitého Podivína a sám zemře; Přisluhovač zabitý Vigormortisem si nechá schopnost a otráví sousedního Měšťana; No Dashii otráví nejbližšího Měšťana z každé strany; s Vortoxem musí Měšťan dostat nepravdivou informaci a ve dne je připomínka, že bez popravy vyhrává zlo. Kmotr: v noci je napsané, jestli dnes zemřel Podivín; Profesorův žeton „Živý“ oživí mrtvého Měšťana.",
-        href: "/admin/grimoary",
+        href: "/admin/botc/grimoary",
       },
       {
         for: "organizers",
@@ -128,7 +133,7 @@ export const changelog: ChangelogEntry[] = [
       {
         for: "organizers",
         text: "Grimoár, experimentální démoni: Al-Hadikhia – žeton „Chose death“ zabije, „Chose life“ oživí mrtvého a tři životy zabijí všechny tři; Pijavice nezemře, dokud žije hostitel, a zemře s ním; Ojo – v kroku vybereš postavu a její hráč zemře; Lil' Monsta nikdo nedostane (o Přisluhovače víc), Přisluhovači se v noci budí vybrat, kdo ji hlídá; Legie jde do pytlíku vícekrát a pro Vyšetřovatele je i Přisluhovač; Pán bouře – zlí se při rozdání posadí do řady kolem něj (jinde je v Přípravě tlačítko); Kazali – kolik Přisluhovačů vytvoří; 3. den se z Přisluhovačů stane Riot; Leviathan – počítá dny a popravené dobré hráče. Ve dne jsou ve středu kruhu jejich pravidla pro ten den.",
-        href: "/admin/grimoary",
+        href: "/admin/botc/grimoary",
       },
       {
         for: "organizers",
@@ -137,18 +142,18 @@ export const changelog: ChangelogEntry[] = [
       {
         for: "organizers",
         text: "Grimoár, Přisluhovači: Travičův jed a opilost od Cvičitele opic, Námořníka a Hostinského platí jen do soumraku (pak žeton zmizí), stejně prokletí Čarodějnice; žeton „Mrtvý“ Kmotra v noci zabije (Mnich ani Voják před ním nechrání, Hostinský, Námořník a Šašek ano) a Nájemného vraha zabije vždy, i Pijavici; Vezír ve dne nezemře, stejně hráč Ďáblova advokáta; komu Mezefeles obrátil stranu („Turns evil“), je zlý i pro Kuchaře a Empata; na noc X Xaana jsou Měšťané otrávení; Démon se budí i v kroku postavy, jejíž schopnost mu dal Boffin (vybereš u Boffina). Ve dne střed kruhu připomene Čarodějnici, Strůjce, Zlé dvojče, Boomdandyho a Skřeta.",
-        href: "/admin/grimoary",
+        href: "/admin/botc/grimoary",
       },
       { for: "players", text: "Odehrané hry: u Boffina je vidět, čí schopnost dal Démonovi, u Alchymisty, čí schopnost měl.", href: "/botc/archiv" },
       {
         for: "organizers",
         text: "Grimoár, Podivíni: žeton „Mrtvý“ v noci zabíjí u všech postav (Dítě měsíce a Vlkodlak jen dobrého hráče, Dráteník, Drbna, Gambler, Akrobat…) – Mnich a Voják před tím nechrání, Hostinský, Námořník a Šašek ano; kdo první v noci vybere Hňupa, je do soumraku opilý a jeho volba nic neudělá; Zlobr je na straně svého přítele (i pro Kuchaře a Empata); Poustevník má schopnosti Podivínů ze scriptu (budí se u nich, jeví se jako Samotář); Blázen hraje Démona jen ve svém kroku. V noci připomene Holiče, Kloboučníka, Zlatíčko a Dítě měsíce, ve dne popraveného Světce, Nešiku, Dítě měsíce, Zlatíčko a Sluhova pána, při konci hry Heretika a Politika.",
-        href: "/admin/grimoary",
+        href: "/admin/botc/grimoary",
       },
       {
         for: "organizers",
         text: "Grimoár, Měšťané: Námořník a Šašek (poprvé) nezemřou ani při popravě, sousedé Čajové dámy se počítají sami (oba dobří = nemůžou zemřít); Babička zemře se zabitým vnoučetem; postava, kterou si vzal Filozof, je opilá; Přisluhovač na kázání Kazatele nemá schopnost; opilost od Lichotníka trvá 3 noci a 3 dny; Zaklínač hadů, který vybere Démona, si s ním prohodí postavu; Kanibal se budí jako poslední popravený (zlý = otrávený); Alchymista má schopnost Přisluhovače (vybereš u něj). Spočítá Hodináře, Věštce, Shugenju a Hrobníka (i se Špehem a Samotářem), u Vědmy kdo je pro ni Démon, u Strážkyně krkavců, Mudrce, Zpěváčka, Krále a Farmáře co dělat. U Démona upozorní na Exorcistu, Princeznu, Vlkodlaka a útok na Starostu, u infa pro zlé na Kouzelníka a Makovou panenku, ve dne na Ateistu, Starostu se 3 živými, Pacifistu, Pannu a Smrtonošku.",
-        href: "/admin/grimoary",
+        href: "/admin/botc/grimoary",
       },
     ],
   },
@@ -159,7 +164,7 @@ export const changelog: ChangelogEntry[] = [
       {
         for: "organizers",
         text: "Grimoár pro vypravěče, dělaný na tablet: kruh hráčů s postavami, smrtí, hlasy a připomínkami; Příprava se scriptem, rozložením, pytlíkem a blafy; pořadí noci jen s postavami ve hře. Konec hry ji zapíše do odehraných her termínu. Ukládá se sám, i bez sítě.",
-        href: "/admin/grimoary",
+        href: "/admin/botc/grimoary",
       },
       {
         for: "organizers",
@@ -178,16 +183,16 @@ export const changelog: ChangelogEntry[] = [
         for: "organizers",
         text: "Grimoár: postavy, které mění rozložení (Baron, Kmotr, Fang Gu, Vyvolávač…), se do počtů v pytlíku započítají samy – u volby jako Kmotr „1 nebo 3“ – a na jejich dlaždici je napsané, co dělají („+2 Podivíni“).",
       },
-      { for: "organizers", text: "Grimoáry maže jen správce – svoje i odehrané hry ostatních, tlačítkem 🗑️ v seznamu nebo v grimoáru na kartě Hra.", href: "/admin/grimoary" },
+      { for: "organizers", text: "Grimoáry maže jen správce – svoje i odehrané hry ostatních, tlačítkem 🗑️ v seznamu nebo v grimoáru na kartě Hra.", href: "/admin/botc/grimoary" },
       {
         for: "players",
         text: "Na konci úvodní stránky je formulář „Nech nám vzkaz“; vzkaz přijde organizátorům e-mailem a odpovídá se rovnou z pošty.",
         href: "/#vzkaz",
       },
       { for: "organizers", text: "Script z draftu jde uložit do knihovny scriptů klubu (a později aktualizovat); odtud se nabízí u termínu i v hlasování." },
-      { for: "organizers", text: "„+ Nový termín“ je tlačítko na stránce Termíny místo položky v menu.", href: "/admin" },
+      { for: "organizers", text: "„+ Nový termín“ je tlačítko na stránce Termíny místo položky v menu.", href: "/admin/botc" },
       { for: "organizers", text: "Novinky: tahle stránka. Tečka v menu ukáže, že od posledního čtení něco přibylo." },
-      { for: "organizers", text: "Statistiky: u pravidelných hráčů je vedle večerů i počet odehraných her (podle soupisek her, bez vyprávění).", href: "/admin/statistiky" },
+      { for: "organizers", text: "Statistiky: u pravidelných hráčů je vedle večerů i počet odehraných her (podle soupisek her, bez vyprávění).", href: "/admin/botc/statistiky" },
     ],
   },
   {
@@ -205,12 +210,12 @@ export const changelog: ChangelogEntry[] = [
       {
         for: "organizers",
         text: "Drafty: snake draft postav mezi účty klubu (Personal Pool i Shared Pool) s pozvánkami, pořadím a historií picků; z poolu si každý složí script. Kdo je na tahu, to vidí hned nahoře a v titulku záložky, po 24 hodinách mu přijde e-mail.",
-        href: "/admin/drafty",
+        href: "/admin/botc/drafty",
       },
       {
         for: "organizers",
         text: "Scripty: společná knihovna scriptů klubu z JSONu (script tool, botcscripts.com, oficiální aplikace). Formulář termínu i hlasování z ní nabízí a odkaz do script toolu doplní sám.",
-        href: "/admin/scripty",
+        href: "/admin/botc/scripty",
       },
       { for: "players", text: "Sbírka her klubu s hledáním a filtry podle počtu hráčů, klubových her a rozšíření.", href: "/hry" },
     ],
@@ -226,7 +231,7 @@ export const changelog: ChangelogEntry[] = [
       {
         for: "organizers",
         text: "Statistiky vypravěčů: ve statistikách tabulka Vypravěči a u termínu u přezdívky, kolik her kdo odvyprávěl a kdy naposledy – ať jde vyprávění rozdělit spravedlivě.",
-        href: "/admin/statistiky",
+        href: "/admin/botc/statistiky",
       },
       { for: "organizers", text: "Hráče u termínu jde upravit tužkou ✏️ (přezdívka, e-mail, telefon, časy, poznámka…), i po odehrání." },
       { for: "organizers", text: "Rozdělení hráčů ke stolům je zrušené." },

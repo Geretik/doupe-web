@@ -44,7 +44,7 @@ async function nameAndAuthor(formData: FormData, t: Dict["scripts"], fromFile: P
 }
 
 function revalidateScripts() {
-  revalidatePath("/admin/scripty", "layout");
+  revalidatePath("/admin/botc/scripty", "layout");
 }
 
 export async function createLibraryScriptAction(_prev: ScriptFormState, formData: FormData): Promise<ScriptFormState> {
@@ -67,7 +67,7 @@ export async function createLibraryScriptAction(_prev: ScriptFormState, formData
     })
     .returning({ id: scripts.id });
   revalidateScripts();
-  redirect(`/admin/scripty/${row.id}`);
+  redirect(`/admin/botc/scripty/${row.id}`);
 }
 
 /** New name or author, and a new file when one is given (empty = the characters stay). */
@@ -112,5 +112,5 @@ export async function deleteLibraryScriptAction(id: number): Promise<SimpleResul
   if (!canEditScript(me, row.script)) return { message: t.scripts.errors.notYours };
   await db.delete(scripts).where(eq(scripts.id, id));
   revalidateScripts();
-  redirect("/admin/scripty");
+  redirect("/admin/botc/scripty");
 }

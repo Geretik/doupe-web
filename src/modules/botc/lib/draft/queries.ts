@@ -85,7 +85,7 @@ export async function sessionIdOfDraft(draftId: number) {
   return row?.id ?? null;
 }
 
-/** The draft of a run, for the addresses of single runs from before October 2026 (/admin/drafty/session/…). */
+/** The draft of a run, for the addresses of single runs from before October 2026 (/admin/botc/drafty/session/…). */
 export async function draftIdOfSession(sessionId: number) {
   const [row] = await db.select({ draftId: draftSessions.draftId }).from(draftSessions).where(eq(draftSessions.id, sessionId));
   return row?.draftId ?? null;

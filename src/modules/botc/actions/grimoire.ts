@@ -26,7 +26,7 @@ export async function createGrimoireAction(formData: FormData) {
     { allCharacters: g.allCharacters, untitled: g.untitled, nthGame: (title, n) => (n > 1 ? g.nthGame.replace("{title}", title).replace("{n}", String(n)) : title) },
     locale,
   );
-  redirect(id ? `/admin/grimoary/${id}` : "/admin/grimoary?nenalezeno=1");
+  redirect(id ? `/admin/botc/grimoary/${id}` : "/admin/botc/grimoary?nenalezeno=1");
 }
 
 /** Autosave of the grimoire page; see saveGrimoire. */
@@ -39,7 +39,7 @@ export async function saveGrimoireAction(id: number, baseVersion: number, state:
   const result = await saveGrimoire(me, id, baseVersion, parsed.data, force === true);
   if ("ok" in result && result.recorded) {
     const row = await getGrimoire(id);
-    if (row?.grimoire.sessionId) revalidatePath(`/admin/termin/${row.grimoire.sessionId}`);
+    if (row?.grimoire.sessionId) revalidatePath(`/admin/botc/termin/${row.grimoire.sessionId}`);
     revalidatePath("/botc/archiv");
   }
   return result;
@@ -49,8 +49,8 @@ export async function deleteGrimoireAction(id: number) {
   const me = await requireAdmin("admin");
   if (parseId(id) === null) return;
   const deleted = await deleteGrimoire(me, id);
-  if (deleted?.sessionId) revalidatePath(`/admin/termin/${deleted.sessionId}`);
-  redirect("/admin/grimoary");
+  if (deleted?.sessionId) revalidatePath(`/admin/botc/termin/${deleted.sessionId}`);
+  redirect("/admin/botc/grimoary");
 }
 
 export type ReadScriptResult = { ok: true; script: GrimoireState["script"]; extras: string[] } | { error: string };

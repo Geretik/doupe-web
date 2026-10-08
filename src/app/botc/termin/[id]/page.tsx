@@ -81,7 +81,7 @@ export default async function SessionPage({
       <div>
         <h1 className="flex flex-wrap items-center gap-3 text-2xl sm:text-3xl font-bold tracking-tight">
           {session.title}
-          {admin && <EditPencil href={`/admin/termin/${session.id}`} title={t.session.editPencil} />}
+          {admin && <EditPencil href={`/admin/botc/termin/${session.id}`} title={t.session.editPencil} />}
         </h1>
         <p className="mt-2">
           <span aria-hidden className="mr-1.5">📅</span>

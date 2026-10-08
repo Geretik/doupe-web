@@ -83,7 +83,7 @@ function GameDialog({ id, session, recorded, canEdit, canDelete, onClose }: Game
         {session && (
           <p className="text-sm">
             {t.sessionLabel}{" "}
-            <Link href={`/admin/termin/${session.id}#hry`} className="font-medium underline hover:text-accent">
+            <Link href={`/admin/botc/termin/${session.id}#hry`} className="font-medium underline hover:text-accent">
               {session.title}
             </Link>
           </p>
@@ -146,7 +146,7 @@ function GameDialog({ id, session, recorded, canEdit, canDelete, onClose }: Game
             </h2>
             {state.notes && <p className="text-sm whitespace-pre-line">{state.notes}</p>}
             {session && recorded && (
-              <Link href={`/admin/termin/${session.id}#hry`} className="text-sm font-medium underline hover:text-accent" data-testid="recorded">
+              <Link href={`/admin/botc/termin/${session.id}#hry`} className="text-sm font-medium underline hover:text-accent" data-testid="recorded">
                 {t.recorded}
               </Link>
             )}

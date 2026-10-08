@@ -62,7 +62,7 @@ export default async function StatsPage() {
               <tbody>
                 {past.map((row) => (
                   <tr key={row.id} className="border-b border-border last:border-0">
-                    <td className="p-3"><Link href={`/admin/termin/${row.id}`} className="hover:underline">{row.title}</Link></td>
+                    <td className="p-3"><Link href={`/admin/botc/termin/${row.id}`} className="hover:underline">{row.title}</Link></td>
                     <td className="p-3 whitespace-nowrap">{formatDate(row.startsAt, locale)}</td>
                     <td className="p-3 text-right">{row.confirmed} / {row.capacity}</td>
                     <td className="p-3 text-right">{pct(Math.min(1, row.confirmed / row.capacity))}</td>

@@ -113,7 +113,7 @@ export async function createSessionAction(
     await announceSessionOnDiscord(created, created.capacity);
   }
   revalidatePath("/botc");
-  redirect("/admin");
+  redirect("/admin/botc");
 }
 
 export async function updateSessionAction(
@@ -140,13 +140,13 @@ export async function deleteSessionAction(id: number) {
   await requireAdmin();
   await db.delete(sessions).where(eq(sessions.id, id));
   revalidatePath("/botc");
-  redirect("/admin");
+  redirect("/admin/botc");
 }
 
 function revalidateSession(sessionId: number) {
   revalidatePath("/botc");
   revalidatePath(`/botc/termin/${sessionId}`);
-  revalidatePath(`/admin/termin/${sessionId}`);
+  revalidatePath(`/admin/botc/termin/${sessionId}`);
 }
 
 export async function adminCancelRegistrationAction(registrationId: number) {
@@ -498,7 +498,7 @@ export async function setAttendanceAction(registrationId: number, attended: bool
     .set({ attended, updatedAt: new Date() })
     .where(eq(registrations.id, registrationId))
     .returning({ sessionId: registrations.sessionId });
-  if (row) revalidatePath(`/admin/termin/${row.sessionId}`);
+  if (row) revalidatePath(`/admin/botc/termin/${row.sessionId}`);
 }
 
 /** E-mails a player the link to their registration again (also marks a failed confirmation as sent). */
@@ -521,7 +521,7 @@ export async function adminResendLinkAction(registrationId: number): Promise<Sim
     .update(registrations)
     .set({ lastEmailAt: now, confirmationSentAt: reg.confirmationSentAt ?? now })
     .where(eq(registrations.id, registrationId));
-  revalidatePath(`/admin/termin/${reg.sessionId}`);
+  revalidatePath(`/admin/botc/termin/${reg.sessionId}`);
   return { ok: true, message: t.admin.errors.linkSent };
 }
 
@@ -572,7 +572,7 @@ export async function rotateFeedKeyAction(): Promise<SimpleResult> {
   const me = await requireAdmin();
   const { t } = await getDict();
   await rotateFeedKey(me.id);
-  revalidatePath("/admin");
+  revalidatePath("/admin/botc");
   return { ok: true, message: t.admin.list.orgCalendarRotated };
 }
 
@@ -589,7 +589,7 @@ export async function addGameAction(sessionId: number, _prev: FormState, formDat
     const [game] = await tx.insert(games).values({ sessionId, ...parsed.data, demonBluffs }).returning({ id: games.id });
     await saveRoster(tx, game.id, sessionId, roster);
   });
-  revalidatePath(`/admin/termin/${sessionId}`);
+  revalidatePath(`/admin/botc/termin/${sessionId}`);
   revalidatePath("/botc/archiv");
   return { ok: true };
 }
@@ -613,7 +613,7 @@ export async function updateGameAction(gameId: number, _prev: FormState, formDat
     return game;
   });
   if (!row) return { error: t.admin.errors.noGame };
-  revalidatePath(`/admin/termin/${row.sessionId}`);
+  revalidatePath(`/admin/botc/termin/${row.sessionId}`);
   revalidatePath("/botc/archiv");
   return { ok: true };
 }
@@ -622,7 +622,7 @@ export async function deleteGameAction(gameId: number) {
   await requireAdmin();
   const [row] = await db.delete(games).where(eq(games.id, gameId)).returning({ sessionId: games.sessionId });
   if (row) {
-    revalidatePath(`/admin/termin/${row.sessionId}`);
+    revalidatePath(`/admin/botc/termin/${row.sessionId}`);
     revalidatePath("/botc/archiv");
   }
 }
@@ -631,7 +631,7 @@ export async function sendRemindersNowAction(sessionId: number): Promise<SimpleR
   await requireAdmin();
   const { t } = await getDict();
   const r = await sendDueReminders({ sessionId, ignoreWindow: true });
-  revalidatePath(`/admin/termin/${sessionId}`);
+  revalidatePath(`/admin/botc/termin/${sessionId}`);
   if (r.due === 0) return { ok: true, message: t.admin.errors.remindersAllSent };
   return { ok: r.failed === 0, message: t.admin.errors.remindersSent(r.sent, r.failed) };
 }

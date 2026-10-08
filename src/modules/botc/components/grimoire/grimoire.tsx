@@ -214,7 +214,7 @@ export function Grimoire({
           <>
             <div className="flex flex-wrap items-center gap-2">
               {!fullscreen && (
-                <Link href="/admin/grimoary" className="text-sm text-muted hover:underline">
+                <Link href="/admin/botc/grimoary" className="text-sm text-muted hover:underline">
                   {t.back}
                 </Link>
               )}

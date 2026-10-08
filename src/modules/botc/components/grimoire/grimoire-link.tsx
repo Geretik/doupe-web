@@ -10,7 +10,7 @@ export function GrimoireLink({ item, t, locale, showOwner }: { item: GrimoireLis
   const g = t.grimoire;
   const phase = item.phase === "night" || item.phase === "day" ? fill(g.phases[item.phase], { n: item.round }) : g.phases[item.phase];
   return (
-    <Link href={`/admin/grimoary/${item.id}`} className="block">
+    <Link href={`/admin/botc/grimoary/${item.id}`} className="block">
       <Card className="flex flex-col gap-1 py-3 hover:border-accent/50 sm:flex-row sm:items-center sm:justify-between">
         <span className="flex flex-col">
           <span className="font-semibold">{item.name}</span>

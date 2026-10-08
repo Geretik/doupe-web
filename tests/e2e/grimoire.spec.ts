@@ -684,9 +684,9 @@ test("grimoire: from a session, hand out the bag, the first night, a death and a
   const sessionId = await sessionWithPlayers(["Ada", "Bára", "Cyril", "Dan", "Eva", "Filip", "Gita"]);
   await adminLogin(page);
 
-  await page.goto(`/admin/termin/${sessionId}`);
+  await page.goto(`/admin/botc/termin/${sessionId}`);
   await page.getByRole("button", { name: "Nový grimoár z tohoto termínu" }).click();
-  await expect(page).toHaveURL(/\/admin\/grimoary\/\d+$/);
+  await expect(page).toHaveURL(/\/admin\/botc\/grimoary\/\d+$/);
   await expect(page.locator("h1")).toHaveText("Úterní Krvavka");
   await expect(page.getByTestId("seat")).toHaveCount(7);
   await expect(page.getByTestId("phase")).toHaveText("Příprava");
@@ -800,13 +800,13 @@ test("grimoire: from a session, hand out the bag, the first night, a death and a
   expect(await sql("select id from game_players")).toHaveLength(7);
 
   await page.getByTestId("recorded").click();
-  await expect(page).toHaveURL(new RegExp(`/admin/termin/${sessionId}#hry$`));
+  await expect(page).toHaveURL(new RegExp(`/admin/botc/termin/${sessionId}#hry$`));
   await expect(page.locator("#hry")).toContainText("Trouble Brewing");
   await expect(page.locator("#hry")).toContainText("vyhrálo dobro");
   await expect(page.getByTestId("session-grimoires")).toContainText("Konec hry");
 
   // back into the game by mistake and out again: the same game record is updated, not a second one
-  await page.goto(page.url().replace(/\/admin\/termin\/.*/, "") + (await page.getByTestId("session-grimoires").locator("a").first().getAttribute("href")));
+  await page.goto(page.url().replace(/\/admin\/botc\/termin\/.*/, "") + (await page.getByTestId("session-grimoires").locator("a").first().getAttribute("href")));
   await page.getByTestId("game-button").click();
   await expect(page.getByTestId("game-panel")).toContainText("Opilec to celé otočil.");
   await page.getByRole("button", { name: "Vrátit se do hry" }).click();
@@ -823,7 +823,7 @@ test("grimoire: from a session, hand out the bag, the first night, a death and a
 test("grimoire: an empty one, players typed in; only its Storyteller sees it until the game ends; a save from an older page is refused", async ({ page, browser }) => {
   await createAdminUser({ email: "druhy@example.com", password: "druhy-password-123", nickname: "Druhý", role: "organizer" });
   await adminLogin(page);
-  await page.goto("/admin/grimoary");
+  await page.goto("/admin/botc/grimoary");
   await page.fill("#name", "Zkouška");
   await page.getByRole("button", { name: "Založit grimoár" }).click();
   await expect(page.locator("h1")).toHaveText("Zkouška");
@@ -870,7 +870,7 @@ test("grimoire: an empty one, players typed in; only its Storyteller sees it unt
   await other.goto(url);
   await expect(other.getByTestId("save-status")).toHaveText("Jen pro čtení");
   await expect(other.getByRole("button", { name: "↶ Zpět" })).toHaveCount(0);
-  await other.goto("/admin/grimoary");
+  await other.goto("/admin/botc/grimoary");
   await expect(other.locator("main")).toContainText("Odehrané hry ostatních");
   await expect(other.locator("main")).toContainText("vypravěč/ka Správce");
   await ctx.close();
@@ -878,7 +878,7 @@ test("grimoire: an empty one, players typed in; only its Storyteller sees it unt
 
 /** A new grimoire without a session, two players typed in and saved. */
 async function newGrimoire(page: Page) {
-  await page.goto("/admin/grimoary");
+  await page.goto("/admin/botc/grimoary");
   await page.fill("#name", "Bez sítě");
   await page.getByRole("button", { name: "Založit grimoár" }).click();
   await expect(page.locator("h1")).toHaveText("Bez sítě");
@@ -957,7 +957,7 @@ test("grimoire: the door and the Storyteller's spot, a pasted script, players dr
   await page.setViewportSize({ width: 1180, height: 820 });
   const sessionId = await sessionWithPlayers(["Ada", "Bára", "Cyril", "Dan", "Eva"]);
   await adminLogin(page);
-  await page.goto(`/admin/termin/${sessionId}`);
+  await page.goto(`/admin/botc/termin/${sessionId}`);
   await page.getByRole("button", { name: "Nový grimoár z tohoto termínu" }).click();
   await expect(page.getByTestId("seat")).toHaveCount(5);
 
@@ -1039,7 +1039,7 @@ test("grimoire: the door and the Storyteller's spot, a pasted script, players dr
 
 test("grimoire: players dragged to other places in the circle, then the seating locked", async ({ page }) => {
   await adminLogin(page);
-  await page.goto("/admin/grimoary");
+  await page.goto("/admin/botc/grimoary");
   await page.fill("#name", "Rozesazení");
   await page.getByRole("button", { name: "Založit grimoár" }).click();
   await openSetup(page);
@@ -1096,7 +1096,7 @@ test("grimoire: the bag counts each team against the setup for the players, also
   await page.setViewportSize({ width: 1180, height: 820 }); // a tablet on its side
   const sessionId = await sessionWithPlayers(["Ada", "Bára", "Cyril", "Dan", "Eva", "Filip", "Gita"]);
   await adminLogin(page);
-  await page.goto(`/admin/termin/${sessionId}`);
+  await page.goto(`/admin/botc/termin/${sessionId}`);
   await page.getByRole("button", { name: "Nový grimoár z tohoto termínu" }).click();
   await expect(page.getByTestId("seat")).toHaveCount(7);
   const count = (scope: Page | Locator, team: string) => scope.locator(`[data-team=${team}] [data-testid=bag-team-count]`);
@@ -1138,7 +1138,7 @@ test("grimoire: the bag filled at random by the rules, the number of players and
   await page.setViewportSize({ width: 1600, height: 900 });
   const sessionId = await sessionWithPlayers(["Ada", "Bára", "Cyril", "Dan", "Eva", "Filip", "Gita"]);
   await adminLogin(page);
-  await page.goto(`/admin/termin/${sessionId}`);
+  await page.goto(`/admin/botc/termin/${sessionId}`);
   await page.getByRole("button", { name: "Nový grimoár z tohoto termínu" }).click();
   await expect(page.getByTestId("seat")).toHaveCount(7);
   // the grimoire takes the whole width of the window, not the admin's column
@@ -1188,7 +1188,7 @@ test("grimoire: the Drunk brings an extra Townsfolk into the bag, whoever gets i
   await page.setViewportSize({ width: 1180, height: 820 });
   const sessionId = await sessionWithPlayers(["Ada", "Bára", "Cyril", "Dan", "Eva", "Filip"]);
   await adminLogin(page);
-  await page.goto(`/admin/termin/${sessionId}`);
+  await page.goto(`/admin/botc/termin/${sessionId}`);
   await page.getByRole("button", { name: "Nový grimoár z tohoto termínu" }).click();
   await expect(page.getByTestId("seat")).toHaveCount(6);
   await openSetup(page);
@@ -1241,7 +1241,7 @@ test("grimoire: the first night prepared before the game, the Poisoner's token a
   await page.setViewportSize({ width: 1180, height: 820 });
   const sessionId = await sessionWithPlayers(["Ada", "Bára", "Cyril", "Dan", "Eva", "Filip", "Gita"]);
   await adminLogin(page);
-  await page.goto(`/admin/termin/${sessionId}`);
+  await page.goto(`/admin/botc/termin/${sessionId}`);
   await page.getByRole("button", { name: "Nový grimoár z tohoto termínu" }).click();
   await openSetup(page);
   const tokens = await openTokens(page);
@@ -1315,7 +1315,7 @@ test("grimoire: after the deal each player is shown their character in turn; at 
   await page.setViewportSize({ width: 1180, height: 820 });
   const sessionId = await sessionWithPlayers(["Ada", "Bára", "Cyril", "Dan", "Eva", "Filip", "Gita"]);
   await adminLogin(page);
-  await page.goto(`/admin/termin/${sessionId}`);
+  await page.goto(`/admin/botc/termin/${sessionId}`);
   await page.getByRole("button", { name: "Nový grimoár z tohoto termínu" }).click();
   await openSetup(page);
   const tokens = await openTokens(page);
@@ -1393,7 +1393,7 @@ test("grimoire: a new one points at the setup; night 2: the Demon's attack, the 
   await page.setViewportSize({ width: 1180, height: 820 });
   const sessionId = await sessionWithPlayers(["Ada", "Bára", "Cyril", "Dan", "Eva", "Filip", "Gita"]);
   await adminLogin(page);
-  await page.goto(`/admin/termin/${sessionId}`);
+  await page.goto(`/admin/botc/termin/${sessionId}`);
   await page.getByRole("button", { name: "Nový grimoár z tohoto termínu" }).click();
   await expect(page.getByTestId("setup-hint")).toHaveText("Začni tady: hráči, script a postavy");
   await openSetup(page);
@@ -1477,7 +1477,7 @@ test("grimoire: the first night with the Spy and the Recluse shows every number 
   const seats = Object.entries(cast).map(([name, role]) => ({ ...newSeat(name), role }));
   const state: GrimoireState = { ...newGrimoireState({ id: null, name: "Trouble Brewing", roleIds: TROUBLE_BREWING }, seats), phase: "night", round: 1 };
   const [{ id }] = await sql<{ id: number }>("insert into grimoires (name, owner_id, state) values ($1, $2, $3) returning id", ["Špeh a Samotář", owner.id, state]);
-  await page.goto(`/admin/grimoary/${id}`);
+  await page.goto(`/admin/botc/grimoary/${id}`);
   const night = page.getByTestId("night-panel");
   const open = (role: string) => night.locator(`[data-step=${role}] button`).nth(1).click();
 
@@ -1520,7 +1520,7 @@ test("grimoire: the experimental Demons – the Ojo's character, Legion's tokens
     const seats = Object.entries(cast).map(([name, role]) => ({ ...newSeat(name), role }));
     const state: GrimoireState = { ...newGrimoireState({ id: null, name: "Experimentální", roleIds }, seats), ...change };
     const [{ id }] = await sql<{ id: number }>("insert into grimoires (name, owner_id, state) values ($1, $2, $3) returning id", ["Démoni", owner.id, state]);
-    await page.goto(`/admin/grimoary/${id}`);
+    await page.goto(`/admin/botc/grimoary/${id}`);
   };
 
   // night 2: the Ojo picks the Chef, who dies; a character not in play leaves it to the Storyteller
@@ -1557,21 +1557,21 @@ test("grimoire: only administrators delete grimoires, also another account's fin
   const ctx = await browser.newContext({ locale: "cs-CZ" });
   const org = await ctx.newPage();
   await adminLogin(org, { email: "org@example.com", password: "org-password-123" });
-  await org.goto("/admin/grimoary");
+  await org.goto("/admin/botc/grimoary");
   await org.fill("#name", "Zkušební hra");
   await org.getByRole("button", { name: "Založit grimoár" }).click();
   await endTheGame(org, "Nevím");
   await stored((st) => st.phase, "ended");
   // an organiser deletes nothing, not even their own
   await expect(org.getByTestId("game-panel").getByRole("button", { name: "Smazat grimoár" })).toHaveCount(0);
-  await org.goto("/admin/grimoary");
+  await org.goto("/admin/botc/grimoary");
   await expect(org.getByTestId("grimoires")).toContainText("Zkušební hra");
   await expect(org.getByRole("button", { name: /^Smazat grimoár/ })).toHaveCount(0);
   await ctx.close();
 
   // the administrator sees it among the others' games and deletes it from the list
   await adminLogin(page);
-  await page.goto("/admin/grimoary");
+  await page.goto("/admin/botc/grimoary");
   page.once("dialog", (d) => d.accept());
   await page.getByRole("button", { name: "Smazat grimoár: Zkušební hra" }).click();
   await expect(page.locator("main")).not.toContainText("Zkušební hra");

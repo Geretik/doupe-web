@@ -102,7 +102,7 @@ async function pick(page: Page, option: string) {
 
 /** The draft on the page, and its run (draft_sessions), which the events and picks belong to. */
 async function draftFromUrl(page: Page) {
-  await page.waitForURL(/\/admin\/drafty\/\d+$/);
+  await page.waitForURL(/\/admin\/botc\/drafty\/\d+$/);
   const draftId = Number(page.url().split("/").pop());
   const [{ id: sessionId }] = await sql<{ id: number }>("select id from draft_sessions where draft_id=$1", [draftId]);
   return { draftId, sessionId };
@@ -112,7 +112,7 @@ const SCRIPT = [{ id: "_meta", name: "Test" }, "washerwoman", "librarian", "inve
 
 /** Sets up a draft through the form: hand-picked characters from a script's JSON, a mode and its size. */
 async function newDraft(page: Page, name: string, mode: "personal" | "shared", size: string, roles: unknown[] = SCRIPT) {
-  await page.goto("/admin/drafty/novy");
+  await page.goto("/admin/botc/drafty/novy");
   await page.fill("#name", name);
   await page.selectOption("#mode", mode);
   await page.fill(mode === "personal" ? "[id='personal.rolesPerParticipant']" : "[id='shared.targetRoles']", size);
@@ -137,7 +137,7 @@ test("draft: invitations, snake turns over days, a race of two tabs, bundles, co
   await adminLogin(page, { email: "alice@example.com", password: PASSWORD });
 
   // a draft is set up in one go: mode, size, characters (from a script's JSON) and the two default bundles
-  await page.goto("/admin/drafty");
+  await page.goto("/admin/botc/drafty");
   await page.click("text=+ Nový draft");
   await page.fill("#name", "Podzimní draft");
   await expect(page.locator("#mode")).toHaveValue("personal");
@@ -167,9 +167,9 @@ test("draft: invitations, snake turns over days, a race of two tabs, bundles, co
 
   // Charlie is not a member: the draft does not exist for him
   const charlie = await loginAs(browser, "charlie@example.com");
-  const notFound = await charlie.goto(`/admin/drafty/${draftId}`);
+  const notFound = await charlie.goto(`/admin/botc/drafty/${draftId}`);
   expect(notFound?.status()).toBe(404);
-  await charlie.goto("/admin/drafty");
+  await charlie.goto("/admin/botc/drafty");
   await expect(charlie.getByTestId("drafts")).not.toContainText("Podzimní draft");
 
   // Bob sees the invitation in the menu and accepts it
@@ -220,27 +220,27 @@ test("draft: invitations, snake turns over days, a race of two tabs, bundles, co
   ]);
   // a day passes; any admin page sends what came due: Alice picked in time (nobody), Bob is still on turn
   await sql("update draft_events set due_at = now() - interval '1 minute' where session_id=$1 and type='turn'", [sessionId]);
-  await page.goto("/admin/drafty");
+  await page.goto("/admin/botc/drafty");
   await expect.poll(turnEvents).toEqual([
     { pick_number: 1, sent: true, recipients: 0, later: false },
     { pick_number: 2, sent: true, recipients: 1, later: false },
   ]);
-  await page.goto(`/admin/drafty/${draftId}`);
+  await page.goto(`/admin/botc/drafty/${draftId}`);
 
   // nobody needs to be online: Bob comes back later, the server knows where the draft is
-  await bob.goto("/admin/drafty");
+  await bob.goto("/admin/botc/drafty");
   await expect(bob.getByTestId("draft-badge")).toHaveText("1");
   await expect(bob.getByTestId("drafts")).toContainText("JSI NA TAHU");
   // the address from the e-mails sent before drafts and sessions became one leads to the draft
-  await bob.goto(`/admin/drafty/session/${sessionId}`);
-  await expect(bob).toHaveURL(new RegExp(`/admin/drafty/${draftId}$`));
+  await bob.goto(`/admin/botc/drafty/session/${sessionId}`);
+  await expect(bob).toHaveURL(new RegExp(`/admin/botc/drafty/${draftId}$`));
   await expect(bob.locator("#turn")).toContainText("Pick č. 2");
   // Washerwoman is gone for everybody in this draft
   await expect(bob.locator('[data-testid=pick-board] [data-option="washerwoman"]')).toHaveCount(0);
 
   // pick 2 from two tabs at once: exactly one gets through, the other is told the draft moved on
   const bob2 = await bob.context().newPage();
-  await bob2.goto(`/admin/drafty/${draftId}`);
+  await bob2.goto(`/admin/botc/drafty/${draftId}`);
   await bob.click('[data-testid=pick-board] button[data-option="imp"]');
   await bob2.click('[data-testid=pick-board] button[data-option="poisoner"]');
   await Promise.all([bob.click("button:has-text('Potvrdit pick')"), bob2.click("button:has-text('Potvrdit pick')")]);
@@ -302,7 +302,7 @@ test("draft: invitations, snake turns over days, a race of two tabs, bundles, co
 
   // a script from Alice's pool: only her characters, also when the form is tampered with
   await page.click("button:has-text('Vytvořit script')");
-  await page.waitForURL(/\/admin\/drafty\/script\/\d+$/);
+  await page.waitForURL(/\/admin\/botc\/drafty\/script\/\d+$/);
   const scriptId = Number(page.url().split("/").pop());
   await expect(page.locator("#name")).toHaveValue("Podzimní draft – Alice");
   await expect(page.getByTestId("script-form").locator("input[name=role]")).toHaveCount(3);
@@ -325,7 +325,7 @@ test("draft: invitations, snake turns over days, a race of two tabs, bundles, co
   // it opens in the club's script tool and downloads as the official JSON
   const toolLink = await page.locator("a:has-text('Otevřít ve script toolu')").getAttribute("href");
   expect(toolLink).toMatch(/^https:\/\/botcscript\.app\/\?script=/);
-  const json = await page.request.get(`/admin/drafty/script/${scriptId}/script.json`);
+  const json = await page.request.get(`/admin/botc/drafty/script/${scriptId}/script.json`);
   expect(await json.json()).toEqual([{ id: "_meta", name: "Alicin script", author: "Alice" }, "librarian", "washerwoman"]);
 
   // into the club's library as a copy of the saved script; saving it again updates that copy
@@ -337,7 +337,7 @@ test("draft: invitations, snake turns over days, a race of two tabs, bundles, co
   );
   expect(copy).toMatchObject({ name: "Alicin script", author: "Alice", role_ids: ["librarian", "washerwoman"] });
   expect(JSON.parse(copy.json)).toEqual([{ id: "_meta", name: "Alicin script", author: "Alice" }, "librarian", "washerwoman"]);
-  await expect(page.locator("a:has-text('V knihovně scriptů')")).toHaveAttribute("href", `/admin/scripty/${copy.id}`);
+  await expect(page.locator("a:has-text('V knihovně scriptů')")).toHaveAttribute("href", `/admin/botc/scripty/${copy.id}`);
   await page.fill("#name", "Alicin podzim");
   await page.click("button:has-text('Uložit script')");
   await expect(page.locator("main")).toContainText("Uloženo.");
@@ -353,15 +353,15 @@ test("draft: invitations, snake turns over days, a race of two tabs, bundles, co
   await expect(page.locator("main")).toContainText("V knihovně už je jiný script se stejným názvem");
   expect(await sql("select name from scripts where id=$1", [copy.id])).toEqual([{ name: "Alicin podzim" }]);
   await page.click("text=← Zpět na draft");
-  await expect(page).toHaveURL(new RegExp(`/admin/drafty/${draftId}$`));
+  await expect(page).toHaveURL(new RegExp(`/admin/botc/drafty/${draftId}$`));
 
   // Bob sees Alice's script but cannot edit it; he cannot make one from her pool
-  await bob.goto(`/admin/drafty/script/${scriptId}`);
+  await bob.goto(`/admin/botc/drafty/script/${scriptId}`);
   await expect(bob.locator("main")).toContainText("Upravit ho může jen jeho autor.");
   await expect(bob.getByTestId("script-form")).toHaveCount(0);
   await expect(bob.locator("a:has-text('V knihovně scriptů')")).toHaveCount(1);
   await expect(bob.locator("button:has-text('knihovn')")).toHaveCount(0);
-  await bob.goto(`/admin/drafty/${draftId}`);
+  await bob.goto(`/admin/botc/drafty/${draftId}`);
   await expect(bob.locator("button:has-text('Vytvořit script')")).toHaveCount(1);
   await charlie.context().close();
   await bob.context().close();
@@ -389,13 +389,13 @@ test("draft: two drafts are independent – own members, picks, snapshot – set
 
   // Bob is in the first draft only: the list shows him just that one, the other does not exist for him
   const bob = await loginAs(browser, "bob@example.com");
-  await bob.goto("/admin/drafty");
+  await bob.goto("/admin/botc/drafty");
   await expect(bob.getByTestId("drafts")).toContainText("Páteční shared");
   await expect(bob.getByTestId("drafts")).not.toContainText("Páteční personal");
-  expect((await bob.goto(`/admin/drafty/${personal.draftId}`))?.status()).toBe(404);
+  expect((await bob.goto(`/admin/botc/drafty/${personal.draftId}`))?.status()).toBe(404);
 
   for (const d of [shared, personal]) {
-    await page.goto(`/admin/drafty/${d.draftId}`);
+    await page.goto(`/admin/botc/drafty/${d.draftId}`);
     page.once("dialog", (dialog) => dialog.accept());
     await page.click("button:has-text('Spustit draft')");
     await expect(page.locator("#turn")).toContainText("JSI NA TAHU");
@@ -404,17 +404,17 @@ test("draft: two drafts are independent – own members, picks, snapshot – set
   await sql("update drafts set role_source=$1", [JSON.stringify({ kind: "manual", roleIds: ["washerwoman"] })]);
 
   // the Imp picked in the first draft is still there in the second
-  await page.goto(`/admin/drafty/${shared.draftId}`);
+  await page.goto(`/admin/botc/drafty/${shared.draftId}`);
   await expect(page.locator("#turn")).toContainText("Společný pool: 0 / 3");
   await pick(page, "imp");
   await expect(page.locator("#turn")).toContainText("Čeká se na Bob");
-  await page.goto(`/admin/drafty/${personal.draftId}`);
+  await page.goto(`/admin/botc/drafty/${personal.draftId}`);
   await expect(page.locator('[data-testid=pick-board] button[data-option="imp"]')).toHaveCount(1);
   await pick(page, "imp");
   await expect(page.locator("#turn")).toContainText("Čeká se na Charlie");
 
   // Bob picks twice (end of the row) and the shared pool is full: over
-  await bob.goto(`/admin/drafty/${shared.draftId}`);
+  await bob.goto(`/admin/botc/drafty/${shared.draftId}`);
   await pick(bob, "chef");
   await expect(bob.locator("#turn")).toContainText("Společný pool: 2 / 3");
   await pick(bob, "monk");
@@ -427,7 +427,7 @@ test("draft: two drafts are independent – own members, picks, snapshot – set
   await expect(bob.locator("h1")).toContainText("Completed");
   await expect(bob.getByTestId("pools")).toContainText("Shared pool3 / 3");
   await expect(bob.getByTestId("history")).toContainText("Monk");
-  await bob.goto("/admin/drafty");
+  await bob.goto("/admin/botc/drafty");
   await expect(bob.getByTestId("drafts")).toContainText("3 / 3 roles");
 
   // the second draft goes on on its own

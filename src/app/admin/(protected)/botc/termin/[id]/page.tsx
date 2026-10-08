@@ -213,14 +213,14 @@ export default async function AdminSessionPage({
         <Link href={`/botc/termin/${session.id}`} className="rounded-md border border-border bg-card px-3 py-2 hover:border-accent">
           {t.publicPage}
         </Link>
-        <Link href={`/admin/novy?from=${session.id}`} className="rounded-md border border-border bg-card px-3 py-2 hover:border-accent">
+        <Link href={`/admin/botc/novy?from=${session.id}`} className="rounded-md border border-border bg-card px-3 py-2 hover:border-accent">
           {t.duplicate}
         </Link>
-        <a href={`/admin/termin/${session.id}/export.csv`} className="rounded-md border border-border bg-card px-3 py-2 hover:border-accent">
+        <a href={`/admin/botc/termin/${session.id}/export.csv`} className="rounded-md border border-border bg-card px-3 py-2 hover:border-accent">
           {t.exportCsv}
         </a>
         {!past && (
-          <Link href={`/admin/termin/${session.id}/plakat`} className="rounded-md border border-border bg-card px-3 py-2 hover:border-accent">
+          <Link href={`/admin/botc/termin/${session.id}/plakat`} className="rounded-md border border-border bg-card px-3 py-2 hover:border-accent">
             {t.poster}
           </Link>
         )}

@@ -14,7 +14,7 @@ export default async function DraftsPage() {
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">{d.title}</h1>
-        <Link href="/admin/drafty/novy" className="rounded-md border border-border bg-card px-3 py-2 text-sm hover:border-accent">
+        <Link href="/admin/botc/drafty/novy" className="rounded-md border border-border bg-card px-3 py-2 text-sm hover:border-accent">
           {d.newDraft}
         </Link>
       </div>
@@ -26,7 +26,7 @@ export default async function DraftsPage() {
           const showPool = x.poolTarget > 0 && (x.session.status === "active" || x.session.status === "completed");
           return (
             <li key={x.draft.id}>
-              <Link href={`/admin/drafty/${x.draft.id}`} className="block">
+              <Link href={`/admin/botc/drafty/${x.draft.id}`} className="block">
                 <Card className={`flex flex-col gap-1 hover:border-accent/50 sm:flex-row sm:items-center sm:justify-between ${x.myTurn ? "border-2 border-accent shadow-md" : ""}`}>
                   <div className="flex flex-col gap-1">
                     <p className="font-semibold">{x.draft.name}</p>

@@ -11,7 +11,7 @@ export default async function NewDraftPage() {
   const { locale, t } = await getDict();
   return (
     <div className="flex flex-col gap-4">
-      <Link href="/admin/drafty" className="text-sm text-muted hover:underline">{t.draft.back}</Link>
+      <Link href="/admin/botc/drafty" className="text-sm text-muted hover:underline">{t.draft.back}</Link>
       <h1 className="text-2xl font-bold">{t.draft.newDraft.replace(/^\+\s*/, "")}</h1>
       <p className="text-sm text-muted">{t.draft.intro}</p>
       <Card>

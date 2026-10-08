@@ -377,6 +377,7 @@ export const cs = {
   admin: {
     nav: {
       label: "Admin",
+      overview: "Přehled",
       botc: "Krvavka",
       sessions: "Termíny",
       stats: "Statistiky",
@@ -651,6 +652,18 @@ export const cs = {
         "linkPreview.copyToClipboard": "Kopírovat adresu",
         "linkPreview.copied": "Zkopírováno",
       } as Record<string, string>,
+    },
+    /** The admin's home: the club at a glance */
+    overview: {
+      hello: (name: string) => `Ahoj, ${name}`,
+      nextSessions: "Nejbližší termíny",
+      noSessions: "Žádný termín není vypsaný.",
+      allSessions: "Všechny termíny →",
+      draftTurns: (n: number) => `V ${n} ${n === 1 ? "draftu" : "draftech"} jsi na tahu`,
+      draftInvites: (n: number) => (n === 1 ? "Pozvánka do draftu" : `Pozvánky do draftů: ${n}`),
+      grimoires: "Tvoje rozehrané grimoáry",
+      clubPage: "Web klubu",
+      games: "Sbírka her",
     },
     list: {
       upcoming: "Nadcházející termíny",
@@ -1370,6 +1383,7 @@ export const en: Dict = {
   admin: {
     nav: {
       label: "Admin",
+      overview: "Overview",
       botc: "Blood on the Clocktower",
       sessions: "Sessions",
       stats: "Statistics",
@@ -1594,6 +1608,17 @@ export const en: Dict = {
         editorError: "The editor could not load this text, you are editing its source (Markdown).",
       },
       editor: {},
+    },
+    overview: {
+      hello: (name: string) => `Hi, ${name}`,
+      nextSessions: "Next sessions",
+      noSessions: "No session is scheduled.",
+      allSessions: "All sessions →",
+      draftTurns: (n: number) => `Your turn in ${n} ${n === 1 ? "draft" : "drafts"}`,
+      draftInvites: (n: number) => (n === 1 ? "An invitation to a draft" : `Invitations to drafts: ${n}`),
+      grimoires: "Your grimoires in play",
+      clubPage: "The club's site",
+      games: "Game collection",
     },
     list: {
       upcoming: "Upcoming sessions",

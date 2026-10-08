@@ -45,7 +45,7 @@ export function qrLoginUrl(token: string) {
 
 /** A draft in the admin; the link of the draft e-mails. */
 export function draftUrl(draftId: number) {
-  return `${siteUrl()}/admin/drafty/${draftId}`;
+  return `${siteUrl()}/admin/botc/drafty/${draftId}`;
 }
 
 /**

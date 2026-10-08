@@ -45,15 +45,15 @@ export default async function DraftScriptPage({ params }: { params: Promise<{ id
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
-        <Link href={`/admin/drafty/${rows.draft.id}`} className="text-sm text-muted hover:underline">{d.backToDraft}</Link>
+        <Link href={`/admin/botc/drafty/${rows.draft.id}`} className="text-sm text-muted hover:underline">{d.backToDraft}</Link>
         <h1 className="text-2xl font-bold">{script.name}</h1>
         <p className="text-sm text-muted">
           {d.scriptTitle}: {rows.draft.name} · {d.scriptFrom(owner)}
         </p>
         <span className="flex flex-wrap items-center gap-2">
           <a href={scriptToolLink(script)} target="_blank" rel="noopener noreferrer" className={pill}>{d.openInTool}</a>
-          <a href={`/admin/drafty/script/${script.id}/script.json`} className={pill}>{d.downloadJson}</a>
-          {script.libraryScriptId && <Link href={`/admin/scripty/${script.libraryScriptId}`} className={pill}>{d.inLibrary}</Link>}
+          <a href={`/admin/botc/drafty/script/${script.id}/script.json`} className={pill}>{d.downloadJson}</a>
+          {script.libraryScriptId && <Link href={`/admin/botc/scripty/${script.libraryScriptId}`} className={pill}>{d.inLibrary}</Link>}
           {editable && (
             <ActionButton
               action={saveScriptToLibraryAction.bind(null, script.id)}

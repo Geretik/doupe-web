@@ -28,7 +28,7 @@ export default async function ScriptsPage() {
         <ul className="grid gap-2 md:grid-cols-2" data-testid="library-scripts">
           {rows.map(({ script, creator }) => (
             <li key={script.id}>
-              <Link href={`/admin/scripty/${script.id}`} className="block h-full">
+              <Link href={`/admin/botc/scripty/${script.id}`} className="block h-full">
                 <Card className="flex h-full flex-col gap-1 hover:border-accent/50">
                   <p className="font-semibold">{script.name}</p>
                   <p className="text-sm text-muted">

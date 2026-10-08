@@ -32,7 +32,7 @@ export default async function LibraryScriptPage({ params }: { params: Promise<{ 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
-        <Link href="/admin/scripty" className="text-sm text-muted hover:underline">{s.back}</Link>
+        <Link href="/admin/botc/scripty" className="text-sm text-muted hover:underline">{s.back}</Link>
         <h1 className="text-2xl font-bold">{script.name}</h1>
         <p className="text-sm text-muted">
           {[
@@ -46,7 +46,7 @@ export default async function LibraryScriptPage({ params }: { params: Promise<{ 
         </p>
         <span className="flex flex-wrap gap-2">
           <a href={toolLink} target="_blank" rel="noopener noreferrer" className={pill}>{s.openInTool}</a>
-          <a href={`/admin/scripty/${script.id}/script.json`} className={pill}>{s.downloadJson}</a>
+          <a href={`/admin/botc/scripty/${script.id}/script.json`} className={pill}>{s.downloadJson}</a>
         </span>
         {toolLink.length > MAX_LINK && <p className="text-xs text-muted">{s.noLink}</p>}
       </div>

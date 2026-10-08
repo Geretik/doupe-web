@@ -34,7 +34,7 @@ const SCRIPT = [
 test("scripts library: add a JSON pasted or as a file, see its characters, open it in the script tool, download, edit, delete", async ({ page, browser }) => {
   await adminLogin(page);
   await page.click("nav a:has-text('Scripty')");
-  await expect(page).toHaveURL(/\/admin\/scripty$/);
+  await expect(page).toHaveURL(/\/admin\/botc\/scripty$/);
   await expect(page.locator("main")).toContainText("Zatím tu žádný script není.");
 
   const form = page.getByTestId("library-script-form");
@@ -52,7 +52,7 @@ test("scripts library: add a JSON pasted or as a file, see its characters, open 
   // pasted: name and author from its "_meta"
   await form.locator("#json").fill(JSON.stringify(SCRIPT));
   await form.locator("button[type=submit]").click();
-  await page.waitForURL(/\/admin\/scripty\/\d+$/);
+  await page.waitForURL(/\/admin\/botc\/scripty\/\d+$/);
   const scriptUrl = page.url();
   await expect(page.locator("h1")).toHaveText("Moje TB");
   await expect(page.locator("main")).toContainText("Alice · 5 postav · přidal/a Správce");
@@ -85,7 +85,7 @@ test("scripts library: add a JSON pasted or as a file, see its characters, open 
     buffer: Buffer.from(JSON.stringify([{ id: "_meta", name: "Jméno v souboru" }, "chef", "poisoner"])),
   });
   await form.locator("button[type=submit]").click();
-  await page.waitForURL(/\/admin\/scripty\/\d+$/);
+  await page.waitForURL(/\/admin\/botc\/scripty\/\d+$/);
   await expect(page.locator("h1")).toHaveText("Druhý script");
   expect((await (await page.request.get(`${page.url()}/script.json`)).json())[0]).toEqual({ id: "_meta", name: "Druhý script" });
   await page.click("text=← Scripty");
@@ -122,18 +122,18 @@ test("scripts library: add a JSON pasted or as a file, see its characters, open 
 
   page.once("dialog", (d) => d.accept());
   await page.click("button:has-text('Smazat script')");
-  await page.waitForURL(/\/admin\/scripty$/);
+  await page.waitForURL(/\/admin\/botc\/scripty$/);
   await expect(page.getByTestId("library-scripts").locator("li")).toHaveText([/Druhý script/]);
 });
 
 test("scripts library: the session form and its vote offer the library's scripts with a link to the script tool", async ({ page }) => {
   await adminLogin(page);
-  await page.goto("/admin/scripty");
+  await page.goto("/admin/botc/scripty");
   await page.locator("#json").fill(JSON.stringify(SCRIPT));
   await page.click("button:has-text('Přidat script')");
-  await page.waitForURL(/\/admin\/scripty\/\d+$/);
+  await page.waitForURL(/\/admin\/botc\/scripty\/\d+$/);
 
-  await page.goto("/admin/novy");
+  await page.goto("/admin/botc/novy");
   await expect(page.locator("#script-suggestions option[value='Moje TB']")).toHaveCount(1);
   await expect(page.locator("#poll-suggestions option[value='Moje TB']")).toHaveCount(1);
   await page.locator("input[name=scriptName] >> nth=0").fill("moje tb");

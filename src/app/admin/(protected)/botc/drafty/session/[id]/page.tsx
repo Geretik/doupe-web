@@ -9,5 +9,5 @@ export default async function OldDraftSessionPage({ params }: { params: Promise<
   const id = parseId((await params).id);
   const draftId = id ? await draftIdOfSession(id) : null;
   if (!draftId) notFound();
-  permanentRedirect(`/admin/drafty/${draftId}`);
+  permanentRedirect(`/admin/botc/drafty/${draftId}`);
 }
