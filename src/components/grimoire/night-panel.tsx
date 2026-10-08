@@ -48,6 +48,8 @@ import {
 import type { GrimoireCharacter } from "@/lib/grimoire/characters";
 import { fill } from "@/lib/grimoire/text";
 import { nameOf, RoleIcon, useGrimoire, type GrimoireTexts } from "./context";
+import { ShowButton } from "./show";
+import { stepCards } from "@/lib/grimoire/show";
 import type { Locale } from "@/i18n/dictionaries";
 
 const specialIcon: Record<SpecialStep, string> = { dusk: "🌙", minionInfo: "🗡️", demonInfo: "😈", dawn: "☀️" };
@@ -142,6 +144,7 @@ export function NightPanel({
               {open && step.roleId && (
                 <StepHelp roleId={step.roleId} woken={woken} placing={placing} onPlace={onPlace} canPlace={!readOnly} />
               )}
+              {open && !readOnly && <StepShow step={step} />}
               {isCurrent && !readOnly && (
                 <div className="px-1.5 pb-1.5">
                   <button type="button" onClick={() => toggle(step.id)} className="min-h-11 w-full rounded-lg bg-accent px-3 text-sm font-semibold text-accent-foreground">
@@ -281,6 +284,21 @@ function StepHelp({
           })}
         </div>
       )}
+    </div>
+  );
+}
+
+/** "Show the player" for a step: one button, or one for each player when each learns their own (two Empaths). */
+function StepShow({ step }: { step: NightStep }) {
+  const { state, characters, t } = useGrimoire();
+  const cards = stepCards(state, step, characters);
+  if (!cards.length) return null;
+  const name = (seatIds: string[]) => state.seats.find((s) => s.id === seatIds[0])?.name || "?";
+  return (
+    <div className="flex flex-wrap gap-1.5 px-3 pb-2">
+      {cards.map(({ seatIds, card }) => (
+        <ShowButton key={seatIds.join()} card={card} label={cards.length > 1 ? fill(t.show.buttonFor, { name: name(seatIds) }) : undefined} />
+      ))}
     </div>
   );
 }

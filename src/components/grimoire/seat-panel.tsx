@@ -24,7 +24,9 @@ import {
 import { fill } from "@/lib/grimoire/text";
 import { nameOf, RoleIcon, useGrimoire } from "./context";
 import { RoleGrid } from "./role-grid";
+import { ShowButton } from "./show";
 import { gapIcon } from "./town";
+import { youAreCard } from "@/lib/grimoire/show";
 
 const travellers = botcRoles.filter((r) => r.team === "traveller").map((r) => r.id);
 
@@ -126,6 +128,7 @@ export function SeatPanel({
           )}
         </div>
         {seat.role && characters[seat.role] && <p className="text-sm leading-snug text-muted">{characters[seat.role].ability}</p>}
+        {seat.role && !readOnly && <ShowButton card={youAreCard(state, seat, characters)} />}
         {usedText && !readOnly && (
           <button
             type="button"

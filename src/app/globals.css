@@ -56,3 +56,16 @@ html.grimoire-focus main {
   padding-top: 0.75rem;
   padding-bottom: 0.75rem;
 }
+
+/* the card shown to a player at night (components/grimoire/show): dark whatever the device's theme, so the tablet
+   does not light up the room; the dark theme's colours */
+.night-card {
+  --background: #16120f;
+  --foreground: #f1e9dc;
+  --card: #211b17;
+  --muted: #a89c8e;
+  --accent: #e46a78;
+  --accent-foreground: #16120f;
+  --border: #3a302a;
+  --good: #7fb3ec;
+}

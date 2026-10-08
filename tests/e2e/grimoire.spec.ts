@@ -32,6 +32,8 @@ import {
   vortoxWorks,
   type GrimoireState,
 } from "../../src/lib/grimoire/state";
+import { findRole, roleName } from "../../src/lib/botc-roles";
+import { stepCards, youAreCard } from "../../src/lib/grimoire/show";
 import { adminLogin, createAdminUser, createSession, resetDb, sql } from "./helpers";
 
 test.describe.configure({ mode: "serial" });
@@ -628,6 +630,48 @@ test("night rules for Townsfolk: the Clockmaker's, Oracle's and Shugenja's infor
   expect(shownAs(undertaker, at(undertaker, "spy"), characters)).toEqual(["spy", "undertaker", "butler", "chef"]);
 });
 
+test("show the player: the Minions their Demon and each other, the Demon its Minions and bluffs, a working Magician among both; You are as the player thinks", () => {
+  let state = nightOf(["imp", "poisoner", "spy", "magician", "drunk", "chef", "washerwoman"], 1);
+  state = { ...state, bluffs: ["monk", "soldier", "mayor"], seats: state.seats.map((s) => (s.role === "drunk" ? { ...s, believedRole: "empath" } : s)) };
+  const id = (role: string) => at(state, role).id;
+  const cards = (stepId: string, s = state) => stepCards(s, nightSteps(s, characters, true).find((x) => x.id === stepId)!, characters).map((x) => x.card.lines);
+  // in the circle's order; the Magician is a Demon to the Minions and a Minion to the Demon
+  expect(cards("minionInfo")).toEqual([
+    [
+      { title: "thisIsDemon", roles: [], seatIds: [id("imp"), id("magician")] },
+      { title: "yourMinions", roles: [], seatIds: [id("poisoner"), id("spy"), id("magician")] },
+    ],
+  ]);
+  expect(cards("demonInfo")).toEqual([
+    [
+      { title: "yourMinions", roles: [], seatIds: [id("poisoner"), id("spy"), id("magician")] },
+      { title: "notInPlay", roles: ["monk", "soldier", "mayor"], seatIds: [] },
+    ],
+  ]);
+  // the Drunk is shown the Townsfolk they think they are, and wakes as the Empath: nobody evil next to them
+  expect(youAreCard(state, at(state, "drunk"), characters).lines).toEqual([{ title: "youAre", roles: ["empath"], seatIds: [], side: "good" }]);
+  expect(cards("empath")).toEqual([[{ title: null, roles: [], seatIds: [], number: 0 }]]);
+  // the Chef: the Imp and the Poisoner, the Poisoner and the Spy
+  expect(cards("chef")).toEqual([[{ title: null, roles: [], seatIds: [], number: 2 }]]);
+  // the Washerwoman: the character under her first token, both players in the circle's order
+  expect(cards("washerwoman")).toEqual([[{ title: "oneOfThem", roles: [], seatIds: [] }]]);
+  state = putToken(state, id("chef"), "washerwoman", "Měšťan", characters);
+  state = putToken(state, id("imp"), "washerwoman", "Někdo jiný", characters);
+  expect(cards("washerwoman")).toEqual([[{ title: "oneOfThem", roles: ["chef"], seatIds: [id("imp"), id("chef")] }]]);
+  // a poisoned Magician is no Demon to anybody; a Mezepheles's word makes a player evil, the Marionette is not told
+  state = putToken(state, id("magician"), "poisoner", "Otrávený", characters);
+  expect(cards("minionInfo")[0][0].seatIds).toEqual([id("imp")]);
+  const turned = putToken(state, id("chef"), "mezepheles", "Turns evil", characters);
+  expect(youAreCard(turned, at(turned, "chef"), characters).lines[0]).toMatchObject({ roles: ["chef"], side: "evil" });
+  const marionette = { ...at(state, "chef"), role: "marionette", believedRole: "chef" };
+  expect(youAreCard(state, marionette, characters).lines[0]).toMatchObject({ roles: ["chef"], side: "good" });
+
+  // a working Poppy Grower: the Minions learn nothing, the Demon only the bluffs
+  const poppy = { ...nightOf(["imp", "poisoner", "poppygrower", "chef", "empath", "monk", "mayor"], 1), bluffs: ["soldier", null, "virgin"] };
+  expect(cards("minionInfo", poppy)).toEqual([]);
+  expect(cards("demonInfo", poppy)).toEqual([[{ title: "notInPlay", roles: ["soldier", "virgin"], seatIds: [] }]]);
+});
+
 test("jinxes: pairs of characters with a jinx, whichever of the two lists it", () => {
   const reason = "If the Spy is (or has been) in play, the Damsel is poisoned.";
   expect(jinxesAmong(["spy", "damsel", "chef"], characters)).toEqual([{ a: "spy", b: "damsel", reason }]);
@@ -1188,6 +1232,84 @@ test("grimoire: the first night prepared before the game, the Poisoner's token a
   await expect(page.getByTestId("reminder").filter({ hasText: "Bez schopnosti" })).toHaveCount(1);
   await used.click();
   await expect(page.getByTestId("reminder").filter({ hasText: "Bez schopnosti" })).toHaveCount(0);
+});
+
+test("grimoire: after the deal each player is shown their character in turn; at night the Demon its Minions and bluffs, only the card on the screen", async ({ page }) => {
+  await page.setViewportSize({ width: 1180, height: 820 });
+  const sessionId = await sessionWithPlayers(["Ada", "Bára", "Cyril", "Dan", "Eva", "Filip", "Gita"]);
+  await adminLogin(page);
+  await page.goto(`/admin/termin/${sessionId}`);
+  await page.getByRole("button", { name: "Nový grimoár z tohoto termínu" }).click();
+  await openSetup(page);
+  const tokens = await openTokens(page);
+  for (const name of ["Pradlena", "Kuchař", "Empat", "Zabiják", "Mnich", "Travič", "Čert"]) {
+    await tokens.getByRole("button", { name: `Do pytlíku: ${name}` }).click();
+  }
+  await tokens.getByTestId("bag-bluffs").getByRole("button", { name: "Blafy Démona 1" }).click();
+  await tokens.getByRole("button", { name: "Blafy Démona: Vědma" }).click();
+  await closeTokens(page);
+  await expect(page.getByTestId("setup-screen").getByRole("button", { name: "Ukázat hráčům jejich postavy" })).toHaveCount(0);
+  await dealAtRandom(page);
+  await expect
+    .poll(async () => {
+      const [row] = await sql<{ state: { seats: { role: string | null }[] } }>("select state from grimoires order by id desc limit 1");
+      return row?.state.seats.every((x) => x.role);
+    })
+    .toBe(true);
+  const [{ state }] = await sql<{ state: { seats: { name: string; role: string }[] } }>("select state from grimoires order by id desc limit 1");
+  const all = state.seats;
+  const role = (i: number) => roleName(findRole(all[i].role)!, "cs");
+  const who = (r: string) => all.find((x) => x.role === r)!.name;
+
+  // round the table: the first player's card, shown on its own, then the next player's
+  await page.getByTestId("setup-screen").getByRole("button", { name: "Ukázat hráčům jejich postavy" }).click();
+  const screen = page.getByTestId("show-screen");
+  await expect(screen).toContainText(`pro: ${all[0].name}`);
+  await screen.getByRole("button", { name: "Ukázat", exact: false }).click();
+  const card = page.getByTestId("show-card");
+  await expect(card).toContainText(`Jsi${role(0)}`);
+  await expect(card).toContainText(all[0].role === "poisoner" || all[0].role === "imp" ? "Zlý tým" : "Dobrý tým");
+  // the card covers everything: the setup and the grimoire stay under it
+  const covered = () => page.evaluate(() => [[5, 5], [innerWidth - 5, innerHeight - 5]].every(([x, y]) => !!document.elementFromPoint(x, y)?.closest("[data-testid=show-card]")));
+  expect(await covered()).toBe(true);
+  await card.click();
+  await screen.getByTestId("show-next").click();
+  await expect(screen).toContainText(`pro: ${all[1].name}`);
+  await screen.getByRole("button", { name: "Ukázat", exact: false }).click();
+  await expect(card).toContainText(`Jsi${role(1)}`);
+  await card.click();
+  await screen.getByRole("button", { name: "Hotovo" }).click();
+  await expect(screen).toBeHidden();
+  await expect(page.getByTestId("setup-screen")).toBeVisible();
+
+  // the first night: the Demon's card has its Minion and the bluff; a line changed before it is shown
+  await page.getByTestId("setup-screen").getByRole("button", { name: "Začít hru → 1. noc" }).click();
+  const night = page.getByTestId("night-panel");
+  await night.locator("[data-step=demonInfo] button").nth(1).click();
+  await night.locator("[data-step=demonInfo]").getByTestId("show-button").click();
+  await expect(screen).toContainText(`pro: ${who("imp")}`);
+  await expect(screen.getByRole("button", { name: `Odebrat: ${who("poisoner")}` })).toBeVisible();
+  await screen.getByRole("button", { name: "+ Další řádek" }).click();
+  await screen.getByTestId("show-line-editor").last().getByRole("button", { name: "+ Text" }).click();
+  await screen.getByPlaceholder("Text pro hráče").fill("Hodně štěstí");
+  await screen.getByRole("button", { name: "Ukázat", exact: false }).click();
+  await expect(card.getByTestId("show-line")).toHaveText([`Tito jsou tví Přisluhovači${who("poisoner")}`, "Tyto postavy nejsou ve hřeVědma", "Hodně štěstí"]);
+  expect(await covered()).toBe(true);
+  await card.click();
+  await screen.getByRole("button", { name: "Hotovo" }).click();
+  await expect(screen).toBeHidden();
+
+  // the Chef's number on the card; at a player, "You are"
+  await night.locator("[data-step=chef] button").nth(1).click();
+  await night.locator("[data-step=chef]").getByTestId("show-button").click();
+  const evil = (i: number) => ["poisoner", "imp"].includes(all[(i + all.length) % all.length].role);
+  await expect(screen.getByTestId("show-number")).toHaveText(String(all.filter((_, i) => evil(i) && evil(i + 1)).length));
+  await screen.getByRole("button", { name: "Hotovo" }).click();
+  await page.getByRole("tab", { name: "Hráč" }).click();
+  await seat(page, who("monk")).click();
+  await page.getByTestId("seat-panel").getByTestId("show-button").click();
+  await screen.getByRole("button", { name: "Ukázat", exact: false }).click();
+  await expect(card).toContainText("JsiMnich");
 });
 
 test("grimoire: a new one points at the setup; night 2: the Demon's attack, the Monk and the Soldier, the Imp passing to the Scarlet Woman", async ({ page }) => {

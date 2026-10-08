@@ -15,6 +15,8 @@ import { GameButton } from "./game-panel";
 import { NightPanel, type Placing } from "./night-panel";
 import { SeatPanel } from "./seat-panel";
 import { SetupScreen, type ScriptChoice } from "./setup-panel";
+import { ShowScreen } from "./show";
+import type { ShowCard } from "@/lib/grimoire/show";
 import { Town, TownCenter } from "./town";
 
 const UNDO_LIMIT = 100;
@@ -86,6 +88,8 @@ export function Grimoire({
   const [focusStep, setFocusStep] = useState<string | null>(null);
   const [recorded, setRecorded] = useState(initiallyRecorded);
   const [fullscreen, setFullscreen] = useState(false);
+  // a card shown to a player over the whole screen; not saved
+  const [showing, setShowing] = useState<ShowCard | null>(null);
 
   const update = useCallback((change: (s: GrimoireState) => GrimoireState) => canEdit && dispatch({ type: "apply", change }), [canEdit]);
   const save = useAutosave({
@@ -141,7 +145,7 @@ export function Grimoire({
   const currentStep = state.phase === "night" ? (steps.find((s) => !state.nightDone.includes(s.id)) ?? null) : null;
   const focused = steps.find((s) => s.id === focusStep) ?? currentStep;
 
-  const context: GrimoireContextValue = { state, update, readOnly: !canEdit || state.phase === "ended", characters, sessionPlayers, locale, t };
+  const context: GrimoireContextValue = { state, update, readOnly: !canEdit || state.phase === "ended", show: setShowing, characters, sessionPlayers, locale, t };
 
   const advance = () => {
     const next = nextPhase(state, characters);
@@ -381,6 +385,7 @@ export function Grimoire({
           />,
           document.body,
         )}
+      {showing && <ShowScreen card={showing} onChange={setShowing} onClose={() => setShowing(null)} />}
     </GrimoireContext.Provider>
   );
 }

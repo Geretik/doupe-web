@@ -4,6 +4,7 @@ import { createContext, useContext } from "react";
 import type { Dict, Locale } from "@/i18n/dictionaries";
 import { findRole, roleIcon, roleName } from "@/lib/botc-roles";
 import type { GrimoireCharacter } from "@/lib/grimoire/characters";
+import type { ShowCard } from "@/lib/grimoire/show";
 import type { GrimoireState } from "@/lib/grimoire/state";
 
 export type GrimoireTexts = Dict["grimoire"];
@@ -14,6 +15,8 @@ export type GrimoireContextValue = {
   /** Applies a change (one step of "undo"); does nothing when the grimoire is read-only */
   update: (change: (s: GrimoireState) => GrimoireState) => void;
   readOnly: boolean;
+  /** Opens a card to show a player over the whole screen */
+  show: (card: ShowCard) => void;
   characters: Record<string, GrimoireCharacter>;
   /** The session's signed-up players (sign-up id, nickname), for naming the seats; empty without a session */
   sessionPlayers: { id: number; nickname: string }[];

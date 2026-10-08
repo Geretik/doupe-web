@@ -32,10 +32,12 @@ import {
   type GrimoireState,
 } from "@/lib/grimoire/state";
 import { groupHeadingClass } from "@/components/draft/team-section";
+import { youAreCard } from "@/lib/grimoire/show";
 import { jinxesAmong } from "@/lib/grimoire/characters";
 import { fill } from "@/lib/grimoire/text";
 import { nameOf, RoleIcon, useGrimoire, type GrimoireContextValue, type GrimoireTexts } from "./context";
 import { RoleGrid, teamBox } from "./role-grid";
+import { ShowButton } from "./show";
 import { holders } from "./seat-panel";
 import { gapIcon } from "./town";
 
@@ -371,7 +373,8 @@ function BagContents({ wide }: { wide: boolean }) {
 
 /** Handing the bag out: the players draw from it themselves, or it is dealt at random after a confirmation. */
 function DealActions() {
-  const { state, update, t } = useGrimoire();
+  const { state, update, characters, t } = useGrimoire();
+  const first = playerSeats(state).find((s) => s.role);
   const players = playerSeats(state).length;
   const blocked = undrawable(state.bag);
   const ready = state.bag.length > 0 && bagTokens(state.bag).length === players;
@@ -393,6 +396,8 @@ function DealActions() {
       <button type="button" className={`${button} border-accent bg-accent text-accent-foreground`} onClick={deal} disabled={!ready}>
         {t.deal}
       </button>
+      {/* dealt: each player shown their character in turn, "Next" round the table */}
+      {first && <ShowButton card={youAreCard(state, first, characters)} label={t.show.roundTable} />}
     </div>
   );
 }
