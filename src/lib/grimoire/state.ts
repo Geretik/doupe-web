@@ -7,8 +7,11 @@ import type { GrimoireCharacter } from "./characters";
  * shared by the page in the browser and the server that checks and stores it.
  */
 
-/** A reminder token at a seat: the character it belongs to (its icon) and its text; null = the Storyteller's own note */
-export type GrimoireReminder = { id: string; roleId: string | null; text: string };
+/**
+ * A reminder token at a seat: the character it belongs to (its icon) and its text; null = the Storyteller's own note.
+ * `round`: the night and day it was put down in (tonight's attack, the Minstrel's drunkenness until dusk tomorrow).
+ */
+export type GrimoireReminder = { id: string; roleId: string | null; text: string; round?: number };
 
 /** Places in the circle that are no player: a gap for the door, the Storyteller's spot in front of the grimoire. */
 export const gapKinds = ["door", "storyteller"] as const;
@@ -479,9 +482,13 @@ export function nightSteps(state: Pick<GrimoireState, "seats">, characters: Reco
   return [...steps.values()].sort((a, b) => a.order - b.order);
 }
 
-/** The phase after this one: setup → night 1 → day 1 → night 2 … */
+/** The phase after this one: setup → night 1 → day 1 → night 2 …; at dusk the Minstrel's token of yesterday goes. */
 export function nextPhase(state: GrimoireState): GrimoireState {
-  if (state.phase === "setup" || state.phase === "day") return { ...state, phase: "night", round: state.round + 1, nightDone: [] };
+  if (state.phase === "setup" || state.phase === "day") {
+    const expired = (r: GrimoireReminder) => r.roleId === MINSTREL && (r.round ?? 0) < state.round;
+    const seats = state.seats.map((s) => (s.reminders.some(expired) ? { ...s, reminders: s.reminders.filter((r) => !expired(r)) } : s));
+    return { ...state, seats, phase: "night", round: state.round + 1, nightDone: [] };
+  }
   if (state.phase === "night") return { ...state, phase: "day" };
   return state;
 }
@@ -514,7 +521,7 @@ export function placeReminder(state: GrimoireState, seatId: string, roleId: stri
     ...state,
     seats: state.seats.map((s) => {
       let reminders = moved ? s.reminders.filter((r) => r.id !== moved) : s.reminders;
-      if (s.id === seatId) reminders = [...reminders, { id: uid(), roleId, text }].slice(0, MAX_REMINDERS);
+      if (s.id === seatId) reminders = [...reminders, { id: uid(), roleId, text, round: state.round }].slice(0, MAX_REMINDERS);
       return reminders === s.reminders ? s : { ...s, reminders };
     }),
   };
@@ -547,14 +554,175 @@ export function evilLivingNeighbours(state: Pick<GrimoireState, "seats">, seatId
   return [...new Set([nearest(-1), nearest(1)])].filter((s) => s && s.id !== seatId && seatSide(s) === "evil").length;
 }
 
-/** Why a player's information may be false: they are the Drunk, or lie under a token that makes them drunk or poisoned. */
-export function impairment(seat: Pick<GrimoireSeat, "role" | "reminders">, characters: Record<string, GrimoireCharacter>): "drunk" | "poisoned" | null {
+/** A character's token with this text taken away from the seat when it is there, else put there: a used ability, the Scarlet Woman's "Demon"… */
+export function toggleReminder(state: GrimoireState, seatId: string, roleId: string | null, text: string): GrimoireState {
+  return {
+    ...state,
+    seats: state.seats.map((s) => {
+      if (s.id !== seatId) return s;
+      const has = s.reminders.some((r) => r.roleId === roleId && r.text === text);
+      const reminders = has
+        ? s.reminders.filter((r) => !(r.roleId === roleId && r.text === text))
+        : [...s.reminders, { id: uid(), roleId, text, round: state.round }].slice(0, MAX_REMINDERS);
+      return { ...s, reminders };
+    }),
+  };
+}
+
+/** The token that marks a once-per-game ability used: the character's "No ability", else the grimoire's own (`own`); null when it has none. */
+export function usedToken(c: GrimoireCharacter | undefined, own: string) {
+  if (!c) return null;
+  return Object.keys(c.tokenKinds).find((text) => c.tokenKinds[text] === "noAbility") ?? (c.once ? own : null);
+}
+
+/** Drunk or poisoned by the player's own character or a token on them. */
+function ownImpairment(seat: Pick<GrimoireSeat, "role" | "reminders">, characters: Record<string, GrimoireCharacter>): "drunk" | "poisoned" | null {
   if (seat.role === "drunk") return "drunk";
   for (const r of seat.reminders) {
     const kind = r.roleId ? characters[r.roleId]?.tokenKinds[r.text] : undefined;
     if (kind === "poisoned" || kind === "drunk") return kind;
   }
   return null;
+}
+
+/** His token lies at the Minstrel while everyone else is drunk after a Minion's execution (setDead), until dusk tomorrow (nextPhase). */
+const MINSTREL = "minstrel";
+
+/**
+ * Why a player's information may be false: they are the Drunk, lie under a token that makes them drunk or
+ * poisoned, or a living Minstrel's token says everyone else is drunk (travellers are not).
+ */
+export function impairment(
+  state: Pick<GrimoireState, "seats">,
+  seat: GrimoireSeat,
+  characters: Record<string, GrimoireCharacter>,
+): "drunk" | "poisoned" | "minstrel" | null {
+  const own = ownImpairment(seat, characters);
+  if (own || isTraveller(seat.role)) return own;
+  const minstrel = state.seats.some((s) => s.id !== seat.id && !s.dead && s.reminders.some((r) => r.roleId === MINSTREL) && !ownImpairment(s, characters));
+  return minstrel ? "minstrel" : null;
+}
+
+/** The player has the character's ability: they are it, or a Philosopher or Apprentice took it. */
+function hasAbility(seat: GrimoireSeat, roleId: string) {
+  return seat.role === roleId || (seat.believedRole === roleId && linkedRoleOf(seat.role)?.kind === "ability");
+}
+
+/** A living player has the character's ability, neither drunk nor poisoned: it works. */
+function abilityWorks(state: Pick<GrimoireState, "seats">, roleId: string, characters: Record<string, GrimoireCharacter>) {
+  return players(state).some((s) => !s.dead && hasAbility(s, roleId) && !impairment(state, s, characters));
+}
+
+function addReminder(state: GrimoireState, seatId: string, roleId: string, text: string | undefined): GrimoireState {
+  if (!text) return state;
+  return {
+    ...state,
+    seats: state.seats.map((s) =>
+      s.id === seatId && !s.reminders.some((r) => r.roleId === roleId && r.text === text)
+        ? { ...s, reminders: [...s.reminders, { id: uid(), roleId, text, round: state.round }].slice(0, MAX_REMINDERS) }
+        : s,
+    ),
+  };
+}
+
+/** Characters whose own ability keeps their player alive when the Demon attacks; the Fool only the first time. */
+const SAFE_FROM_DEMON = ["soldier", "sailor", "fool"];
+
+/**
+ * Who keeps a player alive when the Demon attacks them: the Monk, Innkeeper or Tea Lady with their token on them,
+ * or the player's own Soldier, Sailor or Fool (the Fool's first death). Null = they die. Nothing protects when
+ * its player is dead, drunk or poisoned.
+ */
+export function demonProtection(state: Pick<GrimoireState, "seats">, seatId: string, characters: Record<string, GrimoireCharacter>): string | null {
+  const seat = state.seats.find((s) => s.id === seatId);
+  if (!seat) return null;
+  const token = seat.reminders.find((r) => r.roleId && characters[r.roleId]?.tokenKinds[r.text] === "protected" && abilityWorks(state, r.roleId, characters));
+  if (token?.roleId) return token.roleId;
+  if (impairment(state, seat, characters)) return null;
+  return SAFE_FROM_DEMON.find((id) => hasAbility(seat, id) && (id !== "fool" || !seat.reminders.some((r) => r.roleId === "fool"))) ?? null;
+}
+
+/**
+ * Who becomes the Imp when the Imp (`impSeatId`, not dead yet) kills themself: the Scarlet Woman alone when her
+ * ability works (5 or more players alive, travellers not counted, and she is neither drunk nor poisoned), else
+ * any living Minion – the Storyteller picks.
+ */
+export function impHeirs(state: Pick<GrimoireState, "seats">, impSeatId: string, characters: Record<string, GrimoireCharacter>) {
+  const minions = players(state).filter((s) => !s.dead && s.id !== impSeatId && findRole(s.role)?.team === "minion");
+  const alive = playerSeats(state).filter((s) => !s.dead).length;
+  const scarletWoman = alive >= 5 ? minions.filter((s) => s.role === "scarletwoman" && !impairment(state, s, characters)) : [];
+  return scarletWoman.length ? scarletWoman : minions;
+}
+
+/** A Minion becomes the Demon: their character is the Demon's; a Scarlet Woman gets her "Demon" token, to show why. */
+export function becomeDemon(state: GrimoireState, seatId: string, demonId: string, characters: Record<string, GrimoireCharacter>): GrimoireState {
+  const seat = state.seats.find((s) => s.id === seatId);
+  if (!seat) return state;
+  const marked = seat.role === "scarletwoman" ? addReminder(state, seatId, "scarletwoman", characters.scarletwoman?.selfTokens[0]) : state;
+  return { ...marked, seats: marked.seats.map((s) => (s.id === seatId ? { ...s, role: demonId, believedRole: null } : s)) };
+}
+
+/**
+ * The Demon's "Dead" token put on a player at night is its attack: they die unless demonProtection keeps them
+ * alive (a Fool then uses up their ability). An Imp who chose themself dies and a Minion becomes the Imp
+ * (impHeirs): the Scarlet Woman first; among several Minions the Storyteller picks (starPass).
+ */
+export function demonAttack(state: GrimoireState, seatId: string, demonId: string, characters: Record<string, GrimoireCharacter>): GrimoireState {
+  const seat = state.seats.find((s) => s.id === seatId);
+  if (!seat || !isPlayer(seat) || seat.dead) return state;
+  const by = demonProtection(state, seatId, characters);
+  if (by === "fool") return addReminder(state, seatId, "fool", usedToken(characters.fool, "") ?? undefined);
+  if (by) return state;
+  const heirs = demonId === "imp" && seat.role === "imp" ? impHeirs(state, seatId, characters) : [];
+  const killed = { ...state, seats: state.seats.map((s) => (s.id === seatId ? { ...s, dead: true, voteUsed: false } : s)) };
+  return heirs.length === 1 ? becomeDemon(killed, heirs[0].id, "imp", characters) : killed;
+}
+
+/**
+ * A night step's token put on a player (placeReminder). At night the Demon's "Dead" is its attack (demonAttack);
+ * the Pukka's poison moved on to tonight's player kills the one poisoned before (with the Pukka's "Dead"), not
+ * one it lay at only since earlier tonight (a tap on the wrong player).
+ */
+export function putToken(state: GrimoireState, seatId: string, roleId: string, text: string, characters: Record<string, GrimoireCharacter>): GrimoireState {
+  const c = characters[roleId];
+  const next = placeReminder(state, seatId, roleId, text, c?.reminders.filter((x) => x === text).length ?? 1);
+  if (state.phase !== "night" || next === state || !c || findRole(roleId)?.team !== "demon") return next;
+  if (c.tokenKinds[text] === "dead") return demonAttack(next, seatId, roleId, characters);
+  if (roleId !== "pukka" || c.tokenKinds[text] !== "poisoned") return next;
+  const before = remindersOf(state, roleId).find(({ reminder }) => reminder.text === text);
+  if (!before || before.seat.id === seatId || before.seat.dead || before.reminder.round === state.round) return next;
+  const dead = Object.keys(c.tokenKinds).find((x) => c.tokenKinds[x] === "dead");
+  return dead ? putToken(next, before.seat.id, roleId, dead, characters) : demonAttack(next, before.seat.id, roleId, characters);
+}
+
+/**
+ * After the Imp killed themself tonight (its "Dead" token of this round at a dead Imp): the new Imp, or the
+ * living Minions to pick one from when none is yet. Null when no Imp killed themself tonight.
+ */
+export function starPass(state: GrimoireState, characters: Record<string, GrimoireCharacter>) {
+  const imp = characters.imp;
+  const killed = players(state).some((s) => s.dead && s.role === "imp" && s.reminders.some((r) => r.roleId === "imp" && r.round === state.round && imp?.tokenKinds[r.text] === "dead"));
+  if (!killed) return null;
+  const heir = players(state).find((s) => !s.dead && s.role === "imp") ?? null;
+  return { heir, choices: heir ? [] : players(state).filter((s) => !s.dead && findRole(s.role)?.team === "minion") };
+}
+
+/**
+ * A player dies or comes back to life by the Storyteller's hand. A Minion dying in the day is executed: with a
+ * Minstrel whose ability works everyone else is drunk until dusk tomorrow (his token, see impairment); back to
+ * life, the token goes again.
+ */
+export function setDead(state: GrimoireState, seatId: string, dead: boolean, characters: Record<string, GrimoireCharacter>): GrimoireState {
+  const seat = state.seats.find((s) => s.id === seatId);
+  if (!seat) return state;
+  const changed = { ...state, seats: state.seats.map((s) => (s.id === seatId ? { ...s, dead, voteUsed: false } : s)) };
+  if (state.phase !== "day" || findRole(seat.role)?.team !== "minion") return changed;
+  const minstrel = dead ? players(state).find((s) => !s.dead && hasAbility(s, MINSTREL) && !impairment(state, s, characters)) : undefined;
+  if (dead && !minstrel) return changed;
+  // an execution starts the night and day of drunkenness again; back to life, today's goes
+  const gone = (r: GrimoireReminder) => r.roleId === MINSTREL && (dead || r.round === state.round);
+  const cleared = { ...changed, seats: changed.seats.map((s) => (s.reminders.some(gone) ? { ...s, reminders: s.reminders.filter((r) => !gone(r)) } : s)) };
+  return minstrel ? addReminder(cleared, minstrel.id, MINSTREL, characters[MINSTREL]?.reminders[0]) : cleared;
 }
 
 /** Good, evil or neither (a traveller, no character) – the colour of a seat. */

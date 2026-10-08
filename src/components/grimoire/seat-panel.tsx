@@ -9,7 +9,10 @@ import {
   MAX_SEATS,
   moveSeat,
   newGap,
+  setDead,
+  toggleReminder,
   uid,
+  usedToken,
   type GapKind,
   type GrimoireSeat,
   type GrimoireState,
@@ -77,18 +80,11 @@ export function SeatPanel({
     if (next) onSelect(next.id);
   };
   // a once-per-game ability (the Slayer's shot…) is marked used with the character's "No ability" token, or one of the grimoire's own
-  const c = seat.role ? characters[seat.role] : undefined;
-  const usedText = c ? (Object.keys(c.tokenKinds).find((text) => c.tokenKinds[text] === "noAbility") ?? (c.once ? t.abilityUsed : null)) : null;
+  const usedText = usedToken(seat.role ? characters[seat.role] : undefined, t.abilityUsed);
   const used = !!usedText && seat.reminders.some((r) => r.roleId === seat.role && r.text === usedText);
-  const toggleUsed = () =>
-    set((x) => ({
-      ...x,
-      reminders: used
-        ? x.reminders.filter((r) => !(r.roleId === x.role && r.text === usedText))
-        : [...x.reminders, { id: uid(), roleId: x.role, text: usedText! }].slice(0, MAX_REMINDERS),
-    }));
+  const toggleUsed = () => update((s) => toggleReminder(s, seat.id, seat.role, usedText!));
   const addReminder = (roleId: string | null, text: string) => {
-    set((x) => ({ ...x, reminders: [...x.reminders, { id: uid(), roleId, text }].slice(0, MAX_REMINDERS) }));
+    set((x) => ({ ...x, reminders: [...x.reminders, { id: uid(), roleId, text, round: state.round }].slice(0, MAX_REMINDERS) }));
     setPicking(null);
   };
 
@@ -193,7 +189,7 @@ export function SeatPanel({
           <button
             type="button"
             className={`${big} ${seat.dead ? "border-border bg-card" : "border-accent bg-accent text-accent-foreground"}`}
-            onClick={() => set((x) => ({ ...x, dead: !x.dead, voteUsed: false }))}
+            onClick={() => update((s) => setDead(s, seat.id, !seat.dead, characters))}
           >
             {seat.dead ? t.revive : t.kill}
           </button>

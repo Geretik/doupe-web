@@ -1,4 +1,6 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { grimoireCharacters } from "../../src/lib/grimoire/characters";
+import { impairment, impHeirs, newGrimoireState, newSeat, nextPhase, putToken, setDead, starPass, type GrimoireState } from "../../src/lib/grimoire/state";
 import { adminLogin, createAdminUser, createSession, resetDb, sql } from "./helpers";
 
 test.describe.configure({ mode: "serial" });
@@ -71,6 +73,106 @@ async function stored<T>(
     })
     .toEqual(expected);
 }
+
+// ─── pure logic ──────────────────────────────────────────────────────────────
+
+const characters = grimoireCharacters("cs");
+
+/** A game in its `round`-th night with these characters, one player each (named after the character) */
+function nightOf(roles: string[], round = 2): GrimoireState {
+  const seats = roles.map((role) => ({ ...newSeat(role), role }));
+  return { ...newGrimoireState({ id: null, name: "Test", roleIds: roles }, seats), phase: "night", round };
+}
+const at = (state: GrimoireState, role: string) => state.seats.find((s) => s.name === role)!;
+
+test("night rules: the Demon's attack kills unless the Monk, Soldier or Fool keeps the player alive", () => {
+  let state = nightOf(["imp", "poisoner", "monk", "soldier", "fool", "chef", "empath"]);
+  const attack = (role: string) => (state = putToken(state, at(state, role).id, "imp", "Mrtvý", characters));
+  state = putToken(state, at(state, "chef").id, "monk", "Chráněný", characters);
+  attack("chef");
+  attack("soldier");
+  expect([at(state, "chef").dead, at(state, "soldier").dead]).toEqual([false, false]);
+  // the Fool lives through the first death and uses up his ability
+  attack("fool");
+  expect(at(state, "fool")).toMatchObject({ dead: false, reminders: [{ text: "Mrtvý" }, { roleId: "fool", text: "Bez schopnosti" }] });
+  attack("empath");
+  expect(at(state, "empath").dead).toBe(true);
+  // a poisoned Soldier dies; the Monk's token outside the night does not matter: the token is no attack before the game
+  state = putToken(state, at(state, "soldier").id, "poisoner", "Otrávený", characters);
+  attack("soldier");
+  expect(at(state, "soldier").dead).toBe(true);
+  const before = { ...nightOf(["imp", "chef"]), phase: "setup" as const };
+  expect(at(putToken(before, at(before, "chef").id, "imp", "Mrtvý", characters), "chef").dead).toBe(false);
+});
+
+test("night rules: the Pukka's poison moved on kills the player poisoned before, unless protected", () => {
+  let state = nightOf(["pukka", "monk", "chef", "empath", "soldier", "mayor"], 1);
+  const poison = (role: string) => (state = putToken(state, at(state, role).id, "pukka", "Otrávený", characters));
+  const dead = () => state.seats.filter((s) => s.dead).map((s) => s.name);
+  const night = () => (state = nextPhase(nextPhase(state)));
+  poison("chef");
+  expect(dead()).toEqual([]);
+  night();
+  poison("empath");
+  expect(dead()).toEqual(["chef"]);
+  expect(at(state, "chef").reminders.map((r) => r.text)).toEqual(["Mrtvý"]); // dead, and healthy again
+  // the wrong player tapped and put right: the poison of tonight kills nobody
+  poison("mayor");
+  expect(dead()).toEqual(["chef"]);
+  night();
+  state = putToken(state, at(state, "mayor").id, "monk", "Chráněný", characters);
+  poison("soldier");
+  expect(at(state, "mayor").dead).toBe(false);
+  night();
+  poison("empath");
+  expect(dead()).toEqual(["chef"]); // the Soldier is safe from the Demon
+});
+
+test("night rules: an Imp who kills themself passes to the Scarlet Woman first, else the Storyteller picks a Minion", () => {
+  const passed = (roles: string[], change = (s: GrimoireState) => s) => {
+    const state = change(nightOf(roles));
+    const after = putToken(state, at(state, "imp").id, "imp", "Mrtvý", characters);
+    return { state, after, pass: starPass(after, characters) };
+  };
+  const five = ["imp", "scarletwoman", "poisoner", "baron", "chef"];
+  // 5 players alive with the Imp: the Scarlet Woman becomes the Imp, with her "Demon" token
+  const { after, pass } = passed(five);
+  expect(at(after, "imp").dead).toBe(true);
+  expect(at(after, "scarletwoman")).toMatchObject({ role: "imp", reminders: [{ roleId: "scarletwoman", text: "Démon" }] });
+  expect(pass?.heir?.name).toBe("scarletwoman");
+  // 4 alive, or the Scarlet Woman poisoned: her ability does not work, any living Minion may become the Imp
+  const four = passed(five, (s) => ({ ...s, seats: s.seats.map((x) => (x.role === "chef" ? { ...x, dead: true } : x)) }));
+  expect(four.pass).toMatchObject({ heir: null });
+  expect(four.pass?.choices.map((s) => s.name)).toEqual(["scarletwoman", "poisoner", "baron"]);
+  const poisoned = passed(five, (s) => putToken(s, at(s, "scarletwoman").id, "poisoner", "Otrávený", characters));
+  expect(impHeirs(poisoned.state, at(poisoned.state, "imp").id, characters).map((s) => s.name)).toEqual(["scarletwoman", "poisoner", "baron"]);
+  // the only living Minion becomes the Imp; none left, nobody does
+  expect(at(passed(["imp", "poisoner", "chef", "monk", "empath"]).after, "poisoner").role).toBe("imp");
+  expect(passed(["imp", "chef", "monk", "empath", "soldier"]).pass).toEqual({ heir: null, choices: [] });
+});
+
+test("night rules: a Minion executed with the Minstrel makes everyone else drunk until dusk tomorrow", () => {
+  let state: GrimoireState = { ...nightOf(["minstrel", "poisoner", "imp", "chef", "monk"], 1), phase: "day" };
+  const drunk = () => state.seats.map((s) => impairment(state, s, characters));
+  state = setDead(state, at(state, "chef").id, true, characters);
+  expect(drunk()).toEqual([null, null, null, null, null]); // a good player's execution
+  state = setDead(state, at(state, "poisoner").id, true, characters);
+  expect(drunk()).toEqual([null, "minstrel", "minstrel", "minstrel", "minstrel"]);
+  state = nextPhase(state); // night 2
+  expect(drunk()[4]).toBe("minstrel");
+  // the Monk's protection does not work drunk
+  state = putToken(state, at(state, "monk").id, "monk", "Chráněný", characters);
+  state = putToken(state, at(state, "monk").id, "imp", "Mrtvý", characters);
+  expect(at(state, "monk").dead).toBe(true);
+  state = nextPhase(nextPhase(state)); // day 2, then dusk: sober again
+  expect(drunk()).toEqual([null, null, null, null, null]);
+});
+
+test("night rules: tokens only for the character's own player", () => {
+  expect(characters.scarletwoman.selfTokens).toEqual(["Démon"]);
+  expect(characters.seamstress.selfTokens).toEqual(["Bez schopnosti"]);
+  expect(characters.poisoner.selfTokens).toEqual([]);
+});
 
 test("grimoire: from a session, hand out the bag, the first night, a death and a reminder, the game into the session's games", async ({ page }) => {
   await page.setViewportSize({ width: 1180, height: 820 }); // a tablet on its side
@@ -625,6 +727,76 @@ test("grimoire: the first night prepared before the game, the Poisoner's token a
   await expect(page.getByTestId("reminder").filter({ hasText: "Bez schopnosti" })).toHaveCount(1);
   await used.click();
   await expect(page.getByTestId("reminder").filter({ hasText: "Bez schopnosti" })).toHaveCount(0);
+});
+
+test("grimoire: a new one points at the setup; night 2: the Demon's attack, the Monk and the Soldier, the Imp passing to the Scarlet Woman", async ({ page }) => {
+  await page.setViewportSize({ width: 1180, height: 820 });
+  const sessionId = await sessionWithPlayers(["Ada", "Bára", "Cyril", "Dan", "Eva", "Filip", "Gita"]);
+  await adminLogin(page);
+  await page.goto(`/admin/termin/${sessionId}`);
+  await page.getByRole("button", { name: "Nový grimoár z tohoto termínu" }).click();
+  await expect(page.getByTestId("setup-hint")).toHaveText("Začni tady: hráči, script a postavy");
+  await openSetup(page);
+  const tokens = await openTokens(page);
+  for (const name of ["Mnich", "Voják", "Kuchař", "Empat", "Zabiják", "Šarlatová žena", "Čert"]) {
+    await tokens.getByRole("button", { name: `Do pytlíku: ${name}` }).click();
+  }
+  await closeTokens(page);
+  await dealAtRandom(page);
+  await closeSetup(page);
+  await expect(page.getByTestId("setup-hint")).toHaveCount(0);
+
+  const seats = async () => {
+    const [row] = await sql<{ state: { seats: { name: string; role: string; dead: boolean; reminders: { text: string }[] }[] } }>(
+      "select state from grimoires order by id desc limit 1",
+    );
+    return row.state.seats;
+  };
+  await expect.poll(async () => (await seats()).every((x) => x.role)).toBe(true);
+  const all = await seats();
+  const who = (role: string) => all.find((x) => x.role === role)!.name;
+
+  await page.getByRole("button", { name: "Začít hru → 1. noc" }).click();
+  await page.getByRole("button", { name: "Ráno → 1. den" }).click();
+  await page.getByRole("button", { name: "Soumrak → 2. noc" }).click();
+  await expect(page.getByTestId("phase")).toHaveText("2. noc");
+  const night = page.getByTestId("night-panel");
+
+  // the Scarlet Woman's "Demon" goes straight to her, no player to tap
+  const scarlet = night.locator("[data-step=scarletwoman]");
+  await scarlet.locator("button").nth(1).click();
+  await scarlet.getByRole("button", { name: "Démon", exact: true }).click();
+  await expect(page.getByTestId("placing")).toHaveCount(0);
+  await stored((st) => st.seats.find((x) => x.name === who("scarletwoman"))!.reminders.map((r) => r.text), ["Démon"]);
+  await scarlet.getByRole("button", { name: "✓ Démon" }).click();
+  await stored((st) => st.seats.find((x) => x.name === who("scarletwoman"))!.reminders.map((r) => r.text), []);
+
+  // the Monk protects the Chef: the Imp's attack does not kill him, nor the Soldier; the Empath dies
+  const monk = night.locator("[data-step=monk]");
+  await monk.locator("button").nth(1).click();
+  await monk.getByRole("button", { name: "Chráněný →" }).click();
+  await seat(page, who("chef")).click();
+  const imp = night.locator("[data-step=imp]");
+  await imp.locator("button").nth(1).click();
+  const attack = async (role: string) => {
+    await imp.getByRole("button", { name: "Mrtvý →" }).click();
+    await seat(page, who(role)).click();
+  };
+  await attack("chef");
+  await expect(imp.getByTestId("step-info")).toHaveText(`👉 ${who("chef")} nezemře (Mnich).`);
+  await attack("soldier");
+  await expect(imp.getByTestId("step-info")).toHaveText(`👉 ${who("soldier")} nezemře (Voják).`);
+  await attack("empath");
+  await expect(imp.getByTestId("step-info")).toHaveCount(0);
+  await expect(page.getByTestId("town")).toContainText("Živí 6 z 7");
+
+  // the Imp kills himself: with 6 alive the Scarlet Woman is the new Imp
+  await attack("imp");
+  await expect(imp.getByTestId("step-info")).toHaveText(`👉 Nový Čert: ${who("scarletwoman")} (Šarlatová žena).`);
+  await expect(page.getByTestId("town")).toContainText("Živí 5 z 7");
+  await expect.poll(async () => (await seats()).filter((x) => x.role === "imp").map((x) => [x.name, x.dead])).toEqual(
+    all.filter((x) => ["imp", "scarletwoman"].includes(x.role)).map((x) => [x.name, x.role === "imp"]),
+  );
 });
 
 test("grimoire: only administrators delete grimoires, also another account's finished one", async ({ page, browser }) => {

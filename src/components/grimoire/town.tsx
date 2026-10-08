@@ -190,7 +190,8 @@ export function Town({
             );
           })}
           {n === 0 && (
-            <p className="absolute inset-x-0 text-center text-muted" style={{ top: cy - 12 }}>
+            // under the phase in the middle
+            <p className="absolute inset-x-0 text-center text-muted" style={{ top: cy + 24 }}>
               {t.noSeats}
             </p>
           )}

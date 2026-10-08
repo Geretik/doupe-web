@@ -1,10 +1,16 @@
 "use client";
 
+import { findRole } from "@/lib/botc-roles";
 import {
+  becomeDemon,
+  demonProtection,
   evilLivingNeighbours,
   evilPairs,
   impairment,
   remindersOf,
+  starPass,
+  toggleReminder,
+  usedToken,
   type GrimoireState,
   type NightStep,
   type SpecialStep,
@@ -101,7 +107,7 @@ export function NightPanel({
                   </span>
                 </button>
               </div>
-              {open && text && <p className="px-3 pb-2 text-sm leading-snug">{text}</p>}
+              {open && text && <p className="px-3 pb-2 text-sm leading-snug whitespace-pre-line">{text.replace(/<\/?br\s*\/?>/gi, "\n")}</p>}
               {open && step.roleId && (
                 <StepHelp roleId={step.roleId} woken={woken} placing={placing} onPlace={onPlace} canPlace={!readOnly} />
               )}
@@ -132,8 +138,10 @@ export function NightPanel({
 
 /**
  * Under a character's step: a warning when its player may get false information, what to show worked out
- * from the town (the Chef's and Empath's number, the character and two players of a Washerwoman…),
- * the character's reminder tokens to put on a player and where they lie.
+ * from the town (the Chef's and Empath's number, the character and two players of a Washerwoman…), who the
+ * Demon's attack did not kill and the Imp's heir, the character's reminder tokens to put on a player and
+ * where they lie. A token of the character's own player ("No ability", the Scarlet Woman's "Demon") goes
+ * straight to them.
  */
 function StepHelp({
   roleId,
@@ -148,14 +156,24 @@ function StepHelp({
   onPlace: (placing: Placing | null) => void;
   canPlace: boolean;
 }) {
-  const { state, characters, locale, t } = useGrimoire();
+  const { state, update, characters, locale, t } = useGrimoire();
   const c = characters[roleId];
   if (!c) return null;
-  const tokens = [...new Set(c.reminders)];
+  const used = usedToken(c, t.abilityUsed);
+  const own = new Set([...c.selfTokens, ...(used ? [used] : [])]);
+  const tokens = [...new Set([...c.reminders, ...own])];
+  // the player the character's own tokens go to: only when one player wakes for it
+  const self = woken.length === 1 ? woken[0] : null;
   const placed = remindersOf(state, roleId);
   const info = infoLines(state, roleId, woken, characters, locale, t);
+  const pass = roleId === "imp" && state.phase === "night" ? starPass(state, characters) : null;
+  const imp = nameOf("imp", locale);
+  if (pass?.heir) {
+    const scarletWoman = pass.heir.reminders.some((r) => r.roleId === "scarletwoman");
+    info.push(fill(t.newDemon, { role: imp, name: `${pass.heir.name || "?"}${scarletWoman ? ` (${nameOf("scarletwoman", locale)})` : ""}` }));
+  } else if (pass && !pass.choices.length) info.push(t.noHeir);
   const warnings = woken.flatMap((s) => {
-    const why = impairment(s, characters);
+    const why = impairment(state, s, characters);
     return why ? [fill(t.impaired[why], { name: s.name || "?" })] : [];
   });
   if (!info.length && !warnings.length && !tokens.length) return null;
@@ -171,6 +189,24 @@ function StepHelp({
           👉 {line}
         </p>
       ))}
+      {pass && !pass.heir && pass.choices.length > 0 && canPlace && (
+        <div className="flex flex-col gap-1.5 rounded-md bg-amber-400/15 px-2 py-1.5" data-testid="imp-heirs">
+          <p className="font-semibold">👉 {fill(t.pickHeir, { role: imp })}</p>
+          <div className="flex flex-wrap gap-1.5">
+            {pass.choices.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => update((x) => becomeDemon(x, s.id, "imp", characters))}
+                className="flex min-h-10 items-center gap-1.5 rounded-full border border-accent bg-card px-2.5 text-sm font-medium hover:bg-accent/10"
+              >
+                {s.role && <RoleIcon roleId={s.role} size={20} />}
+                {s.name || "?"}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       {placed.length > 0 && (
         <p className="text-xs text-muted">
           {placed.map(({ seat, reminder }) => `${reminder.text}: ${seat.name || "?"}`).join(" · ")}
@@ -179,6 +215,21 @@ function StepHelp({
       {canPlace && tokens.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {tokens.map((text) => {
+            if (self && own.has(text)) {
+              const on = self.reminders.some((r) => r.roleId === roleId && r.text === text);
+              return (
+                <button
+                  key={text}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => update((s) => toggleReminder(s, self.id, roleId, text))}
+                  className={`flex min-h-10 items-center gap-1.5 rounded-full border px-2.5 text-xs font-medium ${on ? "border-border bg-border/40 text-muted" : "border-accent bg-card text-accent hover:bg-accent/10"}`}
+                >
+                  <RoleIcon roleId={roleId} size={20} />
+                  {on ? `✓ ${text}` : text}
+                </button>
+              );
+            }
             const active = placing?.roleId === roleId && placing.text === text;
             return (
               <button
@@ -216,6 +267,15 @@ function infoLines(
     const wrong = placed.find(({ reminder }) => c.tokenKinds[reminder.text] === "wrong");
     if (!right || !wrong) return [t.infoPlaceTokens];
     return [fill(t.infoShow, { role: nameOf(right.seat.role, locale), a: right.seat.name || "?", b: wrong.seat.name || "?" })];
+  }
+  // the Demon's attacks tonight that did not kill: who or what kept the player alive
+  if (findRole(roleId)?.team === "demon") {
+    if (state.phase !== "night") return [];
+    return remindersOf(state, roleId).flatMap(({ seat, reminder }) => {
+      if (seat.dead || reminder.round !== state.round || c.tokenKinds[reminder.text] !== "dead") return [];
+      const by = seat.reminders.some((r) => r.roleId === "fool" && r.round === state.round) ? "fool" : demonProtection(state, seat.id, characters);
+      return by ? [fill(t.survives, { name: seat.name || "?", role: nameOf(by, locale) })] : [];
+    });
   }
   if (roleId === "chef") return [fill(t.infoNumber, { n: evilPairs(state) })];
   if (roleId === "empath") {

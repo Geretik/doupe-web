@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { Locale } from "@/i18n/dictionaries";
 import type { GrimoireCharacter } from "@/lib/grimoire/characters";
-import { isPlayer, moveSeat, nextPhase, nightSteps, placeReminder, type GrimoireState } from "@/lib/grimoire/state";
+import { isPlayer, moveSeat, nextPhase, nightSteps, putToken, type GrimoireState } from "@/lib/grimoire/state";
 import { useAutosave, type SaveStatus } from "./autosave";
 import { DrawView } from "./draw";
 import { fill } from "@/lib/grimoire/text";
@@ -72,6 +72,9 @@ export function Grimoire({
   const state = history.present;
   const [tab, setTab] = useState<Tab>(initial.state.phase === "night" ? "night" : "seat");
   const [setupOpen, setSetupOpen] = useState(false);
+  // a new grimoire points at the setup until it is opened once
+  const [setupSeen, setSetupSeen] = useState(false);
+  const setupButton = useRef<HTMLButtonElement>(null);
   const [placing, setPlacing] = useState<Placing | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   // the players' draw started from the setup takes the screen; afterwards nobody is selected
@@ -155,8 +158,7 @@ export function Grimoire({
   const tapSeat = (seatId: string) => {
     const seat = state.seats.find((s) => s.id === seatId);
     if (placing && seat && isPlayer(seat)) {
-      const copies = characters[placing.roleId]?.reminders.filter((x) => x === placing.text).length ?? 1;
-      update((s) => placeReminder(s, seatId, placing.roleId, placing.text, copies));
+      update((s) => putToken(s, seatId, placing.roleId, placing.text, characters));
       setPlacing(null);
       return;
     }
@@ -176,6 +178,15 @@ export function Grimoire({
   const tabs: Tab[] = state.phase === "night" || preview ? ["night", "seat"] : ["seat"];
   // after "undo" out of a night the night tab is gone
   const shown = tabs.includes(tab) ? tab : "seat";
+  const setupHint = canEdit && !setupSeen && state.phase === "setup" && state.bag.length === 0 && !state.seats.some((s) => s.role);
+  const openSetup = () => {
+    setSetupOpen(true);
+    setSetupSeen(true);
+  };
+  // on a phone the button is under the town, below the fold: brought into view
+  useEffect(() => {
+    if (setupHint) setupButton.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [setupHint]);
 
   return (
     <GrimoireContext.Provider value={context}>
@@ -322,13 +333,20 @@ export function Grimoire({
                     />
                   )}
                 </div>
-                <div className="grid grid-cols-2 gap-2 border-t border-border p-2">
+                <div className="relative grid grid-cols-2 gap-2 border-t border-border p-2">
+                  {setupHint && (
+                    <div className="pointer-events-none absolute bottom-full left-2 z-10 mb-1 flex flex-col items-start motion-safe:animate-bounce" data-testid="setup-hint">
+                      <span className="rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-accent-foreground shadow-md">{t.setupHint}</span>
+                      <span className="ml-8 border-x-8 border-t-8 border-x-transparent border-t-accent" aria-hidden />
+                    </div>
+                  )}
                   <button
+                    ref={setupButton}
                     type="button"
-                    onClick={() => setSetupOpen(true)}
+                    onClick={openSetup}
                     className={`min-h-11 rounded-lg border px-3 text-sm font-semibold ${
                       state.phase === "setup" && canEdit ? "border-accent bg-accent text-accent-foreground" : "border-border bg-card hover:border-accent/50"
-                    }`}
+                    } ${setupHint ? "ring-4 ring-accent/40 motion-safe:animate-pulse" : ""}`}
                     data-testid="setup-button"
                   >
                     ⚙️ {t.tabs.setup}

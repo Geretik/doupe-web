@@ -64,6 +64,29 @@ export const changelog: ChangelogEntry[] = [
       },
       { for: "organizers", text: "Grimoár: celá obrazovka skryje hlavičku, menu i patičku webu – i na telefonu, kde prohlížeč celou obrazovku neumí." },
       { for: "organizers", text: "Grimoár: výběr hráče zrušíš ✕ v panelu, dalším ťuknutím na hráče nebo ťuknutím do prázdného místa v kruhu." },
+      {
+        for: "organizers",
+        text: "Grimoár, noc: hráč, na kterého Démon položí žeton „Mrtvý“, zemře – ledaže ho chrání Mnich, Hostinský nebo Čajová dáma, nebo je to Voják, Námořník či Šašek (ten poprvé). U kroku Démona je napsané, kdo nezemřel a proč; opilý nebo otrávený ochránce nechrání.",
+        href: "/admin/grimoary",
+      },
+      {
+        for: "organizers",
+        text: "Grimoár: Pukka – když u jeho kroku přesuneš jed na nového hráče, ten otrávený minulou noc zemře (zase s výjimkou chráněných) a dostane žeton „Mrtvý“.",
+      },
+      {
+        for: "organizers",
+        text: "Grimoár: když Čert zabije sám sebe, novým Čertem se stane Šarlatová žena (je-li naživu aspoň 5 hráčů a není opilá ani otrávená), jinak jediný živý Přisluhovač; je-li jich víc, krok Čerta nabídne, koho vybrat.",
+      },
+      {
+        for: "organizers",
+        text: "Grimoár: žetony, které patří jen hráči samotnému („Bez schopnosti“ Švadleny a dalších, „Démon“ Šarlatové ženy), se u kroku noci položí rovnou jemu – na hráče se už neťuká.",
+      },
+      {
+        for: "organizers",
+        text: "Grimoár: když ve dne zemře Přisluhovač a ve hře je Pěvec, dostane Pěvec žeton „Všichni jsou opilí“ a noc u ostatních hráčů upozorní, že jsou opilí (opilý Mnich nechrání, opilý Voják zemře). Žeton zmizí za soumraku dalšího dne.",
+      },
+      { for: "organizers", text: "Grimoár: nový grimoár ukáže na tlačítko Příprava, kde začít; na telefonu k němu posune stránku." },
+      { for: "organizers", text: "Grimoár: texty kroků noci se zalamují na řádky místo „<br/>“." },
     ],
   },
   {

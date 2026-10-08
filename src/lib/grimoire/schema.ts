@@ -26,7 +26,7 @@ export const grimoireStateSchema: z.ZodType<GrimoireState> = z.object({
         dead: z.boolean(),
         voteUsed: z.boolean(),
         reminders: z
-          .array(z.object({ id: shortId, roleId: roleId.nullable(), text: z.string().trim().min(1).max(80) }))
+          .array(z.object({ id: shortId, roleId: roleId.nullable(), text: z.string().trim().min(1).max(80), round: z.number().int().min(0).max(99).optional() }))
           .max(MAX_REMINDERS),
       }),
     )
