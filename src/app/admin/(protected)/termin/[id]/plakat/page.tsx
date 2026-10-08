@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { PrintButton } from "@/components/admin/print-button";
+import { PrintButton } from "@/modules/botc/components/admin/print-button";
 import { getDict } from "@/i18n/server";
 import { requireAdmin } from "@/lib/admin-auth";
-import { sessionUrl } from "@/lib/ics";
-import { getSessionWithCount } from "@/lib/queries";
+import { sessionUrl } from "@/modules/botc/lib/ics";
+import { getSessionWithCount } from "@/modules/botc/lib/queries";
 import { siteName } from "@/lib/site";
 import { formatRange } from "@/lib/time";
 import { parseId } from "@/lib/validation";

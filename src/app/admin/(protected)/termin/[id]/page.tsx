@@ -1,32 +1,19 @@
 import { fullName } from "@/lib/names";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import {
-  adminCancelRegistrationAction,
-  adminConfirmWaitlistedAction,
-  adminErasePlayerAction,
-  adminResendLinkAction,
-  adminRestoreRegistrationAction,
-  announceDiscordAction,
-  deleteGameAction,
-  deleteSessionAction,
-  sendRemindersNowAction,
-  setRegistrationStateAction,
-  setScriptPollClosedAction,
-  updateSessionAction,
-} from "@/app/actions/admin";
-import { createGrimoireAction } from "@/app/actions/grimoire";
+import { adminCancelRegistrationAction, adminConfirmWaitlistedAction, adminErasePlayerAction, adminResendLinkAction, adminRestoreRegistrationAction, announceDiscordAction, deleteGameAction, deleteSessionAction, sendRemindersNowAction, setRegistrationStateAction, setScriptPollClosedAction, updateSessionAction } from "@/modules/botc/actions/sessions";
+import { createGrimoireAction } from "@/modules/botc/actions/grimoire";
 import { ActionButton } from "@/components/admin/action-button";
-import { AttendanceToggle } from "@/components/admin/attendance-toggle";
-import { BroadcastForm } from "@/components/admin/broadcast-form";
-import { DeleteSessionButton } from "@/components/admin/delete-session-button";
-import { EditablePlayerItem, EditablePlayerRow, type EditPlayerLabels, type EditPlayerProps } from "@/components/admin/edit-player";
-import { GameForm, GameItem, type GameFormLabels, type RosterPlayer } from "@/components/admin/game-form";
-import { GameRoster } from "@/components/game-roster";
-import { GrimoireLink } from "@/components/grimoire/grimoire-link";
-import { PresenceChart } from "@/components/admin/presence-chart";
-import { QuickRegistrationForm } from "@/components/admin/quick-registration-form";
-import { SessionForm } from "@/components/admin/session-form";
+import { AttendanceToggle } from "@/modules/botc/components/admin/attendance-toggle";
+import { BroadcastForm } from "@/modules/botc/components/admin/broadcast-form";
+import { DeleteSessionButton } from "@/modules/botc/components/admin/delete-session-button";
+import { EditablePlayerItem, EditablePlayerRow, type EditPlayerLabels, type EditPlayerProps } from "@/modules/botc/components/admin/edit-player";
+import { GameForm, GameItem, type GameFormLabels, type RosterPlayer } from "@/modules/botc/components/admin/game-form";
+import { GameRoster } from "@/modules/botc/components/game-roster";
+import { GrimoireLink } from "@/modules/botc/components/grimoire/grimoire-link";
+import { PresenceChart } from "@/modules/botc/components/admin/presence-chart";
+import { QuickRegistrationForm } from "@/modules/botc/components/admin/quick-registration-form";
+import { SessionForm } from "@/modules/botc/components/admin/session-form";
 import { SubmitButton } from "@/components/admin/submit-button";
 import { Alert, Card } from "@/components/ui";
 import type { Registration } from "@/db/schema";
@@ -35,16 +22,16 @@ import { plural } from "@/i18n/plural";
 import { getDict } from "@/i18n/server";
 import { requireAdmin } from "@/lib/admin-auth";
 import { discordConfigured } from "@/lib/discord";
-import { getFormSuggestions } from "@/lib/form-suggestions";
-import { listGrimoires } from "@/lib/grimoire/service";
-import { getSessionWithCount, listGamesForSession, listRegistrationsForSession } from "@/lib/queries";
-import { presenceByHour } from "@/lib/presence";
-import { countPendingReminders } from "@/lib/reminders";
+import { getFormSuggestions } from "@/modules/botc/lib/form-suggestions";
+import { listGrimoires } from "@/modules/botc/lib/grimoire/service";
+import { getSessionWithCount, listGamesForSession, listRegistrationsForSession } from "@/modules/botc/lib/queries";
+import { presenceByHour } from "@/modules/botc/lib/presence";
+import { countPendingReminders } from "@/modules/botc/lib/reminders";
 import { dateToPragueLocal, formatDate, formatShortDate, formatTime } from "@/lib/time";
-import { effectiveRegistrationState, scheduledOpening } from "@/lib/registration-state";
+import { effectiveRegistrationState, scheduledOpening } from "@/modules/botc/lib/registration-state";
 import { hasEmail, isAnonymized, isErased, playerPseudonym, RETENTION_DAYS, shownEmail } from "@/lib/retention";
-import { storytellerStats, type StorytellerStats } from "@/lib/stats";
-import { byVotes, scriptPollOpen, scriptPollResults } from "@/lib/script-poll";
+import { storytellerStats, type StorytellerStats } from "@/modules/botc/lib/stats";
+import { byVotes, scriptPollOpen, scriptPollResults } from "@/modules/botc/lib/script-poll";
 import { editUrl } from "@/lib/site";
 import { parseId } from "@/lib/validation";
 

@@ -1,12 +1,12 @@
 // `npm run botc-data [path]`: copies what the grimoire needs about each character – ability, night order with
 // the Storyteller's texts, reminder tokens, jinxes – from the club's script tool (github.com/Geretik/boardgames,
 // apps/botc/src/data) into src/data/botc-characters.json, in English and Czech. Run it after the script tool's
-// data changes; the new file goes live with the next deploy. Only characters the site knows (lib/botc-roles)
+// data changes; the new file goes live with the next deploy. Only characters the site knows (modules/botc/lib/botc-roles)
 // are copied, so no Fabled or Loric.
 // Path: the boardgames repo (default ../boardgames next to this repo).
 import { readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { botcRoles } from "../src/lib/botc-roles.ts";
+import { botcRoles } from "../src/modules/botc/lib/botc-roles.ts";
 
 const repo = resolve(process.argv[2] ?? join(import.meta.dirname, "../../boardgames"));
 const dataDir = join(repo, "apps/botc/src/data");

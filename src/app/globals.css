@@ -46,7 +46,7 @@ body {
   font-family: var(--font-sans), system-ui, sans-serif;
 }
 
-/* the grimoire in full screen (components/grimoire): only the grimoire, none of the site's header, menus or footer */
+/* the grimoire in full screen (modules/botc/components/grimoire): only the grimoire, none of the site's header, menus or footer */
 html.grimoire-focus body > header,
 html.grimoire-focus body > footer,
 html.grimoire-focus [data-admin-nav] {
@@ -57,7 +57,7 @@ html.grimoire-focus main {
   padding-bottom: 0.75rem;
 }
 
-/* the card shown to a player at night (components/grimoire/show): dark whatever the device's theme, so the tablet
+/* the card shown to a player at night (modules/botc/components/grimoire/show): dark whatever the device's theme, so the tablet
    does not light up the room; the dark theme's colours */
 .night-card {
   --background: #16120f;

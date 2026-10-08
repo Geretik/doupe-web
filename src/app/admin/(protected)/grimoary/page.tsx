@@ -1,12 +1,12 @@
-import { createGrimoireAction } from "@/app/actions/grimoire";
+import { createGrimoireAction } from "@/modules/botc/actions/grimoire";
 import { SubmitButton } from "@/components/admin/submit-button";
-import { DeleteGrimoireButton } from "@/components/grimoire/delete-grimoire";
-import { GrimoireLink } from "@/components/grimoire/grimoire-link";
+import { DeleteGrimoireButton } from "@/modules/botc/components/grimoire/delete-grimoire";
+import { GrimoireLink } from "@/modules/botc/components/grimoire/grimoire-link";
 import { Alert, Card, Field, inputClass } from "@/components/ui";
 import type { Dict, Locale } from "@/i18n/dictionaries";
 import { getDict } from "@/i18n/server";
 import { hasRole, requireAdmin } from "@/lib/admin-auth";
-import { grimoireScripts, grimoireSessions, listGrimoires, type GrimoireListItem } from "@/lib/grimoire/service";
+import { grimoireScripts, grimoireSessions, listGrimoires, type GrimoireListItem } from "@/modules/botc/lib/grimoire/service";
 import { formatShortDate } from "@/lib/time";
 
 export default async function GrimoiresPage({ searchParams }: { searchParams: Promise<{ nenalezeno?: string }> }) {

@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import QRCode from "qrcode";
 import { db } from "@/db";
 import { sessions } from "@/db/schema";
-import { sessionUrl } from "./ics";
+import { sessionUrl } from "@/modules/botc/lib/ics";
 import { parseId } from "./validation";
 
 /** The session's public sign-up URL, or null for an unknown id (route handlers answer 404). */

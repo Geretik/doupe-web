@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { MyGamesForm } from "@/components/my-games-form";
+import { MyGamesForm } from "@/modules/botc/components/my-games-form";
 import { Card } from "@/components/ui";
 import { getDict } from "@/i18n/server";
 

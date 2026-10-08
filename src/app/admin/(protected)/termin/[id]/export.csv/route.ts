@@ -4,7 +4,7 @@ import { sessions } from "@/db/schema";
 import type { Dict } from "@/i18n/dictionaries";
 import { getDict } from "@/i18n/server";
 import { isAdmin } from "@/lib/admin-auth";
-import { listRegistrationsForSession } from "@/lib/queries";
+import { listRegistrationsForSession } from "@/modules/botc/lib/queries";
 import { shownEmail } from "@/lib/retention";
 import { formatTime } from "@/lib/time";
 import { parseId } from "@/lib/validation";

@@ -215,7 +215,7 @@ export const draftCs = {
     inviteBody: (inviter: string, name: string, role: string) =>
       `${inviter} tě zve do draftu „${name}“ (${role}). Pozvánku přijmeš nebo odmítneš tady:`,
     turnSubject: (name: string) => `Čeká se na tvůj pick: ${name}`,
-    /** hours = TURN_REMINDER_HOURS in lib/draft/events.ts */
+    /** hours = TURN_REMINDER_HOURS in modules/botc/lib/draft/events.ts */
     turnBody: (name: string, pick: number, hours: number) =>
       `v draftu „${name}“ jsi na tahu (pick č. ${pick}) už ${hours} hodin a ostatní čekají. Vybrat můžeš tady:`,
     completedSubject: (name: string) => `Draft skončil: ${name}`,

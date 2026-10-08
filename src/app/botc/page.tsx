@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import { EditPencil } from "@/components/edit-pencil";
-import { SessionCard } from "@/components/session-card";
+import { SessionCard } from "@/modules/botc/components/session-card";
 import { getDict } from "@/i18n/server";
 import { isAdmin } from "@/lib/admin-auth";
-import { feedIcsUrl } from "@/lib/ics";
-import { listUpcomingSessions } from "@/lib/queries";
+import { feedIcsUrl } from "@/modules/botc/lib/ics";
+import { listUpcomingSessions } from "@/modules/botc/lib/queries";
 import { getPageTexts } from "@/lib/site-content";
 
 export const dynamic = "force-dynamic";

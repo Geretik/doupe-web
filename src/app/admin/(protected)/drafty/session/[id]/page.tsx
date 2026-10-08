@@ -1,6 +1,6 @@
 import { notFound, permanentRedirect } from "next/navigation";
 import { requireAdmin } from "@/lib/admin-auth";
-import { draftIdOfSession } from "@/lib/draft/queries";
+import { draftIdOfSession } from "@/modules/botc/lib/draft/queries";
 import { parseId } from "@/lib/validation";
 
 /** Address of a draft's run from before October 2026 (it is in e-mails already sent): now the draft's page. */

@@ -1,15 +1,15 @@
 import Link from "next/link";
-import { createLibraryScriptAction } from "@/app/actions/scripts";
-import { LibraryScriptForm } from "@/components/admin/library-script-form";
+import { createLibraryScriptAction } from "@/modules/botc/actions/scripts";
+import { LibraryScriptForm } from "@/modules/botc/components/admin/library-script-form";
 import { Card } from "@/components/ui";
 import { getDict } from "@/i18n/server";
 import { requireAdmin } from "@/lib/admin-auth";
-import { listScripts, scriptExtras } from "@/lib/scripts";
+import { listScripts, scriptExtras } from "@/modules/botc/lib/scripts";
 import { formatDay } from "@/lib/time";
 
 export const dynamic = "force-dynamic";
 
-/** The club's library of scripts (lib/scripts): every account sees them all and may add one. */
+/** The club's library of scripts (modules/botc/lib/scripts): every account sees them all and may add one. */
 export default async function ScriptsPage() {
   await requireAdmin();
   const [{ locale, t }, rows] = await Promise.all([getDict(), listScripts()]);

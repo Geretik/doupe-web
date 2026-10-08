@@ -1,13 +1,13 @@
 import Link from "next/link";
-import { EditRegistrationForm } from "@/components/edit-registration-form";
-import { ScriptVoteForm } from "@/components/script-vote-form";
+import { EditRegistrationForm } from "@/modules/botc/components/edit-registration-form";
+import { ScriptVoteForm } from "@/modules/botc/components/script-vote-form";
 import { Alert, Card } from "@/components/ui";
 import { getDict } from "@/i18n/server";
-import { CalendarLinks } from "@/components/calendar-links";
-import { getRegistrationByToken, waitlistPosition } from "@/lib/queries";
+import { CalendarLinks } from "@/modules/botc/components/calendar-links";
+import { getRegistrationByToken, waitlistPosition } from "@/modules/botc/lib/queries";
 import { formatDate, formatTime } from "@/lib/time";
 import { shownEmail } from "@/lib/retention";
-import { scriptPollOpen, scriptPollResults, votesOf } from "@/lib/script-poll";
+import { scriptPollOpen, scriptPollResults, votesOf } from "@/modules/botc/lib/script-poll";
 
 export const dynamic = "force-dynamic";
 

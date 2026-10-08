@@ -1,7 +1,7 @@
 import type { Session } from "@/db/schema";
 import { dictionaries } from "@/i18n/dictionaries";
-import { sessionUrl } from "./ics";
-import { effectiveRegistrationState, scheduledOpening } from "./registration-state";
+import { sessionUrl } from "@/modules/botc/lib/ics";
+import { effectiveRegistrationState, scheduledOpening } from "@/modules/botc/lib/registration-state";
 import { formatRange, formatShortDate, formatTime } from "./time";
 
 export function discordConfigured() {

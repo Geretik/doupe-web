@@ -1,7 +1,7 @@
 import { gte } from "drizzle-orm";
 import { db } from "@/db";
 import { sessions } from "@/db/schema";
-import { buildIcs } from "@/lib/ics";
+import { buildIcs } from "@/modules/botc/lib/ics";
 import { siteName } from "@/lib/site";
 
 export const dynamic = "force-dynamic";

@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { Grimoire } from "@/components/grimoire/grimoire";
+import { Grimoire } from "@/modules/botc/components/grimoire/grimoire";
 import { getDict } from "@/i18n/server";
 import { requireAdmin } from "@/lib/admin-auth";
-import { grimoireCharacters } from "@/lib/grimoire/characters";
-import { canDeleteGrimoire, canEditGrimoire, canViewGrimoire, getGrimoire, grimoireScripts, sessionPlayers } from "@/lib/grimoire/service";
+import { grimoireCharacters } from "@/modules/botc/lib/grimoire/characters";
+import { canDeleteGrimoire, canEditGrimoire, canViewGrimoire, getGrimoire, grimoireScripts, sessionPlayers } from "@/modules/botc/lib/grimoire/service";
 import { parseId } from "@/lib/validation";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {

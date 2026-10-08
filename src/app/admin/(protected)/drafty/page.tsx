@@ -1,9 +1,9 @@
 import Link from "next/link";
-import { StatusBadge, YourTurnBadge } from "@/components/draft/view";
+import { StatusBadge, YourTurnBadge } from "@/modules/botc/components/draft/view";
 import { Card } from "@/components/ui";
 import { getDict } from "@/i18n/server";
 import { requireAdmin } from "@/lib/admin-auth";
-import { listDraftsFor } from "@/lib/draft/queries";
+import { listDraftsFor } from "@/modules/botc/lib/draft/queries";
 
 export default async function DraftsPage() {
   const me = await requireAdmin();

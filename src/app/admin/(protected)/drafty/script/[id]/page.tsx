@@ -1,19 +1,19 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { saveScriptAction, saveScriptToLibraryAction } from "@/app/actions/draft";
+import { saveScriptAction, saveScriptToLibraryAction } from "@/modules/botc/actions/draft";
 import { ActionButton } from "@/components/admin/action-button";
-import { sideClass, sortByShownName, TeamRows } from "@/components/draft/role-chips";
-import { DraftScriptForm } from "@/components/draft/script-form";
-import { splitByGroup } from "@/components/draft/team-section";
+import { sideClass, sortByShownName, TeamRows } from "@/modules/botc/components/draft/role-chips";
+import { DraftScriptForm } from "@/modules/botc/components/draft/script-form";
+import { splitByGroup } from "@/modules/botc/components/draft/team-section";
 import { Card } from "@/components/ui";
 import { db } from "@/db";
 import { getDict } from "@/i18n/server";
 import { requireAdmin } from "@/lib/admin-auth";
-import { findRole, roleName } from "@/lib/botc-roles";
-import { getScript } from "@/lib/draft/queries";
-import { scriptToolLink } from "@/lib/draft/script";
-import { loadSessionRows } from "@/lib/draft/service";
-import { runtime, sessionAccess } from "@/lib/draft/state";
+import { findRole, roleName } from "@/modules/botc/lib/botc-roles";
+import { getScript } from "@/modules/botc/lib/draft/queries";
+import { scriptToolLink } from "@/modules/botc/lib/draft/script";
+import { loadSessionRows } from "@/modules/botc/lib/draft/service";
+import { runtime, sessionAccess } from "@/modules/botc/lib/draft/state";
 import { parseId } from "@/lib/validation";
 
 const pill = "rounded-md border border-border bg-card px-3 py-2 text-sm hover:border-accent";

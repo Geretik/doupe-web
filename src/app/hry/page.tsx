@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import data from "@/data/game-collection.json";
-import { GameList } from "@/components/game-list";
+import { GameList } from "@/modules/botc/components/game-list";
 import { getDict } from "@/i18n/server";
 import { formatDay } from "@/lib/time";
 import { CLUB_COLLECTION_URL, type CollectionGame } from "@/lib/zatrolene";

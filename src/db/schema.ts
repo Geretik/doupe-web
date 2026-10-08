@@ -10,8 +10,8 @@ import {
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
-import type { RoleEdition, RoleTeam } from "../lib/botc-roles";
-import type { GrimoireState } from "../lib/grimoire/state";
+import type { RoleEdition, RoleTeam } from "@/modules/botc/lib/botc-roles";
+import type { GrimoireState } from "@/modules/botc/lib/grimoire/state";
 
 export const cities = ["olomouc", "praha"] as const;
 export type City = (typeof cities)[number];
@@ -50,7 +50,7 @@ export const sessions = pgTable("sessions", {
   phoneRequired: boolean("phone_required").notNull().default(true),
   /** New sign-ups only while "open"; players already signed up can always edit or cancel */
   registrationState: text("registration_state", { enum: registrationStates }).notNull().default("open"),
-  /** Closed sign-ups open on their own at this moment (see lib/registration-state) */
+  /** Closed sign-ups open on their own at this moment (see modules/botc/lib/registration-state) */
   registrationOpensAt: timestamp("registration_opens_at", { withTimezone: true }),
   /** Links to scripts played that evening (botcscripts.com, script tool, PDF on a drive, …) */
   scripts: jsonb("scripts").$type<ScriptLink[]>().notNull().default([]),
@@ -185,7 +185,7 @@ export const gamePlayers = pgTable(
     registrationId: integer("registration_id")
       .notNull()
       .references(() => registrations.id, { onDelete: "cascade" }),
-    /** Character id from src/lib/botc-roles.ts ("washerwoman") or "storyteller"; null = did not play this game */
+    /** Character id from src/modules/botc/lib/botc-roles.ts ("washerwoman") or "storyteller"; null = did not play this game */
     role: text("role"),
     /** The character tied to `role`: who a Drunk, Lunatic or Marionette thought they were, which Townsfolk the Pixie learned, whose ability the Philosopher or Apprentice took (null = not entered) */
     believedRole: text("believed_role"),
@@ -355,7 +355,7 @@ export const siteTexts = pgTable(
 );
 
 /**
- * The club's library of Blood on the Clocktower scripts (admin → Scripty, lib/scripts): JSON files in the official
+ * The club's library of Blood on the Clocktower scripts (admin → Scripty, modules/botc/lib/scripts): JSON files in the official
  * script format that every account sees; the session form offers them with a link to the script tool.
  */
 export const scripts = pgTable("scripts", {
@@ -364,7 +364,7 @@ export const scripts = pgTable("scripts", {
   author: text("author"),
   /** The script's JSON with `name` and `author` written into its "_meta"; downloaded as it is */
   json: text("json").notNull(),
-  /** The characters of `json` this site knows (lib/botc-roles), for showing them; Fabled and homebrew are only in `json` */
+  /** The characters of `json` this site knows (modules/botc/lib/botc-roles), for showing them; Fabled and homebrew are only in `json` */
   roleIds: jsonb("role_ids").$type<string[]>().notNull(),
   createdBy: integer("created_by").references(() => adminUsers.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -380,7 +380,7 @@ export const jobRuns = pgTable("job_runs", {
 });
 
 /*
- * Drafts (lib/draft). A draft is one draft as people see it: the row in `drafts` holds its setup – which
+ * Drafts (modules/botc/lib/draft). A draft is one draft as people see it: the row in `drafts` holds its setup – which
  * characters are offered, which of them are drafted together as one bundle – and its one row in
  * `draft_sessions` holds the run: mode, members, turn, picks, pools, scripts. Created together, one to one
  * (until October 2026 a Draft could have several sessions; the tables stayed so that nothing had to move).
@@ -391,7 +391,7 @@ export type DraftModeId = (typeof draftModeIds)[number];
 
 /**
  * Which characters a Draft offers: those of the chosen editions and teams, or a hand-picked list
- * (character ids from lib/botc-roles, e.g. "washerwoman").
+ * (character ids from modules/botc/lib/botc-roles, e.g. "washerwoman").
  */
 export type DraftRoleSource =
   | { kind: "filter"; editions: RoleEdition[]; teams: RoleTeam[] }
@@ -412,7 +412,7 @@ export const drafts = pgTable("drafts", {
 
 /**
  * Stored states of a session. "Waiting for players" and "ready" are not stored: they follow from the
- * members and the settings while it is "preparing" (lib/draft/state), so they cannot go stale when
+ * members and the settings while it is "preparing" (modules/botc/lib/draft/state), so they cannot go stale when
  * somebody declines.
  */
 export const draftSessionStatuses = ["preparing", "active", "completed", "cancelled"] as const;
@@ -568,7 +568,7 @@ export const draftScripts = pgTable(
     roleIds: jsonb("role_ids").$type<string[]>().notNull(),
     /** Raised on every save; a save from a page with an older version is refused instead of overwriting */
     version: integer("version").notNull().default(1),
-    /** Its copy in the club's library (lib/scripts), which "save to the library" overwrites from then on */
+    /** Its copy in the club's library (modules/botc/lib/scripts), which "save to the library" overwrites from then on */
     libraryScriptId: integer("library_script_id").references(() => scripts.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -580,7 +580,7 @@ export const draftEventTypes = ["invited", "turn", "completed", "cancelled"] as 
 export type DraftEventType = (typeof draftEventTypes)[number];
 
 /**
- * What happened in a session that someone should hear about (lib/draft/events). Written in the same
+ * What happened in a session that someone should hear about (modules/botc/lib/draft/events). Written in the same
  * transaction as the change itself, sent once due (e-mail now; Discord or more later); the daily cron
  * retries what failed.
  */
@@ -610,7 +610,7 @@ export const draftEvents = pgTable(
 
 /**
  * A Storyteller's online grimoire: the seats, characters, reminders and the night of one game, kept as one
- * JSON document (lib/grimoire/state) that the page saves as it changes. Only its owner sees it until the
+ * JSON document (modules/botc/lib/grimoire/state) that the page saves as it changes. Only its owner sees it until the
  * game ends; ending it writes the game record of its session (games, game_players).
  */
 export const grimoires = pgTable(

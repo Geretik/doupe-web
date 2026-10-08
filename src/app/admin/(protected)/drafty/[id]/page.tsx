@@ -15,16 +15,16 @@ import {
   startDraftAction,
   updateDraftAction,
   updateMemberAction,
-} from "@/app/actions/draft";
+} from "@/modules/botc/actions/draft";
 import { ActionButton } from "@/components/admin/action-button";
-import { AutoRefresh } from "@/components/draft/auto-refresh";
-import { DraftForm } from "@/components/draft/draft-form";
-import { DraftInviteForm } from "@/components/draft/invite-form";
-import { PickBoard, type BoardGroup } from "@/components/draft/pick-board";
-import { OptionChips, optionLabel, TeamRows } from "@/components/draft/role-chips";
-import { splitByGroup, TeamSection, type GroupKey } from "@/components/draft/team-section";
-import { TurnTitle } from "@/components/draft/turn-title";
-import { draftFormInitial, draftFormProps, modeSummary, StatusBadge } from "@/components/draft/view";
+import { AutoRefresh } from "@/modules/botc/components/draft/auto-refresh";
+import { DraftForm } from "@/modules/botc/components/draft/draft-form";
+import { DraftInviteForm } from "@/modules/botc/components/draft/invite-form";
+import { PickBoard, type BoardGroup } from "@/modules/botc/components/draft/pick-board";
+import { OptionChips, optionLabel, TeamRows } from "@/modules/botc/components/draft/role-chips";
+import { splitByGroup, TeamSection, type GroupKey } from "@/modules/botc/components/draft/team-section";
+import { TurnTitle } from "@/modules/botc/components/draft/turn-title";
+import { draftFormInitial, draftFormProps, modeSummary, StatusBadge } from "@/modules/botc/components/draft/view";
 import { Button, Card } from "@/components/ui";
 import { db } from "@/db";
 import type { DraftSessionMember } from "@/db/schema";
@@ -32,12 +32,12 @@ import type { Dict, Locale } from "@/i18n/dictionaries";
 import { plural } from "@/i18n/plural";
 import { getDict } from "@/i18n/server";
 import { requireAdmin } from "@/lib/admin-auth";
-import { draftModes, fits } from "@/lib/draft/modes";
-import { listInvitableAccounts, listScriptsOfSession, sessionIdOfDraft } from "@/lib/draft/queries";
-import { sortRoleIds, totalRoles } from "@/lib/draft/roles";
-import { scriptToolLink } from "@/lib/draft/script";
-import { canScriptPool, loadSessionRows } from "@/lib/draft/service";
-import { drafters, runtime, sessionAccess, startReview, type StartCheck } from "@/lib/draft/state";
+import { draftModes, fits } from "@/modules/botc/lib/draft/modes";
+import { listInvitableAccounts, listScriptsOfSession, sessionIdOfDraft } from "@/modules/botc/lib/draft/queries";
+import { sortRoleIds, totalRoles } from "@/modules/botc/lib/draft/roles";
+import { scriptToolLink } from "@/modules/botc/lib/draft/script";
+import { canScriptPool, loadSessionRows } from "@/modules/botc/lib/draft/service";
+import { drafters, runtime, sessionAccess, startReview, type StartCheck } from "@/modules/botc/lib/draft/state";
 import { formatStamp } from "@/lib/time";
 import { parseId } from "@/lib/validation";
 

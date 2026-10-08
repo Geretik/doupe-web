@@ -2,8 +2,8 @@ import { asc, gte } from "drizzle-orm";
 import { db } from "@/db";
 import { registrations, sessions, type Session } from "@/db/schema";
 import { isAdmin } from "@/lib/admin-auth";
-import { buildIcs, sessionUrl } from "@/lib/ics";
-import { feedKeyValid } from "@/lib/org-feed";
+import { buildIcs, sessionUrl } from "@/modules/botc/lib/ics";
+import { feedKeyValid } from "@/modules/botc/lib/org-feed";
 import { shownEmail } from "@/lib/retention";
 import { siteName, siteUrl } from "@/lib/site";
 

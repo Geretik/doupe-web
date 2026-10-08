@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { listUpcomingSessions } from "@/lib/queries";
+import { listUpcomingSessions } from "@/modules/botc/lib/queries";
 import { siteUrl } from "@/lib/site";
 
 export const dynamic = "force-dynamic";

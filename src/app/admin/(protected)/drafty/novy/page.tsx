@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { createDraftAction } from "@/app/actions/draft";
-import { DraftForm } from "@/components/draft/draft-form";
-import { draftFormInitial, draftFormProps } from "@/components/draft/view";
+import { createDraftAction } from "@/modules/botc/actions/draft";
+import { DraftForm } from "@/modules/botc/components/draft/draft-form";
+import { draftFormInitial, draftFormProps } from "@/modules/botc/components/draft/view";
 import { Card } from "@/components/ui";
 import { getDict } from "@/i18n/server";
 import { requireAdmin } from "@/lib/admin-auth";

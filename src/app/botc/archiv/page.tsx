@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { EditPencil } from "@/components/edit-pencil";
-import { GameCard } from "@/components/game-card";
-import { findRole } from "@/lib/botc-roles";
-import { ScriptLinks } from "@/components/script-links";
+import { GameCard } from "@/modules/botc/components/game-card";
+import { findRole } from "@/modules/botc/lib/botc-roles";
+import { ScriptLinks } from "@/modules/botc/components/script-links";
 import { Card } from "@/components/ui";
 import { getDict } from "@/i18n/server";
 import { isAdmin } from "@/lib/admin-auth";
-import { gamesBySession, listPastSessions } from "@/lib/queries";
+import { gamesBySession, listPastSessions } from "@/modules/botc/lib/queries";
 import { formatDate } from "@/lib/time";
 
 export const dynamic = "force-dynamic";

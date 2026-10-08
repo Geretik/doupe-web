@@ -1,14 +1,14 @@
 import Link from "next/link";
-import { rotateFeedKeyAction } from "@/app/actions/admin";
+import { rotateFeedKeyAction } from "@/modules/botc/actions/sessions";
 import { ActionButton } from "@/components/admin/action-button";
 import { SetupWarnings } from "@/components/admin/setup-warnings";
 import { Card } from "@/components/ui";
 import { getDict } from "@/i18n/server";
 import { requireAdmin } from "@/lib/admin-auth";
-import { listAllSessions } from "@/lib/queries";
-import { effectiveRegistrationState, scheduledOpening } from "@/lib/registration-state";
+import { listAllSessions } from "@/modules/botc/lib/queries";
+import { effectiveRegistrationState, scheduledOpening } from "@/modules/botc/lib/registration-state";
 import { formatDate, formatShortDate, formatTime } from "@/lib/time";
-import { orgFeedUrl } from "@/lib/org-feed";
+import { orgFeedUrl } from "@/modules/botc/lib/org-feed";
 
 export default async function AdminHomePage() {
   const me = await requireAdmin();

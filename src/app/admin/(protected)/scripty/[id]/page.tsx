@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { deleteLibraryScriptAction, updateLibraryScriptAction } from "@/app/actions/scripts";
+import { deleteLibraryScriptAction, updateLibraryScriptAction } from "@/modules/botc/actions/scripts";
 import { ActionButton } from "@/components/admin/action-button";
-import { LibraryScriptForm } from "@/components/admin/library-script-form";
-import { TeamRows } from "@/components/draft/role-chips";
+import { LibraryScriptForm } from "@/modules/botc/components/admin/library-script-form";
+import { TeamRows } from "@/modules/botc/components/draft/role-chips";
 import { Card } from "@/components/ui";
 import { getDict } from "@/i18n/server";
 import { requireAdmin } from "@/lib/admin-auth";
-import { canEditScript, getLibraryScript, libraryScriptToolLink, MAX_LINK, scriptExtras } from "@/lib/scripts";
+import { canEditScript, getLibraryScript, libraryScriptToolLink, MAX_LINK, scriptExtras } from "@/modules/botc/lib/scripts";
 import { formatDay, formatStamp } from "@/lib/time";
 import { parseId } from "@/lib/validation";
 

@@ -1,6 +1,6 @@
 import { getAdmin } from "@/lib/admin-auth";
-import { scriptFileName } from "@/lib/draft/script";
-import { getLibraryScript } from "@/lib/scripts";
+import { scriptFileName } from "@/modules/botc/lib/draft/script";
+import { getLibraryScript } from "@/modules/botc/lib/scripts";
 import { parseId } from "@/lib/validation";
 
 export const dynamic = "force-dynamic";

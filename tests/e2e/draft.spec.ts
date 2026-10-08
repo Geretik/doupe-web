@@ -1,8 +1,8 @@
 import { gunzipSync } from "node:zlib";
 import { type Browser, type Page, expect, test } from "@playwright/test";
-import { afterPick, nextTurn, snakeOrder } from "../../src/lib/draft/engine";
-import { draftModes, fits, type PoolState } from "../../src/lib/draft/modes";
-import { buildOptions, matchRoleId, parseBundles, roleIdsFromScriptJson } from "../../src/lib/draft/roles";
+import { afterPick, nextTurn, snakeOrder } from "../../src/modules/botc/lib/draft/engine";
+import { draftModes, fits, type PoolState } from "../../src/modules/botc/lib/draft/modes";
+import { buildOptions, matchRoleId, parseBundles, roleIdsFromScriptJson } from "../../src/modules/botc/lib/draft/roles";
 import { adminLogin, createAdminUser, resetDb, sql } from "./helpers";
 
 /** The script in a script tool link (`?script=` is the JSON gzipped and base64-encoded). */

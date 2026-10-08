@@ -1,11 +1,11 @@
 import Link from "next/link";
-import { GameCard } from "@/components/game-card";
+import { GameCard } from "@/modules/botc/components/game-card";
 import { Alert, Card } from "@/components/ui";
 import { getDict } from "@/i18n/server";
-import { findRole, roleIcon, roleName, roleSide, STORYTELLER } from "@/lib/botc-roles";
-import { verifyMyGamesToken } from "@/lib/my-games-token";
-import { playerStats } from "@/lib/player-stats";
-import { gamesBySession, listRegistrationsByEmail } from "@/lib/queries";
+import { findRole, roleIcon, roleName, roleSide, STORYTELLER } from "@/modules/botc/lib/botc-roles";
+import { verifyMyGamesToken } from "@/modules/botc/lib/my-games-token";
+import { playerStats } from "@/modules/botc/lib/player-stats";
+import { gamesBySession, listRegistrationsByEmail } from "@/modules/botc/lib/queries";
 import { editUrl } from "@/lib/site";
 import { formatDate, formatDay, formatRange } from "@/lib/time";
 

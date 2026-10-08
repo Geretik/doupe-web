@@ -2,15 +2,15 @@ import { and, eq, gt, gte, isNull, lte, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { registrations, sessions } from "@/db/schema";
 import { notifyOrganizers } from "./alerts";
-import { dispatchDraftEvents } from "./draft/events";
+import { dispatchDraftEvents } from "@/modules/botc/lib/draft/events";
 import { postDiscordMessage, spotsLeftEnabled, spotsLeftMessage } from "./discord";
 import { recordDailyRun } from "./job-runs";
 import { deleteOldLinkRequests } from "./link-throttle";
 import { deleteOldLoginFailures } from "./login-limit";
 import { deleteOldQrLogins } from "./qr-login";
-import { sendDueReminders } from "./reminders";
+import { sendDueReminders } from "@/modules/botc/lib/reminders";
 import { anonymizeOldRegistrations, RETENTION_DAYS } from "./retention";
-import { promoteWaitlist } from "./waitlist";
+import { promoteWaitlist } from "@/modules/botc/lib/waitlist";
 
 /**
  * Sessions starting this far ahead get the "spots left" Discord post. The cron runs once a day but Vercel
@@ -37,7 +37,7 @@ export async function postSpotsLeft() {
         gte(sessions.startsAt, from),
         lte(sessions.startsAt, to),
         isNull(sessions.spotsPostedAt),
-        // sign-ups open, or opened on schedule (see lib/registration-state)
+        // sign-ups open, or opened on schedule (see modules/botc/lib/registration-state)
         or(eq(sessions.registrationState, "open"), lte(sessions.registrationOpensAt, new Date())),
       ),
     );

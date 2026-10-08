@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { grimoireCharacters, jinxesAmong } from "../../src/lib/grimoire/characters";
+import { grimoireCharacters, jinxesAmong } from "../../src/modules/botc/lib/grimoire/characters";
 import {
   changeRole,
   diedLately,
@@ -31,9 +31,9 @@ import {
   typhonInLine,
   vortoxWorks,
   type GrimoireState,
-} from "../../src/lib/grimoire/state";
-import { findRole, roleName } from "../../src/lib/botc-roles";
-import { stepCards, youAreCard } from "../../src/lib/grimoire/show";
+} from "../../src/modules/botc/lib/grimoire/state";
+import { findRole, roleName } from "../../src/modules/botc/lib/botc-roles";
+import { stepCards, youAreCard } from "../../src/modules/botc/lib/grimoire/show";
 import { adminLogin, createAdminUser, createSession, resetDb, sql } from "./helpers";
 
 test.describe.configure({ mode: "serial" });

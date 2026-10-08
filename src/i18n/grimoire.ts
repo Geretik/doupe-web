@@ -1,7 +1,7 @@
 /*
  * Texts of the online grimoire (admin → Grimoáry), kept apart from dictionaries.ts, which includes them as
  * `grimoire`. Plain strings only: the grimoire page is a client component. "{n}" and the like are filled in
- * by components/grimoire/context `fill`.
+ * by modules/botc/components/grimoire/context `fill`.
  */
 
 export const grimoireCs = {

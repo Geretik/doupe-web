@@ -1,9 +1,9 @@
 import { db } from "@/db";
 import { getAdmin } from "@/lib/admin-auth";
-import { getScript } from "@/lib/draft/queries";
-import { scriptFileName, scriptJson } from "@/lib/draft/script";
-import { loadSessionRows } from "@/lib/draft/service";
-import { sessionAccess } from "@/lib/draft/state";
+import { getScript } from "@/modules/botc/lib/draft/queries";
+import { scriptFileName, scriptJson } from "@/modules/botc/lib/draft/script";
+import { loadSessionRows } from "@/modules/botc/lib/draft/service";
+import { sessionAccess } from "@/modules/botc/lib/draft/state";
 import { parseId } from "@/lib/validation";
 
 export const dynamic = "force-dynamic";

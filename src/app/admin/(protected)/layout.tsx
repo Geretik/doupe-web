@@ -6,8 +6,8 @@ import { Button } from "@/components/ui";
 import { changelogStamp } from "@/data/changelog";
 import { getDict } from "@/i18n/server";
 import { getAdmin, hasRole } from "@/lib/admin-auth";
-import { dispatchDraftEventsLater } from "@/lib/draft/events";
-import { countDraftAttention } from "@/lib/draft/queries";
+import { dispatchDraftEventsLater } from "@/modules/botc/lib/draft/events";
+import { countDraftAttention } from "@/modules/botc/lib/draft/queries";
 import { NEWS_COOKIE } from "@/lib/news";
 
 export const dynamic = "force-dynamic";

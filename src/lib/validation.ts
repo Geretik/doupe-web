@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { adminRoles, arrivalModes, gameLanguages, gameWinners, registrationStates, type ArrivalMode } from "@/db/schema";
 import type { Dict } from "@/i18n/dictionaries";
-import { BLUFF_COUNT, bluffTeams, findRole, linkedRoleOf, SAT_OUT, STORYTELLER } from "./botc-roles";
+import { BLUFF_COUNT, bluffTeams, findRole, linkedRoleOf, SAT_OUT, STORYTELLER } from "@/modules/botc/lib/botc-roles";
 import { PASSWORD_MIN_LENGTH } from "./password";
 import { formatTime, TIME_RE } from "./time";
 

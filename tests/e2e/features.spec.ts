@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { expect, test } from "@playwright/test";
 import { E2E } from "../../playwright.config";
-import { createMyGamesToken } from "../../src/lib/my-games-token";
+import { createMyGamesToken } from "../../src/modules/botc/lib/my-games-token";
 import { adminLogin, createAdminUser, createSession, pragueToday, register, resetDb, sql } from "./helpers";
 
 test.describe.configure({ mode: "serial" });

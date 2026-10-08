@@ -1,12 +1,12 @@
-import { createSessionAction } from "@/app/actions/admin";
-import { SessionForm } from "@/components/admin/session-form";
+import { createSessionAction } from "@/modules/botc/actions/sessions";
+import { SessionForm } from "@/modules/botc/components/admin/session-form";
 import { Card } from "@/components/ui";
 import { getDict } from "@/i18n/server";
 import { requireAdmin } from "@/lib/admin-auth";
 import { discordConfigured } from "@/lib/discord";
-import { getFormSuggestions } from "@/lib/form-suggestions";
-import { getLatestCreatedSession, getSessionWithCount } from "@/lib/queries";
-import { effectiveRegistrationState } from "@/lib/registration-state";
+import { getFormSuggestions } from "@/modules/botc/lib/form-suggestions";
+import { getLatestCreatedSession, getSessionWithCount } from "@/modules/botc/lib/queries";
+import { effectiveRegistrationState } from "@/modules/botc/lib/registration-state";
 import { addPragueDays, dateToPragueLocal } from "@/lib/time";
 import { parseId } from "@/lib/validation";
 

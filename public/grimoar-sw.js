@@ -1,8 +1,8 @@
 /*
- * The grimoire without a connection. Registered by the grimoire's page (components/grimoire/offline.ts) for the
+ * The grimoire without a connection. Registered by the grimoire's page (modules/botc/components/grimoire/offline.ts) for the
  * grimoire pages only: a grimoire opened on this device before opens again when the club's Wi-Fi is gone, with
  * the site's scripts, styles and the characters' icons. The page then takes what this browser kept of the game
- * in localStorage (components/grimoire/autosave.ts) and saves it once the connection is back.
+ * in localStorage (modules/botc/components/grimoire/autosave.ts) and saves it once the connection is back.
  *
  * Pages: the network first, this device's copy only when the network fails or is too slow. Scripts and styles
  * never change under their name: the copy first. Icons: the copy, refreshed in the background.
