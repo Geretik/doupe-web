@@ -12,6 +12,7 @@ import { DrawView } from "./draw";
 import { fill } from "@/lib/grimoire/text";
 import { GrimoireContext, nameOf, type GrimoireContextValue, type GrimoireTexts } from "./context";
 import { GameButton } from "./game-panel";
+import { useOfflineCopy } from "./offline";
 import { NightPanel, type Placing } from "./night-panel";
 import { SeatPanel } from "./seat-panel";
 import { SetupScreen, type ScriptChoice } from "./setup-panel";
@@ -38,6 +39,7 @@ const statusClass: Record<SaveStatus, string> = {
   pending: "text-muted",
   saving: "text-muted",
   offline: "font-semibold text-amber-600",
+  outdated: "font-semibold text-accent",
   conflict: "font-semibold text-accent",
   invalid: "font-semibold text-accent",
 };
@@ -100,6 +102,9 @@ export function Grimoire({
     onRestore: (restored) => dispatch({ type: "replace", state: restored }),
     onSaved: (r) => r.recorded && setRecorded(true),
   });
+
+  // a grimoire to play opens again on this device without a connection
+  useOfflineCopy(state, canEdit && state.phase !== "ended");
 
   // a tablet on the table must not go dark in the middle of a night
   useEffect(() => {
@@ -220,6 +225,12 @@ export function Grimoire({
               <span className={`text-xs ${statusClass[save.status]}`} role="status" data-testid="save-status">
                 {canEdit ? t.saveStatus[save.status] : t.readOnly}
               </span>
+              {canEdit && save.status === "outdated" && (
+                // what is not saved is kept in this browser and comes back after the reload
+                <button type="button" onClick={() => location.reload()} className="min-h-11 rounded-lg bg-accent px-3 text-sm font-semibold text-accent-foreground">
+                  {t.reload}
+                </button>
+              )}
               <span className="ml-auto flex flex-wrap items-center gap-2">
                 {canEdit && (
                   <button

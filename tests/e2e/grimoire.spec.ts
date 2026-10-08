@@ -876,6 +876,83 @@ test("grimoire: an empty one, players typed in; only its Storyteller sees it unt
   await ctx.close();
 });
 
+/** A new grimoire without a session, two players typed in and saved. */
+async function newGrimoire(page: Page) {
+  await page.goto("/admin/grimoary");
+  await page.fill("#name", "Bez sítě");
+  await page.getByRole("button", { name: "Založit grimoár" }).click();
+  await expect(page.locator("h1")).toHaveText("Bez sítě");
+  await openSetup(page);
+  for (const name of ["Jana", "Petr"]) await addPlayer(page, name);
+  await stored((st) => st.seats.length, 2);
+}
+async function addPlayer(page: Page, name: string) {
+  await page.getByRole("textbox", { name: "Jméno hráče" }).fill(name);
+  await page.getByRole("button", { name: "Přidat", exact: true }).click();
+}
+
+/**
+ * No connection: the browser's offline mode, which does not reach the service worker's own requests, and every
+ * request of the context failing, the worker's included.
+ */
+async function goOffline(page: Page, offline: boolean) {
+  const ctx = page.context();
+  if (offline) await ctx.route("**/*", (route) => route.abort("internetdisconnected"));
+  else await ctx.unrouteAll();
+  await ctx.setOffline(offline);
+}
+
+test("grimoire offline: played without a connection, opened again without one, saved once it is back", async ({ page }) => {
+  await adminLogin(page);
+  await newGrimoire(page);
+  const url = page.url();
+  // the service worker keeps the page, its files and the icons on the device
+  await expect
+    .poll(() => page.evaluate(async (key) => !!(await (await caches.open("grimoar-v1")).match(key, { ignoreVary: true })), url), { timeout: 15_000 })
+    .toBe(true);
+
+  // renamed on the server meanwhile: only the copy on the device still has the old name
+  await sql("update grimoires set name = 'Přejmenovaný'");
+  await goOffline(page, true);
+  await addPlayer(page, "Offline");
+  await expect(page.getByTestId("save-status")).toHaveText("Bez spojení – uloženo v tomto zařízení, na server až bude síť");
+  // the page opened again without a connection: the copy on the device, with what was played since
+  await page.reload();
+  await expect(page.locator("h1")).toHaveText("Bez sítě");
+  await expect(page.getByTestId("seat")).toHaveCount(3);
+  await expect(page.locator("[data-seat=Offline]")).toBeVisible();
+
+  await goOffline(page, false);
+  await stored((st) => st.seats.map((x) => x.name), ["Jana", "Petr", "Offline"]);
+  await expect(page.getByTestId("save-status")).toHaveText("Uloženo");
+
+  // online again, the page comes from the server
+  await page.reload();
+  await expect(page.locator("h1")).toHaveText("Přejmenovaný");
+  await expect(page.getByTestId("seat")).toHaveCount(3);
+  await expect(page.getByTestId("save-status")).toHaveText("Uloženo");
+});
+
+test("grimoire: a page from before the site was updated asks to be reloaded, and the reload saves what was not saved", async ({ browser }) => {
+  // without the service worker, so the test can answer the save as the updated server would
+  const ctx = await browser.newContext({ locale: "cs-CZ", serviceWorkers: "block" });
+  const page = await ctx.newPage();
+  await adminLogin(page);
+  await newGrimoire(page);
+  await page.route(page.url(), (route) =>
+    route.request().method() === "POST" ? route.fulfill({ status: 404, headers: { "x-nextjs-action-not-found": "1" }, body: "" }) : route.fallback(),
+  );
+  await addPlayer(page, "Nový");
+  await expect(page.getByTestId("save-status")).toHaveText("Web se mezitím aktualizoval – načti stránku znovu, nic se neztratí");
+  await page.unrouteAll();
+  await stored((st) => st.seats.length, 2);
+  await closeSetup(page);
+  await page.getByRole("button", { name: "Načíst znovu" }).click();
+  await stored((st) => st.seats.map((x) => x.name), ["Jana", "Petr", "Nový"]);
+  await expect(page.getByTestId("save-status")).toHaveText("Uloženo");
+  await ctx.close();
+});
+
 test("grimoire: the door and the Storyteller's spot, a pasted script, players drawing their characters, names from the session afterwards", async ({ page }) => {
   await page.setViewportSize({ width: 1180, height: 820 });
   const sessionId = await sessionWithPlayers(["Ada", "Bára", "Cyril", "Dan", "Eva"]);
@@ -1428,6 +1505,7 @@ test("grimoire: the first night with the Spy and the Recluse shows every number 
   // the Spy at the table with the Damsel: their jinx in the setup
   await openSetup(page);
   await expect(page.getByTestId("jinxes")).toHaveCount(0);
+  await expect(page.getByTestId("save-status")).toHaveText("Uloženo");
   await sql("update grimoires set state = jsonb_set(state, '{seats,1,role}', '\"damsel\"'), version = version + 1 where id = $1", [id]);
   await page.reload();
   await openSetup(page);

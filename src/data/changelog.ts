@@ -14,11 +14,16 @@ export type ChangelogEntry = { /** YYYY-MM-DD */ date: string; title: string; it
 export const changelog: ChangelogEntry[] = [
   {
     date: "2026-10-08",
-    title: "Ukázat hráči v grimoáru, přihlášení QR kódem a odkazem z e-mailu, Opilec v pytlíku",
+    title: "Grimoár: Ukázat hráči a hra bez sítě; přihlášení QR kódem a odkazem z e-mailu",
     items: [
       {
         for: "organizers",
         text: "Grimoár, 👁️ Ukázat hráči: místo papírových žetonů otočíš tablet k hráči a ten uvidí jen velkou tmavou kartu – „Jsi …“, „Tohle je Démon“, „Tito jsou tví Přisluhovači“, blafy, Pradlenina postava a dva hráči, Kuchařovo číslo, ano / ne Vědmy… U kroku noci je karta předvyplněná podle grimoáru, před ukázáním ji jde upravit (nadpis, postavy, hráči, číslo, tým, text). Ťuknutím se vrátíš k úpravě karty, ne do grimoáru.",
+        href: "/admin/grimoary",
+      },
+      {
+        for: "organizers",
+        text: "Grimoár bez sítě: grimoár, který jsi na tabletu (nebo telefonu) už jednou otevřel/a, se otevře i bez připojení – i po zavření nebo obnovení stránky, s posledním stavem hry z tabletu. Hraje se normálně, ukládá se do tabletu a na server, jakmile se síť vrátí. Když se web mezitím aktualizuje, grimoár napíše „načti stránku znovu“ a nic se neztratí.",
         href: "/admin/grimoary",
       },
       {
