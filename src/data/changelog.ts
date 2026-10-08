@@ -18,6 +18,11 @@ export const changelog: ChangelogEntry[] = [
     items: [
       {
         for: "organizers",
+        text: "Grimoár, Příprava: dveře a vypravěče odebereš z kruhu rovnou ✕ vedle nich. Do kruhu jde přidat i 🚧 Překážka – místo, kde nikdo nesedí (sloup, roh stolu…).",
+        href: "/admin/botc/grimoary",
+      },
+      {
+        for: "organizers",
         text: "Grimoár zná Báje a Loric (Džin, Duch slonoviny, Strážný, Pašerák, Lapač bouří…): ty ze scriptu se přidají samy, další přidáš v Přípravě. Jsou v rohu města – ťuknutím uvidíš schopnost a jejich žetony položíš na hráče. Džin ukáže jinxy scriptu, Převozník vrátí mrtvým hlasy.",
         href: "/admin/botc/grimoary",
       },

@@ -1088,6 +1088,19 @@ test("grimoire: the door and the Storyteller's spot, a pasted script, players dr
   await expect(page.getByTestId("gap")).toHaveCount(2);
   await expect(page.getByTestId("town")).toContainText("Živí 5 z 5");
 
+  // an obstacle and a second door, taken out of the circle again in the setup with their ✕
+  const setup = await openSetup(page);
+  // the add buttons come after the circle's list, where the door is already
+  await setup.getByRole("button", { name: "🚧 Překážka" }).click();
+  await setup.getByRole("button", { name: "🚪 Dveře" }).last().click();
+  await expect(page.getByTestId("gap")).toHaveCount(4);
+  await setup.getByRole("button", { name: "Odebrat: Překážka" }).click();
+  await setup.getByRole("button", { name: "Odebrat: Dveře" }).last().click();
+  await expect(page.locator("[data-gap=obstacle]")).toHaveCount(0);
+  await expect(page.locator("[data-gap=door]")).toHaveCount(1);
+  await expect(page.locator("[data-gap=storyteller]")).toHaveCount(1);
+  await closeSetup(page);
+
   // a script pasted as JSON; what the site does not know is said and left out
   await openSetup(page);
   await page.getByRole("button", { name: "Vložit JSON nebo soubor" }).click();

@@ -13,8 +13,11 @@ import type { GrimoireCharacter, TokenKind } from "./characters";
  */
 export type GrimoireReminder = { id: string; roleId: string | null; text: string; round?: number };
 
-/** Places in the circle that are no player: a gap for the door, the Storyteller's spot in front of the grimoire. */
-export const gapKinds = ["door", "storyteller"] as const;
+/**
+ * Places in the circle that are no player: a gap for the door, the Storyteller's spot in front of the grimoire,
+ * anything else nobody sits at (a pillar, the corner of the table).
+ */
+export const gapKinds = ["door", "storyteller", "obstacle"] as const;
 export type GapKind = (typeof gapKinds)[number];
 
 export type GrimoireSeat = {

@@ -172,11 +172,13 @@ export function SetupPanel({ scripts, onSelectSeat, wide = false }: { scripts: S
         </div>
         <ol className="flex flex-wrap gap-1.5">
           {state.seats.map((s) => (
-            <li key={s.id}>
+            <li key={s.id} className="flex">
               <button
                 type="button"
                 onClick={() => onSelectSeat(s.id)}
-                className={`flex min-h-10 items-center gap-1.5 rounded-full border px-3 text-sm hover:border-accent/50 ${s.gap ? "border-dashed border-muted/60 text-muted" : "border-border bg-card"}`}
+                className={`flex min-h-10 items-center gap-1.5 border px-3 text-sm hover:border-accent/50 ${
+                  s.gap ? `border-dashed border-muted/60 text-muted ${readOnly ? "rounded-full" : "rounded-l-full"}` : "rounded-full border-border bg-card"
+                }`}
               >
                 {s.gap ? (
                   <>
@@ -190,6 +192,18 @@ export function SetupPanel({ scripts, onSelectSeat, wide = false }: { scripts: S
                   </>
                 )}
               </button>
+              {/* a gap holds nothing, so it goes without asking */}
+              {s.gap && !readOnly && (
+                <button
+                  type="button"
+                  onClick={() => update((st) => ({ ...st, seats: st.seats.filter((x) => x.id !== s.id) }))}
+                  aria-label={`${t.remove}: ${t.gaps[s.gap]}`}
+                  title={t.remove}
+                  className="flex min-h-10 items-center rounded-r-full border border-l-0 border-dashed border-muted/60 pr-3 pl-2 text-sm text-muted hover:border-accent/50 hover:text-accent"
+                >
+                  ✕
+                </button>
+              )}
             </li>
           ))}
         </ol>

@@ -37,7 +37,7 @@ function clamp(v: number, min: number, max: number) {
 
 const sideBorder = { good: "border-good", evil: "border-accent" } as const;
 
-export const gapIcon: Record<GapKind, string> = { door: "🚪", storyteller: "🎩" };
+export const gapIcon: Record<GapKind, string> = { door: "🚪", storyteller: "🎩", obstacle: "🚧" };
 
 /**
  * The town square: the circle on an ellipse filling the area, clockwise, each player with their reminder

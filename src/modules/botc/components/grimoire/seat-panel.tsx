@@ -279,8 +279,6 @@ export function SeatPanel({
   );
 }
 
-/** A gap in the circle: what it is, and its place. */
-/** ✕ at the top of the panel: nobody selected, so in the day no player stays lit up in the town. */
 /**
  * Why the player does not die now though killed (survives: the Lleech's host, the Sailor, the Fool, the Tea Lady's
  * neighbours, the Vizier by day, the Devil's Advocate's choice), the Storm Catcher's player who only dies by
@@ -307,6 +305,7 @@ function SurvivalNote({ seat }: { seat: GrimoireSeat }) {
   return note ? <p className="-mt-2 text-sm font-medium text-accent">{note}</p> : null;
 }
 
+/** ✕ at the top of the panel: nobody selected, so in the day no player stays lit up in the town. */
 function CloseButton({ onClose }: { onClose: () => void }) {
   const { t } = useGrimoire();
   return (
@@ -323,6 +322,7 @@ function CloseButton({ onClose }: { onClose: () => void }) {
   );
 }
 
+/** A gap in the circle: what it is, and its place. */
 function GapPanel({
   seat,
   index,
