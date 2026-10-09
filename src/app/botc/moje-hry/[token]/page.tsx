@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { GameCard } from "@/modules/botc/components/game-card";
+import { MyBadges, MyCharacters } from "@/modules/botc/components/my-progress";
 import { Alert, Card } from "@/components/ui";
 import { getDict } from "@/i18n/server";
-import { findRole, roleIcon, roleName, roleSide, STORYTELLER } from "@/modules/botc/lib/botc-roles";
+import { findRole, roleName, STORYTELLER } from "@/modules/botc/lib/botc-roles";
 import { verifyMyGamesToken } from "@/modules/botc/lib/my-games-token";
+import { playerBadges } from "@/modules/botc/lib/player-badges";
 import { playerStats } from "@/modules/botc/lib/player-stats";
 import { gamesBySession, listRegistrationsByEmail } from "@/modules/botc/lib/queries";
 import { editUrl } from "@/lib/site";
@@ -12,11 +14,10 @@ import { formatDate, formatDay, formatRange } from "@/lib/time";
 export const dynamic = "force-dynamic";
 
 const box = "rounded-xl border border-border bg-card px-4 py-3 text-sm shadow-sm";
-const chip = "inline-flex items-center gap-1 rounded-full border border-border bg-card py-0.5 pr-2.5 pl-1 text-xs";
 
 /**
- * The player's overview behind the magic link: upcoming sign-ups with edit links, their stats, and the
- * nights they came to with the games played there, as in the archive.
+ * The player's overview behind the magic link: upcoming sign-ups with edit links, their stats, characters and
+ * badges, and the nights they came to with the games played there, as in the archive.
  */
 export default async function MyGamesPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
@@ -49,8 +50,10 @@ export default async function MyGamesPage({ params }: { params: Promise<{ token:
         gamesOf.get(r.sessionId)?.some((g) => g.roster.some((p) => p.registrationId === r.id)),
     )
     .sort((a, b) => b.session.startsAt.getTime() - a.session.startsAt.getTime());
-  const nightGames = nights.flatMap((r) => gamesOf.get(r.sessionId) ?? []);
+  // oldest first, for the badges' streaks
+  const nightGames = [...nights].reverse().flatMap((r) => gamesOf.get(r.sessionId) ?? []);
   const stats = playerStats(me, nightGames);
+  const badges = playerBadges(me, nights.length, nightGames);
   const decided = stats.decided.good + stats.decided.evil;
   const won = stats.won.good + stats.won.evil;
   const tiles: [string, string | number, string?][] = [
@@ -124,21 +127,7 @@ export default async function MyGamesPage({ params }: { params: Promise<{ token:
               )}
             </ul>
           )}
-          {stats.roles.length > 0 && (
-            <div className="flex flex-col gap-1.5">
-              <h3 className="text-sm font-semibold">{m.roles}</h3>
-              <ul className="flex flex-wrap gap-1.5">
-                {stats.roles.slice(0, 8).map(({ role, count }) => (
-                  <li key={role.id} className={chip}>
-                    {/* eslint-disable-next-line @next/next/no-img-element -- tiny pre-sized WebP from public/, no optimisation needed */}
-                    <img src={roleIcon(role.id)} alt="" width={22} height={22} className="h-[22px] w-[22px]" />
-                    <span className={roleSide(role.team) === "evil" ? "text-accent" : undefined}>{roleName(role, locale)}</span>
-                    <span className="text-muted">{count}×</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+          <MyCharacters roles={stats.roles} locale={locale} m={m} />
           {stats.scripts.length > 0 && (
             <p className="text-sm">
               <span className="text-muted">{m.scripts}:</span> {stats.scripts.slice(0, 5).map((s) => `${s.name} ${s.count}×`).join(" · ")}
@@ -147,6 +136,7 @@ export default async function MyGamesPage({ params }: { params: Promise<{ token:
           {stats.played === 0 && stats.storytold === 0 && <p className="text-sm text-muted">{m.noGames}</p>}
         </section>
       )}
+      {nights.length > 0 && <MyBadges badges={badges} m={m} />}
       {nights.length > 0 && (
         <section className="flex flex-col gap-2">
           <h2 className="text-lg font-semibold">{m.past}</h2>

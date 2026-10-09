@@ -14,8 +14,13 @@ export type ChangelogEntry = { /** YYYY-MM-DD */ date: string; title: string; it
 export const changelog: ChangelogEntry[] = [
   {
     date: "2026-10-09",
-    title: "Historie akcí v adminu, kolik lidí tu kdy bude, e-maily k termínům",
+    title: "Moje hry: postavy a odznáčky; historie akcí v adminu, kolik lidí tu kdy bude, e-maily k termínům",
     items: [
+      {
+        for: "players",
+        text: "Moje hry: sbírka postav po edicích – za koho už jsi hrál/a, šedé postavy tě teprve čekají – a 15 odznáčků (První krev, Pán města, Na vlně, Mistr vypravěč…) i s tím, kolik ti k nim chybí. Počítají se hry, které zapíšou organizátoři.",
+        href: "/botc/moje-hry",
+      },
       {
         for: "organizers",
         text: "Termín v adminu: graf „Kolik lidí tu kdy bude“ je hned nad rychlou registrací, po půlhodinách – kdo přijde v 18:00 a odejde ve 20:00, počítá se do sloupců 18:00, 18:30, 19:00 a 19:30. Ťuknutím na sloupec uvidíš počet. V tabulce přihlášených jsou zvýrazněné časy těch, kdo přijdou později nebo odejdou dřív.",

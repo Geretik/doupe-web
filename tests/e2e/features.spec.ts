@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { expect, test } from "@playwright/test";
 import { E2E } from "../../playwright.config";
 import { createMyGamesToken } from "../../src/modules/botc/lib/my-games-token";
+import { playerBadges } from "../../src/modules/botc/lib/player-badges";
 import { adminLogin, createAdminUser, createSession, pragueToday, register, resetDb, sql } from "./helpers";
 import { pragueLocalToDate } from "../../src/lib/time";
 
@@ -912,9 +913,19 @@ test("my games: the player's stats, and the nights they came to with who played 
   await expect(stats).toContainText("Jako vypravěč1");
   await expect(stats).toContainText("😇 Za dobro: 1 hra · 1 výhra");
   await expect(stats).toContainText("😈 Za zlo: 1 hra · 0 výher");
-  await expect(stats).toContainText("Kuchař1×");
-  await expect(stats).toContainText("Čert1×");
   await expect(stats).toContainText("Scripty: Trouble Brewing 2×");
+  // the characters as a collection: Trouble Brewing whole, the rest of it greyed out; no other edition yet
+  const characters = page.getByTestId("my-characters");
+  await expect(characters).toContainText("Trouble Brewing · 2 / 22");
+  await expect(characters.locator("[data-played=true]")).toHaveText(["1×Kuchař", "1×Čert"]);
+  await expect(characters.locator("[data-played=false]")).toHaveCount(20);
+  await expect(characters).not.toContainText("Bad Moon Rising");
+  // badges: the earned ones first, the rest with how far the player got
+  const badges = page.getByTestId("my-badges");
+  await expect(badges).toContainText("Máš 2 z 15.");
+  await expect(badges.locator("[data-earned=true]")).toHaveText([/^🩸První krev/, /^📜Hlas noci/]);
+  await expect(badges.locator("[data-badge=tillDawn]")).toContainText("Odehraj 3 hry za jeden večer.2 / 3");
+  await expect(badges.locator("[data-badge=demonWin]")).not.toContainText("/");
 
   // newest night first and unfolded; the older one unfolds to the games as in the archive
   const nights = page.locator("main details");
@@ -929,6 +940,51 @@ test("my games: the player's stats, and the nights they came to with who played 
   // the player's own chips stand out
   await expect(nights.nth(1).locator("span.font-bold", { hasText: "Já" })).toHaveCount(2);
   await expect(page.locator("main")).not.toContainText("Zmeškaný večer");
+});
+
+test("badges from the recorded games: nights, sides, streaks, editions, the Storyteller", () => {
+  // the player is registration 1, 2 and 3 of nights 1, 2 and 3; someone else plays the Imp each game
+  const game = (night: number, scriptName: string, winner: "good" | "evil" | null, role: string | null) => ({
+    sessionId: night,
+    scriptName,
+    winner,
+    roster: [{ registrationId: night, role }, { registrationId: 99, role: "imp" }],
+  });
+  const badges = playerBadges(new Set([1, 2, 3]), 3, [
+    game(1, "Trouble Brewing", "good", "chef"),
+    game(1, "Trouble Brewing", "good", "drunk"),
+    // a traveller is on neither side and a game without a winner keeps the streak going
+    game(1, "Potíže přicházejí", null, "beggar"),
+    game(2, "Bad Moon Rising", "evil", "zombuul"),
+    game(2, "Sects & Violets", "good", "vortox"),
+    // sat out: neither played nor an edition
+    game(2, "Sects and Violets", "good", null),
+    game(3, "Laissez un Faire", "evil", "storyteller"),
+  ]);
+  expect(badges.filter((b) => b.earned).map((b) => b.id)).toEqual([
+    "firstBlood",
+    "tillDawn",
+    "bothSides",
+    "demonWin",
+    "unknowing",
+    "traveller",
+    "threeWorlds",
+    "hotStreak",
+    "storyteller",
+  ]);
+  const progress = Object.fromEntries(badges.map((b) => [b.id, `${b.have} / ${b.need}`]));
+  expect(progress).toMatchObject({
+    regular: "3 / 5",
+    tillDawn: "3 / 3",
+    everyTeam: "3 / 4",
+    manyFaces: "5 / 10",
+    wholeTb: "2 / 22",
+    hotStreak: "3 / 3",
+    masterStoryteller: "1 / 10",
+  });
+  // a lost game ends the streak: two wins, a loss, two wins never make three
+  const streak = playerBadges(new Set([1]), 1, ["good", "good", "evil", "good", "good"].map((w) => game(1, "Trouble Brewing", w as "good" | "evil", "chef")));
+  expect(streak.find((b) => b.id === "hotStreak")).toMatchObject({ have: 2, earned: false });
 });
 
 test("phone is optional but validated, normalised and shown only to organisers; presence per half hour, other times marked", async ({ page }) => {
