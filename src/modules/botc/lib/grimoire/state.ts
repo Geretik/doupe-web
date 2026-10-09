@@ -34,7 +34,20 @@ export type GrimoireSeat = {
   /** A dead player's one vote is spent */
   voteUsed: boolean;
   reminders: GrimoireReminder[];
+  /** Where the place was put in the town laid out on a grid (lib/grimoire/layout); kept while the town is a circle */
+  pos?: TownPoint;
+  /** A traveller's alignment, which the Storyteller chooses; absent = not chosen yet (or no traveller) */
+  side?: Side;
 };
+
+export const sides = ["good", "evil"] as const;
+export type Side = (typeof sides)[number];
+
+export const townLayouts = ["circle", "grid"] as const;
+export type TownLayout = (typeof townLayouts)[number];
+
+/** A point of the town as fractions of the room the places' middles have: 0 0 top left, 1 1 bottom right */
+export type TownPoint = { x: number; y: number };
 
 export type GrimoirePhase = "setup" | "night" | "day" | "ended";
 
@@ -77,6 +90,8 @@ export type GrimoireState = {
   script: { id: number | null; json?: boolean; name: string; roleIds: string[]; fabled?: string[]; homebrew?: Homebrew };
   /** The circle in seating order, clockwise: the players and the gaps between them */
   seats: GrimoireSeat[];
+  /** How the town shows the places: on a circle (absent), or where the Storyteller put them on a grid (GrimoireSeat.pos) */
+  layout?: TownLayout;
   /** Characters the Storyteller put in the bag to hand out at random */
   bag: string[];
   /** Not-in-play good characters shown to the Demon */
@@ -367,7 +382,7 @@ export function marionetteApart(state: Pick<GrimoireState, "seats">) {
 }
 
 const TYPHON = "lordoftyphon";
-const isEvil = (seat: Pick<GrimoireSeat, "id" | "role" | "reminders">) => seatSide(seat) === "evil";
+const isEvil = (seat: Pick<GrimoireSeat, "id" | "role" | "reminders" | "side">) => seatSide(seat) === "evil";
 
 /**
  * The Lord of Typhon's setup: the evil players sit in a line with it in the middle (both its neighbours evil).
@@ -1482,19 +1497,21 @@ export function setDead(state: GrimoireState, seatId: string, dead: boolean, cha
 }
 
 /**
- * Good, evil or neither (a traveller, no character) – the colour of a seat; with the characters, a player the
- * Mezepheles turned is evil; with the town, the Ogre is on their friend's side.
+ * Good, evil or neither (no character, a traveller whose side is not chosen yet) – the colour of a seat; with the
+ * characters, a player the Mezepheles turned is evil; with the town, the Ogre is on their friend's side.
  */
 export function seatSide(
-  seat: Pick<GrimoireSeat, "id" | "role" | "reminders">,
+  seat: Pick<GrimoireSeat, "id" | "role" | "reminders" | "side">,
   characters?: Record<string, GrimoireCharacter>,
   state?: Pick<GrimoireState, "seats">,
-): "good" | "evil" | null {
+): Side | null {
   // a good player who said the Mezepheles's word
   if (characters && seat.reminders.some((r) => r.roleId && characters[r.roleId]?.tokenKinds[r.text] === "turnsEvil")) return "evil";
   // the Ogre is on the side of the player they chose
   const friend = seat.role === "ogre" && state ? remindersOf(state, "ogre").find((x) => x.seat.id !== seat.id)?.seat : undefined;
   if (friend) return seatSide(friend, characters);
   const role = findRole(seat.role);
+  // a traveller is on the side the Storyteller gave them
+  if (role?.team === "traveller") return seat.side ?? null;
   return role ? roleSide(role.team) : null;
 }

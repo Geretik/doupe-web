@@ -6,6 +6,7 @@ import {
   changeRole,
   charactersInPlay,
   gapKinds,
+  isTraveller,
   lleechHost,
   MAX_REMINDERS,
   MAX_SEATS,
@@ -13,6 +14,7 @@ import {
   newGap,
   registersDead,
   setDead,
+  sides,
   stormcaught,
   survives,
   toggleReminder,
@@ -20,6 +22,7 @@ import {
   usedToken,
   type GapKind,
   type GrimoireSeat,
+  type Side,
   type GrimoireState,
 } from "@/modules/botc/lib/grimoire/state";
 import { fill } from "@/modules/botc/lib/grimoire/text";
@@ -61,18 +64,14 @@ export function SeatPanel({
   /** Lets go of the player: nobody selected in the town */
   onClose: () => void;
 }) {
-  const { state, update, readOnly, characters, sessionPlayers, locale, t } = useGrimoire();
+  const { state, update, readOnly, hidden, sessionPlayers, t } = useGrimoire();
   const index = state.seats.findIndex((s) => s.id === seatId);
   const seat = index >= 0 ? state.seats[index] : null;
-  const [picking, setPicking] = useState<"role" | "linked" | "reminder" | null>(null);
-  const [custom, setCustom] = useState("");
   if (!seat) return <p className="text-sm text-muted">{t.pickSeat}</p>;
 
   if (seat.gap) return <GapPanel seat={{ ...seat, gap: seat.gap }} index={index} onRemoved={onRemoved} onClose={onClose} />;
 
   const set = (change: (seat: GrimoireSeat) => GrimoireSeat) => update((s) => changeSeat(s, seat.id, change));
-  const linked = linkedRoleOf(seat.role);
-  const others = holders(state, seat.id);
   // a session player not seated elsewhere: typing their nickname links the seat to their sign-up
   const seatedElsewhere = new Set(state.seats.filter((x) => x.id !== seat.id).map((x) => x.registrationId));
   const free = sessionPlayers.filter((p) => !seatedElsewhere.has(p.id) && p.id !== seat.registrationId);
@@ -85,14 +84,6 @@ export function SeatPanel({
     // naming the circle after a draw: on to the next place without a name, clockwise
     const next = [...state.seats.slice(index + 1), ...state.seats.slice(0, index)].find((x) => !x.gap && !x.name);
     if (next) onSelect(next.id);
-  };
-  // a once-per-game ability (the Slayer's shot…) is marked used with the character's "No ability" token, or one of the grimoire's own
-  const usedText = usedToken(seat.role ? characters[seat.role] : undefined, t.abilityUsed);
-  const used = !!usedText && seat.reminders.some((r) => r.roleId === seat.role && r.text === usedText);
-  const toggleUsed = () => update((s) => toggleReminder(s, seat.id, seat.role, usedText!));
-  const addReminder = (roleId: string | null, text: string) => {
-    set((x) => ({ ...x, reminders: [...x.reminders, { id: uid(), roleId, text, round: state.round }].slice(0, MAX_REMINDERS) }));
-    setPicking(null);
   };
 
   return (
@@ -117,6 +108,39 @@ export function SeatPanel({
         </section>
       )}
 
+      {hidden ? (
+        <p className="text-sm text-muted" data-testid="seat-hidden">
+          {t.hiddenSeat}
+        </p>
+      ) : (
+        <SeatSecrets seat={seat} />
+      )}
+      {seat.dead && <p className="-mt-2 text-sm text-muted">{seat.voteUsed ? t.voteUsed : t.ghostVote}</p>}
+
+      <PlaceControls seat={seat} index={index} onRemoved={onRemoved} />
+    </div>
+  );
+}
+
+/** What only the Storyteller sees of a player: the character, who they think they are, death, reminders. */
+function SeatSecrets({ seat }: { seat: GrimoireSeat }) {
+  const { state, update, readOnly, characters, locale, t } = useGrimoire();
+  const [picking, setPicking] = useState<"role" | "linked" | "reminder" | null>(null);
+  const [custom, setCustom] = useState("");
+  const set = (change: (seat: GrimoireSeat) => GrimoireSeat) => update((s) => changeSeat(s, seat.id, change));
+  const linked = linkedRoleOf(seat.role);
+  const others = holders(state, seat.id);
+  // a once-per-game ability (the Slayer's shot…) is marked used with the character's "No ability" token, or one of the grimoire's own
+  const usedText = usedToken(seat.role ? characters[seat.role] : undefined, t.abilityUsed);
+  const used = !!usedText && seat.reminders.some((r) => r.roleId === seat.role && r.text === usedText);
+  const toggleUsed = () => update((s) => toggleReminder(s, seat.id, seat.role, usedText!));
+  const addReminder = (roleId: string | null, text: string) => {
+    set((x) => ({ ...x, reminders: [...x.reminders, { id: uid(), roleId, text, round: state.round }].slice(0, MAX_REMINDERS) }));
+    setPicking(null);
+  };
+
+  return (
+    <>
       <section className="flex flex-col gap-2">
         <h3 className="text-xs font-semibold tracking-wide text-muted uppercase">{t.role}</h3>
         <div className="flex items-center gap-3">
@@ -161,6 +185,7 @@ export function SeatPanel({
             />
           </>
         )}
+        {isTraveller(seat.role) && <TravellerSide seat={seat} />}
       </section>
 
       {linked && (
@@ -221,7 +246,6 @@ export function SeatPanel({
       )}
       {registersDead(state, seat) && <p className="-mt-2 text-sm font-medium text-accent">{fill(t.registersDead, { name: seat.name || "?" })}</p>}
       <SurvivalNote seat={seat} />
-      {seat.dead && <p className="-mt-2 text-sm text-muted">{seat.voteUsed ? t.voteUsed : t.ghostVote}</p>}
 
       <section className="flex flex-col gap-2">
         <h3 className="text-xs font-semibold tracking-wide text-muted uppercase">{t.reminders}</h3>
@@ -273,8 +297,39 @@ export function SeatPanel({
           </div>
         )}
       </section>
+    </>
+  );
+}
 
-      <PlaceControls seat={seat} index={index} onRemoved={onRemoved} />
+/** Good or evil for a traveller, as the Storyteller chooses: the colour of their token and how the rules count them. */
+function TravellerSide({ seat }: { seat: GrimoireSeat }) {
+  const { update, readOnly, t } = useGrimoire();
+  return (
+    <>
+      <SidePicker value={seat.side} disabled={readOnly} onChange={(side) => update((s) => changeSeat(s, seat.id, (x) => ({ ...x, side })))} />
+      {!seat.side && <p className="text-xs text-muted">{t.travellerNoSide}</p>}
+    </>
+  );
+}
+
+/** 😇 / 😈 for a traveller; tapping the chosen one again leaves it unchosen. */
+export function SidePicker({ value, onChange, disabled = false }: { value?: Side; onChange: (side: Side | undefined) => void; disabled?: boolean }) {
+  const { t } = useGrimoire();
+  return (
+    <div className="flex flex-wrap items-center gap-2" data-testid="traveller-side">
+      <span className="text-sm">{t.travellerSide}:</span>
+      {sides.map((side) => (
+        <button
+          key={side}
+          type="button"
+          disabled={disabled}
+          aria-pressed={value === side}
+          onClick={() => onChange(value === side ? undefined : side)}
+          className={`${big} ${value === side ? (side === "good" ? "border-good bg-good/10 font-semibold" : "border-accent bg-accent/10 font-semibold") : "border-border bg-card hover:border-accent/50"}`}
+        >
+          {t.travellerSides[side]}
+        </button>
+      ))}
     </div>
   );
 }

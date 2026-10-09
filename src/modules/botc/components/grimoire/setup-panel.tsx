@@ -34,6 +34,7 @@ import {
   withScript,
   type ExpectedCount,
   type GrimoireState,
+  type Side,
 } from "@/modules/botc/lib/grimoire/state";
 import { groupHeadingClass } from "@/modules/botc/components/draft/team-section";
 import { youAreCard } from "@/modules/botc/lib/grimoire/show";
@@ -43,8 +44,9 @@ import { nameOf, RoleIcon, useGrimoire, type GrimoireContextValue, type Grimoire
 import { RoleGrid, teamBox } from "./role-grid";
 import { FabledSetup } from "./fabled";
 import { ShowButton } from "./show";
-import { holders } from "./seat-panel";
+import { holders, SidePicker } from "./seat-panel";
 import { gapIcon } from "./town";
+import { HideButton } from "./grimoire";
 
 /** A script of the club's library: its characters, and its Fabled and Loric */
 export type ScriptChoice = GrimoireState["script"] & { id: number };
@@ -82,6 +84,7 @@ function bagSize(state: GrimoireState) {
 }
 
 const allCharacterIds = botcRoles.filter((r) => r.team !== "traveller").map((r) => r.id);
+const allTravellers = botcRoles.filter((r) => r.team === "traveller").map((r) => r.id);
 const button = "min-h-11 rounded-lg border px-3 py-2 text-sm font-medium disabled:opacity-40";
 const plain = `${button} border-border bg-card hover:border-accent/50`;
 const heading = "text-xs font-semibold tracking-wide text-muted uppercase";
@@ -102,13 +105,14 @@ export function SetupScreen({
   onStart?: () => void;
   onClose: () => void;
 }) {
-  const { t } = useGrimoire();
+  const { readOnly, t } = useGrimoire();
   return (
     <div className="fixed inset-0 z-40 overflow-y-auto overscroll-contain bg-background" role="dialog" aria-modal="true" aria-label={t.tabs.setup} data-testid="setup-screen">
       <div className="sticky top-0 z-10 border-b border-border bg-background">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-2 px-4 py-3 sm:px-8">
           <h2 className="text-lg font-bold">{t.tabs.setup}</h2>
           <span className="ml-auto flex flex-wrap gap-2">
+            {!readOnly && <HideButton />}
             {onStart && (
               <button type="button" className={`${button} border-accent bg-accent text-accent-foreground`} onClick={onStart}>
                 {t.startGame}
@@ -129,17 +133,15 @@ export function SetupScreen({
 
 /** Before the game (and for changes during it): script, Fabled and Loric, players, the setup counts, the bag, the Demon's bluffs. */
 export function SetupPanel({ scripts, onSelectSeat, wide = false }: { scripts: ScriptChoice[]; onSelectSeat: (seatId: string) => void; wide?: boolean }) {
-  const { state, update, readOnly, characters, locale, t } = useGrimoire();
+  const { state, update, readOnly, hidden, t } = useGrimoire();
   const [newName, setNewName] = useState("");
-  const [bagOpen, setBagOpen] = useState(false);
   const players = playerSeats(state).length;
   const inCircle = state.seats.filter(isPlayer);
-  const expected = expectedSetup(players, setupRoles(state));
+  // hidden: the rulebook's numbers, not the ones the characters in play change
+  const expected = expectedSetup(players, hidden ? [] : setupRoles(state));
   const bagExpected = expectedSetup(players, setupRoles(state), true);
   const assigned = teamCounts(state.seats.map((s) => s.role));
   const inBag = teamCounts(state.bag);
-  const setupChanges = setupChangesOf(state, characters, t);
-  const missingLinked = state.seats.filter((s) => linkedRoleOf(s.role) && !s.believedRole);
 
   const addPlayer = () => {
     const name = newName.trim().slice(0, 60);
@@ -187,7 +189,7 @@ export function SetupPanel({ scripts, onSelectSeat, wide = false }: { scripts: S
                 ) : (
                   <>
                     <span className="text-xs text-muted">{inCircle.indexOf(s) + 1}.</span>
-                    {s.role && <RoleIcon roleId={s.role} size={22} />}
+                    {s.role && !hidden && <RoleIcon roleId={s.role} size={22} />}
                     {s.name || "?"}
                   </>
                 )}
@@ -228,6 +230,7 @@ export function SetupPanel({ scripts, onSelectSeat, wide = false }: { scripts: S
             </button>
           </form>
         )}
+        {!readOnly && state.seats.length < MAX_SEATS && <AddTraveller />}
         {!readOnly && state.seats.length < MAX_SEATS && (
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs text-muted">{t.addGap}:</span>
@@ -254,56 +257,87 @@ export function SetupPanel({ scripts, onSelectSeat, wide = false }: { scripts: S
             <tr className="text-xs text-muted">
               <th className="text-left font-normal" />
               <th className="font-normal">{t.expected}</th>
-              <th className="font-normal">{t.inBag}</th>
-              <th className="font-normal">{t.assigned}</th>
+              {!hidden && <th className="font-normal">{t.inBag}</th>}
+              {!hidden && <th className="font-normal">{t.assigned}</th>}
             </tr>
           </thead>
           <tbody>
             {[...setupTeams, "traveller" as const].map((team) => {
               const want = team === "traveller" ? undefined : expected?.[team];
               const off = (n: number, e = want) => (offCount(e, n) ? "font-bold text-accent" : "");
-              if (team === "traveller" && assigned.traveller === 0) return null;
+              if (team === "traveller" && (assigned.traveller === 0 || hidden)) return null;
               return (
                 <tr key={team}>
                   <td className={`py-0.5 font-medium ${groupHeadingClass(team)}`}>{t.teams[team]}</td>
                   <td className="text-center" title={want?.values ? undefined : t.anyCount}>
                     {wanted(want, t) ?? "–"}
                   </td>
-                  <td className={`text-center ${state.bag.length && team !== "traveller" ? off(inBag[team], bagExpected?.[team]) : ""}`}>{team === "traveller" ? "–" : inBag[team]}</td>
-                  <td className={`text-center ${off(assigned[team])}`}>{assigned[team]}</td>
+                  {!hidden && (
+                    <td className={`text-center ${state.bag.length && team !== "traveller" ? off(inBag[team], bagExpected?.[team]) : ""}`}>{team === "traveller" ? "–" : inBag[team]}</td>
+                  )}
+                  {!hidden && <td className={`text-center ${off(assigned[team])}`}>{assigned[team]}</td>}
                 </tr>
               );
             })}
           </tbody>
         </table>
-        {setupChanges.length > 0 && (
-          <ul className="text-sm">
-            {setupChanges.map((c) => (
-              <li key={c.id}>
-                ⚠️ {nameOf(c.id, locale)}: {c.note}
-              </li>
-            ))}
-          </ul>
-        )}
-        {marionetteApart(state) && <p className="text-sm text-accent">{t.marionetteApart}</p>}
-        {typhonInLine(state) === false && (
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="text-sm text-accent">{t.typhonApart}</p>
-            {!readOnly && (
-              <button type="button" className={plain} onClick={() => update((s) => lineUpTyphon(s))}>
-                {t.typhonLineUp}
-              </button>
-            )}
-          </div>
-        )}
-        <JinxWarnings />
-        {missingLinked.map((s) => (
-          <button key={s.id} type="button" onClick={() => onSelectSeat(s.id)} className="text-left text-sm text-accent underline">
-            {fill(t.linkedNeeded, { name: s.name, role: nameOf(s.role, locale), what: t.linked[linkedRoleOf(s.role)!.kind] })}
-          </button>
-        ))}
+        {!hidden && <SetupWarnings onSelectSeat={onSelectSeat} />}
       </section>
 
+      {hidden ? (
+        <p className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-muted" data-testid="setup-hidden">
+          {t.hiddenSetup}
+        </p>
+      ) : (
+        <SetupSecrets wide={wide} />
+      )}
+    </div>
+  );
+}
+
+/** What the characters in the bag and at the table do to the setup, and what is still missing; only for the Storyteller's eyes. */
+function SetupWarnings({ onSelectSeat }: { onSelectSeat: (seatId: string) => void }) {
+  const { state, update, readOnly, characters, locale, t } = useGrimoire();
+  const setupChanges = setupChangesOf(state, characters, t);
+  const missingLinked = state.seats.filter((s) => linkedRoleOf(s.role) && !s.believedRole);
+  return (
+    <>
+      {setupChanges.length > 0 && (
+        <ul className="text-sm">
+          {setupChanges.map((c) => (
+            <li key={c.id}>
+              ⚠️ {nameOf(c.id, locale)}: {c.note}
+            </li>
+          ))}
+        </ul>
+      )}
+      {marionetteApart(state) && <p className="text-sm text-accent">{t.marionetteApart}</p>}
+      {typhonInLine(state) === false && (
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-sm text-accent">{t.typhonApart}</p>
+          {!readOnly && (
+            <button type="button" className={plain} onClick={() => update((s) => lineUpTyphon(s))}>
+              {t.typhonLineUp}
+            </button>
+          )}
+        </div>
+      )}
+      <JinxWarnings />
+      {missingLinked.map((s) => (
+        <button key={s.id} type="button" onClick={() => onSelectSeat(s.id)} className="text-left text-sm text-accent underline">
+          {fill(t.linkedNeeded, { name: s.name, role: nameOf(s.role, locale), what: t.linked[linkedRoleOf(s.role)!.kind] })}
+        </button>
+      ))}
+    </>
+  );
+}
+
+/** The bag, the Demon's bluffs and handing the characters out. */
+function SetupSecrets({ wide }: { wide: boolean }) {
+  const { state, readOnly, locale, t } = useGrimoire();
+  const [bagOpen, setBagOpen] = useState(false);
+  return (
+    <>
       {/* the tokens and bluffs only to look at: they are chosen in the token selection over the whole screen */}
       <section className="flex flex-col gap-2">
         <div className="flex flex-wrap items-center gap-2">
@@ -349,7 +383,55 @@ export function SetupPanel({ scripts, onSelectSeat, wide = false }: { scripts: S
           {state.phase === "setup" && <p className="text-xs text-muted">{t.drawSetupHint}</p>}
         </section>
       )}
-    </div>
+    </>
+  );
+}
+
+/**
+ * A traveller joins: their name, good or evil (hidden, the Storyteller chooses it later in the player's panel), then
+ * the character, the script's travellers marked; they sit down at the end of the circle.
+ */
+function AddTraveller() {
+  const { state, update, hidden, t } = useGrimoire();
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [side, setSide] = useState<Side | undefined>();
+  const inScript = new Map(state.script.roleIds.filter((id) => allTravellers.includes(id)).map((id) => [id, t.travellerInScript]));
+  const add = (role: string) => {
+    const traveller = { ...newSeat(name.trim().slice(0, 60)), role, ...(side && !hidden ? { side } : {}) };
+    update((s) => (s.seats.length >= MAX_SEATS ? s : { ...s, seats: [...s.seats, traveller] }));
+    setName("");
+    setSide(undefined);
+    setOpen(false);
+  };
+  return (
+    <>
+      <button type="button" className={`${plain} self-start`} onClick={() => setOpen(!open)} aria-expanded={open}>
+        🧳 {t.addTraveller}
+      </button>
+      {open && (
+        <div className="flex flex-col gap-2 rounded-xl border border-border p-2" data-testid="add-traveller">
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder={t.travellerName}
+            aria-label={t.travellerName}
+            maxLength={60}
+            className="min-h-11 min-w-0 rounded-lg border border-border bg-card px-3 text-base"
+          />
+          {!hidden && <SidePicker value={side} onChange={setSide} />}
+          {/* the side first, so the town shows it from the start; hidden, the Storyteller chooses it later */}
+          {hidden || side ? (
+            <>
+              <p className="text-xs text-muted">{t.travellerHint}</p>
+              <RoleGrid roleIds={allTravellers} marked={new Set()} notes={holders(state)} badges={inScript} label={t.addTraveller} onPick={add} />
+            </>
+          ) : (
+            <p className="text-sm text-muted">{t.travellerSideFirst}</p>
+          )}
+        </div>
+      )}
+    </>
   );
 }
 

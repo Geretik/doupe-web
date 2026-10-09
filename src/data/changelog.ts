@@ -13,6 +13,41 @@ export type ChangelogEntry = { /** YYYY-MM-DD */ date: string; title: string; it
 
 export const changelog: ChangelogEntry[] = [
   {
+    date: "2026-10-10",
+    title: "Grimoár: mřížka, pocestní, skrytí stavu hry a velikost žetonů",
+    items: [
+      {
+        for: "organizers",
+        text: "Grimoár: tlačítkem pod zámkem v rohu města přepneš z kruhu na mřížku a hráče (i dveře, vypravěče a překážky) přetáhneš, kam chceš – třeba jak sedí u stolu. Žeton se přichytí k mřížce a zařadí se mezi dva hráče, ke kterým ho položíš nejblíž; přerušovaná čára ukazuje, kdo s kým sousedí. Zpátky do kruhu stejným tlačítkem, rozmístění na mřížce zůstane uložené. Se zamčeným rozesazením mřížka ani přepínač nejsou vidět.",
+        href: "/admin/botc/grimoary",
+      },
+      {
+        for: "organizers",
+        text: "Grimoár, Příprava: tlačítkem 🧳 Přidat pocestného zadáš jméno, vybereš stranu (😇 Dobro / 😈 Zlo) a pak postavu – pocestní ze scriptu jsou označení. Pocestný si přisedne na konec kruhu a jeho žeton má barvu strany; pravidla (Empat, Kuchař…) ho tak i počítají. Stranu změníš v jeho panelu.",
+        href: "/admin/botc/grimoary",
+      },
+      {
+        for: "organizers",
+        text: "Grimoár: tlačítkem 👁 v horní liště (i v Přípravě) schováš na tomto zařízení postavy, připomínky, pytlík, blafy, noc i kroniku – grimoár může na chvíli držet zkušenější hráč a pomoct s hráči, rozesazením nebo scriptem, aniž by viděl stav hry. Tlačítko Zpět mu vrátí jen jeho vlastní změny. Skrytí vydrží i obnovení stránky, odkrytí se potvrzuje.",
+        href: "/admin/botc/grimoary",
+      },
+      {
+        for: "organizers",
+        text: "Grimoár: tlačítkem 🔍 v horní liště zvětšíš nebo zmenšíš žetony, jména a připomínky ve městě (60–160 %). Nastavení platí na tomto zařízení pro všechny grimoáry.",
+        href: "/admin/botc/grimoary",
+      },
+      {
+        for: "organizers",
+        text: "Postavy podle aktuálního script toolu: opravené uříznuté schopnosti (Lil' Monsta), další české texty a připomínky, upravené pořadí první noci, jinxy s Yaggababble.",
+      },
+      {
+        for: "players",
+        text: "Pocestný Thief se česky jmenuje Zloděj.",
+        href: "/botc/moje-hry",
+      },
+    ],
+  },
+  {
     date: "2026-10-09",
     title: "Moje hry: postavy a odznáčky; historie akcí v adminu, kolik lidí tu kdy bude, e-maily k termínům",
     items: [

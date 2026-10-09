@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { linkedRoleOf } from "@/modules/botc/lib/botc-roles";
 import {
   abilityWorks,
@@ -17,7 +17,9 @@ import {
   type GapKind,
   type GrimoireSeat,
   type GrimoireState,
+  type TownPoint,
 } from "@/modules/botc/lib/grimoire/state";
+import { circlePoint, GRID, gridPoints, insertNearest, nearestCirclePlace, putPlace, snap } from "@/modules/botc/lib/grimoire/layout";
 import { findRole } from "@/modules/botc/lib/botc-roles";
 import type { GrimoireCharacter } from "@/modules/botc/lib/grimoire/characters";
 import { fill } from "@/modules/botc/lib/grimoire/text";
@@ -45,6 +47,9 @@ export const gapIcon: Record<GapKind, string> = { door: "🚪", storyteller: "�
  * the bottom, so the tablet shows the table as the Storyteller sees it (without one the first seat is at
  * the top). Sizes follow the area and the number of places, so it works on a tablet either way round and
  * on a phone. With `onMove`, a place is dragged to another one; the places in between make room.
+ * Laid out on a grid (state.layout), the places are where the Storyteller put them (lib/grimoire/layout):
+ * a place dragged snaps to the grid and goes into the circle between the two it lies nearest to; while
+ * places can be moved, the grid's points and a line round the circle show.
  */
 export function Town({
   selectedId,
@@ -59,15 +64,15 @@ export function Town({
   /** Seats that wake on the night step in focus */
   highlightIds: string[];
   onSelect: (seatId: string) => void;
-  /** A place dragged to the place `to` of the circle; absent = the places stay put */
-  onMove?: (seatId: string, to: number) => void;
+  /** A place dragged: how the places change; absent = the places stay put */
+  onMove?: (move: (seats: GrimoireSeat[]) => GrimoireSeat[]) => void;
   center: React.ReactNode;
-  /** The players hold the tablet (the draw): characters face down, no reminders */
+  /** Characters face down, no reminders: the players hold the tablet (the draw), or someone helps with the hidden grimoire */
   hideRoles?: boolean;
   /** A tap on the square where there is no place, e.g. to let go of the selected player */
   onBackground?: () => void;
 }) {
-  const { state, t } = useGrimoire();
+  const { state, scale, t } = useGrimoire();
   const ref = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
   const [drag, setDrag] = useState<{ id: string; from: number; to: number; x: number; y: number } | null>(null);
@@ -86,24 +91,50 @@ export function Town({
 
   const seats = state.seats;
   const n = seats.length;
+  const grid = state.layout === "grid";
   const { w, h } = size;
-  const radius = Math.min(w, h - LABEL) / 2;
-  const token = clamp(((2 * Math.PI * radius) / Math.max(n, 1)) * 0.68, 44, 104);
-  const pill = clamp(token * 0.32, 20, PILL_H);
+  // the names under the tokens; everything sized by the room, then by this device's scale
+  const label = LABEL * scale;
+  const radius = Math.min(w, h - label) / 2;
+  const token = Math.min(clamp(((2 * Math.PI * radius) / Math.max(n, 1)) * 0.68, 44, 104) * scale, radius);
+  const pill = clamp(token * 0.32, 20 * scale, PILL_H * scale);
+  const pillW = PILL_W * scale;
   const cx = w / 2;
-  const cy = (h - LABEL) / 2;
+  const cy = (h - label) / 2;
   const rx = Math.max(0, w / 2 - token / 2 - 4);
-  const ry = Math.max(0, (h - LABEL) / 2 - token / 2 - 4);
+  const ry = Math.max(0, (h - label) / 2 - token / 2 - 4);
+  // a point of the room the places' middles have (lib/grimoire/layout) on the screen, and back
+  const toScreen = (p: TownPoint) => ({ x: cx + rx * (2 * p.x - 1), y: cy + ry * (2 * p.y - 1) });
+  const toPoint = (x: number, y: number): TownPoint => ({ x: rx ? (x - cx + rx) / (2 * rx) : 0.5, y: ry ? (y - cy + ry) / (2 * ry) : 0.5 });
+  const aspect = ry ? rx / ry : 1;
+  const room = ry ? token / (2 * ry) : 0;
   const storyteller = seats.findIndex((s) => s.gap === "storyteller");
-  const first = storyteller >= 0 ? Math.PI / 2 - (2 * Math.PI * storyteller) / n : -Math.PI / 2;
-  const step = (2 * Math.PI) / Math.max(n, 1);
+  const onGrid = useMemo(() => (grid ? gridPoints(seats, aspect, room) : []), [grid, seats, aspect, room]);
+  const shown = Object.fromEntries(onGrid.map((p, i) => [seats[i].id, p]));
+  const pointOf = (seat: GrimoireSeat) => shown[seat.id];
   // while a place is dragged: the circle as it would be after the drop, the dragged one under the finger
-  const order = drag ? moveSeat(seats, drag.from, drag.to) : seats;
-  const places = seats.map((seat) => {
+  const order = !drag ? seats : grid ? insertNearest(seats, drag.from, toPoint(drag.x, drag.y), pointOf, aspect) : moveSeat(seats, drag.from, drag.to);
+  const places = seats.map((seat, i) => {
     if (drag?.id === seat.id) return { seat, x: drag.x, y: drag.y };
-    const angle = first + step * order.indexOf(seat);
-    return { seat, x: cx + rx * Math.cos(angle), y: cy + ry * Math.sin(angle) };
+    return { seat, ...toScreen(grid ? onGrid[i] : circlePoint(order.indexOf(seat), n, storyteller)) };
   });
+  // the middle the reminders point to and the phase is in: the circle's, on the grid the middle of the places
+  let middle = { left: cx - rx * 0.55, top: cy - ry * 0.45, width: rx * 1.1, height: ry * 0.9 };
+  if (grid && n > 0) {
+    const xs = onGrid.map((p) => toScreen(p).x);
+    const ys = onGrid.map((p) => toScreen(p).y);
+    const [left, right, top, bottom] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
+    const width = Math.min(w, Math.max(160, (right - left) * 0.55));
+    const height = Math.min(h - label, Math.max(80, (bottom - top) * 0.45));
+    middle = {
+      left: clamp((left + right - width) / 2, 0, w - width),
+      top: clamp((top + bottom - height) / 2, 0, h - label - height),
+      width,
+      height,
+    };
+  }
+  const mx = middle.left + middle.width / 2;
+  const my = middle.top + middle.height / 2;
 
   const press = (e: React.PointerEvent, seatId: string) => {
     if (!onMove || !e.isPrimary || e.button !== 0) return;
@@ -112,22 +143,30 @@ export function Town({
     const box = ref.current!.getBoundingClientRect();
     const { pointerId, clientX: startX, clientY: startY } = e;
     const from = seats.findIndex((s) => s.id === seatId);
+    const start = places[from];
     let to = from;
+    let at = grid ? shown[seatId] : null;
     const move = (ev: PointerEvent) => {
       if (ev.pointerId !== pointerId) return;
       if (!dragged.current && Math.hypot(ev.clientX - startX, ev.clientY - startY) < DRAG_START) return;
       dragged.current = true;
+      if (grid) {
+        // from where it was, as far as the finger went, on the nearest point of the grid
+        at = snap(toPoint(start.x + ev.clientX - startX, start.y + ev.clientY - startY));
+        setDrag({ id: seatId, from, to, ...toScreen(at) });
+        return;
+      }
       const x = ev.clientX - box.left;
       const y = ev.clientY - box.top;
-      // the place of the circle nearest to the finger
-      const angle = Math.atan2((y - cy) / (ry || 1), (x - cx) / (rx || 1));
-      to = ((Math.round((angle - first) / step) % n) + n) % n;
+      to = nearestCirclePlace(toPoint(x, y), n, storyteller);
       setDrag({ id: seatId, from, to, x, y });
     };
     const end = (ev: PointerEvent) => {
       if (ev.pointerId !== pointerId) return;
       stop();
-      if (dragged.current && ev.type === "pointerup") onMove(seatId, to);
+      if (dragged.current && ev.type === "pointerup") {
+        onMove(at ? (s) => putPlace(s, seatId, at!, shown, aspect) : (s) => moveSeat(s, from, to));
+      }
       // the click of this press comes right after; a later one is a tap again
       setTimeout(() => (dragged.current = false));
     };
@@ -148,15 +187,44 @@ export function Town({
     dragging: drag?.id === seatId,
     onPointerDown: onMove ? (e: React.PointerEvent) => press(e, seatId) : undefined,
   });
+  const where = Object.fromEntries(places.map((p) => [p.seat.id, p]));
+  const cell = { x: (2 * rx) / GRID.cols, y: (2 * ry) / GRID.rows };
 
   return (
-    <div ref={ref} className="absolute inset-0 select-none" data-testid="town" onClick={(e) => e.target === e.currentTarget && onBackground?.()}>
+    <div ref={ref} className="absolute inset-0 select-none" data-testid="town" data-layout={grid ? "grid" : "circle"} onClick={(e) => e.target === e.currentTarget && onBackground?.()}>
       {w > 0 && (
         <>
-          <div
-            className="pointer-events-none absolute flex flex-col items-center justify-center gap-1 text-center"
-            style={{ left: cx - rx * 0.55, top: cy - ry * 0.45, width: rx * 1.1, height: ry * 0.9 }}
-          >
+          {grid && onMove && (
+            <>
+              <div
+                className="pointer-events-none absolute text-muted/40"
+                style={{
+                  left: cx - rx - cell.x / 2,
+                  top: cy - ry - cell.y / 2,
+                  width: 2 * rx + cell.x,
+                  height: 2 * ry + cell.y,
+                  backgroundImage: "radial-gradient(circle, currentColor 1.5px, transparent 2px)",
+                  backgroundSize: `${cell.x}px ${cell.y}px`,
+                }}
+                aria-hidden
+                data-testid="town-grid"
+              />
+              {n > 2 && (
+                // who neighbours whom: the order of the circle, which the places' spots do not show by themselves
+                <svg className="pointer-events-none absolute inset-0 text-muted/50" width={w} height={h} aria-hidden>
+                  <polygon
+                    points={order.map((s) => `${where[s.id].x},${where[s.id].y}`).join(" ")}
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                    strokeDasharray="6 6"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              )}
+            </>
+          )}
+          <div className="pointer-events-none absolute flex flex-col items-center justify-center gap-1 text-center" style={middle}>
             {center}
           </div>
           {places.map(({ seat, x, y }) => {
@@ -165,13 +233,13 @@ export function Town({
                 <Gap key={seat.id} gap={seat.gap} size={token} x={x} y={y} selected={seat.id === selectedId} onClick={() => select(seat.id)} {...moving(seat.id)} />
               );
             }
-            const dx = cx - x;
-            const dy = cy - y;
-            const len = Math.hypot(dx, dy) || 1;
-            const ux = dx / len;
-            const uy = dy / len;
+            const dx = mx - x;
+            const dy = my - y;
+            const len = Math.hypot(dx, dy);
+            // a place in the very middle has them below
+            const [ux, uy] = len < 1 ? [0, 1] : [dx / len, dy / len];
             // along the way to the middle; horizontal neighbours need a pill's width, vertical ones its height
-            const step = Math.abs(ux) * (PILL_W + 6) + Math.abs(uy) * (pill + 6);
+            const step = Math.abs(ux) * (pillW + 6) + Math.abs(uy) * (pill + 6);
             const start = token / 2 + 6 + step / 2;
             return (
               <div key={seat.id}>
@@ -182,8 +250,8 @@ export function Town({
                       key={r.id}
                       type="button"
                       onClick={() => select(seat.id)}
-                      className={`absolute flex items-center gap-1 rounded-full border border-border bg-card/95 px-1.5 text-[11px] leading-none shadow-sm ${glide}`}
-                      style={{ left: x + ux * d - PILL_W / 2, top: y + uy * d - pill / 2, maxWidth: PILL_W, height: pill }}
+                      className={`absolute flex items-center gap-1 rounded-full border border-border bg-card/95 px-1.5 leading-none shadow-sm ${glide}`}
+                      style={{ left: x + ux * d - pillW / 2, top: y + uy * d - pill / 2, maxWidth: pillW, height: pill, fontSize: 11 * scale }}
                       title={r.text}
                       data-testid="reminder"
                     >
@@ -236,7 +304,7 @@ function Gap({
   onClick,
   ...moving
 }: { gap: GapKind; size: number; x: number; y: number; selected: boolean; onClick: () => void } & Moving) {
-  const { t } = useGrimoire();
+  const { scale, t } = useGrimoire();
   const d = size * 0.62;
   return (
     <button
@@ -255,7 +323,9 @@ function Gap({
       >
         {gapIcon[gap]}
       </span>
-      <span className="mt-0.5 text-xs text-muted">{t.gaps[gap]}</span>
+      <span className="mt-0.5 text-muted" style={{ fontSize: 12 * scale }}>
+        {t.gaps[gap]}
+      </span>
     </button>
   );
 }
@@ -280,32 +350,39 @@ function SeatToken({
   onClick: () => void;
   hidden: boolean;
 } & Moving) {
-  const { state, characters, locale, t } = useGrimoire();
+  const { state, characters, scale, locale, t } = useGrimoire();
+  const nameSize = { fontSize: 14 * scale };
+  const ring = selected ? "outline-4 outline-offset-2 outline-accent" : highlighted ? "outline-4 outline-offset-2 outline-amber-400" : "";
   if (hidden) {
-    // face down: whether the place has drawn, never what
+    // face down: whether the place has a character, never which; who died is no secret
     return (
       <button
         type="button"
         onClick={onClick}
-        className="absolute flex flex-col items-center"
+        onPointerDown={moving.onPointerDown}
+        className={`absolute flex flex-col items-center ${moveClass(moving)}`}
         style={{ left: x - size / 2, top: y - size / 2, width: size }}
+        aria-pressed={selected}
         data-testid="seat"
         data-seat={seat.name}
         data-drawn={seat.role ? "yes" : "no"}
       >
         <span
-          className={`flex items-center justify-center rounded-full border-[3px] shadow-md ${seat.role ? "border-foreground/70 bg-foreground/80 text-background" : "border-dashed border-accent/60 bg-card text-accent"}`}
+          className={`relative flex items-center justify-center overflow-hidden rounded-full border-[3px] shadow-md ${seat.role ? "border-foreground/70 bg-foreground/80 text-background" : "border-dashed border-accent/60 bg-card text-accent"} ${ring}`}
           style={{ width: size, height: size, fontSize: size * 0.4 }}
         >
           {seat.role ? "✓" : "?"}
+          {seat.dead && <span className="absolute inset-0 rounded-full bg-black/45" aria-hidden />}
         </span>
-        <span className="mt-0.5 max-w-[150%] truncate text-sm leading-tight font-semibold">{seat.name || "\u00a0"}</span>
+        {seat.dead && <DeadMarks seat={seat} />}
+        <span className={`mt-0.5 max-w-[150%] truncate leading-tight font-semibold ${seat.dead ? "text-muted line-through" : ""}`} style={nameSize}>
+          {seat.name || "\u00a0"}
+        </span>
       </button>
     );
   }
   const side = seatSide(seat, characters, state);
   const border = side ? sideBorder[side] : seat.role ? "border-muted" : "border-dashed border-border";
-  const ring = selected ? "outline-4 outline-offset-2 outline-accent" : highlighted ? "outline-4 outline-offset-2 outline-amber-400" : "";
   const linked = seat.believedRole && linkedRoleOf(seat.role) ? seat.believedRole : null;
   return (
     <button
@@ -325,31 +402,42 @@ function SeatToken({
         {seat.role ? (
           <>
             <RoleIcon roleId={seat.role} size={size * 0.56} className={seat.dead ? "grayscale" : ""} />
-            <span className="max-w-[88%] truncate leading-tight font-semibold" style={{ fontSize: clamp(size * 0.12, 9, 13) }}>
+            <span className="max-w-[88%] truncate leading-tight font-semibold" style={{ fontSize: clamp(size * 0.12, 9 * scale, 13 * scale) }}>
               {nameOf(seat.role, locale)}
             </span>
           </>
         ) : (
-          <span className="text-xs text-muted">{t.noRole}</span>
+          <span className="text-muted" style={{ fontSize: 12 * scale }}>
+            {t.noRole}
+          </span>
         )}
         {seat.dead && <span className="absolute inset-0 rounded-full bg-black/45" aria-hidden />}
       </span>
-      {seat.dead && (
-        // the shroud, and while the dead player still has their vote, the vote token
-        <span className="absolute -top-1 left-1/2 flex -translate-x-1/2 items-center gap-0.5 text-base leading-none">
-          <span title={t.deadMark}>☠</span>
-          {!seat.voteUsed && <span className="rounded-full bg-card px-1 text-xs shadow" title={t.ghostVote}>🗳</span>}
-        </span>
-      )}
+      {seat.dead && <DeadMarks seat={seat} />}
       {linked && (
         <span className="absolute rounded-full border border-border bg-card p-0.5 shadow" style={{ left: -4, top: size * 0.62 }}>
           <RoleIcon roleId={linked} size={clamp(size * 0.3, 16, 28)} />
         </span>
       )}
-      <span className={`mt-0.5 max-w-[150%] truncate text-sm leading-tight font-semibold ${seat.dead ? "text-muted line-through" : ""}`}>
+      <span className={`mt-0.5 max-w-[150%] truncate leading-tight font-semibold ${seat.dead ? "text-muted line-through" : ""}`} style={nameSize}>
         {seat.name || "?"}
       </span>
     </button>
+  );
+}
+
+/** The shroud, and while the dead player still has their vote, the vote token. */
+function DeadMarks({ seat }: { seat: GrimoireSeat }) {
+  const { t } = useGrimoire();
+  return (
+    <span className="absolute -top-1 left-1/2 flex -translate-x-1/2 items-center gap-0.5 text-base leading-none">
+      <span title={t.deadMark}>☠</span>
+      {!seat.voteUsed && (
+        <span className="rounded-full bg-card px-1 text-xs shadow" title={t.ghostVote}>
+          🗳
+        </span>
+      )}
+    </span>
   );
 }
 
@@ -402,12 +490,12 @@ function dayRules(state: GrimoireState, characters: Record<string, GrimoireChara
   return rules;
 }
 
-/** The middle of the town: the phase and the numbers a Storyteller keeps asking for. */
+/** The middle of the town: the phase and the numbers a Storyteller keeps asking for; hidden, only what everybody knows. */
 export function TownCenter({ phaseLabel }: { phaseLabel: string }) {
-  const { state, characters, t } = useGrimoire();
+  const { state, characters, hidden, t } = useGrimoire();
   const { alive, votes, toExecute } = voteMath(state);
   const count = players(state).length;
-  const bluffs = state.bluffs.filter((b): b is string => b !== null);
+  const bluffs = hidden ? [] : state.bluffs.filter((b): b is string => b !== null);
   return (
     <>
       <span className="text-xl font-bold tracking-tight sm:text-2xl">{phaseLabel}</span>
@@ -418,6 +506,7 @@ export function TownCenter({ phaseLabel }: { phaseLabel: string }) {
       )}
       {state.phase === "day" && alive > 0 && <span className="text-sm font-semibold">{fill(t.toExecute, { n: toExecute })}</span>}
       {state.phase === "day" &&
+        !hidden &&
         dayRules(state, characters, t).map((rule) => (
           <span key={rule} className="max-w-56 text-xs font-semibold text-accent">
             {rule}

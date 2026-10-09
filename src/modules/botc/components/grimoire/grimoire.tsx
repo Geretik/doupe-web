@@ -5,14 +5,15 @@ import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "r
 import { createPortal } from "react-dom";
 import type { Locale } from "@/i18n/dictionaries";
 import type { GrimoireCharacter } from "@/modules/botc/lib/grimoire/characters";
-import { isPlayer, moveSeat, nextPhase, nightSteps, putToken, type GrimoireState } from "@/modules/botc/lib/grimoire/state";
+import { isPlayer, nextPhase, nightSteps, putToken, type GrimoireSeat, type GrimoireState } from "@/modules/botc/lib/grimoire/state";
 import { useAutosave, type SaveStatus } from "./autosave";
 import { ChroniclePanel } from "./chronicle";
 import { DrawView } from "./draw";
 import { FabledPanel, FabledTokens } from "./fabled";
 import { fill } from "@/modules/botc/lib/grimoire/text";
-import { GrimoireContext, nameOf, type GrimoireContextValue, type GrimoireTexts } from "./context";
+import { GrimoireContext, nameOf, useGrimoire, type GrimoireContextValue, type GrimoireTexts } from "./context";
 import { GameButton } from "./game-panel";
+import { SCALE, useHidden, useTownScale } from "./device";
 import { useOfflineCopy } from "./offline";
 import { NightPanel, type Placing } from "./night-panel";
 import { SeatPanel } from "./seat-panel";
@@ -23,14 +24,23 @@ import { Town, TownCenter } from "./town";
 
 const UNDO_LIMIT = 100;
 
-type History = { present: GrimoireState; past: GrimoireState[] };
-type Change = { type: "apply"; change: (s: GrimoireState) => GrimoireState } | { type: "undo" } | { type: "replace"; state: GrimoireState };
+/** `floor`: how many of the oldest steps "undo" cannot take back – the Storyteller's, while someone else holds the hidden grimoire */
+type History = { present: GrimoireState; past: GrimoireState[]; floor: number };
+type Change =
+  | { type: "apply"; change: (s: GrimoireState) => GrimoireState }
+  | { type: "undo" }
+  | { type: "replace"; state: GrimoireState }
+  | { type: "floor"; here: boolean };
 
 function reducer(h: History, a: Change): History {
-  if (a.type === "undo") return h.past.length ? { present: h.past[h.past.length - 1], past: h.past.slice(0, -1) } : h;
-  if (a.type === "replace") return { present: a.state, past: [] };
+  if (a.type === "undo") return h.past.length > h.floor ? { ...h, present: h.past[h.past.length - 1], past: h.past.slice(0, -1) } : h;
+  if (a.type === "replace") return { present: a.state, past: [], floor: 0 };
+  if (a.type === "floor") return { ...h, floor: a.here ? h.past.length : 0 };
   const next = a.change(h.present);
-  return next === h.present ? h : { present: next, past: [...h.past, h.present].slice(-UNDO_LIMIT) };
+  if (next === h.present) return h;
+  const past = [...h.past, h.present].slice(-UNDO_LIMIT);
+  // the oldest step dropped off the end lowers the floor with it
+  return { present: next, past, floor: Math.max(0, h.floor - (h.past.length + 1 - past.length)) };
 }
 
 type Tab = "seat" | "night" | "log";
@@ -74,7 +84,7 @@ export function Grimoire({
   locale: Locale;
   t: GrimoireTexts;
 }) {
-  const [history, dispatch] = useReducer(reducer, { present: initial.state, past: [] });
+  const [history, dispatch] = useReducer(reducer, { present: initial.state, past: [], floor: 0 });
   const state = history.present;
   const [tab, setTab] = useState<Tab>(initial.state.phase === "night" ? "night" : "seat");
   const [setupOpen, setSetupOpen] = useState(false);
@@ -97,6 +107,20 @@ export function Grimoire({
   const [showing, setShowing] = useState<ShowCard | null>(null);
 
   const update = useCallback((change: (s: GrimoireState) => GrimoireState) => canEdit && dispatch({ type: "apply", change }), [canEdit]);
+  const [hiddenHere, storeHidden] = useHidden(id);
+  const [scale, setScale] = useTownScale();
+  const hidden = canEdit && hiddenHere;
+  const setHidden = (on: boolean) => {
+    if (!on && !confirm(t.unhideConfirm)) return;
+    storeHidden(on);
+    // whoever holds the hidden grimoire takes back only their own changes
+    dispatch({ type: "floor", here: on });
+    if (on) {
+      setPlacing(null);
+      setFocusStep(null);
+      setShowing(null);
+    }
+  };
   const save = useAutosave({
     id,
     state,
@@ -153,7 +177,19 @@ export function Grimoire({
   const currentStep = state.phase === "night" ? (steps.find((s) => !state.nightDone.includes(s.id)) ?? null) : null;
   const focused = steps.find((s) => s.id === focusStep) ?? currentStep;
 
-  const context: GrimoireContextValue = { state, update, readOnly: !canEdit || state.phase === "ended", show: setShowing, characters, sessionPlayers, locale, t };
+  const context: GrimoireContextValue = {
+    state,
+    update,
+    readOnly: !canEdit || state.phase === "ended",
+    hidden,
+    setHidden,
+    scale,
+    show: setShowing,
+    characters,
+    sessionPlayers,
+    locale,
+    t,
+  };
 
   const advance = () => {
     const next = nextPhase(state, characters);
@@ -179,17 +215,21 @@ export function Grimoire({
     if (seatId === selected && shown === "seat") setSelected(null);
     else selectSeat(seatId);
   };
-  const moveTo = (seatId: string, to: number) =>
+  const moveSeats = (move: (seats: GrimoireSeat[]) => GrimoireSeat[]) =>
     update((s) => {
-      const seats = moveSeat(s.seats, s.seats.findIndex((x) => x.id === seatId), to);
+      const seats = move(s.seats);
       return seats === s.seats ? s : { ...s, seats };
     });
+  const grid = state.layout === "grid";
   const phaseLabel =
     state.phase === "setup" ? t.phases.setup : state.phase === "ended" ? t.phases.ended : fill(t.phases[state.phase], { n: state.round });
   const nextLabel =
     state.phase === "setup" ? t.startGame : state.phase === "night" ? fill(t.toDay, { n: state.round }) : state.phase === "day" ? fill(t.toNight, { n: state.round + 1 }) : null;
-  // the setup and the game's end are buttons under the panel: the setup is done once, the end comes once
-  const tabs: Tab[] = [...(state.phase === "night" || preview ? ["night" as const] : []), "seat", ...(state.phase === "setup" ? [] : ["log" as const])];
+  // the setup and the game's end are buttons under the panel: the setup is done once, the end comes once;
+  // hidden, the night and the chronicle tell too much
+  const tabs: Tab[] = hidden
+    ? ["seat"]
+    : [...(state.phase === "night" || preview ? ["night" as const] : []), "seat", ...(state.phase === "setup" ? [] : ["log" as const])];
   // after "undo" out of a night the night tab is gone
   const shown = tabs.includes(tab) ? tab : "seat";
   // taken out of the game (in the setup, by undo): the panel is the player's again
@@ -248,17 +288,19 @@ export function Grimoire({
                   <button
                     type="button"
                     onClick={() => dispatch({ type: "undo" })}
-                    disabled={history.past.length === 0}
+                    disabled={history.past.length <= history.floor}
                     className="min-h-11 rounded-lg border border-border bg-card px-3 text-sm font-medium disabled:opacity-40"
                   >
                     ↶ {t.undo}
                   </button>
                 )}
-                {canEdit && nextLabel && (
+                {canEdit && nextLabel && !hidden && (
                   <button type="button" onClick={advance} className="min-h-11 rounded-lg bg-accent px-3 text-sm font-semibold text-accent-foreground">
                     {nextLabel}
                   </button>
                 )}
+                <ScaleButton scale={scale} onChange={setScale} />
+                {canEdit && <HideButton />}
                 <button
                   type="button"
                   onClick={toggleFullscreen}
@@ -300,11 +342,12 @@ export function Grimoire({
               <div className="relative min-h-0 basis-[55%] lg:basis-auto lg:flex-1">
                 <Town
                   selectedId={shown === "seat" && !fabledShown ? selected : null}
-                  highlightIds={focused?.seatIds ?? []}
+                  highlightIds={hidden ? [] : (focused?.seatIds ?? [])}
                   onSelect={tapSeat}
                   onBackground={() => (placing ? setPlacing(null) : (setSelected(null), setFabledOpen(null)))}
-                  onMove={context.readOnly || state.seatsLocked ? undefined : moveTo}
+                  onMove={context.readOnly || state.seatsLocked ? undefined : moveSeats}
                   center={<TownCenter phaseLabel={phaseLabel} />}
+                  hideRoles={hidden}
                 />
                 <FabledTokens selectedId={shown === "seat" ? fabledShown : null} onSelect={tapFabled} />
                 {placing && (
@@ -316,18 +359,40 @@ export function Grimoire({
                   </div>
                 )}
                 {!context.readOnly && state.seats.length > 1 && (
-                  // the seating done, the circle is locked so a finger in the game does not move anybody
-                  <button
-                    type="button"
-                    onClick={() => update((s) => ({ ...s, seatsLocked: !s.seatsLocked }))}
-                    className={`absolute top-0 left-0 z-10 flex size-11 items-center justify-center rounded-full border bg-card text-lg shadow-sm ${state.seatsLocked ? "border-accent" : "border-border"}`}
-                    aria-pressed={!!state.seatsLocked}
-                    aria-label={state.seatsLocked ? t.unlockSeats : t.lockSeats}
-                    title={state.seatsLocked ? t.unlockSeats : t.lockSeats}
-                    data-testid="seats-lock"
-                  >
-                    {state.seatsLocked ? "🔒" : "🔓"}
-                  </button>
+                  <div className="absolute top-0 left-0 z-10 flex flex-col gap-2">
+                    {/* the seating done, the circle is locked so a finger in the game does not move anybody */}
+                    <button
+                      type="button"
+                      onClick={() => update((s) => ({ ...s, seatsLocked: !s.seatsLocked }))}
+                      className={`flex size-11 items-center justify-center rounded-full border bg-card text-lg shadow-sm ${state.seatsLocked ? "border-accent" : "border-border"}`}
+                      aria-pressed={!!state.seatsLocked}
+                      aria-label={state.seatsLocked ? t.unlockSeats : t.lockSeats}
+                      title={state.seatsLocked ? t.unlockSeats : t.lockSeats}
+                      data-testid="seats-lock"
+                    >
+                      {state.seatsLocked ? "🔒" : "🔓"}
+                    </button>
+                    {/* the circle, or the places where the Storyteller puts them, like the table they sit at; part of the seating */}
+                    {!state.seatsLocked && (
+                      <button
+                        type="button"
+                        onClick={() => update((s) => ({ ...s, layout: s.layout === "grid" ? "circle" : "grid" }))}
+                        className={`flex size-11 items-center justify-center rounded-full border bg-card shadow-sm ${grid ? "border-accent" : "border-border"}`}
+                        aria-pressed={grid}
+                        aria-label={grid ? t.layoutCircle : t.layoutGrid}
+                        title={grid ? t.layoutCircle : t.layoutGrid}
+                        data-testid="town-layout"
+                      >
+                        <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden>
+                          {grid
+                            ? [5, 12, 19].flatMap((x) => [5, 12, 19].map((y) => <circle key={`${x}${y}`} cx={x} cy={y} r={2.2} />))
+                            : Array.from({ length: 8 }, (_, i) => (
+                                <circle key={i} cx={12 + 8 * Math.cos((i * Math.PI) / 4)} cy={12 + 8 * Math.sin((i * Math.PI) / 4)} r={2.2} />
+                              ))}
+                        </svg>
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
               <aside className="flex min-h-0 flex-1 flex-col rounded-xl border border-border bg-card lg:w-[25rem] lg:flex-none">
@@ -384,7 +449,11 @@ export function Grimoire({
                   >
                     ⚙️ {t.tabs.setup}
                   </button>
-                  <GameButton id={id} session={session} recorded={recorded} canEdit={canEdit} canDelete={canDelete} />
+                  {hidden ? (
+                    <HideButton wide />
+                  ) : (
+                    <GameButton id={id} session={session} recorded={recorded} canEdit={canEdit} canDelete={canDelete} />
+                  )}
                 </div>
               </aside>
             </div>
@@ -401,7 +470,7 @@ export function Grimoire({
               setSetupOpen(false);
             }}
             onStart={
-              canEdit && state.phase === "setup"
+              canEdit && state.phase === "setup" && !hidden
                 ? () => {
                     setSetupOpen(false);
                     advance();
@@ -414,5 +483,78 @@ export function Grimoire({
         )}
       {showing && <ShowScreen card={showing} onChange={setShowing} onClose={() => setShowing(null)} />}
     </GrimoireContext.Provider>
+  );
+}
+
+/**
+ * 👁 / 🙈: hides the characters, reminders, the bag and the bluffs on this device, so someone else can help with the
+ * grimoire without seeing the game; showing them again asks first. `wide`: as the button under the panel.
+ */
+export function HideButton({ wide = false }: { wide?: boolean }) {
+  const { hidden, setHidden, t } = useGrimoire();
+  const label = hidden ? t.unhide : t.hide;
+  return (
+    <button
+      type="button"
+      onClick={() => setHidden(!hidden)}
+      className={`min-h-11 rounded-lg border bg-card px-3 text-sm ${hidden ? "border-accent font-semibold text-accent" : "border-border"} ${wide ? "w-full" : ""}`}
+      aria-pressed={hidden}
+      aria-label={label}
+      title={label}
+      data-testid={wide ? undefined : "hide-button"}
+    >
+      {hidden ? "🙈" : "👁"}
+      {wide && ` ${t.unhideShort}`}
+    </button>
+  );
+}
+
+/** 🔍: how big the town's tokens, names and reminders are on this device, on a slider; back to 100 % in one tap. */
+function ScaleButton({ scale, onChange }: { scale: number; onChange: (scale: number) => void }) {
+  const { t } = useGrimoire();
+  const [open, setOpen] = useState(false);
+  const percent = Math.round(scale * 100);
+  return (
+    <span className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className={`min-h-11 rounded-lg border bg-card px-3 text-sm ${scale === 1 ? "border-border" : "border-accent"}`}
+        aria-expanded={open}
+        aria-label={t.scale}
+        title={t.scale}
+        data-testid="scale-button"
+      >
+        🔍{scale !== 1 && ` ${percent} %`}
+      </button>
+      {open && (
+        <>
+          {/* a tap anywhere else closes it */}
+          <span className="fixed inset-0 z-30" onClick={() => setOpen(false)} aria-hidden />
+          <div className="absolute top-full right-0 z-40 mt-1 flex w-64 flex-col gap-2 rounded-xl border border-border bg-card p-3 shadow-lg" data-testid="scale-panel">
+            <label htmlFor="grimoire-scale" className="flex justify-between text-sm font-semibold">
+              {t.scale}
+              <span>{percent} %</span>
+            </label>
+            <input
+              id="grimoire-scale"
+              type="range"
+              min={SCALE.min * 100}
+              max={SCALE.max * 100}
+              step={SCALE.step * 100}
+              value={percent}
+              onChange={(e) => onChange(Number(e.target.value) / 100)}
+              className="w-full accent-accent"
+            />
+            <div className="flex items-center gap-2">
+              <span className="flex-1 text-xs text-muted">{t.scaleHint}</span>
+              <button type="button" onClick={() => onChange(1)} disabled={scale === 1} className="min-h-10 rounded-lg border border-border px-3 text-sm disabled:opacity-40">
+                100 %
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+    </span>
   );
 }

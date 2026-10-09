@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { gameWinners } from "@/db/schema";
 import { BLUFF_COUNT, findRole, findStorytellerRole, storytellerRoles } from "@/modules/botc/lib/botc-roles";
-import { eventKinds, gapKinds, HOMEBREW_LIMITS, MAX_EVENTS, MAX_REMINDERS, MAX_SEATS, type GrimoireState } from "./state";
+import { eventKinds, gapKinds, HOMEBREW_LIMITS, MAX_EVENTS, MAX_REMINDERS, MAX_SEATS, sides, townLayouts, type GrimoireState } from "./state";
 
 const roleId = z.string().max(40).refine((id) => findRole(id) !== undefined);
 /** A Fabled or Loric */
@@ -18,6 +18,7 @@ const homebrew = z.object({
 });
 const shortId = z.string().min(1).max(20);
 const round = z.number().int().min(0).max(99);
+const fraction = z.number().min(0).max(1);
 
 /** A grimoire state as the page sends it: only known characters, bounded sizes, unknown fields dropped. */
 export const grimoireStateSchema: z.ZodType<GrimoireState> = z.object({
@@ -43,9 +44,12 @@ export const grimoireStateSchema: z.ZodType<GrimoireState> = z.object({
         reminders: z
           .array(z.object({ id: shortId, roleId: anyRoleId.nullable(), text: z.string().trim().min(1).max(80), round: round.optional() }))
           .max(MAX_REMINDERS),
+        pos: z.object({ x: fraction, y: fraction }).optional(),
+        side: z.enum(sides).optional(),
       }),
     )
     .max(MAX_SEATS),
+  layout: z.enum(townLayouts).optional(),
   bag: z.array(roleId).max(MAX_SEATS),
   bluffs: z.array(roleId.nullable()).length(BLUFF_COUNT),
   phase: z.enum(["setup", "night", "day", "ended"]),

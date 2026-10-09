@@ -41,7 +41,7 @@
    "otherNightReminder": "",
    "reminders": [],
    "remindersGlobal": [
-    "Is the Alchemist"
+    "Je Alchymista"
    ]
   },
   "jinxes": [
@@ -99,7 +99,7 @@
   }
  },
  "amnesiac": {
-  "firstNight": 50,
+  "firstNight": 51,
   "otherNight": 69,
   "setup": false,
   "en": {
@@ -141,7 +141,7 @@
   }
  },
  "grandmother": {
-  "firstNight": 58,
+  "firstNight": 59,
   "otherNight": 73,
   "setup": false,
   "en": {
@@ -164,7 +164,7 @@
   }
  },
  "balloonist": {
-  "firstNight": 65,
+  "firstNight": 66,
   "otherNight": 85,
   "setup": true,
   "en": {
@@ -241,7 +241,7 @@
   }
  },
  "empath": {
-  "firstNight": 55,
+  "firstNight": 56,
   "otherNight": 76,
   "setup": false,
   "en": {
@@ -275,7 +275,7 @@
   "cs": {
    "ability": "Každou noc* vybereš 1 hráče (jiného než tu minulou): pokud to bude Démon, dozví se, kdo jsi, ale tu noc se neprobudí.",
    "firstNightReminder": "",
-   "otherNightReminder": "Exorcista vybere 1 hráče. Uspěte Exorcistu. Pokud Exorcista vybral Démona:<br/>Probuďte Démona. Ukažte mu žeton TATO POSTAVA TĚ VYBRALA a žeton Exorcisty. Ukažte na Exorcistu.",
+   "otherNightReminder": "Exorcista vybere 1 hráče. Uspěte Exorcistu. Pokud Exorcista vybral Démona: Probuďte Démona. Ukažte mu žeton TATO POSTAVA TĚ VYBRALA a žeton Exorcisty. Ukažte na Exorcistu.",
    "reminders": [
     "Vybraný"
    ],
@@ -350,7 +350,7 @@
   }
  },
  "general": {
-  "firstNight": 74,
+  "firstNight": 75,
   "otherNight": 94,
   "setup": false,
   "en": {
@@ -369,7 +369,7 @@
   }
  },
  "clockmaker": {
-  "firstNight": 59,
+  "firstNight": 60,
   "otherNight": 0,
   "setup": false,
   "en": {
@@ -436,7 +436,7 @@
   }
  },
  "engineer": {
-  "firstNight": 27,
+  "firstNight": 28,
   "otherNight": 14,
   "setup": false,
   "en": {
@@ -502,7 +502,7 @@
   ]
  },
  "preacher": {
-  "firstNight": 28,
+  "firstNight": 29,
   "otherNight": 15,
   "setup": false,
   "en": {
@@ -548,7 +548,7 @@
   }
  },
  "librarian": {
-  "firstNight": 52,
+  "firstNight": 53,
   "otherNight": 0,
   "setup": false,
   "en": {
@@ -573,7 +573,7 @@
   }
  },
  "chambermaid": {
-  "firstNight": 75,
+  "firstNight": 76,
   "otherNight": 95,
   "setup": false,
   "en": {
@@ -604,7 +604,7 @@
   },
   "cs": {
    "ability": "Démon si myslí, že jsi Přisluhovač. Přisluhovači si myslí, že jsi Démon.",
-   "firstNightReminder": "During Minion Info, point to the Magician and the Demon. During Demon Info, point to the Magician and the Minions.",
+   "firstNightReminder": "Během informací pro Přisluhovače ukažte na Kouzelníka a Démona. Během informací pro Démona ukažte na Kouzelníka a Přisluhovače.",
    "otherNightReminder": "",
    "reminders": [],
    "remindersGlobal": []
@@ -612,7 +612,7 @@
   "jinxes": [
    {
     "id": "legion",
-    "reason": "The Magician wakes with Legion and might register as evil. Legion knows if a Magician is in play, but not which player it is."
+    "reason": "If the Magician is in play, during the Demon info step, Legion wake in separate groups. Each group learns which players are good, but does not learn the Magician."
    },
    {
     "id": "marionette",
@@ -637,7 +637,7 @@
   ]
  },
  "king": {
-  "firstNight": 24,
+  "firstNight": 25,
   "otherNight": 87,
   "setup": false,
   "en": {
@@ -656,7 +656,7 @@
   }
  },
  "chef": {
-  "firstNight": 54,
+  "firstNight": 55,
   "otherNight": 0,
   "setup": false,
   "en": {
@@ -700,7 +700,7 @@
   }
  },
  "courtier": {
-  "firstNight": 34,
+  "firstNight": 35,
   "otherNight": 18,
   "setup": false,
   "en": {
@@ -729,7 +729,7 @@
   }
  },
  "huntsman": {
-  "firstNight": 48,
+  "firstNight": 49,
   "otherNight": 67,
   "setup": true,
   "en": {
@@ -752,7 +752,7 @@
   }
  },
  "bountyhunter": {
-  "firstNight": 68,
+  "firstNight": 69,
   "otherNight": 88,
   "setup": true,
   "en": {
@@ -808,7 +808,7 @@
   }
  },
  "mathematician": {
-  "firstNight": 76,
+  "firstNight": 77,
   "otherNight": 96,
   "setup": false,
   "en": {
@@ -836,15 +836,15 @@
    },
    {
     "id": "drunk",
-    "reason": "The Mathematician might learn if the Drunk's ability yielded false info or failed to work properly."
+    "reason": "The Mathematician learns if the Drunk’s ability yielded false info or failed to work properly."
    },
    {
     "id": "lunatic",
-    "reason": "The Mathematician might learn if the Lunatic attacks a different player than the real Demon attacked."
+    "reason": "The Mathematician learns if the Lunatic attacks a different player than the real Demon attacked."
    },
    {
     "id": "marionette",
-    "reason": "The Mathematician might learn if the Marionette's ability yielded false info or failed to work properly."
+    "reason": "The Mathematician learns if the Marionette’s ability yielded false info or failed to work properly."
    }
   ]
  },
@@ -916,7 +916,7 @@
   }
  },
  "sailor": {
-  "firstNight": 25,
+  "firstNight": 26,
   "otherNight": 13,
   "setup": false,
   "en": {
@@ -939,7 +939,7 @@
   }
  },
  "nightwatchman": {
-  "firstNight": 69,
+  "firstNight": 70,
   "otherNight": 89,
   "setup": false,
   "en": {
@@ -1027,7 +1027,7 @@
   }
  },
  "washerwoman": {
-  "firstNight": 51,
+  "firstNight": 52,
   "otherNight": 0,
   "setup": false,
   "en": {
@@ -1123,7 +1123,7 @@
   }
  },
  "knight": {
-  "firstNight": 63,
+  "firstNight": 64,
   "otherNight": 0,
   "setup": false,
   "en": {
@@ -1148,7 +1148,7 @@
   }
  },
  "shugenja": {
-  "firstNight": 66,
+  "firstNight": 67,
   "otherNight": 0,
   "setup": false,
   "en": {
@@ -1190,7 +1190,7 @@
   }
  },
  "dreamer": {
-  "firstNight": 60,
+  "firstNight": 61,
   "otherNight": 79,
   "setup": false,
   "en": {
@@ -1228,7 +1228,7 @@
   }
  },
  "steward": {
-  "firstNight": 62,
+  "firstNight": 63,
   "otherNight": 0,
   "setup": false,
   "en": {
@@ -1293,7 +1293,7 @@
   }
  },
  "noble": {
-  "firstNight": 64,
+  "firstNight": 65,
   "otherNight": 0,
   "setup": false,
   "en": {
@@ -1316,7 +1316,7 @@
   }
  },
  "seamstress": {
-  "firstNight": 61,
+  "firstNight": 62,
   "otherNight": 83,
   "setup": false,
   "en": {
@@ -1381,7 +1381,7 @@
   }
  },
  "fortuneteller": {
-  "firstNight": 56,
+  "firstNight": 57,
   "otherNight": 77,
   "setup": false,
   "en": {
@@ -1404,7 +1404,7 @@
   }
  },
  "highpriestess": {
-  "firstNight": 73,
+  "firstNight": 74,
   "otherNight": 93,
   "setup": false,
   "en": {
@@ -1423,7 +1423,7 @@
   }
  },
  "villageidiot": {
-  "firstNight": 67,
+  "firstNight": 68,
   "otherNight": 86,
   "setup": true,
   "en": {
@@ -1465,7 +1465,7 @@
   }
  },
  "pixie": {
-  "firstNight": 47,
+  "firstNight": 48,
   "otherNight": 0,
   "setup": false,
   "en": {
@@ -1532,7 +1532,7 @@
   }
  },
  "cultleader": {
-  "firstNight": 70,
+  "firstNight": 71,
   "otherNight": 90,
   "setup": false,
   "en": {
@@ -1551,7 +1551,7 @@
   }
  },
  "investigator": {
-  "firstNight": 53,
+  "firstNight": 54,
   "otherNight": 0,
   "setup": false,
   "en": {
@@ -1599,7 +1599,7 @@
   }
  },
  "snakecharmer": {
-  "firstNight": 36,
+  "firstNight": 37,
   "otherNight": 23,
   "setup": false,
   "en": {
@@ -1613,8 +1613,8 @@
   },
   "cs": {
    "ability": "Každou noc vybereš 1 živého hráče: pokud je to Démon, prohodíte si postavu i příslušnost a on je otrávený.",
-   "firstNightReminder": "Zaklínač hadů vybere 1 hráče. Pokud vybral Démona:<br/>Ukažte mu žeton JSI a žeton Démona. Ukažte palec dolů. Prohoďte žetony Zaklínače hadů a Démona.<br/>Uspěte starého Zaklínače hadů. Probuďte starého Démona.<br/>Ukažte mu žeton JSI a žeton Zaklínače hadů. Ukažte palec nahoru.",
-   "otherNightReminder": "Zaklínač hadů vybere 1 hráče. Pokud vybral Démona:<br/>Ukažte mu žeton JSI a žeton Démona. Ukažte palec dolů. Prohoďte žetony Zaklínače hadů a Démona.<br/>Uspěte starého Zaklínače hadů. Probuďte starého Démona.<br/>Ukažte mu žeton JSI a žeton Zaklínače hadů. Ukažte palec nahoru.",
+   "firstNightReminder": "Zaklínač hadů vybere 1 hráče. Pokud vybral Démona: Ukažte mu žeton JSI a žeton Démona. Ukažte palec dolů. Prohoďte žetony Zaklínače hadů a Démona. Uspěte starého Zaklínače hadů. Probuďte starého Démona. Ukažte mu žeton JSI a žeton Zaklínače hadů. Ukažte palec nahoru.",
+   "otherNightReminder": "Zaklínač hadů vybere 1 hráče. Pokud vybral Démona: Ukažte mu žeton JSI a žeton Démona. Ukažte palec dolů. Prohoďte žetony Zaklínače hadů a Démona. Uspěte starého Zaklínače hadů. Probuďte starého Démona. Ukažte mu žeton JSI a žeton Zaklínače hadů. Ukažte palec nahoru.",
    "reminders": [
     "Poisoned"
    ],
@@ -1641,7 +1641,7 @@
   }
  },
  "lunatic": {
-  "firstNight": 21,
+  "firstNight": 22,
   "otherNight": 35,
   "setup": false,
   "en": {
@@ -1657,8 +1657,8 @@
   },
   "cs": {
    "ability": "Myslíš si, že jsi Démon, ale nejsi. Démon ví, kdo jsi a koho v noci vybíráš.",
-   "firstNightReminder": "Pokud je ve hře alespoň 7 hráčů, probuďte Blázna.<br/>Ukažte mu žeton TOTO JSOU TVÍ PŘISLUHOVAČI. Ukažte na libovolné hráče.<br/>Ukažte mu žeton TYTO POSTAVY NEJSOU VE HŘE. Ukažte mu 3 žetony dobrých postav.<br/>Uspěte Blázna. Probuďte Démona.<br/>Ukažte mu žeton JSI a pak žeton Démona.<br/>Ukažte mu žeton TENTO HRÁČ JE a pak žeton Blázna. Ukažte na Blázna.",
-   "otherNightReminder": "Udělejte vše tak, aby to vypadalo, že jedná skutečný Démon.<br/>Uspěte Blázna. Probuďte Démona.</br>Ukažte žeton Blázna a ukažte na hráče, kterého Blázen vybral.",
+   "firstNightReminder": "Pokud je ve hře alespoň 7 hráčů, probuďte Blázna. Ukažte mu žeton TOTO JSOU TVÍ PŘISLUHOVAČI. Ukažte na libovolné hráče. Ukažte mu žeton TYTO POSTAVY NEJSOU VE HŘE. Ukažte mu 3 žetony dobrých postav. Uspěte Blázna. Probuďte Démona. Ukažte mu žeton JSI a pak žeton Démona. Ukažte mu žeton TENTO HRÁČ JE a pak žeton Blázna. Ukažte na Blázna.",
+   "otherNightReminder": "Udělejte vše tak, aby to vypadalo, že jedná skutečný Démon. Uspěte Blázna. Probuďte Démona.</br>Ukažte žeton Blázna a ukažte na hráče, kterého Blázen vybral.",
    "reminders": [
     "Útok 1",
     "Útok 2",
@@ -1864,7 +1864,7 @@
   "cs": {
    "ability": "Pokud jsi tento den nebo tuto noc zemřel, Démon může vybrat 2 hráče (ne dalšího Démona), kteří si prohodí postavy.",
    "firstNightReminder": "",
-   "otherNightReminder": "Pokud tento den nebo tuto noc Holič umřel, ukažte Démonovi žeton TATO POSTAVA TĚ VYBRALA a žeton Holiče.<br/>Pokud Démon vybere 2 hráče, jednoho po druhém je probuďte. Ukažte jim žeton JSI a žeton jejich nové postavy.",
+   "otherNightReminder": "Pokud tento den nebo tuto noc Holič umřel, ukažte Démonovi žeton TATO POSTAVA TĚ VYBRALA a žeton Holiče. Pokud Démon vybere 2 hráče, jednoho po druhém je probuďte. Ukažte jim žeton JSI a žeton jejich nové postavy.",
    "reminders": [
     "Haircuts tonight"
    ],
@@ -1895,7 +1895,7 @@
   }
  },
  "damsel": {
-  "firstNight": 49,
+  "firstNight": 50,
   "otherNight": 68,
   "setup": false,
   "en": {
@@ -1933,7 +1933,7 @@
   "cs": {
    "ability": "Když zemřeš, vypravěč získává schopnost Přisluhovače.",
    "firstNightReminder": "",
-   "otherNightReminder": "If the Plague Doctor died, the Storyteller gained a Minion ability. If you haven’t done this yet, do so now. ⏺",
+   "otherNightReminder": "Pokud Morový doktor zemřel, vypravěč získal schopnost Přisluhovače. Pokud jste tak již neučinili, udělejte to teď.",
    "reminders": [
     "Storyteller Ability"
    ],
@@ -2035,7 +2035,7 @@
    "otherNightReminder": "",
    "reminders": [],
    "remindersGlobal": [
-    "Drunk"
+    "Opilý"
    ]
   }
  },
@@ -2086,7 +2086,7 @@
   }
  },
  "snitch": {
-  "firstNight": 20,
+  "firstNight": 21,
   "otherNight": 0,
   "setup": false,
   "en": {
@@ -2134,7 +2134,7 @@
   ]
  },
  "butler": {
-  "firstNight": 57,
+  "firstNight": 58,
   "otherNight": 91,
   "setup": false,
   "en": {
@@ -2205,7 +2205,7 @@
   }
  },
  "ogre": {
-  "firstNight": 72,
+  "firstNight": 73,
   "otherNight": 0,
   "setup": false,
   "en": {
@@ -2315,7 +2315,7 @@
   }
  },
  "cerenovus": {
-  "firstNight": 42,
+  "firstNight": 43,
   "otherNight": 28,
   "setup": false,
   "en": {
@@ -2344,7 +2344,7 @@
   ]
  },
  "organgrinder": {
-  "firstNight": 38,
+  "firstNight": 39,
   "otherNight": 25,
   "setup": false,
   "en": {
@@ -2369,7 +2369,7 @@
   }
  },
  "wizard": {
-  "firstNight": 35,
+  "firstNight": 36,
   "otherNight": 20,
   "setup": false,
   "en": {
@@ -2394,7 +2394,7 @@
   }
  },
  "witch": {
-  "firstNight": 41,
+  "firstNight": 42,
   "otherNight": 27,
   "setup": false,
   "en": {
@@ -2417,7 +2417,7 @@
   }
  },
  "devilsadvocate": {
-  "firstNight": 39,
+  "firstNight": 40,
   "otherNight": 26,
   "setup": false,
   "en": {
@@ -2440,7 +2440,7 @@
   }
  },
  "harpy": {
-  "firstNight": 44,
+  "firstNight": 45,
   "otherNight": 31,
   "setup": false,
   "en": {
@@ -2478,7 +2478,7 @@
   "cs": {
    "ability": "Každou noc* vybereš 1 hráče a 1 postavu, kterou se vybraný hráč stane (pokud není ve hře). Pokud je takto stvořen Démon, tu noc může zemřít kdokoli.",
    "firstNightReminder": "",
-   "otherNightReminder": "Ježibaba vybere 1 hráče a 1 postavu. Pokud vybere postavu, která není ve hře:<br/>Uspěte Ježibabu. Probuďte vybraného hráče. Ukažte mu žeton JSI a jeho nový žeton postavy.",
+   "otherNightReminder": "Ježibaba vybere 1 hráče a 1 postavu. Pokud vybere postavu, která není ve hře: Uspěte Ježibabu. Probuďte vybraného hráče. Ukažte mu žeton JSI a jeho nový žeton postavy.",
    "reminders": [],
    "remindersGlobal": []
   },
@@ -2510,7 +2510,7 @@
   ]
  },
  "godfather": {
-  "firstNight": 37,
+  "firstNight": 38,
   "otherNight": 57,
   "setup": true,
   "en": {
@@ -2535,7 +2535,7 @@
   }
  },
  "marionette": {
-  "firstNight": 26,
+  "firstNight": 27,
   "otherNight": 0,
   "setup": true,
   "en": {
@@ -2553,7 +2553,7 @@
    "otherNightReminder": "",
    "reminders": [],
    "remindersGlobal": [
-    "Is the Marionette"
+    "Je Marioneta"
    ]
   },
   "jinxes": [
@@ -2580,7 +2580,7 @@
   ]
  },
  "mezepheles": {
-  "firstNight": 45,
+  "firstNight": 46,
   "otherNight": 32,
   "setup": false,
   "en": {
@@ -2691,7 +2691,7 @@
   }
  },
  "fearmonger": {
-  "firstNight": 43,
+  "firstNight": 44,
   "otherNight": 30,
   "setup": false,
   "en": {
@@ -2772,7 +2772,7 @@
   ]
  },
  "spy": {
-  "firstNight": 71,
+  "firstNight": 72,
   "otherNight": 92,
   "setup": false,
   "en": {
@@ -2805,7 +2805,7 @@
   ]
  },
  "poisoner": {
-  "firstNight": 32,
+  "firstNight": 33,
   "otherNight": 17,
   "setup": false,
   "en": {
@@ -2828,7 +2828,7 @@
   }
  },
  "widow": {
-  "firstNight": 33,
+  "firstNight": 34,
   "otherNight": 0,
   "setup": false,
   "en": {
@@ -2850,7 +2850,7 @@
     "Poisoned"
    ],
    "remindersGlobal": [
-    "Knows"
+    "Ví"
    ]
   },
   "jinxes": [
@@ -2865,7 +2865,7 @@
   ]
  },
  "vizier": {
-  "firstNight": 79,
+  "firstNight": 80,
   "otherNight": 0,
   "setup": false,
   "en": {
@@ -2914,7 +2914,7 @@
   ]
  },
  "summoner": {
-  "firstNight": 22,
+  "firstNight": 23,
   "otherNight": 34,
   "setup": true,
   "en": {
@@ -2982,12 +2982,12 @@
    },
    {
     "id": "zombuul",
-    "reason": "If the Summoner summons a dead player into the Zombuul, the Zombuul has already \\"
+    "reason": "If the Summoner summons a dead player into the Zombuul, the Zombuul has already \"died once\"."
    }
   ]
  },
  "xaan": {
-  "firstNight": 31,
+  "firstNight": 32,
   "otherNight": 16,
   "setup": true,
   "en": {
@@ -3016,7 +3016,7 @@
   }
  },
  "eviltwin": {
-  "firstNight": 40,
+  "firstNight": 41,
   "otherNight": 0,
   "setup": false,
   "en": {
@@ -3030,7 +3030,7 @@
   },
   "cs": {
    "ability": "Ty a hráč druhé strany o sobě víte. Pokud je ten dobrý z vás popraven, zlo vyhrává. Dobro nemůže vyhrát, jste-li oba naživu.",
-   "firstNightReminder": "Probuďte obě dvojčata. Nechte je navázat oční kontakt.<br/>Ukažte žeton postavy Dobrého dvojčete Zlému dvojčeti a naopak.",
+   "firstNightReminder": "Probuďte obě dvojčata. Nechte je navázat oční kontakt. Ukažte žeton postavy Dobrého dvojčete Zlému dvojčeti a naopak.",
    "otherNightReminder": "",
    "reminders": [
     "Twin"
@@ -3128,7 +3128,7 @@
   "cs": {
    "ability": "Každou noc* vybereš 1 hráče: ten zemře. Pokud takto zabiješ sebe, Přisluhovač se stane Čertem.",
    "firstNightReminder": "",
-   "otherNightReminder": "Čert vybere 1 hráče. Pokud Čert vybere sám sebe:<br/>Nahraďte žeton 1 živého Přisluhovače náhradním žetonem Čerta.<br/>Uspěte starého Čerta. Probuďte nového Čerta.<br/>Ukažte mu žeton JSI a pak žeton Čerta.",
+   "otherNightReminder": "Čert vybere 1 hráče. Pokud Čert vybere sám sebe: Nahraďte žeton 1 živého Přisluhovače náhradním žetonem Čerta. Uspěte starého Čerta. Probuďte nového Čerta. Ukažte mu žeton JSI a pak žeton Čerta.",
    "reminders": [
     "Mrtvý"
    ],
@@ -3152,7 +3152,7 @@
   "cs": {
    "ability": "Každou noc* vybereš 1 hráče: ten zemře. Když takto poprvé zabiješ Podivína, stane se Fang Guem a ty zemřeš namísto něj. [+1 Podivín]",
    "firstNightReminder": "",
-   "otherNightReminder": "Fang Gu vybere 1 hráče. Pokud vybral Podivína:<br/>Nahraďte žeton tohoto Podivína náhradním žetonem Fang Gu. Uspěte Fang Gu.<br/>Probuďte vybraného hráče. Ukažte mu žeton JSI a žeton Fang Gu. Ukažte mu palec dolů.",
+   "otherNightReminder": "Fang Gu vybere 1 hráče. Pokud vybral Podivína: Nahraďte žeton tohoto Podivína náhradním žetonem Fang Gu. Uspěte Fang Gu. Probuďte vybraného hráče. Ukažte mu žeton JSI a žeton Fang Gu. Ukažte mu palec dolů.",
    "reminders": [
     "Mrtvý",
     "Once"
@@ -3239,7 +3239,7 @@
   ]
  },
  "leviathan": {
-  "firstNight": 78,
+  "firstNight": 79,
   "otherNight": 99,
   "setup": false,
   "en": {
@@ -3326,11 +3326,11 @@
   ]
  },
  "lilmonsta": {
-  "firstNight": 29,
+  "firstNight": 30,
   "otherNight": 53,
   "setup": true,
   "en": {
-   "ability": "Each night, Minions choose who babysits Lil' Monsta & \\",
+   "ability": "Each night, Minions choose who babysits Lil' Monsta & \"is the Demon\". Each night*, a player might die. [+1 Minion]",
    "firstNightReminder": "Wake the Minions. They choose a player. ⏺ Put the Minions to sleep. Wake the target. Show the YOU ARE & Lil' Monsta tokens.",
    "otherNightReminder": "Wake the Minions. They choose a player. ⏺ Put the Minions to sleep. Wake the target. Show the YOU ARE & Lil' Monsta tokens. A player might die. ⏺",
    "reminders": [],
@@ -3345,8 +3345,8 @@
    "otherNightReminder": "Probuďte všechny Přisluhovače najednou a nechte je hlasovat ukazováním na toho, kdo má hlídat Lil' Monsta. Poté vyberte hráče, který zemře.",
    "reminders": [],
    "remindersGlobal": [
-    "Is the Demon",
-    "Dead"
+    "Je Démon",
+    "Mrtvý"
    ]
   },
   "jinxes": [
@@ -3448,7 +3448,7 @@
   }
  },
  "lleech": {
-  "firstNight": 30,
+  "firstNight": 31,
   "otherNight": 52,
   "setup": false,
   "en": {
@@ -3508,7 +3508,7 @@
   }
  },
  "pukka": {
-  "firstNight": 46,
+  "firstNight": 47,
   "otherNight": 42,
   "setup": false,
   "en": {
@@ -3546,14 +3546,14 @@
   "cs": {
    "ability": "Nominovaní hráči zemřou, ale mohou okamžitě znovu nominovat (třetí den musí). Po 3. dni vyhrává zlo. [Všichni Přisluhovači jsou Riot]",
    "firstNightReminder": "",
-   "otherNightReminder": "Change the Riot reminder token to the relevant day. ⏺ If it is night 3, you may wake the Minions. Show the YOU ARE & Riot tokens.",
+   "otherNightReminder": "Přesuňte žeton Riot na příslušný den. Pokud je 3. noc, můžete probudit Přisluhovače. Ukažte jim žeton JSI a žeton Riot.",
    "reminders": [],
    "remindersGlobal": []
   },
   "jinxes": [
    {
     "id": "atheist",
-    "reason": "During a riot, if the Storyteller is nominated, players vote. If they are \\"
+    "reason": "During a riot, if the Storyteller is nominated, players vote. If they are \"about to die\", the game ends. If not, they nominate again."
    },
    {
     "id": "banshee",
@@ -3746,7 +3746,7 @@
    "remindersGlobal": []
   },
   "cs": {
-   "ability": "Každou noc vybereš 1 hráče (ne sebe):<br/>jeho hlas se následující den počítá za 3 hlasy.",
+   "ability": "Každou noc vybereš 1 hráče (ne sebe): jeho hlas se následující den počítá za 3 hlasy.",
    "firstNightReminder": "Byrokrat ukáže na hráče.",
    "otherNightReminder": "Byrokrat ukáže na hráče.",
    "reminders": [
@@ -4025,7 +4025,7 @@
    "remindersGlobal": []
   },
   "cs": {
-   "ability": "Každou noc vybereš 1 hráče (ne sebe):<br/>jeho hlas je následující den negativní.",
+   "ability": "Každou noc vybereš 1 hráče (ne sebe): jeho hlas je následující den negativní.",
    "firstNightReminder": "Zloděj ukáže na hráče.",
    "otherNightReminder": "Zloděj ukáže na hráče.",
    "reminders": [
@@ -4111,7 +4111,7 @@
   },
   "cs": {
    "ability": "Tomu, kdo je nejvíce zodpovědný za smrt nového hráče, se může stát něco špatného.",
-   "firstNightReminder": "Announce which players are protected by the Angel. ⏺",
+   "firstNightReminder": "Oznamte, kteří hráči jsou chráněni Andělem.",
    "otherNightReminder": "",
    "reminders": [
     "Chránit",
@@ -4133,7 +4133,7 @@
   },
   "cs": {
    "ability": "Během prvních 2 minut každého dne nesmějí zkušení hráči mluvit.",
-   "firstNightReminder": "Announce which players are affected by the Buddhist.",
+   "firstNightReminder": "Oznamte, kteří hráči jsou ovlivněni Budhou.",
    "otherNightReminder": "",
    "reminders": [],
    "remindersGlobal": []
@@ -4234,7 +4234,7 @@
   },
   "cs": {
    "ability": "Démon se může rozhodnout neútočit a musí to udělat alespoň jednou za hru. Zlí hráči dostanou normální počáteční informace.",
-   "firstNightReminder": "Resolve Minion Info and Demon Info, even though there are fewer than 7 players.",
+   "firstNightReminder": "Proveďte informace pro Přisluhovače a informace pro Démona, i když je ve hře méně než 7 hráčů.",
    "otherNightReminder": "Pokud je to noc, kdy by útok Démona mohl ukončit hru, a Démon je označen „Poslední noc: Bez útoku\", pak Démon dnes v noci nejedná. (Nebuďte ho.)",
    "reminders": [
     "Poslední noc: Bez útoku"
@@ -4405,7 +4405,7 @@
    "remindersGlobal": []
   },
   "cs": {
-   "ability": "One Ug hat. When wear Ug hat, must speak one sound at a time but vote twice. If fail, pass Ug hat.",
+   "ability": "Jeden Ug klobouk. Kdo nosit Ug klobouk, smět říkat jen jeden zvuk naráz, ale hlasovat dvakrát. Když selhat, předat Ug klobouk.",
    "firstNightReminder": "",
    "otherNightReminder": "",
    "reminders": [],
@@ -4443,7 +4443,7 @@
    "remindersGlobal": []
   },
   "cs": {
-   "ability": "There are 2 Storytellers: one lies & one tells the truth. Once per game, at dusk, they might switch.",
+   "ability": "Jsou 2 vypravěči: jeden lže a jeden mluví pravdu. Jednou za hru, za soumraku, si mohou vyměnit role.",
    "firstNightReminder": "",
    "otherNightReminder": "",
    "reminders": [],
@@ -4495,7 +4495,7 @@
  "bootlegger": {
   "firstNight": 0,
   "otherNight": 0,
-  "setup": false,
+  "setup": true,
   "en": {
    "ability": "This script has homebrew characters or rules.",
    "firstNightReminder": "",
@@ -4512,19 +4512,19 @@
   }
  },
  "tor": {
-  "firstNight": 0,
+  "firstNight": 19,
   "otherNight": 74,
   "setup": true,
   "en": {
    "ability": "Players don't know their character or alignment. They learn them when they die.",
-   "firstNightReminder": "",
-   "otherNightReminder": "If a player died tonight, show the YOU ARE info token, their character token, & a thumbs up or thumbs down.",
+   "firstNightReminder": "Skip Minion Info and Demon Info.",
+   "otherNightReminder": "If a player died tonight, show the YOU ARE info token, their character token, & give a thumb signal.",
    "reminders": [],
    "remindersGlobal": []
   },
   "cs": {
    "ability": "Hráči neznají svou Postavu ani Příslušnost. Dozvídají se je když zemřou.",
-   "firstNightReminder": "",
+   "firstNightReminder": "Vynechejte informace pro Přisluhovače a informace pro Démona.",
    "otherNightReminder": "Pokud hráč zemře v noci, probuďte ho, ukažte mu žeton JSI, jeho žeton postavy, znovu žeton JSI a nakonec palec nahoru nebo palec dolů.",
    "reminders": [],
    "remindersGlobal": []
@@ -4563,11 +4563,11 @@
    "remindersGlobal": []
   },
   "cs": {
-   "ability": "If a player is mad as a fresh character during their nomination, they might not die if executed today.",
+   "ability": "Pokud je hráč během své nominace posedlý představou, že je dosud nepoužitou postavou, nemusí zemřít, je-li ten den popraven.",
    "firstNightReminder": "",
    "otherNightReminder": "",
    "reminders": [
-    "Mad"
+    "Posedlý"
    ],
    "remindersGlobal": []
   }
@@ -4594,9 +4594,9 @@
  "gardener": {
   "firstNight": 0,
   "otherNight": 0,
-  "setup": false,
+  "setup": true,
   "en": {
-   "ability": "The Storyteller assigns 1 or more players' characters.",
+   "ability": "The Storyteller assigns all players' characters.",
    "firstNightReminder": "",
    "otherNightReminder": "",
    "reminders": [],

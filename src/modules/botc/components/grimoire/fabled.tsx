@@ -30,11 +30,12 @@ function withoutFabled(s: GrimoireState, id: string): GrimoireState {
  * panel. Smaller on a phone, and in more columns rather than down the side where the players sit.
  */
 export function FabledTokens({ selectedId, onSelect }: { selectedId: string | null; onSelect: (id: string) => void }) {
-  const { state, locale } = useGrimoire();
+  const { state, scale, locale } = useGrimoire();
   const fabled = state.fabled ?? [];
   if (!fabled.length) return null;
   return (
-    <div className="absolute top-0 right-0 z-10 flex max-h-[45%] flex-col flex-wrap-reverse gap-1.5" data-testid="fabled-tokens">
+    // as big as the town's tokens on this device
+    <div className="absolute top-0 right-0 z-10 flex max-h-[45%] flex-col flex-wrap-reverse gap-1.5" style={{ zoom: scale }} data-testid="fabled-tokens">
       {fabled.map((id) => (
         <button
           key={id}
@@ -68,7 +69,7 @@ export function FabledPanel({
   onPlace: (placing: Placing | null) => void;
   onClose: () => void;
 }) {
-  const { state, update, readOnly, characters, locale, t } = useGrimoire();
+  const { state, update, readOnly, hidden, characters, locale, t } = useGrimoire();
   const c = characters[roleId];
   const team = teamOf(roleId);
   const placed = remindersOf(state, roleId);
@@ -127,7 +128,8 @@ export function FabledPanel({
         </button>
       )}
 
-      {tokens.length > 0 && (
+      {/* hidden: where its tokens lie is the Storyteller's */}
+      {tokens.length > 0 && !hidden && (
         <section className="flex flex-col gap-2">
           <h3 className={heading}>{t.fabledTokens}</h3>
           {placed.length > 0 && <p className="text-xs text-muted">{placed.map(({ seat, reminder }) => `${reminder.text}: ${seat.name || "?"}`).join(" · ")}</p>}

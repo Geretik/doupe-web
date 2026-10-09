@@ -27,6 +27,7 @@ import {
   registersDead,
   remainingBag,
   remindersOf,
+  seatSide,
   setDead,
   shownAs,
   starPass,
@@ -38,6 +39,7 @@ import {
   type GrimoireState,
 } from "../../src/modules/botc/lib/grimoire/state";
 import { grimoireStateSchema } from "../../src/modules/botc/lib/grimoire/schema";
+import { circlePoint, GRID, gridPoints, insertNearest, putPlace, snap } from "../../src/modules/botc/lib/grimoire/layout";
 import { findRole, roleName } from "../../src/modules/botc/lib/botc-roles";
 import { stepCards, youAreCard } from "../../src/modules/botc/lib/grimoire/show";
 import { adminLogin, createAdminUser, createSession, resetDb, sql } from "./helpers";
@@ -102,7 +104,12 @@ async function endTheGame(page: Page, winner: "😇 Dobro" | "😈 Zlo" | "Neví
 
 /** The stored grimoire, once the page's autosave has caught up with what the test expects. */
 async function stored<T>(
-  pick: (state: { seats: { name: string; role: string | null; reminders: { text: string }[] }[]; phase: string; seatsLocked?: boolean }) => T,
+  pick: (state: {
+    seats: { name: string; role: string | null; reminders: { text: string }[]; pos?: { x: number; y: number }; side?: string }[];
+    phase: string;
+    seatsLocked?: boolean;
+    layout?: string;
+  }) => T,
   expected: T,
 ) {
   await expect
@@ -416,7 +423,7 @@ test("setup and night rules: Lil' Monsta goes to nobody – a Minion more, the M
   expect(nightSteps(state, characters, true).find((s) => s.id === "lilmonsta")?.seatIds.sort()).toEqual(minions.sort());
   state = nextPhase(nextPhase(state));
   const chef = state.seats.find((s) => s.role === "chef")!.id;
-  state = putToken(state, chef, "lilmonsta", "Dead", characters);
+  state = putToken(state, chef, "lilmonsta", "Mrtvý", characters);
   expect(state.seats.find((s) => s.id === chef)?.dead).toBe(true);
 });
 
@@ -781,6 +788,74 @@ test("Fabled and Loric: the Pope's duplicate good characters – twice in the ba
   // the Demon may be shown a character in play
   expect(bluffCandidates(dealt)).toContain("empath");
   expect(bluffCandidates({ ...dealt, fabled: [] })).not.toContain("empath");
+});
+
+test("travellers: on the side the Storyteller gave them – grey until then; the Empath and the Chef count an evil one", () => {
+  const state = nightOf(["empath", "thief", "imp", "chef"]);
+  expect(seatSide(at(state, "thief"))).toBeNull();
+  expect(evilLivingNeighbours(state, at(state, "empath").id, characters).n).toBe(0);
+  expect(evilPairs(state, characters).n).toBe(0);
+  const evil = { ...state, seats: state.seats.map((s) => (s.role === "thief" ? { ...s, side: "evil" as const } : s)) };
+  expect(seatSide(at(evil, "thief"))).toBe("evil");
+  expect(evilLivingNeighbours(evil, at(evil, "empath").id, characters).n).toBe(1);
+  expect(evilPairs(evil, characters).n).toBe(1);
+  expect(grimoireStateSchema.parse(evil).seats[1].side).toBe("evil");
+  // a side means nothing to anybody but a traveller
+  expect(seatSide({ ...at(evil, "empath"), side: "evil" })).toBe("good");
+  // a traveller with a night ability wakes in the night order, the first night and the others
+  for (const first of [true, false]) {
+    expect(nightSteps(state, characters, first).find((step) => step.roleId === "thief")?.seatIds).toEqual([at(state, "thief").id]);
+  }
+});
+
+test("town on a grid: places snap to it, one put down goes between the two it lies nearest to, one added since finds a free spot", () => {
+  expect(snap({ x: 0.51, y: 1.2 })).toEqual({ x: 12 / GRID.cols, y: 1 });
+  expect(snap({ x: -0.3, y: 0.03 })).toEqual({ x: 0, y: 0 });
+
+  // a table with three on each side, clockwise: a b c along the top, d e f back along the bottom
+  const seat = (id: string, x: number, y: number) => ({ ...newSeat(id), id, pos: { x, y } });
+  const table = [seat("a", 0, 0), seat("b", 0.5, 0), seat("c", 1, 0), seat("d", 1, 1), seat("e", 0.5, 1), seat("f", 0, 1)];
+  const ids = (seats: { id: string }[]) => seats.map((s) => s.id).join("");
+  const put = (id: string, x: number, y: number, seats = table) => putPlace(seats, id, { x, y }, {}, 1.5);
+  expect(ids(put("a", 0.75, 0))).toBe("bacdef");
+  expect(put("a", 0.75, 0).find((s) => s.id === "a")!.pos).toEqual({ x: 0.75, y: 0 });
+  // moved a little, among the same neighbours: the circle stays
+  expect(ids(put("a", 0.05, 0.1))).toBe("abcdef");
+  // the last one between the first two; the first one into the bottom row; one between the last and the first goes last
+  expect(ids(put("f", 0.25, 0))).toBe("afbcde");
+  expect(ids(put("a", 0.25, 1))).toBe("bcdeaf");
+  expect(ids(put("c", 0, 0.5))).toBe("abdefc");
+  // put down where it was: nothing changes
+  expect(put("b", 0.5, 0)).toBe(table);
+  // three places all neighbour each other
+  const three = table.slice(0, 3);
+  expect(insertNearest(three, 0, { x: 1, y: 1 }, (s) => s.pos, 1)).toBe(three);
+
+  // right after the switch from the circle the places stay where they were on it, the Storyteller's spot at the bottom
+  const circle = [newSeat("x"), newSeat("y"), { ...newSeat(""), gap: "storyteller" as const }, newSeat("z")];
+  gridPoints(circle, 1.5, 0.1).forEach((p, i) => {
+    expect(p.x).toBeCloseTo(circlePoint(i, 4, 2).x);
+    expect(p.y).toBeCloseTo(circlePoint(i, 4, 2).y);
+  });
+  expect(gridPoints(circle, 1.5, 0.1)[2].y).toBeCloseTo(1);
+  // places added since: on the grid next to the middle between their neighbours, never on another place
+  const added = [table[0], newSeat("g"), ...table.slice(1), newSeat("h")];
+  const points = gridPoints(added, 1.5, 0.3);
+  expect(points[1]).toEqual({ x: 6 / GRID.cols, y: 0 });
+  for (const [i, p] of points.entries()) {
+    expect([p.x * GRID.cols, p.y * GRID.rows].every((v) => Number.isInteger(Math.round(v * 1e6) / 1e6))).toBe(true);
+    for (const q of points.slice(i + 1)) expect(Math.hypot((p.x - q.x) * 1.5, p.y - q.y)).toBeGreaterThanOrEqual(0.3 - 1e-9);
+  }
+  // the next drop keeps them where they show
+  const shown = Object.fromEntries(points.map((p, i) => [added[i].id, p]));
+  expect(putPlace(added, "a", { x: 0, y: 0.0625 }, shown, 1.5).find((s) => s.name === "h")!.pos).toEqual({
+    x: Math.round(points[7].x * 1e4) / 1e4,
+    y: Math.round(points[7].y * 1e4) / 1e4,
+  });
+  // the schema keeps the layout and the spots
+  const state = { ...newGrimoireState({ id: null, name: "Test", roleIds: [] }, table), layout: "grid" as const };
+  expect(grimoireStateSchema.parse(state)).toMatchObject({ layout: "grid", seats: table.map((s) => ({ pos: s.pos })) });
+  expect(grimoireStateSchema.safeParse({ ...state, seats: [{ ...table[0], pos: { x: 2, y: 0 } }] }).success).toBe(false);
 });
 
 test("grimoire: from a session, hand out the bag, the first night, a death and a reminder, the game into the session's games", async ({ page }) => {
@@ -1207,6 +1282,189 @@ test("grimoire: players dragged to other places in the circle, then the seating 
   await page.getByRole("button", { name: "Zrušit celou obrazovku" }).click();
   await expect(page.locator("[data-admin-nav]")).toBeVisible();
   await expect(page.locator("body > header")).toBeVisible();
+});
+
+test("grimoire: the town on a grid – a player put where they sit goes between the two nearest; locked without the grid; the circle keeps it", async ({ page }) => {
+  await adminLogin(page);
+  await page.goto("/admin/botc/grimoary");
+  await page.fill("#name", "Mřížka");
+  await page.getByRole("button", { name: "Založit grimoár" }).click();
+  await openSetup(page);
+  for (const name of ["Jana", "Petr", "Olga", "Zbyněk"]) {
+    await page.getByRole("textbox", { name: "Jméno hráče" }).fill(name);
+    await page.getByRole("button", { name: "Přidat", exact: true }).click();
+  }
+  await closeSetup(page);
+  const names = (st: { seats: { name: string }[] }) => st.seats.map((x) => x.name);
+  await stored(names, ["Jana", "Petr", "Olga", "Zbyněk"]);
+  const town = page.getByTestId("town");
+  const middle = async (name: string) => {
+    const b = (await seat(page, name).boundingBox())!;
+    return { x: Math.round(b.x + b.width / 2), y: Math.round(b.y + b.width / 2) };
+  };
+  const before = await middle("Jana");
+
+  // on the grid everybody stays where they were on the circle; the grid's points and the circle's line show
+  await page.getByRole("button", { name: /Rozmístit hráče na mřížce/ }).click();
+  await stored((st) => st.layout, "grid");
+  await expect(town).toHaveAttribute("data-layout", "grid");
+  await expect(page.getByTestId("town-grid")).toBeVisible();
+  await expect(town.locator("polygon")).toHaveCount(1);
+  expect(await middle("Jana")).toEqual(before);
+
+  // Jana from the top into the bottom left corner: between Olga at the bottom and Zbyněk on the left, on a point of the grid
+  const box = (await town.boundingBox())!;
+  await page.mouse.move(before.x, before.y);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width * 0.1, box.y + box.height * 0.85, { steps: 12 });
+  await page.mouse.up();
+  await stored(names, ["Petr", "Olga", "Jana", "Zbyněk"]);
+  await expect(seat(page, "Jana")).toHaveAttribute("aria-pressed", "false");
+  await stored((st) => st.seats.map((x) => !!x.pos), [true, true, true, true]);
+  const [row] = await sql<{ state: { seats: { name: string; pos: { x: number; y: number } }[] } }>("select state from grimoires order by id desc limit 1");
+  const jana = row.state.seats.find((x) => x.name === "Jana")!.pos;
+  expect(jana.x).toBeLessThan(0.25);
+  expect(jana.y).toBeGreaterThan(0.75);
+  expect(Math.abs(jana.x * GRID.cols - Math.round(jana.x * GRID.cols))).toBeLessThan(0.01);
+  expect(Math.abs(jana.y * GRID.rows - Math.round(jana.y * GRID.rows))).toBeLessThan(0.01);
+
+  // after a reload Jana is still there; locked, the grid, the line and the switch go away
+  await page.reload();
+  const there = await middle("Jana");
+  expect(there.x).toBeLessThan(box.x + box.width * 0.25);
+  expect(there.y).toBeGreaterThan(box.y + box.height * 0.6);
+  await page.getByTestId("seats-lock").click();
+  await expect(page.getByTestId("town-grid")).toHaveCount(0);
+  await expect(town.locator("polygon")).toHaveCount(0);
+  await expect(page.getByTestId("town-layout")).toHaveCount(0);
+  await page.getByTestId("seats-lock").click();
+
+  // the circle again, in the new order; the spots on the grid stay for the next time
+  await page.getByRole("button", { name: /Vrátit hráče do kruhu/ }).click();
+  await stored((st) => [st.layout, st.seats.map((x) => !!x.pos)], ["circle", [true, true, true, true]]);
+  await expect(town).toHaveAttribute("data-layout", "circle");
+  await expect(page.getByTestId("town-grid")).toHaveCount(0);
+});
+
+test("grimoire: a traveller from the setup – the side first, then the character; the town shows the side, their panel changes it", async ({ page }) => {
+  await adminLogin(page);
+  await newGrimoire(page);
+  const setup = page.getByTestId("setup-screen");
+  await setup.getByRole("button", { name: "🧳 Přidat pocestného" }).click();
+  const box = setup.getByTestId("add-traveller");
+  await box.getByRole("textbox", { name: "Jméno pocestného" }).fill("Karel");
+  await expect(box).toContainText("Nejdřív vyber stranu pocestného, pak jeho postavu.");
+  await expect(box.getByRole("button", { name: "Přidat pocestného: Zloděj" })).toHaveCount(0);
+  await box.getByRole("button", { name: "😈 Zlo" }).click();
+  await box.getByRole("button", { name: "Přidat pocestného: Zloděj" }).click();
+  await expect(box).toHaveCount(0);
+  const travellers = (st: { seats: { name: string; role: string | null; side?: string }[] }) => st.seats.map((x) => [x.name, x.role, x.side ?? null]);
+  await stored(travellers, [
+    ["Jana", null, null],
+    ["Petr", null, null],
+    ["Karel", "thief", "evil"],
+  ]);
+  await closeSetup(page);
+
+  // red as the evil in the town; good from their panel, blue
+  await expect(seat(page, "Karel").locator("span").first()).toHaveClass(/border-accent/);
+  await seat(page, "Karel").click();
+  const side = page.getByTestId("seat-panel").getByTestId("traveller-side");
+  await expect(side.getByRole("button", { name: "😈 Zlo" })).toHaveAttribute("aria-pressed", "true");
+  await side.getByRole("button", { name: "😇 Dobro" }).click();
+  await stored((st) => travellers(st)[2], ["Karel", "thief", "good"]);
+  await expect(seat(page, "Karel").locator("span").first()).toHaveClass(/border-good/);
+});
+
+test("grimoire hidden: someone else holds it without seeing characters, reminders, the bag or the bluffs; undo takes back only their changes", async ({ page }) => {
+  await adminLogin(page);
+  await newGrimoire(page);
+  await addPlayer(page, "Olga");
+  await stored((st) => st.seats.length, 3);
+  await closeSetup(page);
+  // the Storyteller's game so far
+  const [row] = await sql<{ id: number; state: GrimoireState }>("select id, state from grimoires order by id desc limit 1");
+  const roles: Record<string, string> = { Jana: "imp", Petr: "empath", Olga: "poisoner" };
+  const game = {
+    ...row.state,
+    seats: row.state.seats.map((x) => ({ ...x, role: roles[x.name], reminders: x.name === "Petr" ? [{ id: "r1", roleId: "poisoner", text: "Otrávený" }] : [] })),
+    bag: ["imp", "empath", "poisoner"],
+    bluffs: ["chef", "monk", "slayer"],
+  };
+  await sql("update grimoires set state = $1 where id = $2", [JSON.stringify(game), row.id]);
+  await page.reload();
+  const town = page.getByTestId("town");
+  await expect(town.locator("img")).toHaveCount(3 + 1 + 3);
+  await expect(page.getByTestId("reminder")).toHaveCount(1);
+  await expect(page.getByRole("tab")).toHaveCount(2);
+  // a change of the Storyteller's before handing it over
+  await page.getByTestId("seats-lock").click();
+  await stored((st) => st.seatsLocked, true);
+  const undo = page.getByRole("button", { name: "↶ Zpět" });
+  await expect(undo).toBeEnabled();
+
+  await page.getByTestId("hide-button").click();
+  await expect(page.getByTestId("hide-button")).toHaveAttribute("aria-pressed", "true");
+  await expect(town.locator("img")).toHaveCount(0);
+  await expect(page.getByTestId("reminder")).toHaveCount(0);
+  await expect(seat(page, "Petr")).toHaveAttribute("data-drawn", "yes");
+  await expect(page.getByRole("tab")).toHaveCount(0);
+  await expect(page.getByTestId("game-button")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Začít hru → 1. noc" })).toHaveCount(0);
+  await expect(undo).toBeDisabled();
+
+  // the player: a name and a place, not the character; renamed, undone, and no further back
+  await seat(page, "Petr").click();
+  const panel = page.getByTestId("seat-panel");
+  await expect(panel.getByTestId("seat-hidden")).toBeVisible();
+  await expect(panel.locator("img")).toHaveCount(0);
+  await panel.getByRole("textbox", { name: "Jméno hráče" }).fill("Pavel");
+  await panel.getByRole("textbox", { name: "Jméno hráče" }).press("Enter");
+  await stored((st) => st.seats.map((x) => x.name), ["Jana", "Pavel", "Olga"]);
+  await undo.click();
+  await stored((st) => [st.seats.map((x) => x.name), st.seatsLocked], [["Jana", "Petr", "Olga"], true]);
+  await expect(undo).toBeDisabled();
+
+  // the setup: players, the script and the rulebook's numbers; no bag, bluffs or characters dealt
+  const setup = await openSetup(page);
+  await expect(setup.getByTestId("setup-hidden")).toBeVisible();
+  await expect(setup.getByTestId("bag-contents")).toHaveCount(0);
+  await expect(setup.getByTestId("bluffs-view")).toHaveCount(0);
+  await expect(setup.locator("ol img")).toHaveCount(0);
+  await expect(setup.getByTestId("distribution").locator("th")).toHaveCount(2);
+  await expect(setup.getByRole("button", { name: "Začít hru → 1. noc" })).toHaveCount(0);
+  await expect(setup.getByTestId("hide-button")).toHaveAttribute("aria-pressed", "true");
+  await closeSetup(page);
+
+  // still hidden after a reload; shown again only once the Storyteller says yes
+  await page.reload();
+  await expect(page.getByTestId("hide-button")).toHaveAttribute("aria-pressed", "true");
+  await expect(town.locator("img")).toHaveCount(0);
+  page.once("dialog", (d) => d.dismiss());
+  await page.getByTestId("hide-button").click();
+  await expect(page.getByTestId("hide-button")).toHaveAttribute("aria-pressed", "true");
+  page.once("dialog", (d) => d.accept());
+  await page.getByTestId("hide-button").click();
+  await expect(page.getByTestId("hide-button")).toHaveAttribute("aria-pressed", "false");
+  await expect(town.locator("img")).toHaveCount(7);
+  await expect(page.getByTestId("reminder")).toHaveCount(1);
+});
+
+test("grimoire: the size of the tokens on a slider, kept on this device", async ({ page }) => {
+  await adminLogin(page);
+  await newGrimoire(page);
+  await closeSetup(page);
+  const width = async () => Math.round((await seat(page, "Jana").boundingBox())!.width);
+  const before = await width();
+  await page.getByTestId("scale-button").click();
+  await page.getByTestId("scale-panel").getByRole("slider").fill("130");
+  await expect(page.getByTestId("scale-button")).toContainText("130 %");
+  await expect.poll(width).toBe(Math.round(before * 1.3));
+  await page.reload();
+  await expect.poll(width).toBe(Math.round(before * 1.3));
+  await page.getByTestId("scale-button").click();
+  await page.getByTestId("scale-panel").getByRole("button", { name: "100 %" }).click();
+  await expect.poll(width).toBe(before);
 });
 
 test("grimoire: the bag counts each team against the setup for the players, also over the whole screen", async ({ page }) => {

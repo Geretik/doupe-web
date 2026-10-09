@@ -15,6 +15,15 @@ export type GrimoireContextValue = {
   /** Applies a change (one step of "undo"); does nothing when the grimoire is read-only */
   update: (change: (s: GrimoireState) => GrimoireState) => void;
   readOnly: boolean;
+  /**
+   * Characters, reminders, the bag, the bluffs, the night and the chronicle are not shown on this device: someone
+   * else holds the grimoire to help with the players, the seating or the script without seeing the game
+   */
+  hidden: boolean;
+  /** Hides them or, once the Storyteller confirms, shows them again */
+  setHidden: (hidden: boolean) => void;
+  /** How big the town's tokens are on this device (device.ts useTownScale); 1 = as the room allows */
+  scale: number;
   /** Opens a card to show a player over the whole screen */
   show: (card: ShowCard) => void;
   characters: Record<string, GrimoireCharacter>;
