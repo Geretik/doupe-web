@@ -219,7 +219,12 @@ export function roleName(role: Pick<BotcRole, "en" | "cs">, locale: Locale) {
  * club's script tool, English where it has none; icons as for the players' characters.
  */
 export type StorytellerTeam = "fabled" | "loric";
-export type StorytellerRole = { id: string; team: StorytellerTeam; en: string; cs: string };
+/**
+ * A Fabled or Loric. `anyTime`: the Storyteller may add it during the game too (the wiki's How to Run: "At any time,
+ * declare that…"); the other Fabled are added at the start of the game, every Loric as well ("All Loric must be added
+ * at the start of the game").
+ */
+export type StorytellerRole = { id: string; team: StorytellerTeam; en: string; cs: string; anyTime?: true };
 
 /** Sorted by team, then by the Czech name */
 export const storytellerRoles: readonly StorytellerRole[] = [
@@ -228,15 +233,15 @@ export const storytellerRoles: readonly StorytellerRole[] = [
   { id: "deusexfiasco", team: "fabled", en: "Deus ex Fiasco", cs: "Deus ex Fiasco" },
   { id: "spiritofivory", team: "fabled", en: "Spirit of Ivory", cs: "Duch slonoviny" },
   { id: "djinn", team: "fabled", en: "Djinn", cs: "Džin" },
-  { id: "fiddler", team: "fabled", en: "Fiddler", cs: "Houslista" },
+  { id: "fiddler", team: "fabled", en: "Fiddler", cs: "Houslista", anyTime: true },
   { id: "toymaker", team: "fabled", en: "Toymaker", cs: "Hračkář" },
   { id: "fibbin", team: "fabled", en: "Fibbin", cs: "Lhář" },
-  { id: "hellslibrarian", team: "fabled", en: "Hell's Librarian", cs: "Pekelná knihovnice" },
-  { id: "ferryman", team: "fabled", en: "Ferryman", cs: "Převozník" },
+  { id: "hellslibrarian", team: "fabled", en: "Hell's Librarian", cs: "Pekelná knihovnice", anyTime: true },
+  { id: "ferryman", team: "fabled", en: "Ferryman", cs: "Převozník", anyTime: true },
   { id: "revolutionary", team: "fabled", en: "Revolutionary", cs: "Revolucionář" },
   { id: "sentinel", team: "fabled", en: "Sentinel", cs: "Strážný" },
   { id: "duchess", team: "fabled", en: "Duchess", cs: "Vévodkyně" },
-  { id: "doomsayer", team: "fabled", en: "Doomsayer", cs: "Věštec zkázy" },
+  { id: "doomsayer", team: "fabled", en: "Doomsayer", cs: "Věštec zkázy", anyTime: true },
   { id: "godofug", team: "loric", en: "God of Ug", cs: "God of Ug" },
   { id: "hindu", team: "loric", en: "Hindu", cs: "Hindu" },
   { id: "knaves", team: "loric", en: "Knaves", cs: "Knaves" },

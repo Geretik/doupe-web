@@ -40,7 +40,7 @@ import {
 } from "../../src/modules/botc/lib/grimoire/state";
 import { grimoireStateSchema } from "../../src/modules/botc/lib/grimoire/schema";
 import { circlePoint, GRID, gridPoints, insertNearest, putPlace, snap } from "../../src/modules/botc/lib/grimoire/layout";
-import { findRole, roleName } from "../../src/modules/botc/lib/botc-roles";
+import { findRole, roleName, storytellerRoles } from "../../src/modules/botc/lib/botc-roles";
 import { stepCards, youAreCard } from "../../src/modules/botc/lib/grimoire/show";
 import { adminLogin, createAdminUser, createSession, resetDb, sql } from "./helpers";
 
@@ -1465,6 +1465,37 @@ test("grimoire: the size of the tokens on a slider, kept on this device", async 
   await page.getByTestId("scale-button").click();
   await page.getByTestId("scale-panel").getByRole("button", { name: "100 %" }).click();
   await expect.poll(width).toBe(before);
+});
+
+test("grimoire: during the game only the Fabled meant for any time can be added – from the town's corner or the setup, each with its ability", async ({ page }) => {
+  expect(storytellerRoles.filter((r) => r.anyTime).map((r) => r.id).sort()).toEqual(["doomsayer", "ferryman", "fiddler", "hellslibrarian"]);
+  await adminLogin(page);
+  await newGrimoire(page);
+  await closeSetup(page);
+  // before the game they come from the setup
+  await expect(page.getByTestId("fabled-add")).toHaveCount(0);
+  await page.getByRole("button", { name: "Začít hru → 1. noc" }).click();
+  await expect(page.getByTestId("phase")).toHaveText("1. noc");
+
+  await page.getByTestId("fabled-add").click();
+  const add = page.getByTestId("fabled-add-panel");
+  await expect(add.getByRole("button", { name: /^Přidat do hry: / })).toHaveCount(4);
+  await expect(add.getByRole("button", { name: "Přidat do hry: Převozník" })).toContainText(characters.ferryman.ability);
+  await add.getByRole("button", { name: "Přidat do hry: Převozník" }).click();
+  await stored((st) => (st as unknown as { fabled?: string[] }).fabled, ["ferryman"]);
+  await expect(page.getByTestId("fabled-panel")).toContainText("Převozník");
+  await expect(page.getByTestId("fabled-tokens").getByRole("button", { name: "Převozník", exact: true })).toBeVisible();
+  await page.getByTestId("fabled-add").click();
+  await expect(add.getByRole("button", { name: /^Přidat do hry: / })).toHaveCount(3);
+
+  // the setup during the game offers the same, the ones in play marked
+  const setup = await openSetup(page);
+  const fabled = setup.getByTestId("fabled-setup");
+  await fabled.getByRole("button", { name: "+ Přidat" }).click();
+  await expect(fabled).toContainText("Během hry jdou podle pravidel přidat jen tyto Báje.");
+  await expect(fabled.getByRole("button", { name: /^Přidat do hry: / })).toHaveCount(4);
+  await expect(fabled.getByRole("button", { name: "Přidat do hry: Převozník" })).toHaveAttribute("aria-pressed", "true");
+  await expect(fabled.getByRole("button", { name: "Přidat do hry: Lapač bouří" })).toHaveCount(0);
 });
 
 test("grimoire: the bag counts each team against the setup for the players, also over the whole screen", async ({ page }) => {

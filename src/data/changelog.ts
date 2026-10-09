@@ -41,6 +41,11 @@ export const changelog: ChangelogEntry[] = [
         text: "Postavy podle aktuálního script toolu: opravené uříznuté schopnosti (Lil' Monsta), další české texty a připomínky, upravené pořadí první noci, jinxy s Yaggababble.",
       },
       {
+        for: "organizers",
+        text: "Grimoár, Báje a Loric: při výběru je u každé vidět celá schopnost. Během hry jde Báji přidat i tlačítkem + v rohu města – podle pravidel jen ty, které jdou přidat kdykoli (Houslista, Pekelná knihovnice, Převozník, Věštec zkázy); ostatní Báje a všechny Loric se přidávají na začátku hry.",
+        href: "/admin/botc/grimoary",
+      },
+      {
         for: "players",
         text: "Pocestný Thief se česky jmenuje Zloděj.",
         href: "/botc/moje-hry",

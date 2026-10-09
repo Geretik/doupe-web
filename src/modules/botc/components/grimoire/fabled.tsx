@@ -16,6 +16,16 @@ const big = "min-h-11 rounded-lg border px-3 py-2 text-sm font-medium disabled:o
 const plain = `${big} border-border bg-card hover:border-accent/50`;
 const heading = "text-xs font-semibold tracking-wide text-muted uppercase";
 
+/** The game with the Fabled or Loric. */
+function withFabled(s: GrimoireState, id: string): GrimoireState {
+  return s.fabled?.includes(id) ? s : { ...s, fabled: [...(s.fabled ?? []), id] };
+}
+
+/** The Fabled and Loric the Storyteller may add now: any before the game, during it only the ones meant for any time. */
+function addable(state: Pick<GrimoireState, "phase">) {
+  return storytellerRoles.filter((r) => state.phase === "setup" || r.anyTime).map((r) => r.id);
+}
+
 /** The game without the Fabled or Loric, and without its tokens at the players. */
 function withoutFabled(s: GrimoireState, id: string): GrimoireState {
   return {
@@ -29,10 +39,20 @@ function withoutFabled(s: GrimoireState, id: string): GrimoireState {
  * The Fabled and Loric in the game, in a corner of the town as on the official grimoire: a tap opens one in the
  * panel. Smaller on a phone, and in more columns rather than down the side where the players sit.
  */
-export function FabledTokens({ selectedId, onSelect }: { selectedId: string | null; onSelect: (id: string) => void }) {
-  const { state, scale, locale } = useGrimoire();
+export function FabledTokens({
+  selectedId,
+  onSelect,
+  onAdd,
+}: {
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+  /** During the game: + for the Fabled that may be added at any time (FabledAddPanel) */
+  onAdd?: () => void;
+}) {
+  const { state, scale, locale, t } = useGrimoire();
   const fabled = state.fabled ?? [];
-  if (!fabled.length) return null;
+  const canAdd = !!onAdd && addable(state).some((id) => !fabled.includes(id));
+  if (!fabled.length && !canAdd) return null;
   return (
     // as big as the town's tokens on this device
     <div className="absolute top-0 right-0 z-10 flex max-h-[45%] flex-col flex-wrap-reverse gap-1.5" style={{ zoom: scale }} data-testid="fabled-tokens">
@@ -49,6 +69,18 @@ export function FabledTokens({ selectedId, onSelect }: { selectedId: string | nu
           <RoleIcon roleId={id} size={36} className="max-h-[75%] max-w-[75%]" />
         </button>
       ))}
+      {canAdd && (
+        <button
+          type="button"
+          onClick={onAdd}
+          aria-label={t.fabledAnyTime}
+          title={t.fabledAnyTime}
+          className="flex size-10 items-center justify-center rounded-full border-[3px] border-dashed border-amber-500/70 bg-card text-xl text-amber-600 shadow-sm sm:size-12"
+          data-testid="fabled-add"
+        >
+          +
+        </button>
+      )}
     </div>
   );
 }
@@ -211,19 +243,11 @@ function Homebrew() {
 
 /** In the setup: the Fabled and Loric in the game (the script's come by themselves), more to add, any to take out. */
 export function FabledSetup({ wide = false }: { wide?: boolean }) {
-  const { state, update, readOnly, characters, locale, t } = useGrimoire();
+  const { state, update, readOnly, locale, t } = useGrimoire();
   const [open, setOpen] = useState(false);
   const fabled = state.fabled ?? [];
   const fromScript = new Set(state.script.fabled ?? []);
-  const toggle = (id: string) => update((s) => (s.fabled?.includes(id) ? withoutFabled(s, id) : { ...s, fabled: [...(s.fabled ?? []), id] }));
-  const collator = new Intl.Collator(locale);
-  const groups = (["fabled", "loric"] as const).map((team) => ({
-    team,
-    ids: storytellerRoles
-      .filter((r) => r.team === team)
-      .map((r) => r.id)
-      .sort((a, b) => collator.compare(nameOf(a, locale), nameOf(b, locale))),
-  }));
+  const toggle = (id: string) => update((s) => (s.fabled?.includes(id) ? withoutFabled(s, id) : withFabled(s, id)));
   return (
     <section className="flex flex-col gap-2" data-testid="fabled-setup">
       <div className="flex flex-wrap items-center gap-2">
@@ -258,33 +282,88 @@ export function FabledSetup({ wide = false }: { wide?: boolean }) {
         </ul>
       )}
       {open && (
-        <div className="flex flex-col gap-2">
-          {groups.map((g) => (
-            <div key={g.team} className={`rounded-xl border p-2 ${teamBox[g.team]}`}>
-              <h4 className="mb-1.5 px-1 text-xs font-semibold tracking-wide uppercase">{t.storytellerTeams[g.team]}</h4>
-              <div className={`grid gap-1.5 ${wide ? "grid-cols-[repeat(auto-fill,minmax(11rem,1fr))]" : "grid-cols-2"}`}>
-                {g.ids.map((id) => {
-                  const on = fabled.includes(id);
-                  return (
-                    <button
-                      key={id}
-                      type="button"
-                      onClick={() => toggle(id)}
-                      aria-pressed={on}
-                      aria-label={`${t.fabledAddLabel}: ${nameOf(id, locale)}`}
-                      title={characters[id]?.ability}
-                      className={`flex min-h-12 items-center gap-2 rounded-lg border px-1.5 py-1 text-left text-sm ${on ? "border-accent bg-accent/10 font-semibold" : "border-border bg-card hover:border-accent/50"}`}
-                    >
-                      <RoleIcon roleId={id} size={34} />
-                      <span className="truncate">{nameOf(id, locale)}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </div>
+        <>
+          {state.phase !== "setup" && <p className="text-xs text-muted">{t.fabledAnyTimeHint}</p>}
+          <FabledChoices ids={addable(state)} picked={new Set(fabled)} onPick={toggle} wide={wide} />
+        </>
       )}
     </section>
+  );
+}
+
+/**
+ * During the game, from the + in the town's corner: the Fabled the Storyteller may add at any time, each with its
+ * ability; the one picked comes into the game and opens in the panel.
+ */
+export function FabledAddPanel({ onAdded, onClose }: { onAdded: (id: string) => void; onClose: () => void }) {
+  const { state, update, t } = useGrimoire();
+  const ids = addable(state).filter((id) => !state.fabled?.includes(id));
+  return (
+    <div className="flex flex-col gap-3" data-testid="fabled-add-panel">
+      <div className="flex items-start gap-2">
+        <h3 className="flex-1 text-xl font-bold">{t.fabledAddTitle}</h3>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label={t.close}
+          title={t.close}
+          className="flex size-11 shrink-0 items-center justify-center rounded-full border border-border bg-card text-lg hover:border-accent/50"
+        >
+          ✕
+        </button>
+      </div>
+      <p className="text-xs text-muted">{t.fabledAnyTimeHint}</p>
+      {ids.length > 0 ? (
+        <FabledChoices
+          ids={ids}
+          picked={new Set()}
+          onPick={(id) => {
+            update((s) => withFabled(s, id));
+            onAdded(id);
+          }}
+        />
+      ) : (
+        <p className="text-sm text-muted">{t.fabledAllIn}</p>
+      )}
+    </div>
+  );
+}
+
+/** Fabled and Loric to pick, by team, each with its ability to read before picking; `picked` ones highlighted. */
+function FabledChoices({ ids, picked, onPick, wide = false }: { ids: string[]; picked: Set<string>; onPick: (id: string) => void; wide?: boolean }) {
+  const { characters, locale, t } = useGrimoire();
+  const collator = new Intl.Collator(locale);
+  const groups = (["fabled", "loric"] as const)
+    .map((team) => ({ team, ids: ids.filter((id) => teamOf(id) === team).sort((a, b) => collator.compare(nameOf(a, locale), nameOf(b, locale))) }))
+    .filter((g) => g.ids.length > 0);
+  return (
+    <div className="flex flex-col gap-2">
+      {groups.map((g) => (
+        <div key={g.team} className={`rounded-xl border p-2 ${teamBox[g.team]}`}>
+          <h4 className="mb-1.5 px-1 text-xs font-semibold tracking-wide uppercase">{t.storytellerTeams[g.team]}</h4>
+          <div className={`grid gap-1.5 ${wide ? "grid-cols-[repeat(auto-fill,minmax(18rem,1fr))]" : "grid-cols-1"}`}>
+            {g.ids.map((id) => {
+              const on = picked.has(id);
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => onPick(id)}
+                  aria-pressed={on}
+                  aria-label={`${t.fabledAddLabel}: ${nameOf(id, locale)}`}
+                  className={`flex items-start gap-2 rounded-lg border p-2 text-left text-sm ${on ? "border-accent bg-accent/10" : "border-border bg-card hover:border-accent/50"}`}
+                >
+                  <RoleIcon roleId={id} size={36} />
+                  <span className="flex min-w-0 flex-col gap-0.5">
+                    <span className="font-semibold">{nameOf(id, locale)}</span>
+                    {characters[id] && <span className="text-xs leading-snug text-muted">{characters[id].ability}</span>}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }

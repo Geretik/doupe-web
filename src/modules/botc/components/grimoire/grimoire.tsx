@@ -9,7 +9,7 @@ import { isPlayer, nextPhase, nightSteps, putToken, type GrimoireSeat, type Grim
 import { useAutosave, type SaveStatus } from "./autosave";
 import { ChroniclePanel } from "./chronicle";
 import { DrawView } from "./draw";
-import { FabledPanel, FabledTokens } from "./fabled";
+import { FabledAddPanel, FabledPanel, FabledTokens } from "./fabled";
 import { fill } from "@/modules/botc/lib/grimoire/text";
 import { GrimoireContext, nameOf, useGrimoire, type GrimoireContextValue, type GrimoireTexts } from "./context";
 import { GameButton } from "./game-panel";
@@ -95,6 +95,8 @@ export function Grimoire({
   const [selected, setSelected] = useState<string | null>(null);
   // a Fabled or Loric tapped in the town's corner, open in the panel instead of a player
   const [fabledOpen, setFabledOpen] = useState<string | null>(null);
+  // the Fabled to add during the game, in the panel instead of a player
+  const [addingFabled, setAddingFabled] = useState(false);
   // the players' draw started from the setup takes the screen; afterwards nobody is selected
   if (state.drawing && (setupOpen || selected)) {
     setSetupOpen(false);
@@ -202,6 +204,7 @@ export function Grimoire({
   const selectSeat = (seatId: string) => {
     setSelected(seatId);
     setFabledOpen(null);
+    setAddingFabled(false);
     setTab("seat");
   };
   // a tap in the town: puts the token being placed there, else opens the player – or lets go of them when they are open
@@ -235,8 +238,15 @@ export function Grimoire({
   // taken out of the game (in the setup, by undo): the panel is the player's again
   const fabledShown = fabledOpen && state.fabled?.includes(fabledOpen) ? fabledOpen : null;
   const tapFabled = (id: string) => {
+    setAddingFabled(false);
     if (id === fabledShown && shown === "seat") return setFabledOpen(null);
     setFabledOpen(id);
+    setSelected(null);
+    setTab("seat");
+  };
+  const addFabled = () => {
+    setAddingFabled(true);
+    setFabledOpen(null);
     setSelected(null);
     setTab("seat");
   };
@@ -344,12 +354,16 @@ export function Grimoire({
                   selectedId={shown === "seat" && !fabledShown ? selected : null}
                   highlightIds={hidden ? [] : (focused?.seatIds ?? [])}
                   onSelect={tapSeat}
-                  onBackground={() => (placing ? setPlacing(null) : (setSelected(null), setFabledOpen(null)))}
+                  onBackground={() => (placing ? setPlacing(null) : (setSelected(null), setFabledOpen(null), setAddingFabled(false)))}
                   onMove={context.readOnly || state.seatsLocked ? undefined : moveSeats}
                   center={<TownCenter phaseLabel={phaseLabel} />}
                   hideRoles={hidden}
                 />
-                <FabledTokens selectedId={shown === "seat" ? fabledShown : null} onSelect={tapFabled} />
+                <FabledTokens
+                  selectedId={shown === "seat" ? fabledShown : null}
+                  onSelect={tapFabled}
+                  onAdd={!context.readOnly && (state.phase === "night" || state.phase === "day") ? addFabled : undefined}
+                />
                 {placing && (
                   <div className="absolute inset-x-0 top-0 z-20 mx-auto flex w-fit max-w-full flex-wrap items-center gap-2 rounded-full border border-accent bg-card px-3 py-1.5 text-sm shadow-md" data-testid="placing">
                     <span>{fill(t.placeHint, { token: placing.text, role: nameOf(placing.roleId, locale) })}</span>
@@ -412,7 +426,15 @@ export function Grimoire({
                 </div>
                 <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3">
                   {shown === "seat" &&
-                    (fabledShown ? (
+                    (addingFabled ? (
+                      <FabledAddPanel
+                        onAdded={(id) => {
+                          setAddingFabled(false);
+                          setFabledOpen(id);
+                        }}
+                        onClose={() => setAddingFabled(false)}
+                      />
+                    ) : fabledShown ? (
                       <FabledPanel key={fabledShown} roleId={fabledShown} placing={placing} onPlace={setPlacing} onClose={() => setFabledOpen(null)} />
                     ) : (
                       <SeatPanel key={selected} seatId={selected} onRemoved={() => setSelected(null)} onSelect={setSelected} onClose={() => setSelected(null)} />
