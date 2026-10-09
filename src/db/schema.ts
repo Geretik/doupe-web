@@ -4,6 +4,7 @@ import {
   integer,
   jsonb,
   pgTable,
+  primaryKey,
   serial,
   text,
   timestamp,
@@ -241,7 +242,27 @@ export const adminUsers = pgTable("admin_users", {
    * rows makes `drizzle-kit push` stop at a question it cannot ask in CI.
    */
   feedKey: text("feed_key"),
+  /**
+   * Whether the e-mails about a session (a player's late cancellation) come to this account; at each session it may
+   * choose otherwise (sessionEmailPrefs). On for new accounts.
+   */
+  sessionEmails: boolean("session_emails").notNull().default(true),
 });
+
+/** An organiser's choice at one session whether its e-mails come to them; without a row adminUsers.sessionEmails applies. */
+export const sessionEmailPrefs = pgTable(
+  "session_email_prefs",
+  {
+    sessionId: integer("session_id")
+      .notNull()
+      .references(() => sessions.id, { onDelete: "cascade" }),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => adminUsers.id, { onDelete: "cascade" }),
+    enabled: boolean("enabled").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.sessionId, t.userId] })],
+);
 
 /** One-time links for setting a new password: made by an administrator, asked for by e-mail on the login page, or by scripts/reset-link.mjs. */
 export const passwordResets = pgTable("password_resets", {
@@ -372,6 +393,28 @@ export const scripts = pgTable("scripts", {
 });
 
 export type LibraryScript = typeof scripts.$inferSelect;
+
+/**
+ * What organisers did in the admin, for admin → Historie (lib/admin-log): one row per action, who and when, `data` says
+ * what (shaped by LogData there). Players are in it only by their registration id, never by name or e-mail. The daily
+ * cron deletes rows older than LOG_RETENTION_DAYS.
+ */
+export const adminLog = pgTable(
+  "admin_log",
+  {
+    id: serial("id").primaryKey(),
+    at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
+    /** null once the account is deleted; `nickname` still says who it was */
+    userId: integer("user_id").references(() => adminUsers.id, { onDelete: "set null" }),
+    nickname: text("nickname").notNull(),
+    /** "<area>.<what>", e.g. "session.update" – a key of LogData */
+    action: text("action").notNull(),
+    data: jsonb("data").$type<Record<string, unknown>>().notNull(),
+  },
+  (t) => [index("admin_log_at_idx").on(t.at), index("admin_log_user_idx").on(t.userId, t.id)],
+);
+
+export type AdminLogRow = typeof adminLog.$inferSelect;
 
 /** When a recurring job last finished; the admin warns when the daily cron stops running (lib/job-runs). */
 export const jobRuns = pgTable("job_runs", {

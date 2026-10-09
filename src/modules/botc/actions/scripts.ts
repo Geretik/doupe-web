@@ -8,6 +8,7 @@ import { scripts } from "@/db/schema";
 import type { Dict } from "@/i18n/dictionaries";
 import { getDict } from "@/i18n/server";
 import { requireAdmin } from "@/lib/admin-auth";
+import { logAction } from "@/lib/admin-log";
 import { canEditScript, getLibraryScript, parseScriptFile, scriptNameTaken, scriptText, type ParsedScript } from "@/modules/botc/lib/scripts";
 import type { FormState } from "@/lib/validation";
 import type { SimpleResult } from "@/app/actions/admin";
@@ -66,6 +67,7 @@ export async function createLibraryScriptAction(_prev: ScriptFormState, formData
       createdBy: me.id,
     })
     .returning({ id: scripts.id });
+  await logAction(me, "script.create", { script: { id: row.id, name: named.name } });
   revalidateScripts();
   redirect(`/admin/botc/scripty/${row.id}`);
 }
@@ -100,6 +102,7 @@ export async function updateLibraryScriptAction(id: number, _prev: ScriptFormSta
       updatedAt: new Date(),
     })
     .where(eq(scripts.id, id));
+  await logAction(me, "script.update", { script: { id, name: named.name }, file: Boolean(read) });
   revalidateScripts();
   return { ok: true, message: read ? s.savedWithFile : s.saved };
 }
@@ -111,6 +114,7 @@ export async function deleteLibraryScriptAction(id: number): Promise<SimpleResul
   if (!row) return { message: t.scripts.errors.notFound };
   if (!canEditScript(me, row.script)) return { message: t.scripts.errors.notYours };
   await db.delete(scripts).where(eq(scripts.id, id));
+  await logAction(me, "script.delete", { script: { id, name: row.script.name } });
   revalidateScripts();
   redirect("/admin/botc/scripty");
 }

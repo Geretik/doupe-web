@@ -23,6 +23,7 @@ import {
   getOpenPasswordReset,
   RESET_EMAIL_HOURS,
 } from "@/lib/admin-users";
+import { logAction } from "@/lib/admin-log";
 import { throttleLinkRequest } from "@/lib/link-throttle";
 import { LOGIN_WINDOW_MINUTES, startLoginAttempt } from "@/lib/login-limit";
 import { hashPassword, verifyPassword } from "@/lib/password";
@@ -49,6 +50,7 @@ export async function loginAction(
   await attempt.succeeded();
   await db.update(adminUsers).set({ lastLoginAt: new Date() }).where(eq(adminUsers.id, user.id));
   await setAdminCookie(user.id);
+  await logAction(user, "account.login", { method: "password" });
   redirect("/admin");
 }
 
@@ -87,6 +89,7 @@ export async function setupFirstAdminAction(
     })
     .returning();
   await setAdminCookie(user.id);
+  await logAction(user, "account.login", { method: "setup" });
   redirect("/admin");
 }
 
@@ -128,6 +131,7 @@ export async function acceptInviteAction(
   });
   if (!user) return { error: e.inviteInvalid };
   await setAdminCookie(user.id);
+  await logAction(user, "account.login", { method: "invite" });
   redirect("/admin");
 }
 
@@ -139,13 +143,18 @@ export async function createInviteAction(_prev: InviteResult, formData: FormData
   const parsed = inviteSchema.safeParse(Object.fromEntries(formData.entries()));
   if (!parsed.success) return { error: t.admin.errors.checkForm, fieldErrors: fieldErrorsOf(parsed.error) };
   const invite = await createInvite(me.id, parsed.data.role, parsed.data.note);
+  await logAction(me, "account.inviteCreate", { role: invite.role, note: invite.note });
   revalidatePath("/admin/ucty");
   return { ok: true, url: inviteUrl(invite.token) };
 }
 
 export async function revokeInviteAction(id: number) {
-  await requireAdmin("admin");
-  await db.delete(adminInvites).where(and(eq(adminInvites.id, id), isNull(adminInvites.usedAt)));
+  const me = await requireAdmin("admin");
+  const [revoked] = await db
+    .delete(adminInvites)
+    .where(and(eq(adminInvites.id, id), isNull(adminInvites.usedAt)))
+    .returning({ role: adminInvites.role, note: adminInvites.note });
+  if (revoked) await logAction(me, "account.inviteRevoke", revoked);
   revalidatePath("/admin/ucty");
 }
 
@@ -164,6 +173,7 @@ export async function deleteAdminUserAction(id: number): Promise<SimpleResult> {
     return true;
   });
   if (!deleted) return { message: t.admin.errors.cannotDeleteLastAdmin };
+  await logAction(me, "account.delete", { account: { id: target.id, nickname: target.nickname, role: target.role } });
   revalidatePath("/admin/ucty");
   return { ok: true };
 }
@@ -190,17 +200,30 @@ export async function changePasswordAction(_prev: FormState, formData: FormData)
   await setPassword(me.id, parsed.data.password);
   // this device stays signed in with a fresh cookie
   await setAdminCookie(me.id);
+  await logAction(me, "account.password", {});
   return { ok: true };
+}
+
+/** Whether the e-mails about each session come to the signed-in organiser, unless chosen otherwise at the session. */
+export async function setSessionEmailsDefaultAction(enabled: boolean): Promise<SimpleResult> {
+  const me = await requireAdmin();
+  const { t } = await getDict();
+  if (typeof enabled !== "boolean") return {};
+  await db.update(adminUsers).set({ sessionEmails: enabled }).where(eq(adminUsers.id, me.id));
+  await logAction(me, "account.sessionEmails", { enabled });
+  revalidatePath("/admin/profil");
+  return { ok: true, message: enabled ? t.admin.emails.defaultOn : t.admin.emails.defaultOff };
 }
 
 export type ResetLinkResult = SimpleResult & { url?: string };
 
 /** Administrator makes a one-time link for an organiser who forgot their password. */
 export async function createPasswordResetAction(userId: number): Promise<ResetLinkResult> {
-  await requireAdmin("admin");
+  const me = await requireAdmin("admin");
   const target = await db.query.adminUsers.findFirst({ where: eq(adminUsers.id, userId) });
   if (!target) return {};
   const reset = await createPasswordReset(target.id);
+  await logAction(me, "account.resetLink", { account: { id: target.id, nickname: target.nickname } });
   return { ok: true, url: passwordResetUrl(reset.token) };
 }
 
@@ -265,6 +288,7 @@ export async function loginWithLinkAction(token: string) {
   if (!userId) redirect(`/admin/odkaz/${encodeURIComponent(token)}`);
   await db.update(adminUsers).set({ lastLoginAt: new Date() }).where(eq(adminUsers.id, userId));
   await setAdminCookie(userId);
+  await logAction(userId, "account.login", { method: "link" });
   redirect("/admin");
 }
 
@@ -286,6 +310,7 @@ export async function resetPasswordAction(token: string, _prev: FormState, formD
   await setPassword(open.user.id, parsed.data.password);
   await db.update(adminUsers).set({ lastLoginAt: new Date() }).where(eq(adminUsers.id, open.user.id));
   await setAdminCookie(open.user.id);
+  await logAction(open.user, "account.login", { method: "reset" });
   redirect("/admin");
 }
 

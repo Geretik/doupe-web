@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { adminUsers } from "@/db/schema";
 import { getAdmin, requireAdmin, setAdminCookie } from "@/lib/admin-auth";
+import { logAction } from "@/lib/admin-log";
 import { qrSvg } from "@/lib/qr";
 import { approveQrLogin, claimQrLogin, startQrLogin, type QrLoginStatus } from "@/lib/qr-login";
 import { qrLoginUrl } from "@/lib/site";
@@ -37,5 +38,6 @@ export async function logoutOtherDevicesAction(): Promise<{ ok: boolean }> {
   const me = await requireAdmin();
   await db.update(adminUsers).set({ sessionsRevokedAt: new Date() }).where(eq(adminUsers.id, me.id));
   await setAdminCookie(me.id);
+  await logAction(me, "account.logoutOthers", {});
   return { ok: true };
 }

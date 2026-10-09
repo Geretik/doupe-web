@@ -6,6 +6,7 @@ import { db } from "@/db";
 import { siteTexts } from "@/db/schema";
 import { getDict, isLocale } from "@/i18n/server";
 import { requireAdmin } from "@/lib/admin-auth";
+import { logAction } from "@/lib/admin-log";
 import { latestVersions } from "@/lib/site-content";
 import { MAX_TEXT_LENGTH, sitePage, type TextBlock } from "@/lib/site-content-defaults";
 import type { FormState } from "@/lib/validation";
@@ -89,6 +90,12 @@ export async function saveSiteTextsAction(
   await db.insert(siteTexts).values(
     changes.map(({ block, body }) => ({ key: block.key, locale, body, createdBy: me.id })),
   );
+  await logAction(me, "web.texts", {
+    page: slug,
+    locale,
+    blocks: changes.map((c) => c.block.key),
+    intent: intent === "save" ? "save" : intent.startsWith("default:") ? "default" : "restore",
+  });
   revalidatePath(page.path);
   revalidatePath("/admin/web", "layout");
   return { ok: true, message: intent === "save" ? w.saved : w.restored };

@@ -13,6 +13,27 @@ export type ChangelogEntry = { /** YYYY-MM-DD */ date: string; title: string; it
 
 export const changelog: ChangelogEntry[] = [
   {
+    date: "2026-10-09",
+    title: "Historie akcí v adminu, kolik lidí tu kdy bude, e-maily k termínům",
+    items: [
+      {
+        for: "organizers",
+        text: "Termín v adminu: graf „Kolik lidí tu kdy bude“ je hned nad rychlou registrací, po půlhodinách – kdo přijde v 18:00 a odejde ve 20:00, počítá se do sloupců 18:00, 18:30, 19:00 a 19:30. Ťuknutím na sloupec uvidíš počet. V tabulce přihlášených jsou zvýrazněné časy těch, kdo přijdou později nebo odejdou dřív.",
+        href: "/admin/botc",
+      },
+      {
+        for: "organizers",
+        text: "E-maily k termínům (pozdní odhlášení hráče): v Profilu nastavíš, jestli je chceš ke každému termínu, a u termínu je tlačítkem 🔕 / 🔔 vypneš nebo zapneš jen pro něj. Nové účty je mají zapnuté. Upozornění na chyby webu chodí dál všem.",
+        href: "/admin/profil",
+      },
+      {
+        for: "organizers",
+        text: "Admin má Historii (jen pro správce): kdo kdy co v adminu udělal – přihlášení, termíny, hráči, hry, e-maily hráčům, drafty, scripty, grimoáry, texty webu i účty. Jde filtrovat podle účtu a oblasti, u termínu je odkaz Historie změn jen s jeho záznamy. Záznamy se mažou po roce.",
+        href: "/admin/historie",
+      },
+    ],
+  },
+  {
     date: "2026-10-08",
     title: "Přehled klubu v adminu, grimoár: Ukázat hráči, hra bez sítě, Báje a Loric; přihlášení QR kódem a odkazem z e-mailu",
     items: [

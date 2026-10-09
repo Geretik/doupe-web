@@ -2,7 +2,7 @@
 
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { after } from "next/server";
-import { notifyOrganizers } from "@/lib/alerts";
+import { LATE_CANCEL_HOURS, notifyOrganizers } from "@/lib/alerts";
 import { clientIpHash } from "@/lib/client-ip";
 import { throttleLinkRequest } from "@/lib/link-throttle";
 import { siteUrl } from "@/lib/site";
@@ -323,7 +323,6 @@ export async function requestMyGamesLinkAction(_prev: FormState, formData: FormD
 }
 
 /** Organisers are alerted when a confirmed player cancels this close to the game. */
-const LATE_CANCEL_HOURS = 24;
 
 export async function cancelRegistrationAction(token: string, reason?: string): Promise<FormState> {
   const { t } = await getDict();
@@ -355,6 +354,7 @@ export async function cancelRegistrationAction(token: string, reason?: string): 
         (cleanReason ? `\nDůvod: ${cleanReason}` : "") +
         (promoted.length ? `\nMísto automaticky dostal/a náhradník: ${promoted.map((p) => p.nickname).join(", ")}.` : "\nŽádný náhradník není, místo je volné.") +
         `\n${siteUrl()}/admin/botc/termin/${session.id}`,
+      { sessionId: session.id },
     );
   }
   return { ok: true };

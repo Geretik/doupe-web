@@ -6,8 +6,10 @@ import { redirect } from "next/navigation";
 import { db } from "@/db";
 import { games, registrations, scriptVotes, sessions, type RegistrationState } from "@/db/schema";
 import { requireAdmin } from "@/lib/admin-auth";
+import { fieldChanges, logAction, logSessionAction, sessionRef } from "@/lib/admin-log";
 import { saveRoster } from "@/modules/botc/lib/game-roster";
 import { rotateFeedKey } from "@/modules/botc/lib/org-feed";
+import { setSessionEmails } from "@/lib/alerts";
 import { announceSessionOnDiscord } from "@/lib/discord";
 import { sendBroadcastEmail, sendConfirmationEmail, sendExistingRegistrationEmail, sendPromotedEmail } from "@/modules/botc/lib/registration-email";
 import { sendDueReminders } from "@/modules/botc/lib/reminders";
@@ -90,7 +92,7 @@ export async function createSessionAction(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  await requireAdmin();
+  const me = await requireAdmin();
   const r = await parseSessionForm(formData);
   if (r.error) return { error: r.message, fieldErrors: r.error };
   // optional series: the same session every N weeks, `repeatCount` times in total
@@ -109,6 +111,10 @@ export async function createSessionAction(
     };
   });
   const [created] = await db.insert(sessions).values(rows).returning();
+  await logAction(me, "session.create", {
+    session: { id: created.id, title: created.title, startsAt: created.startsAt.toISOString() },
+    count: rows.length,
+  });
   if (formData.get("announceDiscord") === "on") {
     await announceSessionOnDiscord(created, created.capacity);
   }
@@ -121,24 +127,43 @@ export async function updateSessionAction(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  await requireAdmin();
+  const me = await requireAdmin();
   const r = await parseSessionForm(formData);
   if (r.error) return { error: r.message, fieldErrors: r.error };
-  const [before] = await db.select({ startsAt: sessions.startsAt }).from(sessions).where(eq(sessions.id, id));
+  const [before] = await db.select().from(sessions).where(eq(sessions.id, id));
   if (!before) return { error: (await getDict()).t.admin.errors.noSession };
   const moved = before.startsAt.getTime() !== r.values.startsAt.getTime();
   // a moved session gets its reminders and "spots left" post again, for the new date
   await db.update(sessions).set({ ...r.values, ...(moved ? { spotsPostedAt: null } : {}) }).where(eq(sessions.id, id));
   if (moved) await db.update(registrations).set({ reminderSentAt: null }).where(eq(registrations.sessionId, id));
+  const changes = fieldChanges(before, r.values, SESSION_FIELDS_WITH_VALUES);
+  if (changes.length) await logSessionAction(me, "session.update", id, { changes });
   // a bigger capacity may make room for waitlisted players
   await promoteWaitlist(id);
   revalidateSession(id);
   return { ok: true };
 }
 
+/** Fields whose old and new value the history shows; for the others (note, scripts, playlist, vote) only that they changed. */
+const SESSION_FIELDS_WITH_VALUES = [
+  "title",
+  "place",
+  "capacity",
+  "storyteller",
+  "gameLanguage",
+  "arrivalMode",
+  "phoneRequired",
+  "registrationState",
+  "registrationOpensAt",
+  "startsAt",
+  "endsAt",
+] as const;
+
 export async function deleteSessionAction(id: number) {
-  await requireAdmin();
-  await db.delete(sessions).where(eq(sessions.id, id));
+  const me = await requireAdmin();
+  const session = await sessionRef(id);
+  const [deleted] = await db.delete(sessions).where(eq(sessions.id, id)).returning({ id: sessions.id });
+  if (deleted && session) await logAction(me, "session.delete", { session });
   revalidatePath("/botc");
   redirect("/admin/botc");
 }
@@ -150,7 +175,7 @@ function revalidateSession(sessionId: number) {
 }
 
 export async function adminCancelRegistrationAction(registrationId: number) {
-  await requireAdmin();
+  const me = await requireAdmin();
   const now = new Date();
   const [row] = await db
     .update(registrations)
@@ -159,6 +184,7 @@ export async function adminCancelRegistrationAction(registrationId: number) {
     .where(and(eq(registrations.id, registrationId), inArray(registrations.status, ["confirmed", "waitlisted"])))
     .returning({ sessionId: registrations.sessionId });
   if (row) {
+    await logSessionAction(me, "session.playerCancel", row.sessionId, { registrationId });
     await promoteWaitlist(row.sessionId);
     revalidateSession(row.sessionId);
   }
@@ -166,19 +192,21 @@ export async function adminCancelRegistrationAction(registrationId: number) {
 
 /** One-click "open" / "pause" of new sign-ups from the admin session page. */
 export async function setRegistrationStateAction(sessionId: number, state: RegistrationState): Promise<SimpleResult> {
-  await requireAdmin();
+  const me = await requireAdmin();
   const { t } = await getDict();
   // a manual switch replaces any scheduled opening
   await db.update(sessions).set({ registrationState: state, registrationOpensAt: null }).where(eq(sessions.id, sessionId));
+  await logSessionAction(me, "session.registration", sessionId, { state });
   revalidateSession(sessionId);
   return { ok: true, message: state === "open" ? t.admin.session.registrationOpened : t.admin.session.registrationPaused };
 }
 
 /** One-click end of the script vote from the admin session page, or opening it again. */
 export async function setScriptPollClosedAction(sessionId: number, closed: boolean): Promise<SimpleResult> {
-  await requireAdmin();
+  const me = await requireAdmin();
   const { t } = await getDict();
   await db.update(sessions).set({ scriptPollClosedAt: closed ? new Date() : null }).where(eq(sessions.id, sessionId));
+  await logSessionAction(me, "session.poll", sessionId, { closed });
   revalidateSession(sessionId);
   return { ok: true, message: closed ? t.admin.session.pollClosedNow : t.admin.session.pollReopenedNow };
 }
@@ -189,7 +217,7 @@ export async function setScriptPollClosedAction(sessionId: number, closed: boole
  * whose e-mail the daily cron already replaced by the player's pseudonym.
  */
 export async function adminErasePlayerAction(registrationId: number): Promise<SimpleResult> {
-  await requireAdmin();
+  const me = await requireAdmin();
   const { t } = await getDict();
   const reg = await db.query.registrations.findFirst({ where: eq(registrations.id, registrationId) });
   if (!reg) return { message: t.errors.regNotFound };
@@ -218,6 +246,7 @@ export async function adminErasePlayerAction(registrationId: number): Promise<Si
     if (active) freed.add(r.sessionId);
   }
   if (rows.length) await db.delete(scriptVotes).where(inArray(scriptVotes.registrationId, rows.map((r) => r.id)));
+  await logSessionAction(me, "session.playerErase", reg.sessionId, { registrationId, count: rows.length });
   for (const id of freed) await promoteWaitlist(id);
   for (const id of new Set(rows.map((r) => r.sessionId))) revalidateSession(id);
   return { ok: true, message: t.admin.session.erased(rows.length) };
@@ -225,7 +254,7 @@ export async function adminErasePlayerAction(registrationId: number): Promise<Si
 
 /** Restores a cancelled registration: into a free spot, or onto the waitlist when full. */
 export async function adminRestoreRegistrationAction(registrationId: number) {
-  await requireAdmin();
+  const me = await requireAdmin();
   const row = await db.transaction(async (tx) => {
     const reg = await tx.query.registrations.findFirst({
       where: eq(registrations.id, registrationId),
@@ -257,9 +286,11 @@ export async function adminRestoreRegistrationAction(registrationId: number) {
         updatedAt: now,
       })
       .where(and(eq(registrations.id, registrationId), eq(registrations.status, "cancelled")));
-    return reg;
+    return { sessionId: reg.sessionId, waitlisted: full };
   });
-  if (row) revalidateSession(row.sessionId);
+  if (!row) return;
+  await logSessionAction(me, "session.playerRestore", row.sessionId, { registrationId, waitlisted: row.waitlisted });
+  revalidateSession(row.sessionId);
 }
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -281,7 +312,7 @@ async function fitCapacity(tx: Tx, sessionId: number, capacity: number) {
 
 /** Seats a waitlisted player right away – one more spot when the session is full – and e-mails them as when a spot opens up. */
 export async function adminConfirmWaitlistedAction(registrationId: number) {
-  await requireAdmin();
+  const me = await requireAdmin();
   const result = await db.transaction(async (tx) => {
     const reg = await tx.query.registrations.findFirst({ where: eq(registrations.id, registrationId) });
     if (!reg) return null;
@@ -305,6 +336,7 @@ export async function adminConfirmWaitlistedAction(registrationId: number) {
     return { session, row, notify };
   });
   if (!result) return;
+  await logSessionAction(me, "session.playerConfirm", result.session.id, { registrationId });
   if (result.notify) {
     try {
       await sendPromotedEmail(result.row, result.session);
@@ -327,7 +359,7 @@ export async function adminQuickRegisterAction(
   _prev: QuickRegisterResult,
   formData: FormData,
 ): Promise<QuickRegisterResult> {
-  await requireAdmin();
+  const me = await requireAdmin();
   const { locale, t } = await getDict();
   const e = t.admin.errors;
   const parsed = quickRegistrationSchema(t.errors).safeParse(Object.fromEntries(formData.entries()));
@@ -368,6 +400,7 @@ export async function adminQuickRegisterAction(
   if (result.kind === "taken") {
     return { error: e.checkForm, fieldErrors: { email: [result.cancelled ? e.quickEmailCancelled : e.quickEmailTaken] } };
   }
+  await logSessionAction(me, "session.playerAdd", sessionId, { registrationId: result.registration.id });
   let emailFailed = false;
   if (result.notify) {
     try {
@@ -408,7 +441,7 @@ export async function adminUpdateRegistrationAction(
   _prev: EditPlayerResult,
   formData: FormData,
 ): Promise<EditPlayerResult> {
-  await requireAdmin();
+  const me = await requireAdmin();
   const { t } = await getDict();
   const e = t.admin.errors;
   const current = await db.query.registrations.findFirst({
@@ -433,6 +466,17 @@ export async function adminUpdateRegistrationAction(
   const email = emailChanged ? wanted : current.email;
   const now = new Date();
   const notify = emailChanged && hasEmail(email) && session.endsAt > now && current.status !== "cancelled";
+  const edited = {
+    nickname: data.nickname,
+    email,
+    ...(!deleted && { firstName: data.firstName ?? null, lastName: data.lastName ?? null, phone: data.phone }),
+    arrivalTime: data.arrivalTime,
+    departureTime: data.departureTime,
+    arrivesLate: data.arrivesLate,
+    canStorytell: data.canStorytell,
+    isNewbie: data.isNewbie,
+    note: data.note ?? null,
+  };
 
   const result = await db.transaction(async (tx) => {
     // the lock keeps a quick sign-up or another edit from taking the same e-mail meanwhile
@@ -450,15 +494,7 @@ export async function adminUpdateRegistrationAction(
     const [row] = await tx
       .update(registrations)
       .set({
-        nickname: data.nickname,
-        email,
-        ...(!deleted && { firstName: data.firstName ?? null, lastName: data.lastName ?? null, phone: data.phone }),
-        arrivalTime: data.arrivalTime,
-        departureTime: data.departureTime,
-        arrivesLate: data.arrivesLate,
-        canStorytell: data.canStorytell,
-        isNewbie: data.isNewbie,
-        note: data.note ?? null,
+        ...edited,
         // claim the confirmation to the new address – exactly one e-mail
         ...(notify && { confirmationSentAt: now, lastEmailAt: now }),
         updatedAt: now,
@@ -471,6 +507,9 @@ export async function adminUpdateRegistrationAction(
   if (result.kind === "taken") {
     return { error: e.checkForm, fieldErrors: { email: [result.cancelled ? e.quickEmailCancelled : e.quickEmailTaken] } };
   }
+  // which fields only: the values are the player's personal data
+  const changes = fieldChanges(current, edited);
+  if (changes.length) await logSessionAction(me, "session.playerUpdate", session.id, { registrationId, changes });
   let emailFailed = false;
   if (notify) {
     try {
@@ -492,18 +531,20 @@ export async function adminUpdateRegistrationAction(
 
 /** Marks attendance: true = came, false = no-show, null = not marked. */
 export async function setAttendanceAction(registrationId: number, attended: boolean | null) {
-  await requireAdmin();
+  const me = await requireAdmin();
   const [row] = await db
     .update(registrations)
     .set({ attended, updatedAt: new Date() })
     .where(eq(registrations.id, registrationId))
     .returning({ sessionId: registrations.sessionId });
-  if (row) revalidatePath(`/admin/botc/termin/${row.sessionId}`);
+  if (!row) return;
+  await logSessionAction(me, "session.attendance", row.sessionId, { registrationId, attended });
+  revalidatePath(`/admin/botc/termin/${row.sessionId}`);
 }
 
 /** E-mails a player the link to their registration again (also marks a failed confirmation as sent). */
 export async function adminResendLinkAction(registrationId: number): Promise<SimpleResult> {
-  await requireAdmin();
+  const me = await requireAdmin();
   const { t } = await getDict();
   const reg = await db.query.registrations.findFirst({
     where: eq(registrations.id, registrationId),
@@ -521,6 +562,7 @@ export async function adminResendLinkAction(registrationId: number): Promise<Sim
     .update(registrations)
     .set({ lastEmailAt: now, confirmationSentAt: reg.confirmationSentAt ?? now })
     .where(eq(registrations.id, registrationId));
+  await logSessionAction(me, "session.resendLink", reg.sessionId, { registrationId });
   revalidatePath(`/admin/botc/termin/${reg.sessionId}`);
   return { ok: true, message: t.admin.errors.linkSent };
 }
@@ -532,7 +574,7 @@ export async function broadcastEmailAction(
   _prev: BroadcastResult,
   formData: FormData,
 ): Promise<BroadcastResult> {
-  await requireAdmin();
+  const me = await requireAdmin();
   const { t } = await getDict();
   const parsed = broadcastSchema(t.admin.errors).safeParse(Object.fromEntries(formData.entries()));
   if (!parsed.success) {
@@ -564,7 +606,19 @@ export async function broadcastEmailAction(
       .set({ lastEmailAt: new Date() })
       .where(and(eq(registrations.sessionId, sessionId), inArray(registrations.status, statuses)));
   }
+  await logSessionAction(me, "session.broadcast", sessionId, { subject: parsed.data.subject, sent, failed });
   return { ok: true, sent, failed };
+}
+
+/** The signed-in organiser's own choice whether this session's e-mails (a late cancellation) come to them. */
+export async function setSessionEmailsAction(sessionId: number, enabled: boolean): Promise<SimpleResult> {
+  const me = await requireAdmin();
+  const { t } = await getDict();
+  if (typeof enabled !== "boolean" || !(await sessionRef(sessionId))) return { message: t.admin.errors.noSession };
+  await setSessionEmails(me.id, sessionId, enabled);
+  await logSessionAction(me, "session.emails", sessionId, { enabled });
+  revalidatePath(`/admin/botc/termin/${sessionId}`);
+  return { ok: true, message: enabled ? t.admin.emails.sessionOn : t.admin.emails.sessionOff };
 }
 
 /** New secret link to the signed-in organiser's calendar feed; calendars subscribed to the old one stop updating. */
@@ -572,12 +626,13 @@ export async function rotateFeedKeyAction(): Promise<SimpleResult> {
   const me = await requireAdmin();
   const { t } = await getDict();
   await rotateFeedKey(me.id);
+  await logAction(me, "account.feedKey", {});
   revalidatePath("/admin/botc");
   return { ok: true, message: t.admin.list.orgCalendarRotated };
 }
 
 export async function addGameAction(sessionId: number, _prev: FormState, formData: FormData): Promise<FormState> {
-  await requireAdmin();
+  const me = await requireAdmin();
   const { t } = await getDict();
   const parsed = gameSchema(t.admin.errors).safeParse(Object.fromEntries(formData.entries()));
   const roster = parseRoster(formData);
@@ -585,17 +640,19 @@ export async function addGameAction(sessionId: number, _prev: FormState, formDat
   if (!parsed.success || !roster || demonBluffs === undefined) {
     return { error: t.admin.errors.checkForm, fieldErrors: parsed.success ? undefined : fieldErrorsOf(parsed.error) };
   }
-  await db.transaction(async (tx) => {
+  const gameId = await db.transaction(async (tx) => {
     const [game] = await tx.insert(games).values({ sessionId, ...parsed.data, demonBluffs }).returning({ id: games.id });
     await saveRoster(tx, game.id, sessionId, roster);
+    return game.id;
   });
+  await logSessionAction(me, "session.gameAdd", sessionId, { gameId });
   revalidatePath(`/admin/botc/termin/${sessionId}`);
   revalidatePath("/botc/archiv");
   return { ok: true };
 }
 
 export async function updateGameAction(gameId: number, _prev: FormState, formData: FormData): Promise<FormState> {
-  await requireAdmin();
+  const me = await requireAdmin();
   const { t } = await getDict();
   const parsed = gameSchema(t.admin.errors).safeParse(Object.fromEntries(formData.entries()));
   const roster = parseRoster(formData);
@@ -613,31 +670,34 @@ export async function updateGameAction(gameId: number, _prev: FormState, formDat
     return game;
   });
   if (!row) return { error: t.admin.errors.noGame };
+  await logSessionAction(me, "session.gameUpdate", row.sessionId, { gameId });
   revalidatePath(`/admin/botc/termin/${row.sessionId}`);
   revalidatePath("/botc/archiv");
   return { ok: true };
 }
 
 export async function deleteGameAction(gameId: number) {
-  await requireAdmin();
+  const me = await requireAdmin();
   const [row] = await db.delete(games).where(eq(games.id, gameId)).returning({ sessionId: games.sessionId });
   if (row) {
+    await logSessionAction(me, "session.gameDelete", row.sessionId, { gameId });
     revalidatePath(`/admin/botc/termin/${row.sessionId}`);
     revalidatePath("/botc/archiv");
   }
 }
 
 export async function sendRemindersNowAction(sessionId: number): Promise<SimpleResult> {
-  await requireAdmin();
+  const me = await requireAdmin();
   const { t } = await getDict();
   const r = await sendDueReminders({ sessionId, ignoreWindow: true });
+  await logSessionAction(me, "session.reminders", sessionId, { sent: r.sent, failed: r.failed });
   revalidatePath(`/admin/botc/termin/${sessionId}`);
   if (r.due === 0) return { ok: true, message: t.admin.errors.remindersAllSent };
   return { ok: r.failed === 0, message: t.admin.errors.remindersSent(r.sent, r.failed) };
 }
 
 export async function announceDiscordAction(sessionId: number): Promise<SimpleResult> {
-  await requireAdmin();
+  const me = await requireAdmin();
   const { t } = await getDict();
   const session = await db.query.sessions.findFirst({ where: eq(sessions.id, sessionId) });
   if (!session) return { message: t.admin.errors.noSession };
@@ -646,6 +706,7 @@ export async function announceDiscordAction(sessionId: number): Promise<SimpleRe
     .from(registrations)
     .where(and(eq(registrations.sessionId, sessionId), eq(registrations.status, "confirmed")));
   const result = await announceSessionOnDiscord(session, Math.max(0, session.capacity - c));
+  await logSessionAction(me, "session.discord", sessionId, { result });
   return {
     ok: result === "sent",
     message: {

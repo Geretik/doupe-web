@@ -6,10 +6,9 @@ export type PresenceSlot = {
   to: string;
   /** Players present at any moment of the slot */
   count: number;
-  nicknames: string[];
 };
 
-type Player = { nickname: string; arrivalTime: string | null; departureTime: string | null };
+type Player = { arrivalTime: string | null; departureTime: string | null };
 
 const toMin = (hhmm: string) => {
   const [h, m] = hhmm.split(":").map(Number);
@@ -36,17 +35,17 @@ function sessionClock(session: { startsAt: Date; endsAt: Date }) {
 }
 
 /**
- * Splits the session into hourly slots (first/last may be shorter when the session does not
- * start or end on a full hour) and counts who is there in each one. Null arrival/departure
- * means "from the start" / "until the end". Sessions may cross midnight.
+ * Splits the session into slots of `minutes` on the clock (the first and last may be shorter when the session does
+ * not start or end on one) and counts who is there in each: 18:00–20:00 counts in 18:00, 18:30, 19:00 and 19:30.
+ * Null arrival/departure means "from the start" / "until the end". Sessions may cross midnight.
  */
-export function presenceByHour(
+export function presenceBySlot(
   session: { startsAt: Date; endsAt: Date },
   players: Player[],
+  minutes = 30,
 ): PresenceSlot[] {
   const { start, end, norm } = sessionClock(session);
   const ranges = players.map((p) => ({
-    nickname: p.nickname,
     a: p.arrivalTime ? norm(p.arrivalTime) : start,
     d: p.departureTime ? norm(p.departureTime) : end,
   }));
@@ -54,9 +53,8 @@ export function presenceByHour(
   const slots: PresenceSlot[] = [];
   let from = start;
   while (from < end) {
-    const to = Math.min(end, (Math.floor(from / 60) + 1) * 60);
-    const present = ranges.filter((r) => r.a < to && r.d > from);
-    slots.push({ from: toHHMM(from), to: toHHMM(to), count: present.length, nicknames: present.map((r) => r.nickname) });
+    const to = Math.min(end, (Math.floor(from / minutes) + 1) * minutes);
+    slots.push({ from: toHHMM(from), to: toHHMM(to), count: ranges.filter((r) => r.a < to && r.d > from).length });
     from = to;
   }
   return slots;

@@ -250,6 +250,6 @@ export async function deleteGrimoire(me: AdminUser, id: number) {
   const [row] = await db
     .delete(grimoires)
     .where(and(eq(grimoires.id, id), or(eq(grimoires.ownerId, me.id), isNotNull(grimoires.endedAt))))
-    .returning({ sessionId: grimoires.sessionId });
+    .returning({ id: grimoires.id, name: grimoires.name, sessionId: grimoires.sessionId });
   return row ?? null;
 }

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getDict } from "@/i18n/server";
 import { requireAdmin } from "@/lib/admin-auth";
+import { logAction, sessionRef } from "@/lib/admin-log";
 import { grimoireStateSchema } from "@/modules/botc/lib/grimoire/schema";
 import { createGrimoire, deleteGrimoire, getGrimoire, saveGrimoire, type SaveResult } from "@/modules/botc/lib/grimoire/service";
 import type { GrimoireState } from "@/modules/botc/lib/grimoire/state";
@@ -27,6 +28,8 @@ export async function createGrimoireAction(formData: FormData) {
     { allCharacters: g.allCharacters, untitled: g.untitled, nthGame: (title, n) => (n > 1 ? g.nthGame.replace("{title}", title).replace("{n}", String(n)) : title) },
     locale,
   );
+  const created = id ? await getGrimoire(id) : null;
+  if (created) await logAction(me, "grimoire.create", { grimoire: { id: created.grimoire.id, name: created.grimoire.name } });
   redirect(id ? `/admin/botc/grimoary/${id}` : "/admin/botc/grimoary?nenalezeno=1");
 }
 
@@ -40,6 +43,13 @@ export async function saveGrimoireAction(id: number, baseVersion: number, state:
   const result = await saveGrimoire(me, id, baseVersion, parsed.data, force === true);
   if ("ok" in result && result.recorded) {
     const row = await getGrimoire(id);
+    if (row) {
+      const { grimoire } = row;
+      await logAction(me, "grimoire.record", {
+        grimoire: { id: grimoire.id, name: grimoire.name },
+        session: grimoire.sessionId ? await sessionRef(grimoire.sessionId) : null,
+      });
+    }
     if (row?.grimoire.sessionId) revalidatePath(`/admin/botc/termin/${row.grimoire.sessionId}`);
     revalidatePath("/botc/archiv");
   }
@@ -50,6 +60,7 @@ export async function deleteGrimoireAction(id: number) {
   const me = await requireAdmin("admin");
   if (parseId(id) === null) return;
   const deleted = await deleteGrimoire(me, id);
+  if (deleted) await logAction(me, "grimoire.delete", { grimoire: { id: deleted.id, name: deleted.name } });
   if (deleted?.sessionId) revalidatePath(`/admin/botc/termin/${deleted.sessionId}`);
   redirect("/admin/botc/grimoary");
 }

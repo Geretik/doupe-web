@@ -931,7 +931,7 @@ test("my games: the player's stats, and the nights they came to with who played 
   await expect(page.locator("main")).not.toContainText("Zmeškaný večer");
 });
 
-test("phone is optional but validated, normalised and shown only to organisers; hourly presence overview", async ({ page }) => {
+test("phone is optional but validated, normalised and shown only to organisers; presence per half hour, other times marked", async ({ page }) => {
   const id = await createSession({ capacity: 5 });
   // invalid phone → validation error, nothing saved
   await page.goto(`/botc/termin/${id}`);
@@ -967,12 +967,26 @@ test("phone is optional but validated, normalised and shown only to organisers; 
   await adminLogin(page);
   await page.goto(`/admin/botc/termin/${id}`);
   await expect(page.locator("main table")).toContainText("+420777123456");
-  const rows = page.getByTestId("presence").locator("li");
-  await expect(rows).toHaveCount(4);
-  expect(await rows.locator("> span:first-child").allTextContents()).toEqual(["19:00–20:00", "20:00–21:00", "21:00–22:00", "22:00–23:00"]);
-  expect(await rows.locator("strong").allTextContents()).toEqual(["1", "2", "2", "2"]);
-  await expect(rows.nth(0)).not.toContainText("všichni");
-  await expect(rows.nth(1)).toContainText("všichni");
+  // 19:00–23:00 in half hours; arriving at 20:30 counts from the 20:30 column on
+  const columns = page.getByTestId("presence").locator("li");
+  await expect(columns).toHaveCount(8);
+  expect(await columns.evaluateAll((li) => li.map((el) => el.getAttribute("aria-label")))).toEqual([
+    "19:00–19:30: 1 z 2",
+    "19:30–20:00: 1 z 2",
+    "20:00–20:30: 1 z 2",
+    "20:30–21:00: všichni (2)",
+    "21:00–21:30: všichni (2)",
+    "21:30–22:00: všichni (2)",
+    "22:00–22:30: všichni (2)",
+    "22:30–23:00: všichni (2)",
+  ]);
+  // the count of a column on a tap
+  await columns.nth(1).click();
+  await expect(columns.nth(1).getByRole("tooltip")).toBeVisible();
+  await expect(columns.nth(1).getByRole("tooltip")).toContainText("1 z 2");
+  // the later arrival stands out in the table, the usual times do not
+  await expect(page.locator("main table tr:has-text('pozdni@example.com') strong[title='přijde později']")).toHaveText("20:30");
+  await expect(page.locator("main table tr:has-text('cely@example.com') strong[title]")).toHaveCount(0);
 
   // a player without name or phone still shows up in the admin table
   await page.goto(`/admin/botc/termin/${other}`);

@@ -1,6 +1,7 @@
 import { and, eq, gt, gte, isNull, lte, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { registrations, sessions } from "@/db/schema";
+import { deleteOldAdminLog } from "./admin-log";
 import { notifyOrganizers } from "./alerts";
 import { dispatchDraftEvents } from "@/modules/botc/lib/draft/events";
 import { postDiscordMessage, spotsLeftEnabled, spotsLeftMessage } from "./discord";
@@ -111,6 +112,7 @@ export async function runDailyJobs() {
   await deleteOldLoginFailures().catch((e) => console.error("Deleting old login failures failed", e));
   await deleteOldLinkRequests().catch((e) => console.error("Deleting old link requests failed", e));
   await deleteOldQrLogins().catch((e) => console.error("Deleting old QR logins failed", e));
+  await deleteOldAdminLog().catch((e) => console.error("Deleting old admin log entries failed", e));
   await recordDailyRun();
   return { reminders, spots, retention, waitlists, draftNotices };
 }

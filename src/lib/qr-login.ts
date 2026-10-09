@@ -5,6 +5,7 @@ import { userAgentFromString } from "next/server";
 import { db } from "@/db";
 import { adminUsers, qrLogins } from "@/db/schema";
 import { setAdminCookie } from "./admin-auth";
+import { logAction } from "./admin-log";
 import { clientIpHash } from "./client-ip";
 import { safeEqual } from "./token";
 import { parseId } from "./validation";
@@ -79,6 +80,7 @@ export async function claimQrLogin(): Promise<QrLoginStatus> {
   jar.delete(COOKIE);
   await db.update(adminUsers).set({ lastLoginAt: new Date() }).where(eq(adminUsers.id, row.approvedBy));
   await setAdminCookie(row.approvedBy);
+  await logAction(row.approvedBy, "account.login", { method: "qr", device: row.device });
   return "done";
 }
 

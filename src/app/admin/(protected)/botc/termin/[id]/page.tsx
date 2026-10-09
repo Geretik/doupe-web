@@ -1,7 +1,7 @@
 import { fullName } from "@/lib/names";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { adminCancelRegistrationAction, adminConfirmWaitlistedAction, adminErasePlayerAction, adminResendLinkAction, adminRestoreRegistrationAction, announceDiscordAction, deleteGameAction, deleteSessionAction, sendRemindersNowAction, setRegistrationStateAction, setScriptPollClosedAction, updateSessionAction } from "@/modules/botc/actions/sessions";
+import { adminCancelRegistrationAction, adminConfirmWaitlistedAction, adminErasePlayerAction, adminResendLinkAction, adminRestoreRegistrationAction, announceDiscordAction, deleteGameAction, deleteSessionAction, sendRemindersNowAction, setRegistrationStateAction, setScriptPollClosedAction, setSessionEmailsAction, updateSessionAction } from "@/modules/botc/actions/sessions";
 import { createGrimoireAction } from "@/modules/botc/actions/grimoire";
 import { ActionButton } from "@/components/admin/action-button";
 import { AttendanceToggle } from "@/modules/botc/components/admin/attendance-toggle";
@@ -20,12 +20,13 @@ import type { Registration } from "@/db/schema";
 import type { Dict, Locale } from "@/i18n/dictionaries";
 import { plural } from "@/i18n/plural";
 import { getDict } from "@/i18n/server";
-import { requireAdmin } from "@/lib/admin-auth";
+import { hasRole, requireAdmin } from "@/lib/admin-auth";
+import { LATE_CANCEL_HOURS, sessionEmailsFor } from "@/lib/alerts";
 import { discordConfigured } from "@/lib/discord";
 import { getFormSuggestions } from "@/modules/botc/lib/form-suggestions";
 import { listGrimoires } from "@/modules/botc/lib/grimoire/service";
 import { getSessionWithCount, listGamesForSession, listRegistrationsForSession } from "@/modules/botc/lib/queries";
-import { byArrival, presenceByHour } from "@/modules/botc/lib/presence";
+import { byArrival, presenceBySlot } from "@/modules/botc/lib/presence";
 import { countPendingReminders } from "@/modules/botc/lib/reminders";
 import { dateToPragueLocal, formatDate, formatShortDate, formatTime } from "@/lib/time";
 import { effectiveRegistrationState, scheduledOpening } from "@/modules/botc/lib/registration-state";
@@ -34,6 +35,16 @@ import { storytellerStats, type StorytellerStats } from "@/modules/botc/lib/stat
 import { byVotes, scriptPollOpen, scriptPollResults } from "@/modules/botc/lib/script-poll";
 import { editUrl } from "@/lib/site";
 import { parseId } from "@/lib/validation";
+
+/** A player's arrival or departure: the session's own time quietly, any other one marked. */
+function PlayerTime({ time, usual, title }: { time: string | null; usual: string; title: string }) {
+  if (!time || time === usual) return <span className="text-muted">{usual}</span>;
+  return (
+    <strong className="rounded bg-accent/10 px-1.5 py-0.5 text-accent" title={title}>
+      {time}
+    </strong>
+  );
+}
 
 function Flags({ r, past, t }: { r: Registration; past: boolean; t: Dict["admin"]["session"] }) {
   return (
@@ -84,7 +95,7 @@ export default async function AdminSessionPage({
   const numId = parseId((await params).id);
   const byArrivalOrder = (await searchParams).poradi === "prichod";
   if (!numId) notFound();
-  const [{ locale, t: dict }, session, regs, pendingReminders, playedGames, suggestions, storytellers, sessionGrimoires] = await Promise.all([
+  const [{ locale, t: dict }, session, regs, pendingReminders, playedGames, suggestions, storytellers, sessionGrimoires, emails] = await Promise.all([
     getDict(),
     getSessionWithCount(numId),
     listRegistrationsForSession(numId),
@@ -93,6 +104,7 @@ export default async function AdminSessionPage({
     getFormSuggestions(),
     storytellerStats(),
     listGrimoires(me, numId),
+    sessionEmailsFor(me, numId),
   ]);
   if (!session) notFound();
   const t = dict.admin.session;
@@ -114,7 +126,7 @@ export default async function AdminSessionPage({
   const noShow = confirmed.filter((r) => r.attended === false).length;
   const unconfirmed = past ? 0 : confirmed.filter((r) => !r.confirmationSentAt && hasEmail(r.email)).length;
   const full = confirmed.length >= session.capacity;
-  const presence = presenceByHour(session, confirmed);
+  const presence = presenceBySlot(session, confirmed);
   const listed = byArrivalOrder ? byArrival(session, confirmed) : confirmed;
   const sortLink = (on: boolean) => `rounded-full border px-3 py-1 ${on ? "border-accent bg-accent/10 font-semibold" : "border-border bg-card hover:border-accent/50"}`;
   const gameLabels: GameFormLabels = {
@@ -225,6 +237,11 @@ export default async function AdminSessionPage({
         <a href={`/admin/botc/termin/${session.id}/export.csv`} className="rounded-md border border-border bg-card px-3 py-2 hover:border-accent">
           {t.exportCsv}
         </a>
+        {hasRole(me, "admin") && (
+          <Link href={`/admin/historie?termin=${session.id}`} className="rounded-md border border-border bg-card px-3 py-2 hover:border-accent">
+            {dict.admin.log.sessionHistory}
+          </Link>
+        )}
         {!past && (
           <Link href={`/admin/botc/termin/${session.id}/plakat`} className="rounded-md border border-border bg-card px-3 py-2 hover:border-accent">
             {t.poster}
@@ -252,6 +269,14 @@ export default async function AdminSessionPage({
             label={t.announceDiscord}
             pendingLabel={t.sending}
             confirmText={discordConfigured() ? t.announceDiscordConfirm : undefined}
+          />
+        )}
+        {/* this organiser's own e-mails about the session (a late cancellation); after it starts there are none */}
+        {!past && (
+          <ActionButton
+            action={setSessionEmailsAction.bind(null, session.id, !emails.enabled)}
+            label={emails.enabled ? dict.admin.emails.turnSessionOff : dict.admin.emails.turnSessionOn}
+            title={dict.admin.emails.sessionHint(LATE_CANCEL_HOURS)}
           />
         )}
       </div>
@@ -288,6 +313,13 @@ export default async function AdminSessionPage({
         {unconfirmed > 0 && <Alert kind="error">{t.noConfirmationCount(unconfirmed)}</Alert>}
         {dataDeleted && (
           <Alert kind="info">{t.anonymizedInfo(RETENTION_DAYS)}</Alert>
+        )}
+        {confirmed.length > 0 && session.arrivalMode === "times" && (
+          <Card>
+            <h3 className="mb-1 font-semibold">🕒 {t.presenceTitle}</h3>
+            <p className="mb-3 text-sm text-muted">{t.presenceHint}</p>
+            <PresenceChart slots={presence} total={confirmed.length} t={{ of: t.presenceOf }} />
+          </Card>
         )}
         <Card>
           <h3 className="mb-1 font-semibold">{t.quickTitle}</h3>
@@ -355,8 +387,13 @@ export default async function AdminSessionPage({
                         <td className="p-3 whitespace-nowrap">{r.arrivesLate ? <strong>{t.late}</strong> : <span className="text-muted">{t.fromStart}</span>}</td>
                       ) : (
                         <>
-                          <td className="p-3 whitespace-nowrap">{r.arrivalTime ?? sessionStart}</td>
-                          <td className="p-3 whitespace-nowrap">{r.departureTime ?? sessionEnd}</td>
+                          {/* a time other than the session's own stands out: who comes later or leaves sooner */}
+                          <td className="p-3 whitespace-nowrap">
+                            <PlayerTime time={r.arrivalTime} usual={sessionStart} title={t.arrivesLater} />
+                          </td>
+                          <td className="p-3 whitespace-nowrap">
+                            <PlayerTime time={r.departureTime} usual={sessionEnd} title={t.leavesEarlier} />
+                          </td>
                         </>
                       )}
                       <td className="p-3">
@@ -406,13 +443,6 @@ export default async function AdminSessionPage({
           <p className="text-xs text-muted">
             {t.allEmails}<span className="select-all">{confirmed.flatMap((r) => shownEmail(r.email) ?? []).join(", ")}</span>
           </p>
-        )}
-        {confirmed.length > 0 && session.arrivalMode === "times" && (
-          <Card>
-            <h3 className="mb-1 font-semibold">🕒 {t.presenceTitle}</h3>
-            <p className="mb-3 text-sm text-muted">{t.presenceHint}</p>
-            <PresenceChart slots={presence} total={confirmed.length} allLabel={t.presenceAll} />
-          </Card>
         )}
       </section>
 
