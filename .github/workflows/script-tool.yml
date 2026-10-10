@@ -1,0 +1,81 @@
+name: Script tool
+
+# The club's copy of the script tool at skript.doupeol.cz: Štefan Bačkor's BoardGames (MIT,
+# github.com/stefanbackor/boardgames, app apps/botc) in the Vercel project botc-skript (root directory apps/botc,
+# Node 22 like upstream's CI). Every night the newest upstream main goes live once upstream's checks have passed,
+# as it is but for one thing done here and not upstream: no Google Analytics (scripts/script-tool-html.mjs).
+# Run it by hand to deploy at once.
+on:
+  schedule:
+    - cron: "23 2 * * *"
+  workflow_dispatch:
+    inputs:
+      force:
+        description: Deploy even when this upstream commit is live already
+        type: boolean
+        default: false
+
+concurrency:
+  group: script-tool
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Upstream main to skript.doupeol.cz
+    runs-on: ubuntu-24.04
+    env:
+      UPSTREAM: stefanbackor/boardgames
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      # the project botc-skript; secrets.VERCEL_PROJECT_ID is the club web's own
+      VERCEL_PROJECT_ID: prj_iLWALsPqryLj2iVMhBt7tP2m9nCF
+    steps:
+      - name: Newest upstream commit, its checks and the live one
+        id: upstream
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FORCE: ${{ inputs.force }}
+        run: |
+          sha=$(gh api "repos/$UPSTREAM/commits/main" --jq .sha)
+          # upstream's tests, lint and e2e of the tool; Chromatic checks their other app
+          runs=$(gh api "repos/$UPSTREAM/commits/$sha/check-runs?per_page=100" \
+            --jq '[.check_runs[] | select(.name | test("chromatic"; "i") | not) | (.conclusion // .status)]')
+          # the upstream commit of each deployment is kept in its meta (see Deploy)
+          live=$(curl -fsS -H "Authorization: Bearer $VERCEL_TOKEN" \
+            "https://api.vercel.com/v6/deployments?teamId=$VERCEL_ORG_ID&projectId=$VERCEL_PROJECT_ID&target=production&state=READY&limit=1" \
+            | jq -r '.deployments[0].meta.upstreamSha // empty')
+          echo "upstream main $sha, checks $(jq -c 'group_by(.) | map({(.[0]): length}) | add // {}' <<< "$runs"), live ${live:-nothing}"
+          deploy=false
+          if [ "$sha" = "$live" ] && [ "$FORCE" != true ]; then
+            echo "Live already."
+          elif [ "$(jq 'length > 0 and all(. == "success" or . == "skipped" or . == "neutral")' <<< "$runs")" != true ]; then
+            # still running or failed: the next run tries again, the live version stays
+            echo "::warning::Upstream main $sha has not passed its checks (yet), not deploying."
+          else
+            deploy=true
+          fi
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "deploy=$deploy" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v7
+        if: steps.upstream.outputs.deploy == 'true'
+      - uses: actions/checkout@v7
+        if: steps.upstream.outputs.deploy == 'true'
+        with:
+          repository: stefanbackor/boardgames
+          ref: ${{ steps.upstream.outputs.sha }}
+          path: boardgames
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        if: steps.upstream.outputs.deploy == 'true'
+        with:
+          node-version: 24
+      - name: Leave out Google Analytics
+        if: steps.upstream.outputs.deploy == 'true'
+        run: node scripts/script-tool-html.mjs boardgames/apps/botc/index.html
+      - name: Deploy
+        if: steps.upstream.outputs.deploy == 'true'
+        # built on Vercel from the whole monorepo (yarn workspaces); the commit goes into the deployment's meta
+        working-directory: boardgames
+        run: npx --yes vercel deploy --prod --yes --token="$VERCEL_TOKEN" --meta upstreamSha="$SHA"
+        env:
+          SHA: ${{ steps.upstream.outputs.sha }}
