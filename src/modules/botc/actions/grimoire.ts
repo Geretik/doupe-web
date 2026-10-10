@@ -75,7 +75,7 @@ export type ReadScriptResult =
 /** A script pasted or picked as a file in the grimoire: its name, the characters this site knows, its Fabled and Loric and its homebrew; nothing is saved. */
 export async function readGrimoireScriptAction(text: string): Promise<ReadScriptResult> {
   await requireAdmin();
-  const { t } = await getDict();
+  const { locale, t } = await getDict();
   const errors = t.scripts.errors;
   if (typeof text !== "string" || !text.trim()) return { error: errors.noFile };
   const parsed = parseScriptFile(text);
@@ -85,6 +85,6 @@ export async function readGrimoireScriptAction(text: string): Promise<ReadScript
   const { roleIds, fabled } = parsed.script;
   // the Fabled and Loric come into the grimoire too; homebrew characters only to read at the Bootlegger
   const extras = parsed.script.extras.filter((x) => !fabled.includes(matchStorytellerId(x) ?? ""));
-  const characters = homebrewGrimoireCharacters([...roleIds, ...fabled]);
+  const characters = homebrewGrimoireCharacters([...roleIds, ...fabled], locale);
   return { ok: true, script: { id: null, json: true, name, roleIds, ...grimoireScriptExtras(parsed.script) }, extras, characters };
 }

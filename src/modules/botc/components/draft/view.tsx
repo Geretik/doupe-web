@@ -60,6 +60,7 @@ export function draftFormProps(t: Dict, locale: Locale, submit: string) {
     teams: roleTeams.map((id) => ({ id, label: t.admin.session.roleTeams[id] })),
     editions: roleEditions.map((id) => ({ id, label: t.draft.editionNames[id] })),
     modes: modeInfos(t),
+    locale,
     t: labels,
   };
 }

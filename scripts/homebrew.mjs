@@ -5,6 +5,10 @@
 //   Storyteller's texts, reminder tokens, jinxes, the original art), read on the server only,
 // - public/botc/roles/hb/<id>.webp: the icon, the wiki's art cropped and shrunk to 64 px like the official ones
 //   (only the missing ones are fetched, so a new run downloads just the new characters).
+// The Czech translations are not read from the wiki: src/data/homebrew-cs.json is kept by hand (name, ability, the
+// Storyteller's texts, reminder tokens in the English order; `h` = abilityHash of the English ability translated).
+// This run copies the Czech names into homebrew-roles.json and says which characters have none or an outdated one
+// (the site shows those in English, see modules/botc/lib/homebrew.ts).
 // Run it on your own computer after editing COLLECTIONS: the wiki sits behind Cloudflare, which may turn away
 // requests from servers. The characters go live with the next deploy (commit and push).
 //
@@ -201,6 +205,19 @@ if (failed.length) console.warn(`Bez ikony (zkus znovu později): ${failed.join(
 
 // `noIcon`: the site shows the team's colour instead (a later run may still get it)
 for (const r of roles) if (!existsSync(new URL(`${r.id}.webp`, ICONS))) r.noIcon = true;
+
+const CZECH_FILE = new URL("../src/data/homebrew-cs.json", import.meta.url);
+const czech = existsSync(CZECH_FILE) ? JSON.parse(readFileSync(CZECH_FILE, "utf8")) : {};
+const untranslated = [];
+const outdated = [];
+for (const r of roles) {
+  const cs = czech[r.id];
+  if (!cs) untranslated.push(r.id);
+  else if (cs.h !== r.h) outdated.push(r.id);
+  if (cs?.name) r.cs = cs.name;
+}
+if (untranslated.length) console.warn(`Bez českého překladu (${untranslated.length}): ${untranslated.join(", ")}`);
+if (outdated.length) console.warn(`Schopnost se na wiki změnila, český překlad je zastaralý (${outdated.length}): ${outdated.join(", ")}`);
 // one character per line, so a new run shows in git as the lines that changed
 const lines = (list) => list.map((x) => JSON.stringify(x)).join(",\n");
 writeFileSync(ROLES_FILE, `{"collections":[\n${lines(collections)}\n],"roles":[\n${lines(roles)}\n]}\n`);

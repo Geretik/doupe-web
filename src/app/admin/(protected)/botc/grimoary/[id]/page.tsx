@@ -31,7 +31,7 @@ export default async function GrimoirePage({ params }: { params: Promise<{ id: s
     ...s.seats.flatMap((seat) => [seat.role, seat.believedRole, ...seat.reminders.map((r) => r.roleId)]),
     ...s.bag,
     ...s.bluffs,
-  ]);
+  ], locale);
   return (
     <Grimoire
       id={g.id}

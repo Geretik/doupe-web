@@ -2,6 +2,7 @@ import { gunzipSync } from "node:zlib";
 import { expect, test, type Page } from "@playwright/test";
 import homebrewList from "../../src/data/homebrew-roles.json";
 import homebrewData from "../../src/data/homebrew-characters.json";
+import homebrewCs from "../../src/data/homebrew-cs.json";
 import { characterName, findRole, findStorytellerRole, homebrewRoles, matchHomebrew, roleIcon } from "../../src/modules/botc/lib/botc-roles";
 import { resolveRoleSource, roleIdsFromScriptJson } from "../../src/modules/botc/lib/draft/roles";
 import { grimoireCharacters } from "../../src/modules/botc/lib/grimoire/characters";
@@ -19,6 +20,8 @@ test.beforeEach(async () => {
 
 type Data = { ability: string; firstNight: number; firstNightReminder: string; otherNight: number; reminders: string[]; image?: string };
 const data = homebrewData as Record<string, Data>;
+type Czech = { name: string; ability: string; firstNightReminder: string; reminders: string[]; h: string };
+const czech = homebrewCs as Record<string, Czech>;
 
 /** A homebrew character as the wiki's JSON writes it: its id there, its name, team and texts in full */
 function wikiEntry(id: string) {
@@ -33,6 +36,8 @@ function scriptOfLink(href: string) {
 }
 
 const COBBLER = "luis_cobbler";
+/** The Cobbler in Czech: the admin pages are Czech */
+const cobbler = czech[COBBLER];
 /** Luis's evening: Trouble Brewing's first-night characters and the Cobbler, as a script downloaded from the wiki */
 const LUIS_SCRIPT = [{ id: "_meta", name: "Luisův večer", author: "Luis S" }, "washerwoman", "chef", "empath", "poisoner", "imp", wikiEntry(COBBLER)];
 
@@ -48,9 +53,17 @@ test("homebrew: characters of the club's collections – a wiki script's entries
   expect(matchHomebrew({ id: "cleric", name: "Cleric", ability: "Each night, learn nothing at all." })).toBeNull();
   expect(matchHomebrew("washerwoman")).toBeNull();
 
+  // the Czech translations fit their characters: tokens in the English order, translated from today's ability
+  for (const [id, cs] of Object.entries(czech)) {
+    expect(data[id], id).toBeDefined();
+    expect(cs.reminders.length, id).toBe(data[id].reminders.length);
+    expect(cs.h, id).toBe(homebrewList.roles.find((r) => r.id === id)!.h);
+  }
+
   // a character like the official ones: name, team, icon
-  expect(findRole(COBBLER)).toMatchObject({ team: "townsfolk", en: "Cobbler", cs: "Cobbler", edition: "homebrew", collection: "luis" });
-  expect(characterName(COBBLER, "cs")).toBe("Cobbler");
+  expect(findRole(COBBLER)).toMatchObject({ team: "townsfolk", en: "Cobbler", cs: cobbler.name, edition: "homebrew", collection: "luis" });
+  expect(characterName(COBBLER, "cs")).toBe(cobbler.name);
+  expect(characterName(COBBLER, "en")).toBe("Cobbler");
   expect(roleIcon(COBBLER)).toBe(`/botc/roles/hb/${COBBLER}.webp`);
   const fabled = homebrewList.roles.find((r) => r.team === "fabled")!;
   expect(findStorytellerRole(fabled.id)).toMatchObject({ team: "fabled", en: fabled.en });
@@ -66,11 +79,15 @@ test("homebrew: characters of the club's collections – a wiki script's entries
   expect(resolveRoleSource({ kind: "filter", editions: [], collections: ["luis"], teams: ["townsfolk"] }).sort()).toEqual([...luisTownsfolk].sort());
 
   // the grimoire gets only the homebrew it asks for, with its night order and reminder tokens
-  const homebrew = homebrewGrimoireCharacters([COBBLER, "imp", null]);
+  const homebrew = homebrewGrimoireCharacters([COBBLER, "imp", null], "cs");
   expect(Object.keys(homebrew)).toEqual([COBBLER]);
-  expect(homebrew[COBBLER]).toMatchObject({ firstNight: data[COBBLER].firstNight, ability: data[COBBLER].ability });
-  const drunkToken = Object.entries(data).find(([, c]) => c.reminders.includes("Drunk"))!;
-  expect(homebrewGrimoireCharacters([drunkToken[0]])[drunkToken[0]].tokenKinds.Drunk).toBe("drunk");
+  expect(homebrew[COBBLER]).toMatchObject({ firstNight: data[COBBLER].firstNight, ability: cobbler.ability });
+  expect(homebrewGrimoireCharacters([COBBLER], "en")[COBBLER].ability).toBe(data[COBBLER].ability);
+  // the tokens' meaning comes from the English text, also of the Czech token
+  const [drunkId, drunkData] = Object.entries(data).find(([id, c]) => c.reminders.includes("Drunk") && czech[id])!;
+  const drunkCs = czech[drunkId].reminders[drunkData.reminders.indexOf("Drunk")];
+  expect(homebrewGrimoireCharacters([drunkId], "en")[drunkId].tokenKinds.Drunk).toBe("drunk");
+  expect(homebrewGrimoireCharacters([drunkId], "cs")[drunkId].tokenKinds[drunkCs]).toBe("drunk");
 
   // the first night wakes the Cobbler where its number puts it among the official characters
   const characters = { ...grimoireCharacters("cs"), ...homebrew };
@@ -83,11 +100,13 @@ test("homebrew: characters of the club's collections – a wiki script's entries
   expect(order.slice(0, order.indexOf(COBBLER))).toEqual(expect.arrayContaining(before));
   expect(grimoireStateSchema.safeParse(state).success).toBe(true);
 
-  // the script tool, the official app and clocktower.online get it in full; the wiki's own entry stays as it was
+  // the script tool, the official app and clocktower.online get it in full, in Czech unless asked otherwise – also
+  // instead of the wiki's own English entry; what the site does not know stays as it was
   const [full] = withHomebrewInFull([COBBLER]) as Record<string, unknown>[];
-  expect(full).toMatchObject({ id: COBBLER, name: "Cobbler", team: "townsfolk", ability: data[COBBLER].ability, firstNight: data[COBBLER].firstNight });
-  const wiki = wikiEntry(COBBLER);
-  expect(withHomebrewInFull([wiki])[0]).toBe(wiki);
+  expect(full).toMatchObject({ id: COBBLER, name: cobbler.name, team: "townsfolk", ability: cobbler.ability, firstNight: data[COBBLER].firstNight });
+  expect(withHomebrewInFull([wikiEntry(COBBLER)], "en")[0]).toMatchObject({ id: COBBLER, name: "Cobbler", ability: data[COBBLER].ability });
+  const unknown = { id: "hrdina_x", name: "Homebrew Hrdina", team: "townsfolk", ability: "Každou noc…" };
+  expect(withHomebrewInFull([unknown, "washerwoman"])).toEqual([unknown, "washerwoman"]);
 });
 
 /** A session with players signed up and Luis's evening in the library and among its scripts */
@@ -119,7 +138,7 @@ test("homebrew in the grimoire: the Cobbler in the bag, its ability and its firs
   await page.getByTestId("setup-button").click();
   await page.getByTestId("setup-screen").getByRole("button", { name: "🎒 Výběr žetonů" }).click();
   const tokens = page.getByTestId("bag-screen");
-  for (const name of ["Cobbler", "Pradlena", "Kuchař", "Travič", "Čert"]) await tokens.getByRole("button", { name: `Do pytlíku: ${name}` }).click();
+  for (const name of [cobbler.name, "Pradlena", "Kuchař", "Travič", "Čert"]) await tokens.getByRole("button", { name: `Do pytlíku: ${name}` }).click();
   await tokens.getByRole("button", { name: "Hotovo", exact: true }).click();
   await page.getByTestId("setup-screen").getByRole("button", { name: "Rozdat náhodně" }).click();
   await page.getByTestId("ask-yes").click();
@@ -133,16 +152,16 @@ test("homebrew in the grimoire: the Cobbler in the bag, its ability and its firs
   const st = await stored();
   // the script's homebrew brought the Bootlegger into the game
   expect(st.fabled).toEqual(["bootlegger"]);
-  const cobbler = st.seats.find((x) => x.role === COBBLER)!.name;
+  const cobblerPlayer = st.seats.find((x) => x.role === COBBLER)!.name;
 
   // the Cobbler's ability at its player, its step on the first night with the wiki's text
-  await seat(page, cobbler).click();
-  await expect(page.getByTestId("seat-panel")).toContainText(data[COBBLER].ability);
-  await expect(seat(page, cobbler).locator("img")).toHaveAttribute("src", `/botc/roles/hb/${COBBLER}.webp`);
+  await seat(page, cobblerPlayer).click();
+  await expect(page.getByTestId("seat-panel")).toContainText(cobbler.ability);
+  await expect(seat(page, cobblerPlayer).locator("img")).toHaveAttribute("src", `/botc/roles/hb/${COBBLER}.webp`);
   await page.getByRole("tab", { name: "1. noc" }).click();
   const step = page.getByTestId("night-panel").locator(`[data-step=${COBBLER}]`);
   await step.locator("button").nth(0).click();
-  await expect(step).toContainText(data[COBBLER].firstNightReminder);
+  await expect(step).toContainText(cobbler.firstNightReminder);
 
   // the game record has the Cobbler, and the session's page shows it with its icon
   await page.getByTestId("game-button").click();
@@ -152,7 +171,7 @@ test("homebrew in the grimoire: the Cobbler in the bag, its ability and its firs
   await expect.poll(() => sql("select role from game_players where role = $1", [COBBLER])).toHaveLength(1);
   await page.goto(`/admin/botc/termin/${sessionId}`);
   const games = page.locator("main ol").filter({ hasText: "Luisův večer" });
-  await expect(games).toContainText("Cobbler");
+  await expect(games).toContainText(cobbler.name);
   await expect(games.locator(`img[src="/botc/roles/hb/${COBBLER}.webp"]`)).toHaveCount(1);
 });
 
@@ -166,10 +185,11 @@ test("homebrew in the library, the catalogue, a draft and a game record: a colle
   await form.locator("button[type=submit]").click();
   await page.waitForURL(/\/admin\/botc\/scripty\/\d+$/);
   await expect(page.locator("main")).toContainText("Luis S · 6 postav");
-  await expect(page.locator("#characters")).toContainText("Cobbler");
+  await expect(page.locator("#characters")).toContainText(cobbler.name);
   await expect(page.locator("#characters")).not.toContainText("Navíc ve scriptu");
   const toolHref = await page.getByRole("link", { name: "Otevřít ve script toolu" }).getAttribute("href");
-  expect(scriptOfLink(toolHref!)).toEqual(LUIS_SCRIPT);
+  expect(scriptOfLink(toolHref!)).toEqual(withHomebrewInFull(LUIS_SCRIPT));
+  expect(scriptOfLink(toolHref!).at(-1)).toMatchObject({ id: COBBLER, name: cobbler.name, ability: cobbler.ability });
 
   // the catalogue: every collection, a collection as a script's file with all its characters in full
   await page.goto("/admin/botc/scripty");
@@ -179,12 +199,15 @@ test("homebrew in the library, the catalogue, a draft and a game record: a colle
   const luis = page.locator("li[data-collection=luis]");
   await expect(luis).toContainText("Homebrews by Luis");
   await luis.locator("summary").click();
-  await expect(luis).toContainText(data[COBBLER].ability);
+  await expect(luis).toContainText(cobbler.ability);
+  // the Czech name, the English one next to it
+  await expect(luis).toContainText(cobbler.name);
+  await expect(luis.locator("span[lang=en]", { hasText: /^Cobbler$/ })).toBeVisible();
   const file = await page.request.get("/admin/botc/scripty/homebrew/luis/script.json");
   const collection = (await file.json()) as { id: string }[];
   expect(collection[0]).toMatchObject({ id: "_meta", name: "Homebrews by Luis", author: "Luis S" });
   expect(collection.length - 1).toBe(homebrewList.roles.filter((r) => r.c === "luis").length);
-  expect(collection).toContainEqual(expect.objectContaining({ id: COBBLER, name: "Cobbler", ability: data[COBBLER].ability }));
+  expect(collection).toContainEqual(expect.objectContaining({ id: COBBLER, name: cobbler.name, ability: cobbler.ability }));
 
   // a draft offering Luis's collection only
   await page.goto("/admin/botc/drafty");
@@ -209,6 +232,6 @@ test("homebrew in the library, the catalogue, a draft and a game record: a colle
   await page.click("summary:has-text('Kdo co hrál')");
   await page.locator(`select[name="role:${reg.id}"]`).selectOption(COBBLER);
   await page.getByRole("button", { name: "Přidat hru" }).click();
-  await expect(page.locator("main ol").filter({ hasText: "Ručně psaný homebrew" })).toContainText("Cobbler");
+  await expect(page.locator("main ol").filter({ hasText: "Ručně psaný homebrew" })).toContainText(cobbler.name);
   expect(await sql("select role from game_players where registration_id = $1", [reg.id])).toEqual([{ role: COBBLER }]);
 });

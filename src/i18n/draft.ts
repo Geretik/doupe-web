@@ -50,7 +50,7 @@ export const draftCs = {
     sourceManual: "Ruční výběr",
     editions: "Edice",
     homebrew: "Homebrew kolekce",
-    homebrewHint: "Postavy z kolekcí botchomebrew.wiki, které klub zná; jména anglicky.",
+    homebrewHint: "Postavy z kolekcí botchomebrew.wiki, které klub zná (přeložené do češtiny).",
     teams: "Týmy",
     importTitle: "Načíst postavy ze scriptu",
     importHint: "Vlož JSON scriptu (oficiální script tool, botcscripts.com, botchomebrew.wiki, klubový script tool) – zaškrtnou se jeho postavy, i homebrew z klubových kolekcí.",

@@ -4,7 +4,8 @@ import { useActionState, useMemo, useState } from "react";
 import type { MessageState } from "@/modules/botc/actions/draft";
 import type { DraftModeId, DraftRoleSource } from "@/db/schema";
 import { plural, type PluralForms } from "@/i18n/plural";
-import { homebrewCollections, homebrewRoles, roleIcon, type BotcRole, type RoleEdition, type RoleTeam } from "@/modules/botc/lib/botc-roles";
+import type { Locale } from "@/i18n/dictionaries";
+import { homebrewCollections, homebrewRoles, roleIcon, roleName, type BotcRole, type RoleEdition, type RoleTeam } from "@/modules/botc/lib/botc-roles";
 import { roleIdsFromScriptJson } from "@/modules/botc/lib/draft/roles";
 import { keepValues } from "@/components/keep-values";
 import { Alert, Button, Field, inputClass } from "@/components/ui";
@@ -63,6 +64,7 @@ export function DraftForm({
   teams,
   editions,
   modes,
+  locale,
   t,
 }: {
   action: (prev: MessageState, formData: FormData) => Promise<MessageState>;
@@ -71,6 +73,7 @@ export function DraftForm({
   teams: { id: RoleTeam; label: string }[];
   editions: { id: RoleEdition; label: string }[];
   modes: ModeInfo[];
+  locale: Locale;
   t: DraftFormLabels;
 }) {
   const [state, formAction, pending] = useActionState(action, {});
@@ -331,7 +334,7 @@ export function DraftForm({
                           />
                           {/* eslint-disable-next-line @next/next/no-img-element -- tiny pre-sized WebP from public/; lazy: most collections stay closed */}
                           <img src={roleIcon(r.id)} alt="" width={20} height={20} loading="lazy" className="h-5 w-5" />
-                          <span className={sideClass(r.id)}>{r.en}</span>
+                          <span className={sideClass(r.id)} title={r.en}>{roleName(r, locale)}</span>
                         </label>
                       ))}
                     </div>

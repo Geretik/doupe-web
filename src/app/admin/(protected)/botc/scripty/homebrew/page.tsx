@@ -2,7 +2,17 @@ import Link from "next/link";
 import { Card } from "@/components/ui";
 import { getDict } from "@/i18n/server";
 import { requireAdmin } from "@/lib/admin-auth";
-import { homebrewCollections, homebrewRoles, homebrewStorytellerRoles, roleIcon, roleSide, roleTeams, type RoleTeam, type StorytellerTeam } from "@/modules/botc/lib/botc-roles";
+import {
+  homebrewCollections,
+  homebrewRoles,
+  homebrewStorytellerRoles,
+  roleIcon,
+  roleName,
+  roleSide,
+  roleTeams,
+  type RoleTeam,
+  type StorytellerTeam,
+} from "@/modules/botc/lib/botc-roles";
 import { scriptToolLinkForJson } from "@/modules/botc/lib/draft/script";
 import { homebrewAbility, homebrewCollectionScript } from "@/modules/botc/lib/homebrew";
 
@@ -21,7 +31,7 @@ const teams: (RoleTeam | StorytellerTeam)[] = [...roleTeams, "fabled", "loric"];
  */
 export default async function HomebrewPage() {
   await requireAdmin();
-  const { t } = await getDict();
+  const { locale, t } = await getDict();
   const s = t.scripts;
   const all = [...homebrewRoles, ...homebrewStorytellerRoles];
   const teamName = (team: RoleTeam | StorytellerTeam) =>
@@ -39,7 +49,7 @@ export default async function HomebrewPage() {
       <ul className="flex flex-col gap-3" data-testid="homebrew-collections">
         {homebrewCollections.map((c) => {
           const roles = all.filter((r) => r.collection === c.key);
-          const toolLink = scriptToolLinkForJson(homebrewCollectionScript(c.key) ?? []);
+          const toolLink = scriptToolLinkForJson(homebrewCollectionScript(c.key, locale) ?? []);
           return (
             <li key={c.key} data-collection={c.key}>
               <Card className="flex flex-col gap-2">
@@ -65,18 +75,24 @@ export default async function HomebrewPage() {
                           <h3 className="text-xs font-semibold tracking-wide text-muted uppercase">{teamName(team)}</h3>
                           <ul className="grid gap-x-4 gap-y-2 md:grid-cols-2">
                             {ofTeam.map((r) => {
-                              const data = homebrewAbility(r.id);
+                              const data = homebrewAbility(r.id, locale);
+                              const name = roleName(r, locale);
                               const side = team === "fabled" || team === "loric" ? null : roleSide(team);
                               return (
                                 <li key={r.id} className="flex items-start gap-2">
                                   {/* eslint-disable-next-line @next/next/no-img-element -- tiny pre-sized WebP from public/; lazy: the list is long and folded */}
                                   <img src={roleIcon(r.id)} alt="" width={32} height={32} loading="lazy" className="h-8 w-8 shrink-0" />
                                   <span className="flex min-w-0 flex-col">
-                                    <span className={`font-semibold ${side === "good" ? "text-good" : side === "evil" ? "text-accent" : ""}`} lang="en">
-                                      {r.en}
+                                    <span className={`font-semibold ${side === "good" ? "text-good" : side === "evil" ? "text-accent" : ""}`}>
+                                      {name}
+                                      {name !== r.en && (
+                                        <span className="ml-1 text-xs font-normal text-muted" lang="en">
+                                          {r.en}
+                                        </span>
+                                      )}
                                       {data?.setup && <span className="ml-1 text-xs font-normal text-muted">({s.homebrewSetup})</span>}
                                     </span>
-                                    <span className="leading-snug" lang="en">{data?.ability}</span>
+                                    <span className="leading-snug">{data?.ability}</span>
                                   </span>
                                 </li>
                               );

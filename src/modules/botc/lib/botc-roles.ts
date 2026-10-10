@@ -178,12 +178,12 @@ export const botcRoles: readonly BotcRole[] = [
  * Homebrew characters: the collections of the BotC HomeBrew Wiki (botchomebrew.wiki) the club chose, read by
  * scripts/homebrew.mjs (`npm run homebrew`). They are characters like the official ones – in the grimoire, game
  * records, drafts and scripts – but no picker lists all of them: a script, a draft's source or a collection
- * names the ones in use. Names in English only. Their ids are `<collection key>_<id on the wiki>`; an official
+ * names the ones in use. Czech names from src/data/homebrew-cs.json. Their ids are `<collection key>_<id on the wiki>`; an official
  * id never has "_". Abilities and night order: grimoire/homebrew.ts, on the server only.
  */
 export type HomebrewCollection = { key: string; name: string; author: string | null; url: string };
-/** `src`: the id on the wiki, `h`: abilityHash of its ability, `noIcon`: the wiki had no art for it */
-type HomebrewEntry = { id: string; team: string; en: string; c: string; src: string; h: string; noIcon?: boolean };
+/** `cs`: its Czech name (src/data/homebrew-cs.json), `src`: the id on the wiki, `h`: abilityHash of its ability, `noIcon`: the wiki had no art for it */
+type HomebrewEntry = { id: string; team: string; en: string; cs?: string; c: string; src: string; h: string; noIcon?: boolean };
 
 export const homebrewCollections: readonly HomebrewCollection[] = homebrew.collections;
 const homebrewEntries: readonly HomebrewEntry[] = homebrew.roles;
@@ -194,7 +194,7 @@ const isRoleTeam = (team: string): team is RoleTeam => (roleTeams as readonly st
 
 /** The homebrew players' characters (no Fabled or Loric), collection by collection */
 export const homebrewRoles: readonly BotcRole[] = homebrewEntries.flatMap((e) =>
-  isRoleTeam(e.team) ? [{ id: e.id, team: e.team, edition: "homebrew" as const, en: e.en, cs: e.en, collection: e.c }] : [],
+  isRoleTeam(e.team) ? [{ id: e.id, team: e.team, edition: "homebrew" as const, en: e.en, cs: e.cs ?? e.en, collection: e.c }] : [],
 );
 
 /** The homebrew collection a character is from; undefined for an official one. */
@@ -336,7 +336,7 @@ export const storytellerRoles: readonly StorytellerRole[] = [
 
 /** The homebrew Fabled and Loric, collection by collection; none of them is known to be added during the game */
 export const homebrewStorytellerRoles: readonly StorytellerRole[] = homebrewEntries.flatMap((e) =>
-  e.team === "fabled" || e.team === "loric" ? [{ id: e.id, team: e.team, en: e.en, cs: e.en, collection: e.c }] : [],
+  e.team === "fabled" || e.team === "loric" ? [{ id: e.id, team: e.team, en: e.en, cs: e.cs ?? e.en, collection: e.c }] : [],
 );
 
 const storytellerById = new Map([...storytellerRoles, ...homebrewStorytellerRoles].map((r) => [r.id, r]));

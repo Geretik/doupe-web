@@ -340,7 +340,7 @@ export const cs = {
     homebrewLink: "🧪 Homebrew postavy",
     homebrewTitle: "Homebrew postavy",
     homebrewIntro:
-      "Postavy z kolekcí botchomebrew.wiki, které Doupě zná. Hrají se jako oficiální: dáš je do scriptu v knihovně (stačí JSON z wiki), do draftu, hráčům v grimoáru i do záznamu hry. Jména a texty jsou anglicky; postavy a ikony patří autorům kolekcí.",
+      "Postavy z kolekcí botchomebrew.wiki, které Doupě zná. Hrají se jako oficiální: dáš je do scriptu v knihovně (stačí JSON z wiki), do draftu, hráčům v grimoáru i do záznamu hry. Jména a texty přeložila do češtiny AI (vedle jména je původní anglické) – kdyby něco nesedělo, dá se to opravit; postavy a ikony patří autorům kolekcí.",
     homebrewCount: (characters: number, collections: number) => `${characters} ${cz(characters, "postava", "postavy", "postav")} z ${collections} kolekcí`,
     homebrewBy: (author: string) => `autor: ${author}`,
     homebrewWiki: "Na wiki",
@@ -1556,7 +1556,7 @@ export const en: Dict = {
     homebrewLink: "🧪 Homebrew characters",
     homebrewTitle: "Homebrew characters",
     homebrewIntro:
-      "Characters from the botchomebrew.wiki collections the site knows. They play like the official ones: put them in a library script (the wiki's JSON will do), a draft, give them to players in the grimoire and in a game record. Names and texts in English; the characters and icons belong to the authors of their collections.",
+      "Characters from the botchomebrew.wiki collections the site knows. They play like the official ones: put them in a library script (the wiki's JSON will do), a draft, give them to players in the grimoire and in a game record. Names and texts in English (the Czech site has them translated by AI); the characters and icons belong to the authors of their collections.",
     homebrewCount: (characters, collections) => `${characters} ${characters === 1 ? "character" : "characters"} from ${collections} collections`,
     homebrewBy: (author) => `by ${author}`,
     homebrewWiki: "On the wiki",

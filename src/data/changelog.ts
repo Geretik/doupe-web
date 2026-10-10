@@ -18,12 +18,12 @@ export const changelog: ChangelogEntry[] = [
     items: [
       {
         for: "organizers",
-        text: "Homebrew postavy: web zná 1206 postav z 24 kolekcí botchomebrew.wiki (Homebrews by Luis, Odyssey, The Menagerie a kurátorské kolekce wiki). Přehled kolekcí s autory a schopnostmi je pod Scripty → 🧪 Homebrew postavy; celou kolekci si odtud stáhneš jako JSON pro script tool.",
+        text: "Homebrew postavy: web zná 1206 postav z 24 kolekcí botchomebrew.wiki (Homebrews by Luis, Odyssey, The Menagerie a kurátorské kolekce wiki), přeložených do češtiny – jména, schopnosti, texty pro vypravěče i žetony (překlad AI, u jména je i původní anglické). Přehled kolekcí s autory a schopnostmi je pod Scripty → 🧪 Homebrew postavy; celou kolekci si odtud stáhneš jako JSON pro script tool, i česky.",
         href: "/admin/botc/scripty/homebrew",
       },
       {
         for: "organizers",
-        text: "Script s homebrew postavami z těchto kolekcí (stačí jeho JSON z wiki) má v knihovně i v grimoáru všechny postavy: dáš je do pytlíku a hráčům, mají schopnost, krok v noci s textem pro vypravěče a připomínky. Pašerák se ke hře s homebrew přidá sám a ukáže, které postavy jsou homebrew. Do script toolu jdou homebrew postavy celé.",
+        text: "Script s homebrew postavami z těchto kolekcí (stačí jeho JSON z wiki) má v knihovně i v grimoáru všechny postavy: dáš je do pytlíku a hráčům, mají schopnost, krok v noci s textem pro vypravěče a připomínky. Pašerák se ke hře s homebrew přidá sám a ukáže, které postavy jsou homebrew. Do script toolu jdou homebrew postavy celé a česky, takže vytištěný script je celý česky.",
         href: "/admin/botc/scripty",
       },
       {
