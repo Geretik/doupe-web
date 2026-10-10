@@ -2,13 +2,14 @@ import { LoanDesk, type DeskGame, type DeskLoan } from "@/components/admin/loan-
 import { Card } from "@/components/ui";
 import { getDict } from "@/i18n/server";
 import { requireAdmin } from "@/lib/admin-auth";
-import { collectionGames, knownPeople, lastReturnedLoans, listBarcodes, listOpenLoans, listReturnedLoans, LOAN_RETENTION_DAYS } from "@/lib/loans";
+import { collectionGames, knownPeople, lastReturnedLoans, listBarcodes, listOpenLoans, listReturnedLoans, LOAN_RETENTION_DAYS, otherGameNames } from "@/lib/loans";
 import { formatShortDate, pragueDaysBetween } from "@/lib/time";
 import { parseId } from "@/lib/validation";
 
 /**
  * Admin → Půjčovna: lending the club's games. The desk finds a game by the bar code on its box or by its name and
- * lends it or takes it back; below, the latest loans that came back. `?hra=` opens one game (links from Historie).
+ * lends it (or several to one person) or takes it back; below, the latest loans that came back. `?hra=` opens one
+ * game (links from Historie).
  */
 export default async function LoansPage({ searchParams }: { searchParams: Promise<{ hra?: string }> }) {
   await requireAdmin();
@@ -23,7 +24,7 @@ export default async function LoansPage({ searchParams }: { searchParams: Promis
   ]);
   const l = t.admin.loans;
   const collection = collectionGames();
-  const games: DeskGame[] = collection.map(({ id, name, year, url, expansion, note }) => ({ id, name, year, url, expansion, note }));
+  const games: DeskGame[] = collection.map(({ id, name, year, url, expansion, note }) => ({ id, name, year, url, expansion, note, aka: otherGameNames(id) }));
   const inCollection = new Set(games.map((g) => g.id));
   const now = new Date();
   const date = (d: Date) => formatShortDate(d, locale);

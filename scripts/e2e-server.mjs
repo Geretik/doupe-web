@@ -8,6 +8,7 @@ import { join } from "node:path";
 
 const PG_PORT = Number(process.env.E2E_PG_PORT ?? 5599);
 const WEB_PORT = Number(process.env.E2E_WEB_PORT ?? 3100);
+const GAMEUPC_PORT = Number(process.env.E2E_GAMEUPC_PORT ?? 3198);
 const DATABASE_URL = `postgres://postgres:postgres@127.0.0.1:${PG_PORT}/postgres`;
 
 const env = {
@@ -19,6 +20,7 @@ const env = {
   RESEND_API_KEY: "", // e-mails are only logged
   CRON_SECRET: "e2e-cron",
   DISCORD_WEBHOOK_URL: "",
+  GAMEUPC_URL: `http://127.0.0.1:${GAMEUPC_PORT}`, // a fake GameUPC in the lending tests, nothing elsewhere
   REGISTRATION_RATE_LIMIT: "1000", // tests sign up many times from one IP
   ATTENDANCE_WEEKDAYS: process.env.ATTENDANCE_WEEKDAYS ?? "0,1,2,3,4,5,6", // the attendance sheet is open whatever day the tests run
   PORT: String(WEB_PORT),

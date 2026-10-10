@@ -14,6 +14,8 @@ declare global {
 /** What game boxes carry: EAN-13, EAN-8 on small boxes, UPC-A on American games. */
 const FORMATS = ["ean_13", "ean_8", "upc_a"] as const;
 const SCAN_MS = 200;
+/** Reading several boxes: the same code counts again only after it was out of sight this long. */
+const REPEAT_MS = 2500;
 /** ZXing built for WebAssembly, served from this site by its route next to the lending page. */
 const WASM_PATH = "/admin/pujcovna/zxing_reader.wasm";
 
@@ -43,15 +45,17 @@ function eanDetector() {
 
 /**
  * The phone's camera reading the bar code on a game box; `onCode` gets the digits read, after which the camera stops
- * (the parent closes the reader). Shown = on.
+ * (the parent closes the reader), or with `continuous` reads the next box. Shown = on.
  */
 export function BarcodeScanner({
   onCode,
   onClose,
+  continuous = false,
   t,
 }: {
   onCode: (code: string) => void;
   onClose: () => void;
+  continuous?: boolean;
   t: { scanHint: string; scanClose: string; scanNoCamera: string; scanFailed: string };
 }) {
   const video = useRef<HTMLVideoElement>(null);
@@ -90,17 +94,27 @@ export function BarcodeScanner({
         return stop();
       }
       let failures = 0;
+      // the code last seen and when: a box held in front of the camera counts once
+      let last = { code: "", at: 0 };
       const scan = async () => {
         if (stopped) return;
         if (el.readyState >= 2 && el.videoWidth) {
           try {
             const code = (await reader.detect(el))[0]?.rawValue;
             failures = 0;
-            if (code && !stopped) {
+            if (code && !stopped && !continuous) {
               stop();
               navigator.vibrate?.(60);
               found(code);
               return;
+            }
+            if (code && !stopped) {
+              const now = Date.now();
+              if (code !== last.code || now - last.at > REPEAT_MS) {
+                navigator.vibrate?.(60);
+                found(code);
+              }
+              last = { code, at: now };
             }
           } catch {
             if (++failures >= 5) {
@@ -114,7 +128,7 @@ export function BarcodeScanner({
       scan();
     })();
     return stop;
-  }, [t]);
+  }, [t, continuous]);
 
   return (
     <div className="flex flex-col gap-3" data-testid="barcode-scanner">

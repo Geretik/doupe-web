@@ -92,6 +92,19 @@ export function parseClubCollection(html: string): CollectionGame[] {
   return games;
 }
 
+/**
+ * The other names of a game from its page on Zatrolené hry ("Další názvy této společenské hry": the original title of
+ * a Czech edition and other editions), so a name in English finds the game listed in Czech. Throws when the page is
+ * not the page of game `id`; a game without other names has none.
+ */
+export function parseAltNames(html: string, id: number): string[] {
+  // the list of owners is a dialog of this game's page only
+  if (!html.includes(`/dialog/hra-owners?id_hra=${id}"`)) throw new PageChangedError(`Not the page of game ${id}`);
+  const section = html.match(/<!-- alternate names -->([\s\S]*?)<!-- end of alternate names -->/)?.[1] ?? "";
+  const names = [...section.matchAll(/<li[^>]*>([\s\S]*?)<\/li>/g)].map((m) => text(m[1]).replace(/\s+/g, " ").trim()).filter(Boolean);
+  return [...new Set(names)];
+}
+
 /** A private game of a member ("soukromá hra (Krápník)"), not one the club owns. */
 export function isPrivateGame(g: CollectionGame) {
   return /^soukromá hra\b/i.test(g.note ?? "");

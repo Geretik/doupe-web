@@ -1,14 +1,17 @@
 import { and, asc, desc, eq, isNotNull, isNull, lt, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import data from "@/data/game-collection.json";
+import otherNames from "@/data/game-names.json";
 import { db } from "@/db";
 import { adminUsers, attendance, gameBarcodes, gameLoans, type GameLoan } from "@/db/schema";
+import { guessGames } from "./game-match";
+import { gameUpcNames } from "./gameupc";
 import type { CollectionGame } from "./zatrolene";
 
 /*
  * Lending the club's games (admin → Půjčovna). An organiser finds the game by the bar code on its box, read with the
  * phone's camera, or by its name, and writes who takes it; the name is suggested from the attendance sheet. Codes
- * are learned: the first scan of an unknown one asks which game it is.
+ * are learned: the first scan of an unknown one asks which game it is, offering the games named as GameUPC names it.
  */
 
 /** The borrower's name (and the note, which may name people too) is deleted this many days after the game came back. */
@@ -24,6 +27,21 @@ export function collectionGames(): CollectionGame[] {
 
 export function findGame(id: number) {
   return collectionGames().find((g) => g.id === id) ?? null;
+}
+
+/** The game's other names on Zatrolené hry (the original title of a Czech edition…), read by `npm run hry`. */
+export function otherGameNames(id: number): string[] {
+  return (otherNames.names as Record<string, string[]>)[id] ?? [];
+}
+
+/**
+ * Which game of the collection a code we don't know may be: the name GameUPC gives it (null when none) and the games
+ * of that name, or a name much like it, the likeliest first.
+ */
+export async function guessGamesByCode(code: string): Promise<{ name: string | null; gameIds: number[] }> {
+  const names = await gameUpcNames(code);
+  const games = collectionGames().map((g) => ({ id: g.id, names: [g.name, ...otherGameNames(g.id)] }));
+  return { name: names[0] ?? null, gameIds: guessGames(names, games) };
 }
 
 /** Every known code with its game. */

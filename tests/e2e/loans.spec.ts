@@ -1,8 +1,13 @@
 import { writeFileSync } from "node:fs";
+import { createServer, type Server } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test } from "@playwright/test";
+import { E2E } from "../../playwright.config";
+import collection from "../../src/data/game-collection.json";
+import otherNames from "../../src/data/game-names.json";
 import { normalizeBarcode } from "../../src/lib/barcode";
+import { guessGames, matchesWords } from "../../src/lib/game-match";
 import { adminLogin, resetDb, sql } from "./helpers";
 
 test.describe.configure({ mode: "serial" });
@@ -10,6 +15,11 @@ test.describe.configure({ mode: "serial" });
 const CODE = "4006381333931";
 const REBELLION = 4019; // "1775: Rebellion" in src/data/game-collection.json
 const SIX = 4282; // "6 bere! Jubilejní edice"
+const ARCHA = 12398; // "Archa Nova", also "Ark Nova"
+const AKROPOLIS = 13611;
+/** The code on the box of Archa Nova, which the fake GameUPC calls Ark Nova */
+const ARK_CODE = "8595558304998";
+const TOTAL = collection.games.length;
 
 /*
  * Chromium's fake camera shows a still picture of the bar code of CODE: a one-frame Y4M video (looped), drawn here
@@ -43,6 +53,29 @@ test.use({
   launchOptions: { args: ["--use-fake-ui-for-media-stream", "--use-fake-device-for-media-stream", `--use-file-for-fake-video-capture=${eanVideo(CODE)}`] },
 });
 
+/** A fake GameUPC (GAMEUPC_URL of the test server): Ark Nova for ARK_CODE, nothing known for any other code. */
+const UPC_INFO: Record<string, object> = {
+  [ARK_CODE]: {
+    upc: ARK_CODE,
+    name: "Ark Nova",
+    searched_for: "Ark Nova",
+    bgg_info_status: "choose_from_bgg_info_or_search",
+    bgg_info: [{ id: 342942, name: "Ark Nova" }, { id: 368966, name: "Ark Nova: Marine Worlds" }],
+  },
+};
+const askedUpc: string[] = [];
+let gameUpc: Server;
+test.beforeAll(async () => {
+  gameUpc = createServer((req, res) => {
+    const upc = req.url?.match(/^\/upc\/(\d+)/)?.[1] ?? "";
+    askedUpc.push(`${upc} ${req.headers["x-api-key"]}`);
+    res.setHeader("content-type", "application/json");
+    res.end(JSON.stringify(UPC_INFO[upc] ?? { upc, name: "None", searched_for: "None", bgg_info_status: "choose_from_bgg_info_or_search", bgg_info: [] }));
+  });
+  await new Promise<void>((resolve) => gameUpc.listen(E2E.gameUpcPort, "127.0.0.1", resolve));
+});
+test.afterAll(() => new Promise<void>((resolve) => gameUpc.close(() => resolve())));
+
 test.beforeEach(async () => {
   await resetDb();
 });
@@ -59,6 +92,22 @@ test("bar codes: EAN-13, EAN-8 and UPC-A, typos refused", () => {
   expect(normalizeBarcode("036000291452")).toBe("0036000291452");
   expect(normalizeBarcode("4006381333932")).toBeNull();
   expect(normalizeBarcode("12345")).toBeNull();
+});
+
+test("game names: a name in English finds the game listed in Czech", () => {
+  const names = otherNames.names as Record<string, string[]>;
+  const games = collection.games.map((g) => ({ id: g.id, names: [g.name, ...(names[g.id] ?? [])] }));
+  const name = (id: number) => collection.games.find((g) => g.id === id)?.name;
+  expect(guessGames(["Ark Nova"], games).map(name)[0]).toBe("Archa Nova");
+  expect(guessGames(["Ark Nova: Marine Worlds"], games).map(name)[0]).toBe("Archa Nova: Vodní světy");
+  expect(guessGames(["Codenames"], games).map(name)[0]).toBe("Krycí jména");
+  expect(guessGames(["Architects of the West Kingdom (Czech edition)"], games).map(name)[0]).toBe("Architekti Západního království");
+  expect(guessGames(["Twitch"], games)).toEqual([]);
+  expect(guessGames([], games)).toEqual([]);
+  // typed: words in any case, without diacritics, punctuation as in the name
+  expect(matchesWords("7 Divů světa: Duel", "7 divu sveta: duel")).toBe(true);
+  expect(matchesWords("Jana Nováková", "jan nov")).toBe(true);
+  expect(matchesWords("Jana Nováková", "nova jana x")).toBe(false);
 });
 
 test("lending: an unknown code goes to the game picked, names come from the attendance sheet, lend and return", async ({ page, context }) => {
@@ -95,7 +144,7 @@ test("lending: an unknown code goes to the game picked, names come from the atte
   await game.getByTestId("loan-people").getByRole("button", { name: "Jana Nováková" }).click();
   await expect(game.getByTestId("loan-borrower")).toHaveValue("Jana Nováková");
   await game.getByLabel("Poznámka (nepovinné)").fill("do čtvrtka");
-  await game.getByRole("button", { name: "Půjčit" }).click();
+  await game.getByRole("button", { name: "Půjčit", exact: true }).click();
   await expect(page.getByTestId("loan-notice")).toContainText("Půjčeno: 1775: Rebellion → Jana Nováková.");
   await expect(page.getByTestId("loan-game")).toHaveCount(0);
   await expect(page.getByTestId("loan-open")).toContainText("Jana Nováková");
@@ -107,7 +156,7 @@ test("lending: an unknown code goes to the game picked, names come from the atte
 
   // one game, one borrower at a time
   await other.getByTestId("loan-borrower").fill("Petr Svoboda");
-  await other.getByRole("button", { name: "Půjčit" }).click();
+  await other.getByRole("button", { name: "Půjčit", exact: true }).click();
   await expect(other.getByTestId("loan-notice")).toContainText("1775: Rebellion už je půjčená: Jana Nováková.");
   expect(await loans()).toHaveLength(1);
   await other.close();
@@ -130,7 +179,7 @@ test("lending: an unknown code goes to the game picked, names come from the atte
 
   // a name typed by hand is kept tidy and suggested next time
   await page.getByTestId("loan-borrower").fill("  Karel   Nový ");
-  await page.getByRole("button", { name: "Půjčit" }).click();
+  await page.getByRole("button", { name: "Půjčit", exact: true }).click();
   await expect(page.getByTestId("loan-notice")).toContainText("Půjčeno: 1775: Rebellion → Karel Nový.");
   await search.fill("6 bere");
   await page.getByTestId("loan-found").getByRole("button", { name: /6 bere!/ }).click();
@@ -182,6 +231,121 @@ test("lending: the camera reads the code on the box", async ({ page }) => {
   const wasm = await page.request.get("/admin/pujcovna/zxing_reader.wasm");
   expect(wasm.headers()["content-type"]).toBe("application/wasm");
   expect((await wasm.body()).subarray(0, 4)).toEqual(Buffer.from([0, 0x61, 0x73, 0x6d]));
+});
+
+test("lending: GameUPC suggests the game of an unknown code, other names are searched too", async ({ page }) => {
+  askedUpc.length = 0;
+  await adminLogin(page);
+  await page.goto("/admin/pujcovna");
+  const search = page.getByTestId("loan-search");
+  await search.fill(ARK_CODE);
+  await search.press("Enter");
+  await expect(page.getByTestId("loan-notice")).toContainText(`Kód ${ARK_CODE} zatím neznáme`);
+  const guess = page.getByTestId("loan-guess");
+  await expect(guess).toContainText("Podle GameUPC je to „Ark Nova“");
+  // the best fit first: the base game, then its expansion by the other name GameUPC gave, at most three
+  await expect(guess.getByRole("button")).toHaveText([/^Archa Nova \(/, /^Archa Nova: Vodní světy/, /^Archa Nova: Plány zoo/]);
+  await guess.getByRole("button", { name: /^Archa Nova \(/ }).click();
+  await expect(page.getByTestId("loan-notice")).toContainText(`Kód ${ARK_CODE} teď patří ke hře Archa Nova.`);
+  await expect(page.getByTestId("loan-game")).toContainText("Archa Nova");
+  await expect(page.getByTestId("loan-guess")).toHaveCount(0);
+  expect(await barcodes()).toEqual([{ code: ARK_CODE, game_id: ARCHA }]);
+  // our key goes along: the public test one without GAMEUPC_API_KEY
+  expect(askedUpc).toContain(`${ARK_CODE} test_test_test_test_test`);
+
+  // a code GameUPC knows nothing about: only the question
+  await search.fill("036000291452");
+  await search.press("Enter");
+  await expect(page.getByTestId("loan-notice")).toContainText("Kód 0036000291452 zatím neznáme");
+  // a UPC-A is asked both ways, GameUPC keeps them apart
+  await expect.poll(() => askedUpc.filter((a) => a.startsWith("036000291452 ") || a.startsWith("0036000291452 ")).length).toBe(2);
+  await expect(page.getByTestId("loan-guess")).toHaveCount(0);
+  await page.getByRole("button", { name: "Zahodit kód" }).click();
+
+  // the name on an English box finds the Czech edition
+  await search.fill("ark nova");
+  await expect(page.getByTestId("loan-found").getByRole("button").first()).toContainText("Archa Nova");
+  await expect(page.getByTestId("loan-found").getByRole("button").first()).toContainText("též Ark Nova");
+});
+
+test("lending: several games to one person, box after box", async ({ page }) => {
+  await sql("insert into game_barcodes (code, game_id) values ($1, $2), ($3, $4)", [CODE, REBELLION, ARK_CODE, ARCHA]);
+  await sql("insert into game_loans (game_id, game_name, borrower) values ($1, '6 bere! Jubilejní edice', 'Petr Svoboda')", [SIX]);
+  await sql("insert into attendance (day, first_name, last_name, affiliation) values (current_date - 7, 'Jana', 'Nováková', 'up')");
+  await adminLogin(page);
+  await page.goto(`/admin/pujcovna?hra=${AKROPOLIS}`);
+  // the game shown is the first on the list, the name typed stays
+  await page.getByTestId("loan-borrower").fill("jana nov");
+  await page.getByTestId("loan-batch-start").click();
+  const batch = page.getByTestId("loan-batch");
+  await expect(page.getByTestId("loan-game")).toHaveCount(0);
+  await expect(batch.getByTestId("loan-batch-games")).toHaveText(/Akropolis/);
+  await batch.getByTestId("loan-people").getByRole("button", { name: "Jana Nováková" }).click();
+
+  // the camera stays on and takes each box once, however long it is held up
+  await page.getByTestId("loan-scan").click();
+  await expect(batch.getByTestId("loan-batch-games")).toContainText("1775: Rebellion", { timeout: 20_000 });
+  await expect(page.getByTestId("barcode-scanner")).toBeVisible();
+  await expect(page.getByTestId("loan-notice")).toContainText("Přidáno: 1775: Rebellion.");
+  await page.waitForTimeout(3000);
+  await expect(page.getByTestId("loan-notice")).toContainText("Přidáno: 1775: Rebellion.");
+  await page.getByRole("button", { name: "Zavřít foťák" }).click();
+
+  // typed codes and names add too; a game out or on the list already does not
+  const search = page.getByTestId("loan-search");
+  await search.fill(CODE);
+  await search.press("Enter");
+  await expect(page.getByTestId("loan-notice")).toContainText("1775: Rebellion už v seznamu je.");
+  await search.fill("6 bere");
+  await page.getByTestId("loan-found").getByRole("button", { name: /6 bere!/ }).click();
+  await expect(page.getByTestId("loan-notice")).toContainText("6 bere! Jubilejní edice je půjčená: Petr Svoboda.");
+  await search.fill(ARK_CODE);
+  await search.press("Enter");
+  await expect(page.getByTestId("loan-notice")).toContainText("Přidáno: Archa Nova.");
+  await expect(batch.getByTestId("loan-batch-games").getByRole("listitem")).toHaveCount(3);
+  await batch.getByRole("button", { name: "Odebrat ze seznamu Archa Nova" }).click();
+  await expect(batch.getByTestId("loan-batch-games").getByRole("listitem")).toHaveCount(2);
+
+  await batch.getByLabel("Poznámka (nepovinné)").fill("na chatu");
+  await batch.getByRole("button", { name: "Půjčit 2 hry" }).click();
+  await expect(page.getByTestId("loan-notice")).toContainText("Půjčeno 2 hry → Jana Nováková: Akropolis, 1775: Rebellion.");
+  await expect(page.getByTestId("loan-batch")).toHaveCount(0);
+  expect((await loans()).map((l) => [l.game_id, l.borrower, l.note])).toEqual([
+    [SIX, "Petr Svoboda", null],
+    [AKROPOLIS, "Jana Nováková", "na chatu"],
+    [REBELLION, "Jana Nováková", "na chatu"],
+  ]);
+  await expect(page.getByTestId("loan-open").getByRole("listitem")).toHaveCount(3);
+});
+
+test("lending: the games without a code, a box read for the game shown", async ({ page }) => {
+  await sql("insert into game_barcodes (code, game_id) values ($1, $2)", [CODE, REBELLION]);
+  await adminLogin(page);
+  await page.goto("/admin/pujcovna");
+  const missing = page.getByTestId("loan-missing");
+  await expect(missing.locator("summary")).toHaveText(`Hry bez čárového kódu (${TOTAL - 1})`);
+  await missing.locator("summary").click();
+  await expect(missing.getByRole("button", { name: "1775: Rebellion" })).toHaveCount(0);
+  await missing.getByRole("button", { name: /^6 bere! Jubilejní edice/ }).click();
+  const game = page.getByTestId("loan-game");
+  await expect(game).toContainText("6 bere! Jubilejní edice");
+  await expect(game).toContainText("Kód krabice zatím neznáme");
+
+  // the camera reads the code of another game's box: asked before it moves
+  page.once("dialog", (d) => {
+    expect(d.message()).toBe(`Kód ${CODE} patří ke hře 1775: Rebellion. Dát ho téhle hře?`);
+    d.accept();
+  });
+  await game.getByTestId("loan-add-code").click();
+  await expect(page.getByTestId("loan-notice")).toContainText(`Kód ${CODE} teď patří ke hře 6 bere! Jubilejní edice.`, { timeout: 20_000 });
+  expect(await barcodes()).toEqual([{ code: CODE, game_id: SIX }]);
+  await expect(game.getByTestId("loan-code")).toHaveText(new RegExp(CODE));
+  await expect(missing.getByRole("button", { name: "1775: Rebellion" })).toHaveCount(1);
+  await expect(missing.getByRole("button", { name: /^6 bere! Jubilejní edice/ })).toHaveCount(0);
+
+  // read again: it is this game's already
+  await game.getByTestId("loan-add-code").click();
+  await expect(page.getByTestId("loan-notice")).toContainText(`Kód ${CODE} už u téhle hry je.`, { timeout: 20_000 });
 });
 
 test("lending: overview count, names deleted a year after the return", async ({ page, request }) => {

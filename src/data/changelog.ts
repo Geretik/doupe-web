@@ -27,6 +27,21 @@ export const changelog: ChangelogEntry[] = [
         href: "/admin/pujcovna",
       },
       {
+        for: "organizers",
+        text: "Půjčovna her: víc her jednomu člověku půjčíš najednou – tlačítkem 📚 Půjčit víc her najednou napíšeš, komu, a načítáš kódy z krabic jeden po druhém (foťák zůstane zapnutý), nebo hry přidáš podle názvu. Pak je jedním tlačítkem půjčíš všechny.",
+        href: "/admin/pujcovna",
+      },
+      {
+        for: "organizers",
+        text: "Půjčovna her: u kódu, který ještě neznáme, se podle databáze GameUPC nabídne, která hra ze sbírky to nejspíš je – stačí na ni ťuknout. Hru najdeš i podle anglického nebo původního názvu („ark nova“ najde Archu Novu).",
+        href: "/admin/pujcovna",
+      },
+      {
+        for: "organizers",
+        text: "Půjčovna her: dole je seznam her, u kterých ještě neznáme čárový kód. Ťukni na hru a tlačítkem 📷 Načíst kód krabice jí kód přidáš.",
+        href: "/admin/pujcovna",
+      },
+      {
         for: "players",
         text: "Prezenčka klubových večerů: načti QR kód na stole a zapiš jméno, příjmení a jestli máš vztah k UP (ano, nebo ne). Telefon si tě může zapamatovat, příště pak stačí jedno ťuknutí; kamaráda bez telefonu zapíšeš tlačítkem Zapsat někoho dalšího.",
         href: "/prezence",
