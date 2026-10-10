@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "r
 import { createPortal } from "react-dom";
 import type { Locale } from "@/i18n/dictionaries";
 import type { GrimoireCharacter } from "@/modules/botc/lib/grimoire/characters";
-import { fiddleSeats, isPlayer, nextPhase, nightSteps, putToken, type GrimoireSeat, type GrimoireState } from "@/modules/botc/lib/grimoire/state";
+import { canStart, fiddleSeats, isPlayer, nextPhase, nightSteps, putToken, withoutRole, type GrimoireSeat, type GrimoireState } from "@/modules/botc/lib/grimoire/state";
 import { useAutosave, type SaveStatus } from "./autosave";
 import { ChroniclePanel } from "./chronicle";
 import { DrawView } from "./draw";
@@ -20,7 +20,7 @@ import { SeatPanel } from "./seat-panel";
 import { SetupScreen, type ScriptChoice } from "./setup-panel";
 import { ShowScreen } from "./show";
 import type { ShowCard } from "@/modules/botc/lib/grimoire/show";
-import { Town, TownCenter } from "./town";
+import { SeatingButtons, Town, TownCenter } from "./town";
 
 const UNDO_LIMIT = 100;
 
@@ -194,6 +194,8 @@ export function Grimoire({
   };
 
   const advance = () => {
+    // the game starts only once every player has a character
+    if (state.phase === "setup" && !canStart(state)) return;
     const next = nextPhase(state, characters);
     update(() => next);
     setFocusStep(null);
@@ -223,7 +225,6 @@ export function Grimoire({
       const seats = move(s.seats);
       return seats === s.seats ? s : { ...s, seats };
     });
-  const grid = state.layout === "grid";
   const phaseLabel =
     state.phase === "setup" ? t.phases.setup : state.phase === "ended" ? t.phases.ended : fill(t.phases[state.phase], { n: state.round });
   const nextLabel =
@@ -306,11 +307,7 @@ export function Grimoire({
                     ↶ {t.undo}
                   </button>
                 )}
-                {canEdit && nextLabel && !hidden && (
-                  <button type="button" onClick={advance} className="min-h-11 rounded-lg bg-accent px-3 text-sm font-semibold text-accent-foreground">
-                    {nextLabel}
-                  </button>
-                )}
+                {canEdit && nextLabel && !hidden && <NextButton label={nextLabel} onClick={advance} />}
                 <ScaleButton scale={scale} onChange={setScale} />
                 {canEdit && <HideButton />}
                 <button
@@ -352,15 +349,18 @@ export function Grimoire({
 
             <div className="flex min-h-0 flex-1 flex-col gap-3 lg:flex-row">
               <div className="relative min-h-0 basis-[55%] lg:basis-auto lg:flex-1">
-                <Town
-                  selectedId={shown === "seat" && !fabledShown ? selected : null}
-                  highlightIds={hidden ? [] : contest ? [contest.demon.id, contest.opponent.id] : (focused?.seatIds ?? [])}
-                  onSelect={tapSeat}
-                  onBackground={() => (placing ? setPlacing(null) : (setSelected(null), setFabledOpen(null), setAddingFabled(false)))}
-                  onMove={context.readOnly || state.seatsLocked ? undefined : moveSeats}
-                  center={<TownCenter phaseLabel={phaseLabel} />}
-                  hideRoles={hidden}
-                />
+                {/* the setup over the screen has a town of its own to seat the players in */}
+                {!setupOpen && (
+                  <Town
+                    selectedId={shown === "seat" && !fabledShown ? selected : null}
+                    highlightIds={hidden ? [] : contest ? [contest.demon.id, contest.opponent.id] : (focused?.seatIds ?? [])}
+                    onSelect={tapSeat}
+                    onBackground={() => (placing ? setPlacing(null) : (setSelected(null), setFabledOpen(null), setAddingFabled(false)))}
+                    onMove={context.readOnly || state.seatsLocked ? undefined : moveSeats}
+                    center={<TownCenter phaseLabel={phaseLabel} />}
+                    hideRoles={hidden}
+                  />
+                )}
                 <FabledTokens
                   selectedId={shown === "seat" ? fabledShown : null}
                   onSelect={tapFabled}
@@ -374,42 +374,7 @@ export function Grimoire({
                     </button>
                   </div>
                 )}
-                {!context.readOnly && state.seats.length > 1 && (
-                  <div className="absolute top-0 left-0 z-10 flex flex-col gap-2">
-                    {/* the seating done, the circle is locked so a finger in the game does not move anybody */}
-                    <button
-                      type="button"
-                      onClick={() => update((s) => ({ ...s, seatsLocked: !s.seatsLocked }))}
-                      className={`flex size-11 items-center justify-center rounded-full border bg-card text-lg shadow-sm ${state.seatsLocked ? "border-accent" : "border-border"}`}
-                      aria-pressed={!!state.seatsLocked}
-                      aria-label={state.seatsLocked ? t.unlockSeats : t.lockSeats}
-                      title={state.seatsLocked ? t.unlockSeats : t.lockSeats}
-                      data-testid="seats-lock"
-                    >
-                      {state.seatsLocked ? "🔒" : "🔓"}
-                    </button>
-                    {/* the circle, or the places where the Storyteller puts them, like the table they sit at; part of the seating */}
-                    {!state.seatsLocked && (
-                      <button
-                        type="button"
-                        onClick={() => update((s) => ({ ...s, layout: s.layout === "grid" ? "circle" : "grid" }))}
-                        className={`flex size-11 items-center justify-center rounded-full border bg-card shadow-sm ${grid ? "border-accent" : "border-border"}`}
-                        aria-pressed={grid}
-                        aria-label={grid ? t.layoutCircle : t.layoutGrid}
-                        title={grid ? t.layoutCircle : t.layoutGrid}
-                        data-testid="town-layout"
-                      >
-                        <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden>
-                          {grid
-                            ? [5, 12, 19].flatMap((x) => [5, 12, 19].map((y) => <circle key={`${x}${y}`} cx={x} cy={y} r={2.2} />))
-                            : Array.from({ length: 8 }, (_, i) => (
-                                <circle key={i} cx={12 + 8 * Math.cos((i * Math.PI) / 4)} cy={12 + 8 * Math.sin((i * Math.PI) / 4)} r={2.2} />
-                              ))}
-                        </svg>
-                      </button>
-                    )}
-                  </div>
-                )}
+                {!setupOpen && <SeatingButtons />}
               </div>
               <aside className="flex min-h-0 flex-1 flex-col rounded-xl border border-border bg-card lg:w-[25rem] lg:flex-none">
                 <div className={`border-b border-border ${tabs.length > 1 ? "flex" : "hidden"}`} role="tablist">
@@ -507,6 +472,35 @@ export function Grimoire({
         )}
       {showing && <ShowScreen card={showing} onChange={setShowing} onClose={() => setShowing(null)} />}
     </GrimoireContext.Provider>
+  );
+}
+
+/**
+ * On to the next phase; before the game only once every player has a character, and beside it what is missing
+ * (a disabled button tells nothing on a tablet).
+ */
+function NextButton({ label, onClick }: { label: string; onClick: () => void }) {
+  const { state, t } = useGrimoire();
+  const blocked = state.phase === "setup" && !canStart(state);
+  const missing = withoutRole(state);
+  const why = missing.length ? fill(t.startMissing, { names: missing.map((s) => s.name || "?").join(", ") }) : t.startNoPlayers;
+  return (
+    <>
+      {blocked && (
+        <span className="text-xs font-semibold text-accent" title={why} data-testid="start-blocked">
+          {missing.length ? fill(t.startMissingShort, { n: missing.length }) : t.startNoPlayers}
+        </span>
+      )}
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={blocked}
+        title={blocked ? why : undefined}
+        className="min-h-11 rounded-lg bg-accent px-3 text-sm font-semibold text-accent-foreground disabled:opacity-40"
+      >
+        {label}
+      </button>
+    </>
   );
 }
 

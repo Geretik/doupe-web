@@ -60,6 +60,7 @@ export function Town({
   center,
   hideRoles = false,
   onBackground,
+  empty,
 }: {
   selectedId: string | null;
   /** Seats that wake on the night step in focus */
@@ -72,6 +73,8 @@ export function Town({
   hideRoles?: boolean;
   /** A tap on the square where there is no place, e.g. to let go of the selected player */
   onBackground?: () => void;
+  /** What to do without any places; by default to add players in the setup */
+  empty?: string;
 }) {
   const { state, scale, t } = useGrimoire();
   const ref = useRef<HTMLDivElement>(null);
@@ -278,10 +281,51 @@ export function Town({
           {n === 0 && (
             // under the phase in the middle
             <p className="absolute inset-x-0 text-center text-muted" style={{ top: cy + 24 }}>
-              {t.noSeats}
+              {empty ?? t.noSeats}
             </p>
           )}
         </>
+      )}
+    </div>
+  );
+}
+
+/** In the town's corner: the seating locked, and the circle or the grid; in the grimoire and in the setup's town alike. */
+export function SeatingButtons() {
+  const { state, update, readOnly, t } = useGrimoire();
+  if (readOnly || state.seats.length < 2) return null;
+  const grid = state.layout === "grid";
+  return (
+    <div className="absolute top-0 left-0 z-10 flex flex-col gap-2">
+      {/* the seating done, the circle is locked so a finger in the game does not move anybody */}
+      <button
+        type="button"
+        onClick={() => update((s) => ({ ...s, seatsLocked: !s.seatsLocked }))}
+        className={`flex size-11 items-center justify-center rounded-full border bg-card text-lg shadow-sm ${state.seatsLocked ? "border-accent" : "border-border"}`}
+        aria-pressed={!!state.seatsLocked}
+        aria-label={state.seatsLocked ? t.unlockSeats : t.lockSeats}
+        title={state.seatsLocked ? t.unlockSeats : t.lockSeats}
+        data-testid="seats-lock"
+      >
+        {state.seatsLocked ? "🔒" : "🔓"}
+      </button>
+      {/* the circle, or the places where the Storyteller puts them, like the table they sit at; part of the seating */}
+      {!state.seatsLocked && (
+        <button
+          type="button"
+          onClick={() => update((s) => ({ ...s, layout: s.layout === "grid" ? "circle" : "grid" }))}
+          className={`flex size-11 items-center justify-center rounded-full border bg-card shadow-sm ${grid ? "border-accent" : "border-border"}`}
+          aria-pressed={grid}
+          aria-label={grid ? t.layoutCircle : t.layoutGrid}
+          title={grid ? t.layoutCircle : t.layoutGrid}
+          data-testid="town-layout"
+        >
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden>
+            {grid
+              ? [5, 12, 19].flatMap((x) => [5, 12, 19].map((y) => <circle key={`${x}${y}`} cx={x} cy={y} r={2.2} />))
+              : Array.from({ length: 8 }, (_, i) => <circle key={i} cx={12 + 8 * Math.cos((i * Math.PI) / 4)} cy={12 + 8 * Math.sin((i * Math.PI) / 4)} r={2.2} />)}
+          </svg>
+        </button>
       )}
     </div>
   );

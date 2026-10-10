@@ -41,6 +41,27 @@ function changeSeat(s: GrimoireState, seatId: string, change: (seat: GrimoireSea
   return { ...s, seats: s.seats.map((seat) => (seat.id === seatId ? change(seat) : seat)) };
 }
 
+/**
+ * A place's name; a session player not seated elsewhere links the place to their sign-up, also when their
+ * nickname is typed.
+ */
+export function nameSeat(s: GrimoireState, seatId: string, name: string, sessionPlayers: { id: number; nickname: string }[], registrationId?: number) {
+  const seatedElsewhere = new Set(s.seats.filter((x) => x.id !== seatId).map((x) => x.registrationId));
+  const match = registrationId ?? sessionPlayers.find((p) => !seatedElsewhere.has(p.id) && p.nickname.toLowerCase() === name.toLowerCase())?.id;
+  return changeSeat(s, seatId, (x) => ({ ...x, name, registrationId: match ?? null }));
+}
+
+/** The session's players not seated at another place, to pick for this one. */
+export function freeSessionPlayers(state: GrimoireState, seat: GrimoireSeat, sessionPlayers: { id: number; nickname: string }[]) {
+  const seatedElsewhere = new Set(state.seats.filter((x) => x.id !== seat.id).map((x) => x.registrationId));
+  return sessionPlayers.filter((p) => !seatedElsewhere.has(p.id) && p.id !== seat.registrationId);
+}
+
+/** The next player round the circle from `index` without a name, clockwise; naming the circle goes on there. */
+export function nextUnnamed(state: GrimoireState, index: number) {
+  return [...state.seats.slice(index + 1), ...state.seats.slice(0, index)].find((x) => !x.gap && !x.name) ?? null;
+}
+
 /** Who has which character, for the notes in the character grid. */
 export function holders(state: GrimoireState, exceptSeatId?: string) {
   const names = new Map<string, string>();
@@ -71,18 +92,12 @@ export function SeatPanel({
 
   if (seat.gap) return <GapPanel seat={{ ...seat, gap: seat.gap }} index={index} onRemoved={onRemoved} onClose={onClose} />;
 
-  const set = (change: (seat: GrimoireSeat) => GrimoireSeat) => update((s) => changeSeat(s, seat.id, change));
-  // a session player not seated elsewhere: typing their nickname links the seat to their sign-up
-  const seatedElsewhere = new Set(state.seats.filter((x) => x.id !== seat.id).map((x) => x.registrationId));
-  const free = sessionPlayers.filter((p) => !seatedElsewhere.has(p.id) && p.id !== seat.registrationId);
-  const setName = (name: string) => {
-    const match = sessionPlayers.find((p) => !seatedElsewhere.has(p.id) && p.nickname.toLowerCase() === name.toLowerCase());
-    set((x) => ({ ...x, name, registrationId: match?.id ?? null }));
-  };
+  const free = freeSessionPlayers(state, seat, sessionPlayers);
+  const setName = (name: string) => update((s) => nameSeat(s, seat.id, name, sessionPlayers));
   const pickPlayer = (player: { id: number; nickname: string }) => {
-    set((x) => ({ ...x, name: player.nickname, registrationId: player.id }));
+    update((s) => nameSeat(s, seat.id, player.nickname, sessionPlayers, player.id));
     // naming the circle after a draw: on to the next place without a name, clockwise
-    const next = [...state.seats.slice(index + 1), ...state.seats.slice(0, index)].find((x) => !x.gap && !x.name);
+    const next = nextUnnamed(state, index);
     if (next) onSelect(next.id);
   };
 

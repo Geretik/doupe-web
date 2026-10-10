@@ -14,7 +14,7 @@ export type ChangelogEntry = { /** YYYY-MM-DD */ date: string; title: string; it
 export const changelog: ChangelogEntry[] = [
   {
     date: "2026-10-10",
-    title: "Prezenčka klubu; grimoár: mřížka, pocestní, skrytí stavu hry, velikost žetonů a Houslista",
+    title: "Prezenčka klubu; grimoár: mřížka, pocestní, skrytí stavu hry, velikost žetonů, Houslista a rozesazení v Přípravě",
     items: [
       {
         for: "organizers",
@@ -64,6 +64,16 @@ export const changelog: ChangelogEntry[] = [
         for: "players",
         text: "Pocestný Thief se česky jmenuje Zloděj.",
         href: "/botc/moje-hry",
+      },
+      {
+        for: "organizers",
+        text: "Grimoár, Příprava: hráče rozesadíš přímo v Přípravě – má vlastní kruh, hráče v něm přetáhneš, kam sedí, a ťuknutím na místo mu napíšeš jméno nebo vybereš přihlášeného z termínu. Enter skočí na další místo bez jména, tlačítkem Napsat jména hráčů → začneš od prvního. Dveře, vypravěče i překážku odebereš stejně: ťukni na ně v kruhu.",
+        href: "/admin/botc/grimoary",
+      },
+      {
+        for: "organizers",
+        text: "Grimoár: hru (Začít hru → 1. noc) jde začít, až má postavu každý hráč. Vedle tlačítka je vidět, kolik hráčů postavu nemá, a v Přípravě kdo – ťuknutím na jméno mu ji dáš.",
+        href: "/admin/botc/grimoary",
       },
     ],
   },

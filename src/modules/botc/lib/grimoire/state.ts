@@ -157,6 +157,15 @@ export function players(state: Pick<GrimoireState, "seats">) {
   return state.seats.filter(isPlayer);
 }
 
+/** The players without a character yet: the game starts only once there are players and none of them is left. */
+export function withoutRole(state: Pick<GrimoireState, "seats">) {
+  return players(state).filter((s) => !s.role);
+}
+
+export function canStart(state: Pick<GrimoireState, "seats" | "phase">) {
+  return state.phase === "setup" && players(state).length > 0 && withoutRole(state).length === 0;
+}
+
 export function newGrimoireState(script: GrimoireState["script"], seats: GrimoireSeat[]): GrimoireState {
   const fabled = script.fabled?.length ? { fabled: [...script.fabled] } : {};
   return { script, seats, bag: [], bluffs: Array(BLUFF_COUNT).fill(null), phase: "setup", round: 0, winner: null, nightDone: [], ...fabled };

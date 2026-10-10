@@ -1091,6 +1091,16 @@ async function newGrimoire(page: Page) {
   for (const name of ["Jana", "Petr"]) await addPlayer(page, name);
   await stored((st) => st.seats.length, 2);
 }
+/** Characters by hand at the players, in the grimoire's panel: the game starts only once every player has one. */
+async function giveRoles(page: Page, roles: Record<string, string>) {
+  const panel = page.getByTestId("seat-panel");
+  for (const [name, role] of Object.entries(roles)) {
+    await seat(page, name).click();
+    await panel.getByRole("button", { name: "Změnit" }).click();
+    await panel.getByRole("button", { name: `Postava: ${role}` }).click();
+  }
+  await page.getByTestId("deselect").click();
+}
 async function addPlayer(page: Page, name: string) {
   await page.getByRole("textbox", { name: "Jméno hráče" }).fill(name);
   await page.getByRole("button", { name: "Přidat", exact: true }).click();
@@ -1189,14 +1199,16 @@ test("grimoire: the door and the Storyteller's spot, a pasted script, players dr
   await expect(page.getByTestId("gap")).toHaveCount(2);
   await expect(page.getByTestId("town")).toContainText("Živí 5 z 5");
 
-  // an obstacle and a second door, taken out of the circle again in the setup with their ✕
+  // an obstacle and a second door, taken out of the circle again in the setup's town
   const setup = await openSetup(page);
-  // the add buttons come after the circle's list, where the door is already
+  // the add buttons come after the setup's town, where the door is already
   await setup.getByRole("button", { name: "🚧 Překážka" }).click();
   await setup.getByRole("button", { name: "🚪 Dveře" }).last().click();
   await expect(page.getByTestId("gap")).toHaveCount(4);
-  await setup.getByRole("button", { name: "Odebrat: Překážka" }).click();
-  await setup.getByRole("button", { name: "Odebrat: Dveře" }).last().click();
+  await setup.locator("[data-gap=obstacle]").click();
+  await setup.getByTestId("setup-seat").getByRole("button", { name: "Odebrat z kruhu" }).click();
+  await setup.locator("[data-gap=door]").last().click();
+  await setup.getByTestId("setup-seat").getByRole("button", { name: "Odebrat z kruhu" }).click();
   await expect(page.locator("[data-gap=obstacle]")).toHaveCount(0);
   await expect(page.locator("[data-gap=door]")).toHaveCount(1);
   await expect(page.locator("[data-gap=storyteller]")).toHaveCount(1);
@@ -1308,6 +1320,71 @@ test("grimoire: players dragged to other places in the circle, then the seating 
   await page.getByRole("button", { name: "Zrušit celou obrazovku" }).click();
   await expect(page.locator("[data-admin-nav]")).toBeVisible();
   await expect(page.locator("body > header")).toBeVisible();
+});
+
+test("grimoire: the players seated in the setup's own town – named one after another, moved, dragged; the game starts only once each has a character", async ({ page }) => {
+  await page.setViewportSize({ width: 1180, height: 820 }); // a tablet on its side
+  await adminLogin(page);
+  await newGrimoire(page);
+  const setup = page.getByTestId("setup-screen");
+  const town = setup.getByTestId("setup-town");
+  const editor = setup.getByTestId("setup-seat");
+  const names = (st: { seats: { name: string }[] }) => st.seats.map((x) => x.name);
+  for (let i = 0; i < 3; i++) await setup.getByRole("button", { name: "Přidat místo" }).click();
+  await expect(town.getByTestId("seat")).toHaveCount(5);
+  await expect(town).toContainText("Hráči (5)");
+  // no character yet: the game cannot start, the setup says where they are handed out
+  await expect(setup.getByRole("button", { name: "Začít hru → 1. noc" })).toBeDisabled();
+  await expect(setup).toContainText("Hru začneš, až budou mít postavu všichni hráči – rozdej je dole v části Rozdání.");
+
+  // the names one after another: Enter goes on to the next place without one, after the last the field closes
+  await setup.getByRole("button", { name: "Napsat jména hráčů →" }).click();
+  for (const name of ["Ada", "Bára", "Cyril"]) {
+    await expect(editor.getByTestId("setup-seat-name")).toBeFocused();
+    await page.keyboard.type(name);
+    await page.keyboard.press("Enter");
+  }
+  await expect(editor).toHaveCount(0);
+  await stored(names, ["Jana", "Petr", "Ada", "Bára", "Cyril"]);
+
+  // a place tapped: renamed, moved on by one
+  await town.locator('[data-testid=seat][data-seat="Petr"]').click();
+  await editor.getByTestId("setup-seat-name").fill("Petra");
+  await editor.getByRole("button", { name: "O místo dál ▶" }).click();
+  await stored(names, ["Jana", "Ada", "Petra", "Bára", "Cyril"]);
+
+  // dragged onto another place in the setup's town
+  const drag = async (from: string, to: string) => {
+    const [a, b] = [(await town.locator(`[data-seat="${from}"]`).boundingBox())!, (await town.locator(`[data-seat="${to}"]`).boundingBox())!];
+    await page.mouse.move(a.x + a.width / 2, a.y + a.width / 2);
+    await page.mouse.down();
+    await page.mouse.move(b.x + b.width / 2, b.y + b.width / 2, { steps: 12 });
+    await page.mouse.up();
+  };
+  await drag("Cyril", "Jana");
+  await stored(names, ["Cyril", "Ada", "Petra", "Bára", "Jana"]);
+  await editor.getByRole("button", { name: "Zrušit výběr hráče" }).click();
+  await expect(editor).toHaveCount(0);
+
+  // all but one with a character: who is missing, both in the setup and beside the start in the grimoire
+  const [row] = await sql<{ id: number; state: GrimoireState }>("select id, state from grimoires order by id desc limit 1");
+  const roles: Record<string, string> = { Ada: "imp", Petra: "empath", Bára: "chef", Jana: "poisoner" };
+  const dealt = { ...row.state, seats: row.state.seats.map((x) => ({ ...x, role: roles[x.name] ?? null })) };
+  await sql("update grimoires set state = $1, version = version + 1 where id = $2", [JSON.stringify(dealt), row.id]);
+  await page.reload();
+  await expect(page.getByTestId("start-blocked")).toHaveText("1 bez postavy");
+  await expect(page.getByRole("button", { name: "Začít hru → 1. noc" })).toBeDisabled();
+  await openSetup(page);
+  await expect(setup.getByTestId("start-missing")).toHaveText("Hru začneš, až bude mít postavu každý hráč. Bez postavy: Cyril");
+  // the name opens the player in the grimoire, to give them one
+  await setup.getByTestId("start-missing").getByRole("button", { name: "Cyril" }).click();
+  await expect(setup).toHaveCount(0);
+  const panel = page.getByTestId("seat-panel");
+  await panel.getByRole("button", { name: "Změnit" }).click();
+  await panel.getByRole("button", { name: "Postava: Mnich" }).click();
+  await expect(page.getByTestId("start-blocked")).toHaveCount(0);
+  await page.getByRole("button", { name: "Začít hru → 1. noc" }).click();
+  await expect(page.getByTestId("phase")).toHaveText("1. noc");
 });
 
 test("grimoire: the town on a grid – a player put where they sit goes between the two nearest; locked without the grid; the circle keeps it", async ({ page }) => {
@@ -1501,6 +1578,7 @@ test("grimoire: during the game only the Fabled meant for any time can be added 
   await closeSetup(page);
   // before the game they come from the setup
   await expect(page.getByTestId("fabled-add")).toHaveCount(0);
+  await giveRoles(page, { Jana: "Čert", Petr: "Empat" });
   await page.getByRole("button", { name: "Začít hru → 1. noc" }).click();
   await expect(page.getByTestId("phase")).toHaveText("1. noc");
 
