@@ -9,7 +9,7 @@ import type { Dict } from "@/i18n/dictionaries";
 import { getDict } from "@/i18n/server";
 import { requireAdmin } from "@/lib/admin-auth";
 import { draftScriptRef, logAction, logDraftAction } from "@/lib/admin-log";
-import { roleName, findRole, roleTeams } from "@/modules/botc/lib/botc-roles";
+import { roleName, findRole, homebrewCollections, roleTeams } from "@/modules/botc/lib/botc-roles";
 import { dispatchDraftEventsLater } from "@/modules/botc/lib/draft/events";
 import { draftModes, isDraftMode, parseModeConfig } from "@/modules/botc/lib/draft/modes";
 import { bundleProblems, parseBundles, roleEditions, sortRoleIds } from "@/modules/botc/lib/draft/roles";
@@ -57,11 +57,13 @@ function parseDraftForm(formData: FormData, t: DraftT): { values?: service.Draft
   } else {
     const picked = new Set(formData.getAll("edition").map(String));
     const editions = roleEditions.filter((x) => picked.has(x));
+    const pickedCollections = new Set(formData.getAll("collection").map(String));
+    const collections = homebrewCollections.map((c) => c.key).filter((x) => pickedCollections.has(x));
     const pickedTeams = new Set(formData.getAll("team").map(String));
     const teams = roleTeams.filter((x) => pickedTeams.has(x));
-    if (!editions.length) fieldErrors.editions = [e.noEditions];
+    if (!editions.length && !collections.length) fieldErrors.editions = [e.noEditions];
     if (!teams.length) fieldErrors.teams = [e.noTeams];
-    roleSource = { kind: "filter", editions, teams };
+    roleSource = { kind: "filter", editions, ...(collections.length ? { collections } : {}), teams };
   }
 
   const { bundles, unknown } = parseBundles(String(formData.get("bundles") ?? ""));

@@ -24,6 +24,7 @@ import { hasRole, requireAdmin } from "@/lib/admin-auth";
 import { LATE_CANCEL_HOURS, sessionEmailsFor } from "@/lib/alerts";
 import { discordConfigured } from "@/lib/discord";
 import { getFormSuggestions } from "@/modules/botc/lib/form-suggestions";
+import { homebrewByScript } from "@/modules/botc/lib/scripts";
 import { listGrimoires } from "@/modules/botc/lib/grimoire/service";
 import { getSessionWithCount, listGamesForSession, listRegistrationsForSession } from "@/modules/botc/lib/queries";
 import { byArrival, presenceBySlot } from "@/modules/botc/lib/presence";
@@ -95,7 +96,7 @@ export default async function AdminSessionPage({
   const numId = parseId((await params).id);
   const byArrivalOrder = (await searchParams).poradi === "prichod";
   if (!numId) notFound();
-  const [{ locale, t: dict }, session, regs, pendingReminders, playedGames, suggestions, storytellers, sessionGrimoires, emails] = await Promise.all([
+  const [{ locale, t: dict }, session, regs, pendingReminders, playedGames, suggestions, storytellers, sessionGrimoires, emails, homebrew] = await Promise.all([
     getDict(),
     getSessionWithCount(numId),
     listRegistrationsForSession(numId),
@@ -105,6 +106,7 @@ export default async function AdminSessionPage({
     storytellerStats(),
     listGrimoires(me, numId),
     sessionEmailsFor(me, numId),
+    homebrewByScript(),
   ]);
   if (!session) notFound();
   const t = dict.admin.session;
@@ -155,6 +157,9 @@ export default async function AdminSessionPage({
     roleStoryteller: t.roleStoryteller,
     roleOther: t.roleOther,
     roleTeams: t.roleTeams,
+    homebrewPick: t.homebrewPick,
+    homebrewPickNone: t.homebrewPickNone,
+    homebrewGroup: t.homebrewGroup,
   };
   // who can get a character: the signed-up players, and anyone already entered in a game (even if they cancelled since)
   const rosterPlayers = new Map<number, RosterPlayer>(confirmed.map((r) => [r.id, { id: r.id, nickname: r.nickname }]));
@@ -566,6 +571,7 @@ export default async function AdminSessionPage({
                 key={g.id}
                 sessionId={session.id}
                 scripts={session.scripts}
+                homebrew={homebrew}
                 roster={roster}
                 locale={locale}
                 game={{
@@ -599,7 +605,7 @@ export default async function AdminSessionPage({
             ))}
           </ol>
         )}
-        <GameForm sessionId={session.id} scripts={session.scripts} roster={roster} locale={locale} t={gameLabels} />
+        <GameForm sessionId={session.id} scripts={session.scripts} homebrew={homebrew} roster={roster} locale={locale} t={gameLabels} />
       </Card>
 
       {!past && (

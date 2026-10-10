@@ -10,6 +10,9 @@ import {
   botcRoles,
   editionOfScript,
   findRole,
+  homebrewCollections,
+  homebrewRoles,
+  isHomebrew,
   linkedRoleOf,
   roleIcon,
   roleName,
@@ -51,6 +54,9 @@ export type GameFormLabels = {
   roleStoryteller: string;
   roleOther: string;
   roleTeams: Record<RoleTeam, string>;
+  homebrewPick: string;
+  homebrewPickNone: string;
+  homebrewGroup: string;
 };
 
 /** A player who can be given a character: the session's signed-up players and anyone already entered in a game. */
@@ -70,6 +76,7 @@ type RosterEntered = { registrationId: number; role: string | null; believedRole
 export function GameForm({
   sessionId,
   scripts: sessionScripts,
+  homebrew = {},
   roster,
   locale,
   game,
@@ -78,6 +85,8 @@ export function GameForm({
 }: {
   sessionId: number;
   scripts: ScriptLink[];
+  /** The homebrew characters of the library's scripts, by the script's name in lower case (scripts homebrewByScript) */
+  homebrew?: Record<string, string[]>;
   roster: RosterPlayer[];
   locale: Locale;
   game?: EditedGame;
@@ -104,6 +113,18 @@ export function GameForm({
       ? [{ name: game.scriptName, url: game.scriptUrl ?? "" }, ...sessionScripts]
       : sessionScripts;
   const [pick, setPick] = useState(game?.scriptName ?? scripts[0]?.name ?? "__custom");
+  // a homebrew collection whose characters the selects offer too, for a script the library does not have
+  const [collection, setCollection] = useState("");
+  const homebrewIds = useMemo(
+    () => [
+      ...new Set([
+        ...(homebrew[pick.trim().toLowerCase()] ?? []),
+        ...[...(game?.roster ?? []).flatMap((p) => [p.role, p.believedRole]), ...(game?.demonBluffs ?? [])].filter((x): x is string => isHomebrew(x)),
+        ...homebrewRoles.filter((r) => r.collection === collection).map((r) => r.id),
+      ]),
+    ],
+    [homebrew, pick, game, collection],
+  );
   const fe = state.fieldErrors ?? {};
   const chosen = scripts.find((s) => s.name === pick);
   // several forms on one page (the new game and the ones being edited) need their own ids
@@ -111,7 +132,7 @@ export function GameForm({
   return (
     <form ref={formRef} action={action} onSubmit={keepValues(action)} className="flex flex-col gap-3">
       {state.error && <Alert kind="error">{state.error}</Alert>}
-      <div className="grid gap-3 sm:grid-cols-[2fr_1fr_1fr]">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[2fr_1.5fr_1fr_1fr]">
         <Field label={t.gameScript} name={id("scriptPick")} errors={fe.scriptName}>
           <select id={id("scriptPick")} value={pick} onChange={(e) => setPick(e.target.value)} className={inputClass}>
             {scripts.map((s) => (
@@ -127,6 +148,14 @@ export function GameForm({
               <input type="hidden" name="scriptUrl" value={chosen?.url ?? ""} />
             </>
           )}
+        </Field>
+        <Field label={t.homebrewPick} name={id("homebrew")}>
+          <select id={id("homebrew")} value={collection} onChange={(e) => setCollection(e.target.value)} className={inputClass}>
+            <option value="">{t.homebrewPickNone}</option>
+            {homebrewCollections.map((c) => (
+              <option key={c.key} value={c.key}>{c.name}</option>
+            ))}
+          </select>
         </Field>
         <Field label={t.gameWinner} name={id("winner")} errors={fe.winner}>
           <select id={id("winner")} name="winner" defaultValue={game?.winner ?? ""} className={inputClass}>
@@ -148,6 +177,7 @@ export function GameForm({
         entered={game?.roster ?? []}
         bluffs={game?.demonBluffs ?? []}
         edition={editionOfScript(pick === "__custom" ? "" : pick)}
+        homebrew={homebrewIds}
         locale={locale}
         id={id}
         t={t}
@@ -166,14 +196,19 @@ export function GameForm({
   );
 }
 
-/** Characters offered in the selects: with a base script its own characters by team first, else all by team. */
-function roleGroups(edition: RoleEdition | null, locale: Locale, t: GameFormLabels) {
+/**
+ * Characters offered in the selects: the homebrew ones of the script (or the chosen collection) by team first, then
+ * with a base script its own characters by team, else all by team.
+ */
+function roleGroups(edition: RoleEdition | null, homebrew: string[], locale: Locale, t: GameFormLabels) {
   const collator = new Intl.Collator(locale);
-  const sorted = [...botcRoles].sort((a, b) => collator.compare(roleName(a, locale), roleName(b, locale)));
-  const byTeam = (roles: BotcRole[]) =>
-    roleTeams.map((team) => ({ label: t.roleTeams[team], roles: roles.filter((r) => r.team === team) })).filter((g) => g.roles.length > 0);
-  if (!edition) return byTeam(sorted);
-  return [...byTeam(sorted.filter((r) => r.edition === edition)), { label: t.roleOther, roles: sorted.filter((r) => r.edition !== edition) }];
+  const byName = (a: BotcRole, b: BotcRole) => collator.compare(roleName(a, locale), roleName(b, locale));
+  const sorted = [...botcRoles].sort(byName);
+  const byTeam = (roles: BotcRole[], prefix = "") =>
+    roleTeams.map((team) => ({ label: `${prefix}${t.roleTeams[team]}`, roles: roles.filter((r) => r.team === team) })).filter((g) => g.roles.length > 0);
+  const homebrewGroups = byTeam(homebrew.flatMap((id) => findRole(id) ?? []).sort(byName), `${t.homebrewGroup} · `);
+  if (!edition) return [...homebrewGroups, ...byTeam(sorted)];
+  return [...homebrewGroups, ...byTeam(sorted.filter((r) => r.edition === edition)), { label: t.roleOther, roles: sorted.filter((r) => r.edition !== edition) }];
 }
 
 /** "Who played what": a character select per player, folded away until something is entered. */
@@ -182,6 +217,7 @@ function RosterFields({
   entered,
   bluffs,
   edition,
+  homebrew,
   locale,
   id,
   t,
@@ -190,11 +226,12 @@ function RosterFields({
   entered: RosterEntered[];
   bluffs: string[];
   edition: RoleEdition | null;
+  homebrew: string[];
   locale: Locale;
   id: (name: string) => string;
   t: GameFormLabels;
 }) {
-  const groups = useMemo(() => roleGroups(edition, locale, t), [edition, locale, t]);
+  const groups = useMemo(() => roleGroups(edition, homebrew, locale, t), [edition, homebrew, locale, t]);
   const goodGroups = useMemo(
     () => groups.map((g) => ({ ...g, roles: g.roles.filter((r) => bluffTeams.includes(r.team)) })).filter((g) => g.roles.length > 0),
     [groups],
@@ -357,6 +394,7 @@ function RoleSelect({
 export function GameItem({
   sessionId,
   scripts,
+  homebrew,
   roster,
   locale,
   game,
@@ -366,6 +404,7 @@ export function GameItem({
 }: {
   sessionId: number;
   scripts: ScriptLink[];
+  homebrew?: Record<string, string[]>;
   roster: RosterPlayer[];
   locale: Locale;
   game: EditedGame;
@@ -377,7 +416,7 @@ export function GameItem({
   if (editing) {
     return (
       <li className="rounded-md border border-border px-3 py-3">
-        <GameForm sessionId={sessionId} scripts={scripts} roster={roster} locale={locale} game={game} onDone={() => setEditing(false)} t={t} />
+        <GameForm sessionId={sessionId} scripts={scripts} homebrew={homebrew} roster={roster} locale={locale} game={game} onDone={() => setEditing(false)} t={t} />
       </li>
     );
   }

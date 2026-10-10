@@ -7,7 +7,9 @@ import { requireAdmin } from "@/lib/admin-auth";
 import { logAction, sessionRef } from "@/lib/admin-log";
 import { grimoireStateSchema } from "@/modules/botc/lib/grimoire/schema";
 import { createGrimoire, deleteGrimoire, getGrimoire, saveGrimoire, type SaveResult } from "@/modules/botc/lib/grimoire/service";
+import type { GrimoireCharacter } from "@/modules/botc/lib/grimoire/characters";
 import type { GrimoireState } from "@/modules/botc/lib/grimoire/state";
+import { homebrewGrimoireCharacters } from "@/modules/botc/lib/homebrew";
 import { grimoireScriptExtras, parseScriptFile } from "@/modules/botc/lib/scripts";
 import { matchStorytellerId } from "@/modules/botc/lib/botc-roles";
 import { parseId } from "@/lib/validation";
@@ -65,7 +67,10 @@ export async function deleteGrimoireAction(id: number) {
   redirect("/admin/botc/grimoary");
 }
 
-export type ReadScriptResult = { ok: true; script: GrimoireState["script"]; extras: string[] } | { error: string };
+/** `characters`: the grimoire's data of the script's homebrew characters, which the page does not have yet */
+export type ReadScriptResult =
+  | { ok: true; script: GrimoireState["script"]; extras: string[]; characters: Record<string, GrimoireCharacter> }
+  | { error: string };
 
 /** A script pasted or picked as a file in the grimoire: its name, the characters this site knows, its Fabled and Loric and its homebrew; nothing is saved. */
 export async function readGrimoireScriptAction(text: string): Promise<ReadScriptResult> {
@@ -80,5 +85,6 @@ export async function readGrimoireScriptAction(text: string): Promise<ReadScript
   const { roleIds, fabled } = parsed.script;
   // the Fabled and Loric come into the grimoire too; homebrew characters only to read at the Bootlegger
   const extras = parsed.script.extras.filter((x) => !fabled.includes(matchStorytellerId(x) ?? ""));
-  return { ok: true, script: { id: null, json: true, name, roleIds, ...grimoireScriptExtras(parsed.script) }, extras };
+  const characters = homebrewGrimoireCharacters([...roleIds, ...fabled]);
+  return { ok: true, script: { id: null, json: true, name, roleIds, ...grimoireScriptExtras(parsed.script) }, extras, characters };
 }

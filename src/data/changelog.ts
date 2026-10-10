@@ -13,6 +13,35 @@ export type ChangelogEntry = { /** YYYY-MM-DD */ date: string; title: string; it
 
 export const changelog: ChangelogEntry[] = [
   {
+    date: "2026-10-11",
+    title: "Homebrew postavy z botchomebrew.wiki",
+    items: [
+      {
+        for: "organizers",
+        text: "Homebrew postavy: web zná 1206 postav z 24 kolekcí botchomebrew.wiki (Homebrews by Luis, Odyssey, The Menagerie a kurátorské kolekce wiki). Přehled kolekcí s autory a schopnostmi je pod Scripty → 🧪 Homebrew postavy; celou kolekci si odtud stáhneš jako JSON pro script tool.",
+        href: "/admin/botc/scripty/homebrew",
+      },
+      {
+        for: "organizers",
+        text: "Script s homebrew postavami z těchto kolekcí (stačí jeho JSON z wiki) má v knihovně i v grimoáru všechny postavy: dáš je do pytlíku a hráčům, mají schopnost, krok v noci s textem pro vypravěče a připomínky. Pašerák se ke hře s homebrew přidá sám a ukáže, které postavy jsou homebrew. Do script toolu jdou homebrew postavy celé.",
+        href: "/admin/botc/scripty",
+      },
+      {
+        for: "organizers",
+        text: "Drafty: kromě edic jde nabídnout i homebrew kolekce; v ručním výběru jsou jejich postavy po kolekcích a načte je i JSON scriptu.",
+        href: "/admin/botc/drafty",
+      },
+      {
+        for: "organizers",
+        text: "Záznam hry: homebrew postavy scriptu z knihovny jsou ve výběru postav nahoře, u jiného scriptu vybereš kolekci v poli Homebrew postavy z kolekce. Homebrew postavy se počítají do statistik jako ostatní.",
+      },
+      {
+        for: "players",
+        text: "Moje hry: odehrané homebrew postavy mají v přehledu postav vlastní řádek.",
+      },
+    ],
+  },
+  {
     date: "2026-10-10",
     title: "Prezenčka a půjčovna her; grimoár: mřížka, pocestní, skrytí stavu hry, velikost žetonů, Houslista a rozesazení v Přípravě",
     items: [

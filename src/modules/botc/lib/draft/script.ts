@@ -1,6 +1,7 @@
 import { gzipSync } from "node:zlib";
 import type { DraftScript } from "@/db/schema";
 import { scriptToolUrl } from "@/lib/site";
+import { withHomebrewInFull } from "../homebrew";
 
 /*
  * A draft's script in the official script format: [{ id: "_meta", name, author }, "washerwoman", …]. The club's
@@ -9,8 +10,9 @@ import { scriptToolUrl } from "@/lib/site";
  * the night order. What may be in the script is decided here, on save (modules/botc/lib/draft/service saveScript).
  */
 
+/** Homebrew characters in full (homebrew.ts): the tools know only the official ones by their id. */
 export function scriptJson(script: Pick<DraftScript, "name" | "author" | "roleIds">) {
-  return [{ id: "_meta", name: script.name, ...(script.author ? { author: script.author } : {}) }, ...script.roleIds];
+  return withHomebrewInFull([{ id: "_meta", name: script.name, ...(script.author ? { author: script.author } : {}) }, ...script.roleIds]);
 }
 
 export function scriptToolLink(script: Pick<DraftScript, "name" | "author" | "roleIds">) {
@@ -19,7 +21,7 @@ export function scriptToolLink(script: Pick<DraftScript, "name" | "author" | "ro
 
 /** The script tool opening any script in the official format, e.g. one from the club's library (modules/botc/lib/scripts). */
 export function scriptToolLinkForJson(json: unknown[]) {
-  const encoded = gzipSync(Buffer.from(JSON.stringify(json), "utf8")).toString("base64");
+  const encoded = gzipSync(Buffer.from(JSON.stringify(withHomebrewInFull(json)), "utf8")).toString("base64");
   return `${scriptToolUrl()}/?${new URLSearchParams({ script: encoded })}`;
 }
 

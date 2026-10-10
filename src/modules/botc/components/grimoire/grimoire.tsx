@@ -63,7 +63,7 @@ export function Grimoire({
   initial,
   canEdit,
   canDelete,
-  characters,
+  characters: initialCharacters,
   scripts,
   session,
   sessionPlayers,
@@ -86,6 +86,10 @@ export function Grimoire({
   t: GrimoireTexts;
 }) {
   const [history, dispatch] = useReducer(reducer, { present: initial.state, past: [], floor: 0 });
+  // the homebrew characters of a script pasted on this page come with it (setup-panel ScriptPicker)
+  const [added, setAdded] = useState<Record<string, GrimoireCharacter>>({});
+  const characters = useMemo(() => ({ ...initialCharacters, ...added }), [initialCharacters, added]);
+  const addCharacters = useCallback((more: Record<string, GrimoireCharacter>) => setAdded((had) => ({ ...had, ...more })), []);
   const state = history.present;
   const [tab, setTab] = useState<Tab>(initial.state.phase === "night" ? "night" : "seat");
   const [setupOpen, setSetupOpen] = useState(false);
@@ -191,6 +195,7 @@ export function Grimoire({
     scale,
     show: setShowing,
     characters,
+    addCharacters,
     sessionPlayers,
     locale,
     t,

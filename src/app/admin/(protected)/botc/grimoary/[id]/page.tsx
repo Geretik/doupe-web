@@ -4,6 +4,7 @@ import { Grimoire } from "@/modules/botc/components/grimoire/grimoire";
 import { getDict } from "@/i18n/server";
 import { requireAdmin } from "@/lib/admin-auth";
 import { grimoireCharacters } from "@/modules/botc/lib/grimoire/characters";
+import { homebrewGrimoireCharacters } from "@/modules/botc/lib/homebrew";
 import { canDeleteGrimoire, canEditGrimoire, canViewGrimoire, getGrimoire, grimoireScripts, sessionPlayers } from "@/modules/botc/lib/grimoire/service";
 import { parseId } from "@/lib/validation";
 
@@ -22,6 +23,15 @@ export default async function GrimoirePage({ params }: { params: Promise<{ id: s
   const g = row.grimoire;
   const { locale, t } = await getDict();
   const [scripts, players] = await Promise.all([grimoireScripts(), g.sessionId ? sessionPlayers(g.sessionId, locale) : []]);
+  // the homebrew characters the game has or may get: its own and those of the scripts it can switch to
+  const s = g.state;
+  const homebrew = homebrewGrimoireCharacters([
+    ...[s.script, ...scripts].flatMap((x) => [...x.roleIds, ...(x.fabled ?? [])]),
+    ...(s.fabled ?? []),
+    ...s.seats.flatMap((seat) => [seat.role, seat.believedRole, ...seat.reminders.map((r) => r.roleId)]),
+    ...s.bag,
+    ...s.bluffs,
+  ]);
   return (
     <Grimoire
       id={g.id}
@@ -29,7 +39,7 @@ export default async function GrimoirePage({ params }: { params: Promise<{ id: s
       initial={{ state: g.state, version: g.version }}
       canEdit={canEditGrimoire(me, g)}
       canDelete={canDeleteGrimoire(me, g)}
-      characters={grimoireCharacters(locale)}
+      characters={{ ...grimoireCharacters(locale), ...homebrew }}
       scripts={scripts}
       session={g.sessionId && row.sessionTitle ? { id: g.sessionId, title: row.sessionTitle } : null}
       sessionPlayers={players}

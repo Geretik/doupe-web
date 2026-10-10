@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { readGrimoireScriptAction } from "@/modules/botc/actions/grimoire";
-import { BLUFF_COUNT, botcRoles, findRole, linkedRoleOf, type RoleTeam } from "@/modules/botc/lib/botc-roles";
+import { BLUFF_COUNT, botcRoles, findRole, isHomebrew, linkedRoleOf, type RoleTeam } from "@/modules/botc/lib/botc-roles";
 import {
   bagTokens,
   bluffCandidates,
@@ -582,7 +582,9 @@ function AddTraveller() {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [side, setSide] = useState<Side | undefined>();
-  const inScript = new Map(state.script.roleIds.filter((id) => allTravellers.includes(id)).map((id) => [id, t.travellerInScript]));
+  // the official travellers and the script's homebrew ones
+  const travellers = [...allTravellers, ...state.script.roleIds.filter((id) => isHomebrew(id) && findRole(id)?.team === "traveller")];
+  const inScript = new Map(state.script.roleIds.filter((id) => travellers.includes(id)).map((id) => [id, t.travellerInScript]));
   const add = (role: string) => {
     const traveller = { ...newSeat(name.trim().slice(0, 60)), role, ...(side && !hidden ? { side } : {}) };
     update((s) => (s.seats.length >= MAX_SEATS ? s : { ...s, seats: [...s.seats, traveller] }));
@@ -610,7 +612,7 @@ function AddTraveller() {
           {hidden || side ? (
             <>
               <p className="text-xs text-muted">{t.travellerHint}</p>
-              <RoleGrid roleIds={allTravellers} marked={new Set()} notes={holders(state)} badges={inScript} label={t.addTraveller} onPick={add} />
+              <RoleGrid roleIds={travellers} marked={new Set()} notes={holders(state)} badges={inScript} label={t.addTraveller} onPick={add} />
             </>
           ) : (
             <p className="text-sm text-muted">{t.travellerSideFirst}</p>
@@ -1005,7 +1007,7 @@ function BagScreen({ onClose }: { onClose: () => void }) {
 
 /** The script: one of the library, every character, or a JSON pasted or picked as a file (not saved anywhere else). */
 function ScriptPicker({ scripts }: { scripts: ScriptChoice[] }) {
-  const { state, update, readOnly, t } = useGrimoire();
+  const { state, update, readOnly, addCharacters, t } = useGrimoire();
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -1021,6 +1023,7 @@ function ScriptPicker({ scripts }: { scripts: ScriptChoice[] }) {
         return;
       }
       setError(null);
+      addCharacters(result.characters);
       setExtras(result.extras);
       setText("");
       setOpen(false);

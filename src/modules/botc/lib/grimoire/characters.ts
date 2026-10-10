@@ -89,7 +89,7 @@ type CharacterData = Pick<GrimoireCharacter, "firstNight" | "otherNight" | "setu
   cs: CharacterTexts;
   jinxes?: { id: string; reason: string }[];
 };
-type CharacterTexts = Pick<GrimoireCharacter, "ability" | "firstNightReminder" | "otherNightReminder" | "reminders" | "remindersGlobal">;
+export type CharacterTexts = Pick<GrimoireCharacter, "ability" | "firstNightReminder" | "otherNightReminder" | "reminders" | "remindersGlobal">;
 
 /** Pairs of these characters with a jinx between them (listed by either of the two), each once, with the reason. */
 export function jinxesAmong(roleIds: (string | null)[], characters: Record<string, GrimoireCharacter>) {
@@ -102,38 +102,47 @@ export function jinxesAmong(roleIds: (string | null)[], characters: Record<strin
   );
 }
 
-/** Every character of modules/botc/lib/botc-roles (the Fabled and Loric too) in the page's language; the grimoire page hands it to the browser. */
+/**
+ * One character for the grimoire from its data: the texts in the page's language and in English (the tokens'
+ * meaning is found by the English ones). Homebrew characters come through here too (grimoire/homebrew.ts).
+ */
+export function toGrimoireCharacter(
+  id: string,
+  c: Pick<GrimoireCharacter, "firstNight" | "otherNight" | "setup"> & { jinxes?: { id: string; reason: string }[] },
+  en: CharacterTexts,
+  local: CharacterTexts,
+): GrimoireCharacter {
+  const tokenKinds: Record<string, TokenKind> = {};
+  const selfTokens = new Set<string>();
+  en.reminders.forEach((text, i) => {
+    const kind = tokenKind(text);
+    const shown = local.reminders[i];
+    if (kind && shown) tokenKinds[shown] = kind;
+    if (shown && (kind === "noAbility" || SELF_TOKENS[id]?.includes(text))) selfTokens.add(shown);
+  });
+  // Lil' Monsta's tokens are all global: "Is the Demon" at its babysitter, its "Dead"
+  en.remindersGlobal.forEach((text, i) => {
+    const kind = tokenKind(text);
+    const shown = local.remindersGlobal[i];
+    if (kind && shown) tokenKinds[shown] = kind;
+  });
+  return {
+    firstNight: c.firstNight,
+    otherNight: c.otherNight,
+    setup: c.setup,
+    ...local,
+    once: /once per game/i.test(en.ability),
+    tokenKinds,
+    selfTokens: [...selfTokens],
+    jinxes: Object.fromEntries((c.jinxes ?? []).map((j) => [j.id, j.reason])),
+  };
+}
+
+/**
+ * Every official character of modules/botc/lib/botc-roles (the Fabled and Loric too) in the page's language; the
+ * grimoire page hands it to the browser, with the homebrew characters it needs (grimoire/homebrew.ts).
+ */
 export function grimoireCharacters(locale: Locale): Record<string, GrimoireCharacter> {
   const characters = data as Record<string, CharacterData>;
-  return Object.fromEntries(
-    Object.entries(characters).map(([id, c]) => {
-      const tokenKinds: Record<string, TokenKind> = {};
-      const selfTokens = new Set<string>();
-      c.en.reminders.forEach((en, i) => {
-        const kind = tokenKind(en);
-        const text = c[locale].reminders[i];
-        if (kind && text) tokenKinds[text] = kind;
-        if (text && (kind === "noAbility" || SELF_TOKENS[id]?.includes(en))) selfTokens.add(text);
-      });
-      // Lil' Monsta's tokens are all global: "Is the Demon" at its babysitter, its "Dead"
-      c.en.remindersGlobal.forEach((en, i) => {
-        const kind = tokenKind(en);
-        const text = c[locale].remindersGlobal[i];
-        if (kind && text) tokenKinds[text] = kind;
-      });
-      return [
-        id,
-        {
-          firstNight: c.firstNight,
-          otherNight: c.otherNight,
-          setup: c.setup,
-          ...c[locale],
-          once: /once per game/i.test(c.en.ability),
-          tokenKinds,
-          selfTokens: [...selfTokens],
-          jinxes: Object.fromEntries((c.jinxes ?? []).map((j) => [j.id, j.reason])),
-        },
-      ];
-    }),
-  );
+  return Object.fromEntries(Object.entries(characters).map(([id, c]) => [id, toGrimoireCharacter(id, c, c.en, c[locale])]));
 }

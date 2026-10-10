@@ -4,13 +4,14 @@ import { useActionState, useMemo, useState } from "react";
 import type { MessageState } from "@/modules/botc/actions/draft";
 import type { DraftModeId, DraftRoleSource } from "@/db/schema";
 import { plural, type PluralForms } from "@/i18n/plural";
-import type { RoleEdition, RoleTeam } from "@/modules/botc/lib/botc-roles";
+import { homebrewCollections, homebrewRoles, roleIcon, type BotcRole, type RoleEdition, type RoleTeam } from "@/modules/botc/lib/botc-roles";
 import { roleIdsFromScriptJson } from "@/modules/botc/lib/draft/roles";
 import { keepValues } from "@/components/keep-values";
 import { Alert, Button, Field, inputClass } from "@/components/ui";
+import { sideClass } from "./role-chips";
 import { TeamSection } from "./team-section";
 
-export type RoleItem = { id: string; team: RoleTeam; edition: RoleEdition; name: string; className: string };
+export type RoleItem = { id: string; team: RoleTeam; edition: BotcRole["edition"]; name: string; className: string };
 export type ModeInfo = {
   id: DraftModeId;
   name: string;
@@ -26,6 +27,8 @@ export type DraftFormLabels = {
   sourceFilter: string;
   sourceManual: string;
   editions: string;
+  homebrew: string;
+  homebrewHint: string;
   teams: string;
   importTitle: string;
   importHint: string;
@@ -73,9 +76,10 @@ export function DraftForm({
   const [state, formAction, pending] = useActionState(action, {});
   const src = initial.roleSource;
   const [kind, setKind] = useState<DraftRoleSource["kind"]>(src.kind);
-  const [pickedEditions, setPickedEditions] = useState<Set<RoleEdition>>(
+  const [pickedEditions, setPickedEditions] = useState<Set<string>>(
     new Set(src.kind === "filter" ? src.editions : editions.map((e) => e.id)),
   );
+  const [pickedCollections, setPickedCollections] = useState<Set<string>>(new Set(src.kind === "filter" ? (src.collections ?? []) : []));
   const [pickedTeams, setPickedTeams] = useState<Set<RoleTeam>>(
     new Set(src.kind === "filter" ? src.teams : teams.filter((x) => x.id !== "traveller").map((x) => x.id)),
   );
@@ -88,9 +92,18 @@ export function DraftForm({
 
   const offeredCount = useMemo(
     () =>
-      kind === "manual" ? manual.size : roles.filter((r) => pickedEditions.has(r.edition) && pickedTeams.has(r.team)).length,
-    [kind, manual, roles, pickedEditions, pickedTeams],
+      kind === "manual"
+        ? manual.size
+        : roles.filter((r) => pickedEditions.has(r.edition) && pickedTeams.has(r.team)).length +
+          homebrewRoles.filter((r) => pickedCollections.has(r.collection!) && pickedTeams.has(r.team)).length,
+    [kind, manual, roles, pickedEditions, pickedCollections, pickedTeams],
   );
+
+  const homebrewCount = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const r of homebrewRoles) if (pickedTeams.has(r.team)) counts.set(r.collection!, (counts.get(r.collection!) ?? 0) + 1);
+    return counts;
+  }, [pickedTeams]);
 
   const toggle = <T,>(set: Set<T>, value: T, on: boolean) => {
     const next = new Set(set);
@@ -176,6 +189,29 @@ export function DraftForm({
                   {e.label}
                 </label>
               ))}
+              <details className="mt-1 text-sm" open={pickedCollections.size > 0}>
+                <summary className="cursor-pointer font-medium">
+                  {t.homebrew}
+                  {pickedCollections.size > 0 && ` (${pickedCollections.size})`}
+                </summary>
+                <p className="mt-1 text-xs text-muted">{t.homebrewHint}</p>
+                <div className="mt-1 flex flex-col gap-1">
+                  {homebrewCollections.map((c) => (
+                    <label key={c.key} className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        name="collection"
+                        value={c.key}
+                        checked={pickedCollections.has(c.key)}
+                        onChange={(ev) => setPickedCollections(toggle(pickedCollections, c.key, ev.target.checked))}
+                        className="h-4 w-4 accent-accent"
+                      />
+                      {c.name}
+                      <span className="text-xs text-muted">{homebrewCount.get(c.key)}</span>
+                    </label>
+                  ))}
+                </div>
+              </details>
               {errors.editions?.map((m) => <p key={m} className="text-xs text-accent">{m}</p>)}
             </div>
             <div className="flex flex-col gap-1">
@@ -255,7 +291,7 @@ export function DraftForm({
                           className="h-4 w-4 accent-accent"
                         />
                         {/* eslint-disable-next-line @next/next/no-img-element -- tiny pre-sized WebP from public/, no optimisation needed */}
-                        <img src={`/botc/roles/${r.id}.webp`} alt="" width={20} height={20} className="h-5 w-5" />
+                        <img src={roleIcon(r.id)} alt="" width={20} height={20} className="h-5 w-5" />
                         <span className={r.className}>{r.name}</span>
                       </label>
                     ))}
@@ -263,6 +299,46 @@ export function DraftForm({
                 </TeamSection>
               );
             })}
+            <div className="flex flex-col gap-2">
+              <span className="text-sm font-medium">{t.homebrew}</span>
+              <p className="text-xs text-muted">{t.homebrewHint}</p>
+              {homebrewCollections.map((c) => {
+                const ofCollection = homebrewRoles.filter((r) => r.collection === c.key);
+                const count = ofCollection.filter((r) => manual.has(r.id)).length;
+                return (
+                  <details key={c.key} className="rounded-md border border-border p-2 text-sm" open={count > 0}>
+                    <summary className="cursor-pointer">
+                      <span className="font-medium">{c.name}</span> <span className="text-xs text-muted">{`${count} / ${ofCollection.length} ${t.selected}`}</span>
+                    </summary>
+                    <div className="mt-1 flex gap-3 text-xs">
+                      <button type="button" className="underline" onClick={() => setManual(new Set([...manual, ...ofCollection.map((r) => r.id)]))}>
+                        {t.all}
+                      </button>
+                      <button type="button" className="underline" onClick={() => setManual(new Set([...manual].filter((id) => !ofCollection.some((r) => r.id === id))))}>
+                        {t.none}
+                      </button>
+                    </div>
+                    <div className="mt-1 grid grid-cols-2 gap-x-3 gap-y-0.5 sm:grid-cols-3 lg:grid-cols-4">
+                      {ofCollection.map((r) => (
+                        <label key={r.id} className="flex items-center gap-1.5">
+                          <input
+                            type="checkbox"
+                            name="role"
+                            value={r.id}
+                            checked={manual.has(r.id)}
+                            onChange={(ev) => setManual(toggle(manual, r.id, ev.target.checked))}
+                            className="h-4 w-4 accent-accent"
+                          />
+                          {/* eslint-disable-next-line @next/next/no-img-element -- tiny pre-sized WebP from public/; lazy: most collections stay closed */}
+                          <img src={roleIcon(r.id)} alt="" width={20} height={20} loading="lazy" className="h-5 w-5" />
+                          <span className={sideClass(r.id)}>{r.en}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </details>
+                );
+              })}
+            </div>
             {errors.roles?.map((m) => <p key={m} className="text-xs text-accent">{m}</p>)}
           </div>
         )}

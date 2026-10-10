@@ -15,8 +15,10 @@ const fabled = storytellerRoles.map((r) => r.id);
  * to store the page, its scripts and styles, and the icons of every character the game may need (the script's,
  * the travellers', the Fabled and Loric, the ones at the table).
  */
-export function useOfflineCopy(state: Pick<GrimoireState, "script" | "seats" | "bluffs">, enabled: boolean) {
-  const roles = [...new Set([...state.script.roleIds, ...travellers, ...fabled, ...state.seats.flatMap((s) => [s.role, s.believedRole]), ...state.bluffs])]
+export function useOfflineCopy(state: Pick<GrimoireState, "script" | "seats" | "bluffs" | "fabled">, enabled: boolean) {
+  // the script's homebrew Fabled and Loric too, and the ones in the game
+  const storyteller = [...fabled, ...(state.script.fabled ?? []), ...(state.fabled ?? [])];
+  const roles = [...new Set([...state.script.roleIds, ...travellers, ...storyteller, ...state.seats.flatMap((s) => [s.role, s.believedRole]), ...state.bluffs])]
     .filter((id): id is string => !!id)
     .sort()
     .join();

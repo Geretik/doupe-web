@@ -1,11 +1,11 @@
 import type { Dict, Locale } from "@/i18n/dictionaries";
-import { botcRoles, roleIcon, roleName, roleSide, type RoleEdition } from "@/modules/botc/lib/botc-roles";
+import { botcRoles, homebrewRoles, roleIcon, roleName, roleSide, type RoleEdition } from "@/modules/botc/lib/botc-roles";
 import type { Badge, BadgeId } from "@/modules/botc/lib/player-badges";
 import type { PlayerStats } from "@/modules/botc/lib/player-stats";
 
-type Group = RoleEdition | "travellers";
-const groups: Group[] = ["tb", "bmr", "snv", "carousel", "travellers"];
-/** The base editions show the characters still to play too; the experimental ones and the travellers are too many */
+type Group = RoleEdition | "travellers" | "homebrew";
+const groups: Group[] = ["tb", "bmr", "snv", "carousel", "travellers", "homebrew"];
+/** The base editions show the characters still to play too; the experimental ones, the travellers and homebrew are too many */
 const whole = new Set<Group>(["tb", "bmr", "snv"]);
 
 /**
@@ -15,7 +15,10 @@ const whole = new Set<Group>(["tb", "bmr", "snv"]);
 export function MyCharacters({ roles, locale, m }: { roles: PlayerStats["roles"]; locale: Locale; m: Dict["myGames"] }) {
   const counts = new Map(roles.map(({ role, count }) => [role.id, count]));
   const sections = groups.flatMap((group) => {
-    const all = botcRoles.filter((r) => (group === "travellers" ? r.team === "traveller" : r.edition === group && r.team !== "traveller"));
+    const all =
+      group === "homebrew"
+        ? homebrewRoles
+        : botcRoles.filter((r) => (group === "travellers" ? r.team === "traveller" : r.edition === group && r.team !== "traveller"));
     const mine = all.filter((r) => counts.has(r.id)).length;
     return mine ? [{ group, all, mine, shown: whole.has(group) ? all : all.filter((r) => counts.has(r.id)) }] : [];
   });

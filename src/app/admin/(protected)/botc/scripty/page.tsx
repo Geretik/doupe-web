@@ -20,6 +20,7 @@ export default async function ScriptsPage() {
       <div className="flex flex-col gap-2">
         <h1 className="text-2xl font-bold">{s.title}</h1>
         <p className="max-w-3xl text-sm text-muted">{s.intro}</p>
+        <Link href="/admin/botc/scripty/homebrew" className="self-start text-sm font-medium text-accent hover:underline">{s.homebrewLink} →</Link>
       </div>
 
       {rows.length === 0 ? (

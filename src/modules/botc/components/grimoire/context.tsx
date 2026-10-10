@@ -28,7 +28,10 @@ export type GrimoireContextValue = {
   scale: number;
   /** Opens a card to show a player over the whole screen */
   show: (card: ShowCard) => void;
+  /** The official characters and the homebrew ones the game may need (the grimoire's own, the library scripts') */
   characters: Record<string, GrimoireCharacter>;
+  /** Adds homebrew characters, those of a script pasted on the page */
+  addCharacters: (characters: Record<string, GrimoireCharacter>) => void;
   /** The session's signed-up players (sign-up id, nickname), for naming the seats; empty without a session */
   sessionPlayers: { id: number; nickname: string }[];
   locale: Locale;

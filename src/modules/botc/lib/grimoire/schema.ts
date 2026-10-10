@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { gameWinners } from "@/db/schema";
-import { BLUFF_COUNT, findRole, findStorytellerRole, storytellerRoles } from "@/modules/botc/lib/botc-roles";
+import { BLUFF_COUNT, findRole, findStorytellerRole, homebrewStorytellerRoles, storytellerRoles } from "@/modules/botc/lib/botc-roles";
 import { eventKinds, gapKinds, HOMEBREW_LIMITS, MAX_EVENTS, MAX_REMINDERS, MAX_SEATS, sides, townLayouts, type GrimoireState } from "./state";
 
 const roleId = z.string().max(40).refine((id) => findRole(id) !== undefined);
@@ -8,7 +8,7 @@ const roleId = z.string().max(40).refine((id) => findRole(id) !== undefined);
 const fabledId = z.string().max(40).refine((id) => findStorytellerRole(id) !== undefined);
 /** A character whose tokens lie in the town or whose ability did something: a player's or the Storyteller's */
 const anyRoleId = z.union([roleId, fabledId]);
-const fabledList = z.array(fabledId).max(storytellerRoles.length);
+const fabledList = z.array(fabledId).max(storytellerRoles.length + homebrewStorytellerRoles.length);
 const homebrewText = z.string().trim().min(1).max(HOMEBREW_LIMITS.text);
 const homebrew = z.object({
   rules: z.array(homebrewText).max(HOMEBREW_LIMITS.rules),

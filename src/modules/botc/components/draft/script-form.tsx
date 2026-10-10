@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import type { MessageState } from "@/modules/botc/actions/draft";
 import { keepValues } from "@/components/keep-values";
+import { roleIcon } from "@/modules/botc/lib/botc-roles";
 import { Alert, Button, Field, inputClass } from "@/components/ui";
 import { TeamSection, type GroupKey } from "./team-section";
 
@@ -47,7 +48,7 @@ export function DraftScriptForm({
                 <label key={r.id} className="flex items-center gap-1.5 text-sm">
                   <input type="checkbox" name="role" value={r.id} defaultChecked={chosen.has(r.id)} className="h-4 w-4 accent-accent" />
                   {/* eslint-disable-next-line @next/next/no-img-element -- tiny pre-sized WebP from public/, no optimisation needed */}
-                  <img src={`/botc/roles/${r.id}.webp`} alt="" width={20} height={20} className="h-5 w-5" />
+                  <img src={roleIcon(r.id)} alt="" width={20} height={20} className="h-5 w-5" />
                   <span className={r.className}>{r.name}</span>
                 </label>
               ))}

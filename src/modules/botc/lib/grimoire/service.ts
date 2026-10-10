@@ -5,7 +5,7 @@ import { hasRole } from "@/lib/admin-auth";
 import { botcRoles, linkedRoleOf } from "@/modules/botc/lib/botc-roles";
 import { saveRoster } from "@/modules/botc/lib/game-roster";
 import { scriptToolLinkForJson } from "@/modules/botc/lib/draft/script";
-import { libraryScriptExtras, libraryScriptToolLink } from "@/modules/botc/lib/scripts";
+import { libraryScriptExtras, libraryScriptToolLink, withCurrentRoles } from "@/modules/botc/lib/scripts";
 import type { RosterValue } from "@/lib/validation";
 import { newGap, newGrimoireState, newSeat, players, type GrimoireState } from "./state";
 
@@ -36,7 +36,7 @@ export async function grimoireScripts(): Promise<(GrimoireState["script"] & { id
     .select({ id: scripts.id, name: scripts.name, roleIds: scripts.roleIds, json: scripts.json })
     .from(scripts)
     .orderBy(sql`lower(${scripts.name})`);
-  return rows.map(({ json, ...script }) => ({ ...script, ...libraryScriptExtras({ json }) }));
+  return rows.map(({ json, ...script }) => ({ ...script, roleIds: withCurrentRoles({ json, roleIds: script.roleIds }).roleIds, ...libraryScriptExtras({ json }) }));
 }
 
 /** Sessions a new grimoire can start from: the last week's and the coming weeks'. */

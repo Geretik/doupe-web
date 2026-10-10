@@ -1,5 +1,5 @@
 import type { DraftRoleSource } from "@/db/schema";
-import { botcRoles, findRole, roleTeams, type BotcRole, type RoleEdition, type RoleTeam } from "../botc-roles";
+import { botcRoles, findRole, homebrewRoles, matchHomebrew, roleTeams, type BotcRole, type RoleEdition, type RoleTeam } from "../botc-roles";
 
 /*
  * Which characters a draft offers and in what pieces. Pure functions – no database – shared by the admin
@@ -35,9 +35,14 @@ export function sortRoleIds(ids: Iterable<string>): string[] {
 /** The characters a role source stands for, sorted. */
 export function resolveRoleSource(source: DraftRoleSource): string[] {
   if (source.kind === "manual") return sortRoleIds(source.roleIds);
-  const editions = new Set(source.editions);
+  const editions = new Set<string>(source.editions);
+  const collections = new Set(source.collections ?? []);
   const teams = new Set(source.teams);
-  return sortRoleIds(botcRoles.filter((r) => editions.has(r.edition) && teams.has(r.team)).map((r) => r.id));
+  return sortRoleIds(
+    [...botcRoles.filter((r) => editions.has(r.edition)), ...homebrewRoles.filter((r) => collections.has(r.collection!))]
+      .filter((r) => teams.has(r.team))
+      .map((r) => r.id),
+  );
 }
 
 /**
@@ -68,8 +73,8 @@ for (const r of botcRoles) {
 
 /**
  * Character ids from a script's JSON as the official script tool, botcscripts.com or the club's script tool
- * export it: an array of ids or of objects with an id, plus a "_meta" entry. Characters this site does not know
- * (Fabled, Loric, homebrew) are left out.
+ * export it: an array of ids or of objects with an id, plus a "_meta" entry. The homebrew characters of the site's
+ * collections count; Fabled, Loric and homebrew the site does not know are left out.
  */
 export function roleIdsFromScriptJson(json: string): string[] | null {
   let data: unknown;
@@ -82,8 +87,8 @@ export function roleIdsFromScriptJson(json: string): string[] | null {
   const ids: string[] = [];
   for (const item of data) {
     const raw = typeof item === "string" ? item : item && typeof item === "object" && "id" in item ? String(item.id) : null;
-    const id = raw && raw !== "_meta" ? matchRoleId(raw) : null;
-    if (id) ids.push(id);
+    const id = raw && raw !== "_meta" ? (matchRoleId(raw) ?? matchHomebrew(item)) : null;
+    if (id && findRole(id)) ids.push(id);
   }
   return sortRoleIds(ids);
 }

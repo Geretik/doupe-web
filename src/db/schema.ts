@@ -434,11 +434,12 @@ export const draftModeIds = ["personal", "shared"] as const;
 export type DraftModeId = (typeof draftModeIds)[number];
 
 /**
- * Which characters a Draft offers: those of the chosen editions and teams, or a hand-picked list
- * (character ids from modules/botc/lib/botc-roles, e.g. "washerwoman").
+ * Which characters a Draft offers: those of the chosen editions and homebrew collections (keys of botc-roles
+ * homebrewCollections; none in drafts set up before them) and teams, or a hand-picked list (character ids from
+ * modules/botc/lib/botc-roles, e.g. "washerwoman").
  */
 export type DraftRoleSource =
-  | { kind: "filter"; editions: RoleEdition[]; teams: RoleTeam[] }
+  | { kind: "filter"; editions: RoleEdition[]; collections?: string[]; teams: RoleTeam[] }
   | { kind: "manual"; roleIds: string[] };
 
 export const drafts = pgTable("drafts", {

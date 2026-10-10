@@ -9,6 +9,7 @@
     "lint": "eslint",
     "hry": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/game-collection.mjs",
     "botc-data": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/botc-data.mjs",
+    "homebrew": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/homebrew.mjs",
     "db:push": "drizzle-kit push",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",

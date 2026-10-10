@@ -2,7 +2,7 @@ import { and, desc, eq, ne, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { adminUsers, scripts, type AdminUser, type LibraryScript, type ScriptLink } from "@/db/schema";
 import { hasRole } from "@/lib/admin-auth";
-import { matchStorytellerId } from "./botc-roles";
+import { findRole, isHomebrew, matchHomebrew, matchStorytellerId } from "./botc-roles";
 import { HOMEBREW_LIMITS, type Homebrew } from "./grimoire/state";
 import { matchRoleId, sortRoleIds } from "./draft/roles";
 import { scriptToolLinkForJson } from "./draft/script";
@@ -22,13 +22,13 @@ export const MAX_LINK = 2000;
 export type ParsedScript = {
   items: unknown[];
   meta: { name: string | null; author: string | null };
-  /** The characters this site knows, sorted */
+  /** The characters this site knows (the homebrew ones of its collections too), sorted */
   roleIds: string[];
-  /** Entries that are no player's character (Fabled, Loric, homebrew), by name or id */
+  /** Entries that are no player's character (Fabled, Loric, homebrew the site does not know), by name or id */
   extras: string[];
   /** The Fabled and Loric among them that the site knows, by id: the grimoire has them */
   fabled: string[];
-  /** Its own rules and characters with their abilities, for the Bootlegger in the grimoire */
+  /** Its own rules and the homebrew characters the site does not know, with their abilities, for the Bootlegger in the grimoire */
   homebrew: Homebrew;
 };
 
@@ -73,7 +73,18 @@ export function parseScriptFile(text: string): { ok: true; script: ParsedScript 
       roleIds.push(id);
       continue;
     }
+    // a homebrew character of the site's collections (botc-roles homebrewRoles): a player's one like the official
+    // ones, a Fabled or Loric among the Fabled
+    const known = matchHomebrew(item);
+    if (known && findRole(known)) {
+      roleIds.push(known);
+      continue;
+    }
     extras.push(str((item as { name?: unknown })?.name) ?? entryId(item)!);
+    if (known) {
+      if (!fabled.includes(known)) fabled.push(known);
+      continue;
+    }
     // the official Fabled or Loric: not a homebrew character of a player's team that happens to share its id
     const storyteller = matchStorytellerId(entryId(item)!);
     const team = (item as { team?: unknown })?.team;
@@ -89,6 +100,9 @@ export function parseScriptFile(text: string): { ok: true; script: ParsedScript 
     }
   }
   if (roleIds.length + extras.length === 0) return { ok: false, error: "noCharacters" };
+  // homebrew needs the Bootlegger (the official rule; the script tool adds it too), whose panel in the grimoire shows it
+  const hasHomebrew = roleIds.some(isHomebrew) || fabled.some(isHomebrew) || homebrew.rules.length > 0 || homebrew.characters.length > 0;
+  if (hasHomebrew && !fabled.includes("bootlegger")) fabled.push("bootlegger");
   return {
     ok: true,
     script: { items: data, meta: { name: str(meta?.name), author: str(meta?.author) }, roleIds: sortRoleIds(new Set(roleIds)), extras, fabled, homebrew },
@@ -132,12 +146,22 @@ export function canEditScript(me: AdminUser, script: Pick<LibraryScript, "create
   return script.createdBy === me.id || hasRole(me, "admin");
 }
 
+/**
+ * A saved script with its characters as the site reads its file today: `role_ids` is worked out on save, and a
+ * homebrew character the site learns later (`npm run homebrew`) is one of them only from then on.
+ */
+export function withCurrentRoles<T extends Pick<LibraryScript, "json" | "roleIds">>(script: T): T {
+  const parsed = parseScriptFile(script.json);
+  return parsed.ok ? { ...script, roleIds: parsed.script.roleIds } : script;
+}
+
 export async function listScripts() {
-  return db
+  const rows = await db
     .select({ script: scripts, creator: adminUsers.nickname })
     .from(scripts)
     .leftJoin(adminUsers, eq(adminUsers.id, scripts.createdBy))
     .orderBy(sql`lower(${scripts.name})`);
+  return rows.map((r) => ({ ...r, script: withCurrentRoles(r.script) }));
 }
 
 export async function getLibraryScript(id: number) {
@@ -146,7 +170,7 @@ export async function getLibraryScript(id: number) {
     .from(scripts)
     .leftJoin(adminUsers, eq(adminUsers.id, scripts.createdBy))
     .where(eq(scripts.id, id));
-  return row ?? null;
+  return row ? { ...row, script: withCurrentRoles(row.script) } : null;
 }
 
 /** Names are unique regardless of case: the session form finds a script by its name. `q`: a transaction to ask in. */
@@ -157,6 +181,17 @@ export async function scriptNameTaken(name: string, exceptId?: number, q: Pick<t
     .where(and(sql`lower(${scripts.name}) = lower(${name})`, exceptId ? ne(scripts.id, exceptId) : undefined))
     .limit(1);
   return Boolean(row);
+}
+
+/** The homebrew characters of the library's scripts, by the script's name in lower case: the game form offers them. */
+export async function homebrewByScript(): Promise<Record<string, string[]>> {
+  const rows = await db.select({ name: scripts.name, json: scripts.json, roleIds: scripts.roleIds }).from(scripts);
+  return Object.fromEntries(
+    rows.flatMap((r) => {
+      const ids = withCurrentRoles(r).roleIds.filter(isHomebrew);
+      return ids.length ? [[r.name.trim().toLowerCase(), ids]] : [];
+    }),
+  );
 }
 
 /** The library for the session form: by name with a link to the script tool (none when too long for the form). */

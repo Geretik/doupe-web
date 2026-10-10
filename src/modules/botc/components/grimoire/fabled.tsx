@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { findStorytellerRole, roleTeams, storytellerRoles, type RoleTeam, type StorytellerTeam } from "@/modules/botc/lib/botc-roles";
+import { findStorytellerRole, homebrewCollectionOf, isHomebrew, roleTeams, storytellerRoles, type RoleTeam, type StorytellerTeam } from "@/modules/botc/lib/botc-roles";
 import { jinxesAmong } from "@/modules/botc/lib/grimoire/characters";
 import {
   endFiddle,
@@ -34,9 +34,13 @@ function withFabled(s: GrimoireState, id: string): GrimoireState {
   return s.fabled?.includes(id) ? s : { ...s, fabled: [...(s.fabled ?? []), id] };
 }
 
-/** The Fabled and Loric the Storyteller may add now: any before the game, during it only the ones meant for any time. */
-function addable(state: Pick<GrimoireState, "phase">) {
-  return storytellerRoles.filter((r) => state.phase === "setup" || r.anyTime).map((r) => r.id);
+/**
+ * The Fabled and Loric the Storyteller may add now: any before the game, during it only the ones meant for any time;
+ * the homebrew ones of the script before the game.
+ */
+function addable(state: Pick<GrimoireState, "phase" | "script">) {
+  const homebrew = state.phase === "setup" ? (state.script.fabled ?? []).filter(isHomebrew) : [];
+  return [...storytellerRoles.filter((r) => state.phase === "setup" || r.anyTime).map((r) => r.id), ...homebrew];
 }
 
 /** The game without the Fabled or Loric, and without its tokens at the players (and the Fiddler's contest). */
@@ -219,15 +223,34 @@ export function FabledPanel({
   );
 }
 
-/** The Bootlegger's: the script's own rules and characters, only to read – no player gets a homebrew character here. */
+/**
+ * The Bootlegger's: the script's own rules, the homebrew characters of the club's collections (the grimoire knows
+ * them like the official ones) and other homebrew characters, only to read – no player gets one of those.
+ */
 function Homebrew() {
-  const { state, t } = useGrimoire();
+  const { state, locale, t } = useGrimoire();
   const { rules = [], characters = [] } = state.script.homebrew ?? {};
+  const known = [...state.script.roleIds, ...(state.script.fabled ?? [])].filter(isHomebrew);
   const teamName = (team: string | null) =>
     roleTeams.includes(team as RoleTeam) ? t.teams[team as RoleTeam] : team === "fabled" || team === "loric" ? t.storytellerTeams[team] : null;
-  if (!rules.length && !characters.length) return <p className="text-sm text-muted">{t.homebrewNone}</p>;
+  if (!rules.length && !characters.length && !known.length) return <p className="text-sm text-muted">{t.homebrewNone}</p>;
   return (
     <div className="flex flex-col gap-3" data-testid="homebrew">
+      {known.length > 0 && (
+        <section className="flex flex-col gap-1.5">
+          <h3 className={heading}>{t.homebrewKnown}</h3>
+          <ul className="flex flex-col gap-1 text-sm">
+            {known.map((id) => (
+              <li key={id} className="flex items-center gap-2">
+                <RoleIcon roleId={id} size={22} />
+                <span className="font-semibold">{nameOf(id, locale)}</span>
+                <span className="text-xs text-muted">{homebrewCollectionOf(id)?.name}</span>
+              </li>
+            ))}
+          </ul>
+          <p className="text-xs text-muted">{t.homebrewKnownHint}</p>
+        </section>
+      )}
       {rules.length > 0 && (
         <section className="flex flex-col gap-1.5">
           <h3 className={heading}>{t.homebrewRules}</h3>

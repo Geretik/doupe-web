@@ -1,4 +1,6 @@
 import type { Locale } from "@/i18n/dictionaries";
+// a relative path, not "@/data": scripts/botc-data.mjs reads this module in plain Node
+import homebrew from "../../../data/homebrew-roles.json" with { type: "json" };
 
 /**
  * Characters a player can have in a game – no Fabled or Loric, those belong to the Storyteller (storytellerRoles).
@@ -9,7 +11,8 @@ import type { Locale } from "@/i18n/dictionaries";
 export const roleTeams = ["townsfolk", "outsider", "minion", "demon", "traveller"] as const;
 export type RoleTeam = (typeof roleTeams)[number];
 export type RoleEdition = "tb" | "bmr" | "snv" | "carousel";
-export type BotcRole = { id: string; team: RoleTeam; edition: RoleEdition; en: string; cs: string };
+/** `collection`: the homebrew collection of a homebrew character (see homebrewRoles), whose edition is "homebrew" */
+export type BotcRole = { id: string; team: RoleTeam; edition: RoleEdition | "homebrew"; en: string; cs: string; collection?: string };
 
 /** Sorted by team, then by the Czech name */
 export const botcRoles: readonly BotcRole[] = [
@@ -171,6 +174,82 @@ export const botcRoles: readonly BotcRole[] = [
   { id: "beggar", team: "traveller", edition: "tb", en: "Beggar", cs: "Žebrák" },
 ];
 
+/**
+ * Homebrew characters: the collections of the BotC HomeBrew Wiki (botchomebrew.wiki) the club chose, read by
+ * scripts/homebrew.mjs (`npm run homebrew`). They are characters like the official ones – in the grimoire, game
+ * records, drafts and scripts – but no picker lists all of them: a script, a draft's source or a collection
+ * names the ones in use. Names in English only. Their ids are `<collection key>_<id on the wiki>`; an official
+ * id never has "_". Abilities and night order: grimoire/homebrew.ts, on the server only.
+ */
+export type HomebrewCollection = { key: string; name: string; author: string | null; url: string };
+/** `src`: the id on the wiki, `h`: abilityHash of its ability, `noIcon`: the wiki had no art for it */
+type HomebrewEntry = { id: string; team: string; en: string; c: string; src: string; h: string; noIcon?: boolean };
+
+export const homebrewCollections: readonly HomebrewCollection[] = homebrew.collections;
+const homebrewEntries: readonly HomebrewEntry[] = homebrew.roles;
+const homebrewById = new Map(homebrewEntries.map((e) => [e.id, e]));
+const collectionByKey = new Map(homebrewCollections.map((c) => [c.key, c]));
+
+const isRoleTeam = (team: string): team is RoleTeam => (roleTeams as readonly string[]).includes(team);
+
+/** The homebrew players' characters (no Fabled or Loric), collection by collection */
+export const homebrewRoles: readonly BotcRole[] = homebrewEntries.flatMap((e) =>
+  isRoleTeam(e.team) ? [{ id: e.id, team: e.team, edition: "homebrew" as const, en: e.en, cs: e.en, collection: e.c }] : [],
+);
+
+/** The homebrew collection a character is from; undefined for an official one. */
+export function homebrewCollectionOf(id: string | null | undefined) {
+  const entry = id ? homebrewById.get(id) : undefined;
+  return entry ? collectionByKey.get(entry.c) : undefined;
+}
+
+export function isHomebrew(id: string | null | undefined) {
+  return Boolean(id && homebrewById.has(id));
+}
+
+/** Letters and digits of a text, lower case, without diacritics – as scripts/homebrew.mjs compares them */
+function plainKey(text: string) {
+  return text
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+}
+
+/** FNV-1a of an ability's letters and digits; the same in scripts/homebrew.mjs */
+export function abilityHash(ability: string) {
+  let h = 0x811c9dc5;
+  for (const ch of plainKey(ability.replace(/:reminder:/g, ""))) h = Math.imul(h ^ ch.charCodeAt(0), 0x01000193) >>> 0;
+  return h.toString(36);
+}
+
+const homebrewBySrc = new Map<string, HomebrewEntry[]>();
+const homebrewByName = new Map<string, HomebrewEntry[]>();
+for (const e of homebrewEntries) {
+  for (const [map, k] of [
+    [homebrewBySrc, plainKey(e.src)],
+    [homebrewByName, plainKey(e.en)],
+  ] as const) {
+    if (k) map.set(k, [...(map.get(k) ?? []), e]);
+  }
+}
+
+/**
+ * The homebrew character a script's entry stands for: its id here ("luis_cobbler"), or its id on the wiki or its
+ * name – and its ability, when the entry has one: a homebrew of the same name with another ability is another
+ * character, and three collections have a Ronin. Null when it is none of them or it is not clear which.
+ */
+export function matchHomebrew(entry: unknown): string | null {
+  const item = typeof entry === "string" ? { id: entry } : entry && typeof entry === "object" ? (entry as Record<string, unknown>) : {};
+  const id = typeof item.id === "string" ? item.id : "";
+  if (homebrewById.has(id)) return id;
+  const name = typeof item.name === "string" ? plainKey(item.name) : "";
+  const candidates = new Set([...(homebrewBySrc.get(plainKey(id)) ?? []), ...(name ? (homebrewByName.get(name) ?? []) : [])]);
+  const hash = typeof item.ability === "string" ? abilityHash(item.ability) : null;
+  const fitting = [...candidates].filter((e) => hash === null || e.h === hash);
+  return fitting.length === 1 ? fitting[0].id : null;
+}
+
 /** Value of the game form's character select for a player who did not play that game. */
 export const SAT_OUT = "__out";
 /** Stored instead of a character for a player who ran the game; no character has this id. */
@@ -203,7 +282,7 @@ export function linkedRoleOf(roleId: string | null | undefined) {
   return roleId ? linkedRoles[roleId] : undefined;
 }
 
-const byId = new Map(botcRoles.map((r) => [r.id, r]));
+const byId = new Map([...botcRoles, ...homebrewRoles].map((r) => [r.id, r]));
 
 export function findRole(id: string | null | undefined) {
   return id ? byId.get(id) : undefined;
@@ -224,7 +303,7 @@ export type StorytellerTeam = "fabled" | "loric";
  * declare that…"); the other Fabled are added at the start of the game, every Loric as well ("All Loric must be added
  * at the start of the game").
  */
-export type StorytellerRole = { id: string; team: StorytellerTeam; en: string; cs: string; anyTime?: true };
+export type StorytellerRole = { id: string; team: StorytellerTeam; en: string; cs: string; anyTime?: true; collection?: string };
 
 /** Sorted by team, then by the Czech name */
 export const storytellerRoles: readonly StorytellerRole[] = [
@@ -255,7 +334,12 @@ export const storytellerRoles: readonly StorytellerRole[] = [
   { id: "gardener", team: "loric", en: "Gardener", cs: "Zahradník" },
 ];
 
-const storytellerById = new Map(storytellerRoles.map((r) => [r.id, r]));
+/** The homebrew Fabled and Loric, collection by collection; none of them is known to be added during the game */
+export const homebrewStorytellerRoles: readonly StorytellerRole[] = homebrewEntries.flatMap((e) =>
+  e.team === "fabled" || e.team === "loric" ? [{ id: e.id, team: e.team, en: e.en, cs: e.en, collection: e.c }] : [],
+);
+
+const storytellerById = new Map([...storytellerRoles, ...homebrewStorytellerRoles].map((r) => [r.id, r]));
 
 export function findStorytellerRole(id: string | null | undefined) {
   return id ? storytellerById.get(id) : undefined;
@@ -273,7 +357,12 @@ export function characterName(id: string | null | undefined, locale: Locale) {
   return role ? roleName(role, locale) : (id ?? "");
 }
 
+/** A homebrew character the wiki had no art for gets this: its name tells it apart */
+export const NO_ICON = "/botc/roles/hb/_.webp";
+
 export function roleIcon(id: string) {
+  const entry = homebrewById.get(id);
+  if (entry) return entry.noIcon ? NO_ICON : `/botc/roles/hb/${id}.webp`;
   return `/botc/roles/${id}.webp`;
 }
 
