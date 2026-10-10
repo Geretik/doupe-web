@@ -6,18 +6,16 @@ import type { Dict } from "@/i18n/dictionaries";
 import { keepValues } from "../keep-values";
 import { Alert, Button, Field, inputClass } from "../ui";
 
-type Affiliation = keyof Dict["attendance"]["affiliations"];
+type Affiliation = keyof Dict["attendance"]["form"]["answers"];
 
 /** Admin → Prezenčka: puts someone on the sheet of a night by hand. */
 export function AttendanceAddForm({
   t,
   fields,
-  affiliations,
   day,
 }: {
   t: Dict["admin"]["attendance"]["add"];
   fields: Dict["attendance"]["form"];
-  affiliations: Dict["attendance"]["affiliations"];
   /** "YYYY-MM-DD" the form starts with: the night shown */
   day: string;
 }) {
@@ -42,10 +40,10 @@ export function AttendanceAddForm({
       </div>
       <fieldset className="flex flex-wrap gap-x-4 gap-y-2 text-sm">
         <legend className="mb-1 font-medium">{fields.affiliation}</legend>
-        {(Object.keys(affiliations) as Affiliation[]).map((a) => (
+        {(Object.keys(fields.answers) as Affiliation[]).map((a) => (
           <label key={a} className="flex items-center gap-2">
             <input type="radio" name="affiliation" value={a} required className="h-4 w-4 accent-accent" />
-            {affiliations[a]}
+            {fields.answers[a]}
           </label>
         ))}
         {fe.affiliation?.map((e) => (

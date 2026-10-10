@@ -60,8 +60,8 @@ function Czech({ contact, discordAlerts }: Props) {
           (nepovinné), e-mail a text vzkazu, abychom ti mohli odpovědět.
         </li>
         <li>
-          <strong>Prezenčka</strong> – když se na klubovém večeru zapíšeš přes QR kód na stole: jméno, příjmení, vztah
-          k Univerzitě Palackého (student/ka, zaměstnanec/kyně, absolvent/ka, nebo bez vztahu) a kdy ses zapsal/a.
+          <strong>Prezenčka</strong> – když se na klubovém večeru zapíšeš přes QR kód na stole: jméno, příjmení, zda
+          máš vztah k Univerzitě Palackého (studuješ nebo pracuješ tam, jsi absolvent/ka…) a kdy ses zapsal/a.
           Vedeme ji, abychom věděli, kdo klub navštěvuje, a mohli to doložit fakultě, v jejíchž prostorách hrajeme.
         </li>
         <li>
@@ -200,8 +200,8 @@ function English({ contact, discordAlerts }: Props) {
         </li>
         <li>
           <strong>The attendance sheet</strong> – when you sign in at a club night through the QR code on the
-          table: your first and last name, your relation to Palacký University (student, employee, graduate or
-          none) and when you signed in. We keep it to know who comes to the club and to show it to the faculty
+          table: your first and last name, whether you are related to Palacký University (you study or work there,
+          graduated there…) and when you signed in. We keep it to know who comes to the club and to show it to the faculty
           whose rooms we play in.
         </li>
         <li>

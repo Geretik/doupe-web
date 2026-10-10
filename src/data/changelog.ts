@@ -23,7 +23,7 @@ export const changelog: ChangelogEntry[] = [
       },
       {
         for: "players",
-        text: "Prezenčka klubových večerů: načti QR kód na stole a zapiš jméno, příjmení a vztah k UP. Telefon si tě může zapamatovat, příště pak stačí jedno ťuknutí; kamaráda bez telefonu zapíšeš tlačítkem Zapsat někoho dalšího.",
+        text: "Prezenčka klubových večerů: načti QR kód na stole a zapiš jméno, příjmení a jestli máš vztah k UP (ano, nebo ne). Telefon si tě může zapamatovat, příště pak stačí jedno ťuknutí; kamaráda bez telefonu zapíšeš tlačítkem Zapsat někoho dalšího.",
         href: "/prezence",
       },
       {

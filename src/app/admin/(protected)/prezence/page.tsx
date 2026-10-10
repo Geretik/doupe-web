@@ -150,7 +150,7 @@ export default async function AttendanceAdminPage({ searchParams }: { searchPara
                         <td colSpan={2} className="py-2 pr-3 text-muted">{a.erased}</td>
                       )}
                       <td className="py-2 pr-3">
-                        {a.affiliations[e.affiliation]}
+                        {t.attendance.form.answers[e.affiliation]}
                         {e.addedBy !== null && <span className="ml-2 text-xs text-muted">{a.byHand(e.addedByNickname)}</span>}
                       </td>
                       <td className="py-2 text-right">
@@ -172,7 +172,7 @@ export default async function AttendanceAdminPage({ searchParams }: { searchPara
         <details className="border-t border-border pt-3" open={entries.length === 0 && night === today}>
           <summary className="cursor-pointer font-semibold">{a.add.title}</summary>
           <div className="mt-3">
-            <AttendanceAddForm t={a.add} fields={t.attendance.form} affiliations={a.affiliations} day={night} />
+            <AttendanceAddForm t={a.add} fields={t.attendance.form} day={night} />
           </div>
         </details>
       </Card>

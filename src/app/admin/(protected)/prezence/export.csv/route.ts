@@ -21,7 +21,7 @@ export async function GET(req: Request) {
     formatTime(e.createdAt, locale),
     e.firstName,
     e.lastName,
-    a.affiliations[e.affiliation],
+    t.attendance.form.answers[e.affiliation],
     e.addedBy === null ? a.csv.self : a.csv.byHand(e.addedByNickname),
   ]);
   return new Response(toCsv([a.csv.header, ...rows]), {

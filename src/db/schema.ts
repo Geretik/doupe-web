@@ -681,8 +681,8 @@ export const grimoires = pgTable(
 
 export type Grimoire = typeof grimoires.$inferSelect;
 
-/** How someone on the club's attendance sheet is related to Palacký University (UP), the club's host. */
-export const attendanceAffiliations = ["student", "employee", "graduate", "external"] as const;
+/** Whether someone on the club's attendance sheet is related to Palacký University (UP), the club's host: studies or works there, graduated… */
+export const attendanceAffiliations = ["up", "none"] as const;
 export type AttendanceAffiliation = (typeof attendanceAffiliations)[number];
 
 /**

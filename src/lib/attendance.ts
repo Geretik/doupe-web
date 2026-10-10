@@ -227,10 +227,8 @@ export async function listNights(from: string, to: string) {
     .select({
       day: attendance.day,
       total: sql<number>`count(*)::int`,
-      student: countWhere("student"),
-      employee: countWhere("employee"),
-      graduate: countWhere("graduate"),
-      external: countWhere("external"),
+      up: countWhere("up"),
+      none: countWhere("none"),
     })
     .from(attendance)
     .where(and(gte(attendance.day, from), lte(attendance.day, to)))
@@ -246,14 +244,10 @@ export async function summarize(from: string, to: string) {
       nights: sql<number>`(count(distinct ${attendance.day}))::int`,
       visits: sql<number>`count(*)::int`,
       people: sql<number>`(count(distinct ${personKey}))::int`,
-      v_student: countWhere("student"),
-      v_employee: countWhere("employee"),
-      v_graduate: countWhere("graduate"),
-      v_external: countWhere("external"),
-      p_student: peopleWhere("student"),
-      p_employee: peopleWhere("employee"),
-      p_graduate: peopleWhere("graduate"),
-      p_external: peopleWhere("external"),
+      v_up: countWhere("up"),
+      v_none: countWhere("none"),
+      p_up: peopleWhere("up"),
+      p_none: peopleWhere("none"),
     })
     .from(attendance)
     .where(and(gte(attendance.day, from), lte(attendance.day, to)));

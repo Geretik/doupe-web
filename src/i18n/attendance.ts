@@ -25,20 +25,20 @@ export const attendanceCs = {
   errors: {
     fillFirstName: "Vyplň jméno",
     fillLastName: "Vyplň příjmení",
-    pickAffiliation: "Vyber, jaký máš vztah k UP",
+    pickAffiliation: "Vyber ano, nebo ne",
   },
+  /** How an entry is shown: under the name, in the admin's numbers */
   affiliations: {
-    student: "Student/ka UP",
-    employee: "Zaměstnanec/kyně UP",
-    graduate: "Absolvent/ka UP",
-    external: "Externista – bez vztahu k UP",
+    up: "Se vztahem k UP",
+    none: "Bez vztahu k UP",
   },
   /** Plain strings only – passed to the form (client). */
   form: {
     intro: "Zapiš se, že jsi dnes v klubu.",
     firstName: "Jméno",
     lastName: "Příjmení",
-    affiliation: "Vztah k Univerzitě Palackého",
+    affiliation: "Vztah k Univerzitě Palackého (student/ka, zaměstnanec/kyně, absolvent/ka…)",
+    answers: { up: "Ano", none: "Ne" },
     remember: "Zapamatovat si mě na tomto telefonu",
     rememberHint: "Příště stačí jedno ťuknutí. Jméno zůstane jen v tomto prohlížeči.",
     submit: "Zapsat se",
@@ -80,19 +80,18 @@ export const attendanceEn: AttendanceDict = {
   errors: {
     fillFirstName: "Fill in your first name",
     fillLastName: "Fill in your last name",
-    pickAffiliation: "Pick how you're related to UP",
+    pickAffiliation: "Pick yes or no",
   },
   affiliations: {
-    student: "UP student",
-    employee: "UP employee",
-    graduate: "UP graduate",
-    external: "External – not related to UP",
+    up: "Related to UP",
+    none: "Not related to UP",
   },
   form: {
     intro: "Sign in to say you're at the club tonight.",
     firstName: "First name",
     lastName: "Last name",
-    affiliation: "Relation to Palacký University",
+    affiliation: "Relation to Palacký University (student, employee, graduate…)",
+    answers: { up: "Yes", none: "No" },
     remember: "Remember me on this phone",
     rememberHint: "Next time it's a single tap. Your name stays only in this browser.",
     submit: "Sign in",

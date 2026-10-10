@@ -56,7 +56,6 @@ export function AttendanceSheet({
         key={mode}
         mode={mode}
         t={t}
-        affiliations={affiliations}
         defaults={mode === "correct" ? remembered : null}
         state={fresh ? state : {}}
         action={action}
@@ -119,7 +118,6 @@ export function AttendanceSheet({
 function PersonForm({
   mode,
   t,
-  affiliations,
   defaults,
   state,
   action,
@@ -128,7 +126,6 @@ function PersonForm({
 }: {
   mode: FormMode;
   t: Dict["attendance"]["form"];
-  affiliations: Dict["attendance"]["affiliations"];
   defaults: RememberedView | null;
   state: AttendanceState;
   action: (formData: FormData) => void;
@@ -153,19 +150,21 @@ function PersonForm({
       <Field label={t.lastName} name="lastName" errors={fe.lastName}>
         <input id="lastName" name="lastName" required maxLength={100} autoComplete={mode === "other" ? "off" : "family-name"} defaultValue={defaults?.lastName} className={inputClass} />
       </Field>
-      <fieldset className="flex flex-col gap-2">
-        <legend className="mb-1 text-sm font-medium">{t.affiliation}</legend>
-        {(Object.keys(affiliations) as Affiliation[]).map((a) => (
-          <label
-            key={a}
-            className="flex cursor-pointer items-center gap-3 rounded-lg border border-border bg-card px-3 py-3 has-[:checked]:border-accent has-[:checked]:bg-accent/10"
-          >
-            <input type="radio" name="affiliation" value={a} required defaultChecked={defaults?.affiliation === a} className="h-4 w-4 accent-accent" />
-            {affiliations[a]}
-          </label>
-        ))}
+      <fieldset>
+        <legend className="mb-2 text-sm font-medium">{t.affiliation}</legend>
+        <div className="grid grid-cols-2 gap-2">
+          {(Object.keys(t.answers) as Affiliation[]).map((a) => (
+            <label
+              key={a}
+              className="flex cursor-pointer items-center justify-center gap-3 rounded-lg border border-border bg-card px-3 py-3 text-lg has-[:checked]:border-accent has-[:checked]:bg-accent/10"
+            >
+              <input type="radio" name="affiliation" value={a} required defaultChecked={defaults?.affiliation === a} className="h-4 w-4 accent-accent" />
+              {t.answers[a]}
+            </label>
+          ))}
+        </div>
         {fe.affiliation?.map((e) => (
-          <p key={e} className="text-xs text-accent">
+          <p key={e} className="mt-1 text-xs text-accent">
             {e}
           </p>
         ))}
