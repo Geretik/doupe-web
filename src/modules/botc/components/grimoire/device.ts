@@ -53,8 +53,8 @@ export function useHidden(id: number): [boolean, (hidden: boolean) => void] {
   return [value === "1", (hidden) => set(hidden ? "1" : null)];
 }
 
-/** How big the town's tokens, names and reminders are, against what the room allows: 60–160 %. */
-export const SCALE = { min: 0.6, max: 1.6, step: 0.05 } as const;
+/** How big the town's tokens, names and reminders are, against what the room allows: 60–250 %. */
+export const SCALE = { min: 0.6, max: 2.5, step: 0.05 } as const;
 
 /** The size of the town on this device, for every grimoire: each Storyteller's eyes and tablet differ. */
 export function useTownScale(): [number, (scale: number) => void] {

@@ -1457,6 +1457,7 @@ test("grimoire: the size of the tokens on a slider, kept on this device", async 
   const width = async () => Math.round((await seat(page, "Jana").boundingBox())!.width);
   const before = await width();
   await page.getByTestId("scale-button").click();
+  await expect(page.getByTestId("scale-panel").getByRole("slider")).toHaveAttribute("max", "250");
   await page.getByTestId("scale-panel").getByRole("slider").fill("130");
   await expect(page.getByTestId("scale-button")).toContainText("130 %");
   await expect.poll(width).toBe(Math.round(before * 1.3));

@@ -43,7 +43,7 @@ export const changelog: ChangelogEntry[] = [
       },
       {
         for: "organizers",
-        text: "Grimoár: tlačítkem 🔍 v horní liště zvětšíš nebo zmenšíš žetony, jména a připomínky ve městě (60–160 %). Nastavení platí na tomto zařízení pro všechny grimoáry.",
+        text: "Grimoár: tlačítkem 🔍 v horní liště zvětšíš nebo zmenšíš žetony, jména a připomínky ve městě (60–250 %). Nastavení platí na tomto zařízení pro všechny grimoáry.",
         href: "/admin/botc/grimoary",
       },
       {
