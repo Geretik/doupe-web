@@ -385,7 +385,7 @@ function SetupTown({ onOpen }: { onOpen: (seatId: string) => void }) {
 
 /** The place tapped in the setup's town: the player's name, or a session player's, its place in the circle, taking it away. */
 function SeatEditor({ seat, onSelect, onOpen }: { seat: GrimoireSeat; onSelect: (seatId: string | null) => void; onOpen: (seatId: string) => void }) {
-  const { state, update, hidden, sessionPlayers, locale, t } = useGrimoire();
+  const { state, update, hidden, ask, sessionPlayers, locale, t } = useGrimoire();
   const ref = useRef<HTMLDivElement>(null);
   // on a phone it is under the town (a block: the browser's scrollIntoView may return a promise, no cleanup)
   useEffect(() => {
@@ -395,8 +395,8 @@ function SeatEditor({ seat, onSelect, onOpen }: { seat: GrimoireSeat; onSelect: 
   const next = nextUnnamed(state, index);
   const free = seat.gap ? [] : freeSessionPlayers(state, seat, sessionPlayers);
   const move = (by: number) => update((s) => ({ ...s, seats: moveSeat(s.seats, index, (index + by + s.seats.length) % s.seats.length) }));
-  const remove = () => {
-    if (!seat.gap && (seat.name || seat.role) && !confirm(fill(t.removeSeatConfirm, { name: seat.name || "?" }))) return;
+  const remove = async () => {
+    if (!seat.gap && (seat.name || seat.role) && !(await ask(fill(t.removeSeatConfirm, { name: seat.name || "?" }), t.removeSeat))) return;
     update((s) => ({ ...s, seats: s.seats.filter((x) => x.id !== seat.id) }));
     onSelect(null);
   };
@@ -663,17 +663,17 @@ function BagContents({ wide }: { wide: boolean }) {
 
 /** Handing the bag out: the players draw from it themselves, or it is dealt at random after a confirmation. */
 function DealActions() {
-  const { state, update, characters, t } = useGrimoire();
+  const { state, update, ask, characters, t } = useGrimoire();
   const first = playerSeats(state).find((s) => s.role);
   const players = playerSeats(state).length;
   const blocked = undrawable(state.bag);
   const ready = state.bag.length > 0 && bagTokens(state.bag).length === players;
-  const deal = () => {
-    if (!confirm(state.seats.some((s) => s.role) ? t.dealConfirm : t.dealRandomConfirm)) return;
+  const deal = async () => {
+    if (!(await ask(state.seats.some((s) => s.role) ? t.dealConfirm : t.dealRandomConfirm, t.deal))) return;
     update((s) => dealBag(s) ?? s);
   };
-  const startDraw = () => {
-    if (playerSeats(state).some((x) => x.role) && !confirm(t.drawConfirm)) return;
+  const startDraw = async () => {
+    if (playerSeats(state).some((x) => x.role) && !(await ask(t.drawConfirm))) return;
     update(startDrawing);
   };
   return (

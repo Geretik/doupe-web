@@ -6,6 +6,7 @@ import { createPortal } from "react-dom";
 import type { Locale } from "@/i18n/dictionaries";
 import type { GrimoireCharacter } from "@/modules/botc/lib/grimoire/characters";
 import { canStart, fiddleSeats, isPlayer, nextPhase, nightSteps, putToken, withoutRole, type GrimoireSeat, type GrimoireState } from "@/modules/botc/lib/grimoire/state";
+import { useAsk } from "./ask";
 import { useAutosave, type SaveStatus } from "./autosave";
 import { ChroniclePanel } from "./chronicle";
 import { DrawView } from "./draw";
@@ -112,8 +113,9 @@ export function Grimoire({
   const [hiddenHere, storeHidden] = useHidden(id);
   const [scale, setScale] = useTownScale();
   const hidden = canEdit && hiddenHere;
-  const setHidden = (on: boolean) => {
-    if (!on && !confirm(t.unhideConfirm)) return;
+  const { ask, dialog: askDialog } = useAsk({ yes: t.askYes, no: t.askNo });
+  const setHidden = async (on: boolean) => {
+    if (!on && !(await ask(t.unhideConfirm, t.unhideShort))) return;
     storeHidden(on);
     // whoever holds the hidden grimoire takes back only their own changes
     dispatch({ type: "floor", here: on });
@@ -185,6 +187,7 @@ export function Grimoire({
     readOnly: !canEdit || state.phase === "ended",
     hidden,
     setHidden,
+    ask,
     scale,
     show: setShowing,
     characters,
@@ -471,6 +474,7 @@ export function Grimoire({
           document.body,
         )}
       {showing && <ShowScreen card={showing} onChange={setShowing} onClose={() => setShowing(null)} />}
+      {askDialog}
     </GrimoireContext.Provider>
   );
 }

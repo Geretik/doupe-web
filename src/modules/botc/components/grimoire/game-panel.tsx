@@ -52,7 +52,7 @@ export function GameButton(props: GameProps) {
 
 /** Who won and a note on the game, which writes the session's game record; once over: back into it, the next game, delete. */
 function GameDialog({ id, session, recorded, canEdit, canDelete, onClose }: GameProps & { onClose: () => void }) {
-  const { state, update, readOnly, locale, t } = useGrimoire();
+  const { state, update, readOnly, ask, locale, t } = useGrimoire();
   const [winner, setWinner] = useState<GameWinner | "unknown" | null>(null);
   // a game ended for the first time: the note starts as the chronicle
   const [fromChronicle] = useState(() => (state.notes === undefined ? chronicleText(state, locale, t, NOTES_MAX) : ""));
@@ -175,7 +175,7 @@ function GameDialog({ id, session, recorded, canEdit, canDelete, onClose }: Game
 
         {(canDelete || ended || readOnly) && (
           <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3">
-            {canDelete && <DeleteGrimoireButton id={id} label={t.delete} confirmText={t.deleteConfirm} />}
+            {canDelete && <DeleteGrimoireButton id={id} label={t.delete} confirmText={t.deleteConfirm} ask={ask} />}
             {(ended || readOnly) && (
               <button type="button" onClick={onClose} className={`${button} ml-auto border-border bg-card`}>
                 {t.close}

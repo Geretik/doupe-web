@@ -22,6 +22,8 @@ export type GrimoireContextValue = {
   hidden: boolean;
   /** Hides them or, once the Storyteller confirms, shows them again */
   setHidden: (hidden: boolean) => void;
+  /** Asks in the grimoire's own dialog (ask.tsx), not the browser's, which would leave the full screen; `yes` labels the button */
+  ask: (text: string, yes?: string) => Promise<boolean>;
   /** How big the town's tokens are on this device (device.ts useTownScale); 1 = as the room allows */
   scale: number;
   /** Opens a card to show a player over the whole screen */

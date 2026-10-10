@@ -422,7 +422,7 @@ function GapPanel({
 
 /** Moving a place around the circle, putting a gap after a player, taking the place out of the circle. */
 function PlaceControls({ seat, index, onRemoved }: { seat: GrimoireSeat; index: number; onRemoved: () => void }) {
-  const { state, update, readOnly, t } = useGrimoire();
+  const { state, update, readOnly, ask, t } = useGrimoire();
   if (readOnly) return null;
   const move = (by: number) => update((s) => ({ ...s, seats: moveSeat(s.seats, index, (index + by + s.seats.length) % s.seats.length) }));
   const insertGap = (gap: GapKind) =>
@@ -458,8 +458,8 @@ function PlaceControls({ seat, index, onRemoved }: { seat: GrimoireSeat; index: 
         <button
           type="button"
           className={`${big} ml-auto border-accent text-accent hover:bg-accent/10`}
-          onClick={() => {
-            if (!seat.gap && !confirm(fill(t.removeSeatConfirm, { name: seat.name }))) return;
+          onClick={async () => {
+            if (!seat.gap && !(await ask(fill(t.removeSeatConfirm, { name: seat.name }), t.removeSeat))) return;
             update((s) => ({ ...s, seats: s.seats.filter((x) => x.id !== seat.id) }));
             onRemoved();
           }}

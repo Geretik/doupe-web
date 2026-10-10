@@ -75,6 +75,11 @@ export const changelog: ChangelogEntry[] = [
         text: "Grimoár: hru (Začít hru → 1. noc) jde začít, až má postavu každý hráč. Vedle tlačítka je vidět, kolik hráčů postavu nemá, a v Přípravě kdo – ťuknutím na jméno mu ji dáš.",
         href: "/admin/botc/grimoary",
       },
+      {
+        for: "organizers",
+        text: "Grimoár: otázky typu „Opravdu…?“ (odkrýt stav hry, rozdat náhodně, losování, odebrat hráče, smazat grimoár) se ptají v okně přímo v grimoáru, takže už nezruší celou obrazovku.",
+        href: "/admin/botc/grimoary",
+      },
     ],
   },
   {

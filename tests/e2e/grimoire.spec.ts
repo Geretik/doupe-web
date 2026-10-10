@@ -90,10 +90,16 @@ async function openTokens(page: Page) {
 }
 const closeTokens = (page: Page) => page.getByTestId("bag-screen").getByRole("button", { name: "Hotovo", exact: true }).click();
 
+/** Answers the grimoire's own question – not the browser's, which would leave the full screen. */
+async function answer(page: Page, yes: boolean) {
+  await page.getByTestId(yes ? "ask-yes" : "ask-no").click();
+  await expect(page.getByTestId("ask")).toHaveCount(0);
+}
+
 /** Deals the bag at random from the bottom of the setup, saying yes to "really at random?". */
 async function dealAtRandom(page: Page) {
-  page.once("dialog", (d) => d.accept());
   await page.getByTestId("setup-screen").getByRole("button", { name: "Rozdat náhodně" }).click();
+  await answer(page, true);
 }
 
 /** Ends the game in the dialog of the button under the grimoire's panel; the dialog stays open with the result. */
@@ -915,8 +921,9 @@ test("grimoire: from a session, hand out the bag, the first night, a death and a
   await expect(page.getByTestId("bluffs-view")).toHaveText("Vědma");
 
   // handed out at random, after saying that it should be random
-  page.once("dialog", (d) => d.dismiss());
   await page.getByTestId("setup-screen").getByRole("button", { name: "Rozdat náhodně" }).click();
+  await expect(page.getByTestId("ask")).toContainText("Opravdu rozdat postavy náhodně?");
+  await answer(page, false);
   await expect(page.getByTestId("town")).toContainText("bez postavy");
   await dealAtRandom(page);
   await expect(page.getByTestId("town")).not.toContainText("bez postavy");
@@ -1244,8 +1251,8 @@ test("grimoire: the door and the Storyteller's spot, a pasted script, players dr
   await page.locator("[data-testid=seat][data-drawn=yes]").first().click();
   await expect(dialog).toContainText("Toto místo už postavu má");
   await dialog.getByRole("button", { name: "Zpět" }).click();
-  page.once("dialog", (d) => d.accept());
   await page.getByRole("button", { name: "Konec losování (vypravěč)" }).click();
+  await answer(page, true);
   await expect(page.getByTestId("phase")).toHaveText("Příprava");
   await stored((st) => st.seats.flatMap((x) => (x.role ? [x.role] : [])).sort(), ["chef", "empath", "imp", "poisoner", "washerwoman"]);
 
@@ -1533,7 +1540,8 @@ test("grimoire hidden: someone else holds it without seeing characters, reminder
   await expect(setup.getByTestId("setup-hidden")).toBeVisible();
   await expect(setup.getByTestId("bag-contents")).toHaveCount(0);
   await expect(setup.getByTestId("bluffs-view")).toHaveCount(0);
-  await expect(setup.locator("ol img")).toHaveCount(0);
+  await expect(setup.getByTestId("setup-town").getByTestId("seat")).toHaveCount(3);
+  await expect(setup.getByTestId("setup-town").locator("img")).toHaveCount(0);
   await expect(setup.getByTestId("distribution").locator("th")).toHaveCount(2);
   await expect(setup.getByRole("button", { name: "Začít hru → 1. noc" })).toHaveCount(0);
   await expect(setup.getByTestId("hide-button")).toHaveAttribute("aria-pressed", "true");
@@ -1543,12 +1551,22 @@ test("grimoire hidden: someone else holds it without seeing characters, reminder
   await page.reload();
   await expect(page.getByTestId("hide-button")).toHaveAttribute("aria-pressed", "true");
   await expect(town.locator("img")).toHaveCount(0);
-  page.once("dialog", (d) => d.dismiss());
+  // asked in the grimoire's own dialog, which keeps the full screen (the browser's question leaves it); Escape says no
+  await page.getByRole("button", { name: "Celá obrazovka" }).click();
+  await expect(page.locator("[data-admin-nav]")).toBeHidden();
   await page.getByTestId("hide-button").click();
+  await expect(page.getByTestId("ask")).toContainText("Odkrýt postavy, připomínky a pytlík?");
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("ask")).toHaveCount(0);
   await expect(page.getByTestId("hide-button")).toHaveAttribute("aria-pressed", "true");
-  page.once("dialog", (d) => d.accept());
   await page.getByTestId("hide-button").click();
+  await answer(page, false);
+  await expect(page.getByTestId("hide-button")).toHaveAttribute("aria-pressed", "true");
+  await page.getByTestId("hide-button").click();
+  await expect(page.getByTestId("ask-yes")).toHaveText("Odkrýt");
+  await answer(page, true);
   await expect(page.getByTestId("hide-button")).toHaveAttribute("aria-pressed", "false");
+  await expect(page.locator("[data-admin-nav]")).toBeHidden();
   await expect(town.locator("img")).toHaveCount(7);
   await expect(page.getByTestId("reminder")).toHaveCount(1);
 });
@@ -1772,8 +1790,8 @@ test("grimoire: the Drunk brings an extra Townsfolk into the bag, whoever gets i
   await expect.poll(dealt).toEqual(all);
 
   // the players draw: nobody sees the Drunk, the last draw decides who it is
-  page.once("dialog", (d) => d.accept());
   await page.getByRole("button", { name: "Losování hráči" }).click();
+  await answer(page, true);
   await expect(page.getByTestId("draw-left")).toHaveText("V pytlíku zbývá 6");
   const dialog = page.getByTestId("draw-dialog");
   for (let i = 0; i < 6; i++) {
@@ -1783,8 +1801,8 @@ test("grimoire: the Drunk brings an extra Townsfolk into the bag, whoever gets i
     await dialog.getByRole("button", { name: "Mám to – skrýt" }).click();
   }
   await expect(page.getByTestId("draw-left")).toHaveText("V pytlíku zbývá 0");
-  page.once("dialog", (d) => d.accept());
   await page.getByRole("button", { name: "Konec losování (vypravěč)" }).click();
+  await answer(page, true);
   await expect(page.getByTestId("town")).toContainText("Opilec");
   await expect.poll(dealt).toEqual(all);
 });
@@ -2128,6 +2146,19 @@ test("grimoire: only administrators delete grimoires, also another account's fin
   await page.getByRole("button", { name: "Smazat grimoár: Zkušební hra" }).click();
   await expect(page.locator("main")).not.toContainText("Zkušební hra");
   expect(await sql("select id from grimoires")).toHaveLength(0);
+
+  // in the grimoire, from the game's dialog: asked in the grimoire's own dialog, no keeps it, yes deletes it
+  await page.fill("#name", "Druhá hra");
+  await page.getByRole("button", { name: "Založit grimoár" }).click();
+  await expect(page.locator("h1")).toHaveText("Druhá hra");
+  await page.getByTestId("game-button").click();
+  await page.getByTestId("game-panel").getByRole("button", { name: "Smazat grimoár" }).click();
+  await answer(page, false);
+  expect(await sql("select id from grimoires")).toHaveLength(1);
+  await page.getByTestId("game-panel").getByRole("button", { name: "Smazat grimoár" }).click();
+  await answer(page, true);
+  await expect(page).toHaveURL(/\/admin\/botc\/grimoary$/);
+  await expect.poll(async () => (await sql("select id from grimoires")).length).toBe(0);
 });
 
 test("grimoire: Fabled and Loric – the script's come by themselves, more from the setup, in the town's corner with their ability and tokens", async ({ page }) => {

@@ -18,7 +18,7 @@ const big = "min-h-14 rounded-xl px-6 text-lg font-semibold";
  * and sees their character on a screen of its own, then hides it again. Nothing else of the grimoire shows.
  */
 export function DrawView() {
-  const { state, update, characters, locale, t } = useGrimoire();
+  const { state, update, ask, characters, locale, t } = useGrimoire();
   const [open, setOpen] = useState<Open | null>(null);
   const left = remainingBag(state).length;
 
@@ -33,8 +33,8 @@ export function DrawView() {
     if (roleId) update((s) => takeDrawn(s, open.seatId, roleId));
     setOpen({ ...open, shown: true, roleId });
   };
-  const end = () => {
-    if (confirm(t.drawEndConfirm)) update(endDrawing);
+  const end = async () => {
+    if (await ask(t.drawEndConfirm)) update(endDrawing);
   };
   const role = findRole(open?.roleId);
 
