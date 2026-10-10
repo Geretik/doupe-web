@@ -46,6 +46,8 @@ type OnDraftScript = OnDraft & { draftScript: NamedRef };
 type Nothing = Record<string, never>;
 /** An entry of the club's attendance sheet: its night ("YYYY-MM-DD") and how the person is related to UP */
 type OnNight = { day: string; affiliation: AttendanceAffiliation };
+/** A game of the club's collection lent or given a bar code: its id on Zatrolené hry and its name */
+type OnGame = { game: NamedRef };
 
 export type LogData = {
   "account.login": { method: LoginMethod; device?: string };
@@ -103,11 +105,16 @@ export type LogData = {
   /** Who is on the sheet stays out of the log, like a player's name: only the night and the affiliation */
   "attendance.add": OnNight;
   "attendance.delete": OnNight;
+  /** A game of the club's collection (its id on Zatrolené hry); who borrowed it stays out, like a name on the attendance sheet */
+  "loan.lend": OnGame;
+  "loan.return": OnGame;
+  "loan.code": OnGame & { code: string };
+  "loan.codeRemove": OnGame & { code: string };
 };
 
 export type LogAction = keyof LogData;
 
-export const logAreas = ["session", "draft", "grimoire", "script", "web", "attendance", "account"] as const;
+export const logAreas = ["session", "draft", "grimoire", "script", "web", "attendance", "loan", "account"] as const;
 export type LogArea = (typeof logAreas)[number];
 
 export function isLogArea(v: unknown): v is LogArea {

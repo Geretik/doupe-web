@@ -14,12 +14,17 @@ export type ChangelogEntry = { /** YYYY-MM-DD */ date: string; title: string; it
 export const changelog: ChangelogEntry[] = [
   {
     date: "2026-10-10",
-    title: "Prezenčka klubu; grimoár: mřížka, pocestní, skrytí stavu hry, velikost žetonů, Houslista a rozesazení v Přípravě",
+    title: "Prezenčka a půjčovna her; grimoár: mřížka, pocestní, skrytí stavu hry, velikost žetonů, Houslista a rozesazení v Přípravě",
     items: [
       {
         for: "organizers",
         text: "Prezenčka: v adminu pod Klub → Prezenčka je QR kód a kartička na stůl k vytištění. Odkaz je pořád stejný – v úterý a ve čtvrtek otevře prezenčku toho večera (zápis po půlnoci do 5:00 patří ještě k večeru předtím), jindy řekne, kdy je další. Uvidíš tam, kdo na večer přišel, můžeš někoho přidat ručně nebo smazat, a za zvolené období počty zápisů a různých lidí podle vztahu k UP s exportem do CSV. Na webu na prezenčku žádný odkaz nevede.",
         href: "/admin/prezence",
+      },
+      {
+        for: "organizers",
+        text: "Půjčovna her: v adminu pod Klub → Půjčovna načteš telefonem čárový kód z krabice (nebo hru najdeš podle názvu) a napíšeš, komu ji půjčuješ – jména se našeptávají z prezenčky. Kód, který ještě neznáme, jednou přiřadíš ke hře a příště se hra najde sama. Vrácenou hru stačí načíst znovu a ťuknout na Vráceno. Je tam i seznam, co je zrovna půjčené a u koho, a kdo měl hru naposledy.",
+        href: "/admin/pujcovna",
       },
       {
         for: "players",

@@ -1,6 +1,7 @@
 import type { Locale } from "@/i18n/dictionaries";
 import { H2, P, Ul } from "@/components/prose";
 import { ATTENDANCE_RETENTION_YEARS } from "@/lib/attendance";
+import { LOAN_RETENTION_DAYS } from "@/lib/loans";
 import { RETENTION_DAYS } from "@/lib/retention";
 import { CLUB_DISCORD_URL } from "@/lib/site";
 
@@ -65,13 +66,18 @@ function Czech({ contact, discordAlerts }: Props) {
           Vedeme ji, abychom věděli, kdo klub navštěvuje, a mohli to doložit fakultě, v jejíchž prostorách hrajeme.
         </li>
         <li>
+          <strong>Půjčování her</strong> – když si od klubu půjčíš hru: tvoje jméno, kterou hru a kdy sis ji půjčil/a
+          a vrátil/a, případně poznámka organizátora (třeba co v krabici chybí), abychom věděli, kde naše hry jsou.
+          Organizátorům se při zapisování výpůjčky našeptávají jména z prezenčky.
+        </li>
+        <li>
           <strong>Otisk IP adresy</strong> (samotnou adresu neukládáme) – ochrana proti hromadným falešným registracím.
         </li>
       </Ul>
       <P>
         Údaje zpracováváme, protože jsou potřeba k uspořádání hraní, na které se přihlašuješ
-        (čl. 6 odst. 1 písm. b GDPR). Statistiky klubu, prezenční listina, odpovědi na vzkazy a ochrana proti
-        zneužití jsou náš oprávněný zájem (čl. 6 odst. 1 písm. f GDPR).
+        (čl. 6 odst. 1 písm. b GDPR). Statistiky klubu, prezenční listina, půjčování her, odpovědi na vzkazy
+        a ochrana proti zneužití jsou náš oprávněný zájem (čl. 6 odst. 1 písm. f GDPR).
       </P>
 
       <H2>Kdo údaje uvidí</H2>
@@ -97,6 +103,10 @@ function Czech({ contact, discordAlerts }: Props) {
         <li>
           <strong>Jméno a příjmení z prezenčky</strong> se automaticky smažou {ATTENDANCE_RETENTION_YEARS} roky po
           večeru. Zůstane jen den a vztah k UP, kvůli počtům návštěv.
+        </li>
+        <li>
+          <strong>Jméno u půjčené hry</strong> (i s poznámkou) se automaticky smaže {LOAN_RETENTION_DAYS} dní
+          po vrácení hry.
         </li>
         <li>
           <strong>Vzkaz</strong> web neukládá, jen ho přepošle e-mailem organizátorům. V jejich schránce
@@ -205,14 +215,20 @@ function English({ contact, discordAlerts }: Props) {
           whose rooms we play in.
         </li>
         <li>
+          <strong>Borrowing a game</strong> – when you borrow a game from the club: your name, which game, when you
+          took it and brought it back, and possibly the organiser&apos;s note (what&apos;s missing from the box, say),
+          so we know where our games are. When the organisers write down a loan, names from the attendance sheet
+          are suggested to them.
+        </li>
+        <li>
           <strong>A fingerprint of your IP address</strong> (not the address itself) – protection against
           mass fake sign-ups.
         </li>
       </Ul>
       <P>
         We process the data because it is needed to run the game night you sign up for (Art. 6(1)(b)
-        GDPR). The club&apos;s stats, the attendance sheet, replying to messages and protection against abuse
-        are our legitimate interest (Art. 6(1)(f) GDPR).
+        GDPR). The club&apos;s stats, the attendance sheet, lending games, replying to messages and protection
+        against abuse are our legitimate interest (Art. 6(1)(f) GDPR).
       </P>
 
       <H2>Who can see it</H2>
@@ -240,6 +256,10 @@ function English({ contact, discordAlerts }: Props) {
           <strong>First and last names on the attendance sheet</strong> are deleted automatically{" "}
           {ATTENDANCE_RETENTION_YEARS} years after the night. Only the day and the relation to UP stay, for the
           number of visits.
+        </li>
+        <li>
+          <strong>Your name on a borrowed game</strong> (and the note with it) is deleted automatically{" "}
+          {LOAN_RETENTION_DAYS} days after the game comes back.
         </li>
         <li>
           The site doesn&apos;t keep <strong>your message</strong>; it only e-mails it to the organisers.

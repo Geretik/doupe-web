@@ -6,6 +6,7 @@ import { changelog, changelogStamp } from "@/data/changelog";
 import { getDict } from "@/i18n/server";
 import { hasRole, requireAdmin } from "@/lib/admin-auth";
 import { countNight, openNight } from "@/lib/attendance";
+import { countOpenLoans } from "@/lib/loans";
 import { NEWS_COOKIE } from "@/lib/news";
 import { formatShortDate, formatTime } from "@/lib/time";
 import { GrimoireLink } from "@/modules/botc/components/grimoire/grimoire-link";
@@ -23,13 +24,14 @@ const link = "text-sm font-medium text-accent hover:underline";
 export default async function AdminOverviewPage() {
   const me = await requireAdmin();
   const night = openNight();
-  const [{ locale, t }, sessions, attention, grimoires, jar, tonight] = await Promise.all([
+  const [{ locale, t }, sessions, attention, grimoires, jar, tonight, lent] = await Promise.all([
     getDict(),
     listAllSessions(),
     countDraftAttention(me.id),
     listGrimoires(me),
     cookies(),
     night ? countNight(night) : null,
+    countOpenLoans(),
   ]);
   const o = t.admin.overview;
   const n = t.admin.nav;
@@ -116,6 +118,10 @@ export default async function AdminOverviewPage() {
             <Link href="/admin/prezence" className={link} data-testid="overview-attendance">
               {n.attendance}
               {tonight !== null && <span className="ml-2 font-normal text-muted">{o.attendanceTonight(tonight)}</span>}
+            </Link>
+            <Link href="/admin/pujcovna" className={link} data-testid="overview-loans">
+              {n.loans}
+              {lent > 0 && <span className="ml-2 font-normal text-muted">{o.loansOut(lent)}</span>}
             </Link>
             <Link href="/admin/web" className={link}>{n.web}</Link>
             {hasRole(me, "admin") && <Link href="/admin/ucty" className={link}>{n.accounts}</Link>}

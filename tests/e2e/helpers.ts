@@ -32,6 +32,8 @@ export async function resetDb() {
   await sql("delete from site_texts");
   await sql("delete from scripts");
   await sql("delete from attendance");
+  await sql("delete from game_loans");
+  await sql("delete from game_barcodes");
 }
 
 /** Inserts an organiser account straight into the database (no invitation needed). */

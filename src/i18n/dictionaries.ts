@@ -1,6 +1,7 @@
 import { attendanceAdminCs, attendanceAdminEn, attendanceCs, attendanceEn } from "./attendance";
 import { draftCs, draftEn } from "./draft";
 import { grimoireCs, grimoireEn } from "./grimoire";
+import { loansAdminCs, loansAdminEn } from "./loans";
 import type { LogAction, LoginMethod } from "@/lib/admin-log";
 import type { BadgeId } from "@/modules/botc/lib/player-badges";
 
@@ -414,6 +415,7 @@ export const cs = {
       club: "Klub",
       web: "Texty webu",
       attendance: "Prezenčka",
+      loans: "Půjčovna",
       news: "Novinky",
       newsUnread: "Přibyly novinky",
       accounts: "Účty",
@@ -599,7 +601,7 @@ export const cs = {
       area: "Oblast",
       allAreas: "Vše",
       show: "Zobrazit",
-      areas: { session: "Termíny", draft: "Drafty", grimoire: "Grimoáry", script: "Scripty", web: "Texty webu", attendance: "Prezenčka", account: "Účty a přihlášení" },
+      areas: { session: "Termíny", draft: "Drafty", grimoire: "Grimoáry", script: "Scripty", web: "Texty webu", attendance: "Prezenčka", loan: "Půjčovna", account: "Účty a přihlášení" },
       onlySession: "Jen jeden termín.",
       showAll: "Zobrazit vše",
       sessionHistory: "Historie změn",
@@ -663,6 +665,10 @@ export const cs = {
         "grimoire.record": "Hra z grimoáru zapsaná",
         "attendance.add": "Přidaný zápis do prezenčky",
         "attendance.delete": "Smazaný zápis z prezenčky",
+        "loan.lend": "Půjčená hra",
+        "loan.return": "Vrácená hra",
+        "loan.code": "Čárový kód přiřazený ke hře",
+        "loan.codeRemove": "Čárový kód odebraný od hry",
       } satisfies Record<LogAction, string>,
       loginMethods: { password: "heslem", link: "odkazem z e-mailu", qr: "QR kódem", reset: "odkazem pro nové heslo", invite: "z pozvánky, nový účet", setup: "první účet" } satisfies Record<LoginMethod, string>,
       intents: { save: "uloženo", default: "vráceno na text z kódu", restore: "vrácena starší verze" },
@@ -849,6 +855,7 @@ export const cs = {
       clubPage: "Web klubu",
       games: "Sbírka her",
       attendanceTonight: (n: number) => `dnes ${n} ${cz(n, "člověk", "lidé", "lidí")}`,
+      loansOut: (n: number) => `${n} ${cz(n, "hra půjčená", "hry půjčené", "her půjčeno")}`,
     },
     list: {
       upcoming: "Nadcházející termíny",
@@ -1157,6 +1164,7 @@ export const cs = {
       scripts: "Scripty",
     },
     attendance: attendanceAdminCs,
+    loans: loansAdminCs,
     poster: {
       back: "← Zpět na termín",
       print: "🖨️ Vytisknout",
@@ -1607,6 +1615,7 @@ export const en: Dict = {
       club: "Club",
       web: "Site texts",
       attendance: "Attendance sheet",
+      loans: "Game lending",
       news: "What's new",
       newsUnread: "New changes",
       accounts: "Accounts",
@@ -1780,7 +1789,7 @@ export const en: Dict = {
       area: "Area",
       allAreas: "Everything",
       show: "Show",
-      areas: { session: "Sessions", draft: "Drafts", grimoire: "Grimoires", script: "Scripts", web: "Site texts", attendance: "Attendance sheet", account: "Accounts and logins" },
+      areas: { session: "Sessions", draft: "Drafts", grimoire: "Grimoires", script: "Scripts", web: "Site texts", attendance: "Attendance sheet", loan: "Game lending", account: "Accounts and logins" },
       onlySession: "One session only.",
       showAll: "Show everything",
       sessionHistory: "History of changes",
@@ -1844,6 +1853,10 @@ export const en: Dict = {
         "grimoire.record": "Game from a grimoire recorded",
         "attendance.add": "Entry added to the attendance sheet",
         "attendance.delete": "Entry deleted from the attendance sheet",
+        "loan.lend": "Game lent",
+        "loan.return": "Game returned",
+        "loan.code": "Bar code given to a game",
+        "loan.codeRemove": "Bar code removed from a game",
       },
       loginMethods: { password: "with password", link: "with an e-mailed link", qr: "with a QR code", reset: "with a new password link", invite: "from an invitation, new account", setup: "first account" },
       intents: { save: "saved", default: "back to the text in the code", restore: "earlier version restored" },
@@ -1990,6 +2003,7 @@ export const en: Dict = {
       clubPage: "The club's site",
       games: "Game collection",
       attendanceTonight: (n: number) => `${n} ${n === 1 ? "person" : "people"} today`,
+      loansOut: (n: number) => `${n} ${n === 1 ? "game" : "games"} lent`,
     },
     list: {
       upcoming: "Upcoming sessions",
@@ -2293,6 +2307,7 @@ export const en: Dict = {
       scripts: "Scripts",
     },
     attendance: attendanceAdminEn,
+    loans: loansAdminEn,
     poster: {
       back: "← Back to the session",
       print: "🖨️ Print",

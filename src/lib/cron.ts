@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { registrations, sessions } from "@/db/schema";
 import { deleteOldAdminLog } from "./admin-log";
 import { anonymizeOldAttendance, ATTENDANCE_RETENTION_YEARS } from "./attendance";
+import { anonymizeOldLoans, LOAN_RETENTION_DAYS } from "./loans";
 import { notifyOrganizers } from "./alerts";
 import { dispatchDraftEvents } from "@/modules/botc/lib/draft/events";
 import { postDiscordMessage, spotsLeftEnabled, spotsLeftMessage } from "./discord";
@@ -109,6 +110,14 @@ export async function runDailyJobs() {
     );
     return { anonymized: 0 };
   });
+  const loans = await anonymizeOldLoans().catch(async (e) => {
+    console.error("Loan anonymisation failed", e);
+    await notifyOrganizers(
+      "Mazání starých jmen z půjčovny selhalo",
+      `Jména u her vrácených před víc než ${LOAN_RETENTION_DAYS} dny se nepodařilo smazat: ${e instanceof Error ? e.message : String(e)}. Zkusí se to znovu při dalším běhu; podívej se do logu ve Vercelu.`,
+    );
+    return { anonymized: 0 };
+  });
   const waitlists = await promoteStuckWaitlists().catch((e) => {
     console.error("Waitlist promotion failed", e);
     return { promoted: 0 };
@@ -123,5 +132,5 @@ export async function runDailyJobs() {
   await deleteOldQrLogins().catch((e) => console.error("Deleting old QR logins failed", e));
   await deleteOldAdminLog().catch((e) => console.error("Deleting old admin log entries failed", e));
   await recordDailyRun();
-  return { reminders, spots, retention, attendance, waitlists, draftNotices };
+  return { reminders, spots, retention, attendance, loans, waitlists, draftNotices };
 }

@@ -6,13 +6,7 @@ import { logoutOtherDevicesAction } from "@/app/actions/qr-login";
 import type { Dict } from "@/i18n/dictionaries";
 import { Alert, Button } from "../ui";
 
-/** The browser's own QR reader where there is one (Chrome on Android); jsQR elsewhere (Safari). */
-type Detector = { detect: (source: HTMLVideoElement) => Promise<{ rawValue: string }[]> };
-declare global {
-  interface Window {
-    BarcodeDetector?: new (options: { formats: string[] }) => Detector;
-  }
-}
+// window.BarcodeDetector (declared in ./barcode-scanner): the browser's own QR reader where there is one (Chrome on Android); jsQR elsewhere (Safari)
 
 /** Frames are read at most this wide: enough for a code on a screen, light on a phone. */
 const MAX_WIDTH = 640;

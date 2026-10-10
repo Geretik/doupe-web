@@ -224,6 +224,18 @@ function details(entry: LogEntry, ctx: Ctx): ReactNode[] {
         ctx.t.attendance.affiliations[affiliation],
       ];
     }
+    case "loan.lend":
+    case "loan.return":
+    case "loan.code":
+    case "loan.codeRemove": {
+      const { game } = entry.data;
+      return [
+        <Ref key="g" href={`/admin/pujcovna?hra=${game.id}`} live>
+          {game.name}
+        </Ref>,
+        "code" in entry.data && <span key="c" className="font-mono">{entry.data.code}</span>,
+      ];
+    }
   }
 }
 

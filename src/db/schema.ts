@@ -714,6 +714,52 @@ export const attendance = pgTable(
 
 export type AttendanceEntry = typeof attendance.$inferSelect;
 
+/**
+ * Bar codes on the boxes of the club's games (lib/loans): the first scan of an unknown code asks which game of the
+ * collection (src/data/game-collection.json) it is, every later one finds the game straight away.
+ */
+export const gameBarcodes = pgTable(
+  "game_barcodes",
+  {
+    /** EAN-13 (a UPC-A with a leading 0) or EAN-8, digits only */
+    code: text("code").primaryKey(),
+    /** The game's id on Zatrolené hry, as in the collection */
+    gameId: integer("game_id").notNull(),
+    addedBy: integer("added_by").references(() => adminUsers.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("game_barcodes_game_idx").on(t.gameId)],
+);
+
+/**
+ * Games of the club lent to someone (admin → Půjčovna, lib/loans): one row per loan, open until the game comes
+ * back. A game is lent to one person at a time. The daily cron deletes the borrower's name LOAN_RETENTION_DAYS
+ * after the return.
+ */
+export const gameLoans = pgTable(
+  "game_loans",
+  {
+    id: serial("id").primaryKey(),
+    /** The game's id on Zatrolené hry, as in the collection */
+    gameId: integer("game_id").notNull(),
+    /** Its name when lent: the collection may lose the game later */
+    gameName: text("game_name").notNull(),
+    /** Who has it, as the organiser wrote it; null once deleted after the retention period */
+    borrower: text("borrower"),
+    note: text("note"),
+    lentAt: timestamp("lent_at", { withTimezone: true }).notNull().defaultNow(),
+    lentBy: integer("lent_by").references(() => adminUsers.id, { onDelete: "set null" }),
+    returnedAt: timestamp("returned_at", { withTimezone: true }),
+    returnedBy: integer("returned_by").references(() => adminUsers.id, { onDelete: "set null" }),
+  },
+  (t) => [
+    uniqueIndex("game_loans_open_idx").on(t.gameId).where(sql`${t.returnedAt} is null`),
+    index("game_loans_game_idx").on(t.gameId),
+  ],
+);
+
+export type GameLoan = typeof gameLoans.$inferSelect;
+
 export type Draft = typeof drafts.$inferSelect;
 export type DraftSession = typeof draftSessions.$inferSelect;
 export type DraftSessionMember = typeof draftSessionMembers.$inferSelect;
