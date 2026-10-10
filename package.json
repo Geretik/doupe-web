@@ -19,17 +19,17 @@
   },
   "dependencies": {
     "@mdxeditor/editor": "^4.3.2",
-    "@neondatabase/serverless": "^1.1.0",
+    "@neondatabase/serverless": "^1.2.0",
     "barcode-detector": "^3.2.2",
     "drizzle-orm": "^0.45.3",
     "jsqr": "^1.4.0",
-    "next": "16.3.8",
+    "next": "16.4.0",
     "pg": "^8.23.1",
     "qrcode": "^1.5.4",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "react-markdown": "^10.1.0",
-    "resend": "^6.31.0",
+    "resend": "^6.32.1",
     "zod": "^4.6.5"
   },
   "devDependencies": {
@@ -42,10 +42,10 @@
     "@types/qrcode": "^1.5.6",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "dotenv": "^18.0.5",
+    "dotenv": "^18.0.6",
     "drizzle-kit": "^0.31.11",
     "eslint": "^9",
-    "eslint-config-next": "16.3.8",
+    "eslint-config-next": "16.4.0",
     "tailwindcss": "^4",
     "typescript": "~6.0.3"
   },
