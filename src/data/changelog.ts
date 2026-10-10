@@ -28,7 +28,7 @@ export const changelog: ChangelogEntry[] = [
       },
       {
         for: "organizers",
-        text: "Půjčovna her: víc her jednomu člověku půjčíš najednou – tlačítkem 📚 Půjčit víc her najednou napíšeš, komu, a načítáš kódy z krabic jeden po druhém (foťák zůstane zapnutý), nebo hry přidáš podle názvu. Pak je jedním tlačítkem půjčíš všechny.",
+        text: "Půjčovna her: víc her jednomu člověku půjčíš najednou – tlačítkem 📚 Půjčit víc her najednou napíšeš, komu, a načítáš kódy z krabic jeden po druhém (foťák zůstane zapnutý), nebo hry přidáš podle názvu. Vybrané hry jsou zvýrazněné v seznamu i ve výsledcích hledání, naposledy načtená nejvíc. Pak je jedním tlačítkem půjčíš všechny.",
         href: "/admin/pujcovna",
       },
       {

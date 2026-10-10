@@ -136,12 +136,15 @@ export function LoanDesk({
   const [note, setNote] = useState("");
   /** The games to lend to one person at once; null when lending one */
   const [batch, setBatch] = useState<number[] | null>(null);
+  /** The game of the list added or read again last, picked out on it */
+  const [lastChosen, setLastChosen] = useState<number | null>(null);
   const [pending, startTransition] = useTransition();
   const gameSection = useRef<HTMLElement>(null);
 
   const gameById = useMemo(() => new Map(games.map((g) => [g.id, g])), [games]);
   const gameByCode = useMemo(() => new Map(codes.map((c) => [c.code, c.gameId])), [codes]);
   const loanByGame = useMemo(() => new Map(loans.map((l) => [l.gameId, l])), [loans]);
+  const chosen = useMemo(() => new Set(batch ?? []), [batch]);
   const missing = useMemo(() => {
     const coded = new Set(codes.map((c) => c.gameId));
     return games.filter((g) => !coded.has(g.id));
@@ -209,7 +212,8 @@ export function LoanDesk({
     if (!g) return;
     const out = loanByGame.get(id);
     if (out) return setNotice({ kind: "error", text: t.batchOut.replace("{game}", g.name).replace("{who}", out.borrower ?? "?") });
-    if (batch?.includes(id)) return setNotice({ kind: "info", text: t.batchAlready.replace("{game}", g.name) });
+    setLastChosen(id);
+    if (chosen.has(id)) return setNotice({ kind: "info", text: t.batchAlready.replace("{game}", g.name) });
     setBatch((b) => [...(b ?? []), id]);
     setNotice({ kind: "success", text: t.batchAdded.replace("{game}", g.name) });
   };
@@ -276,6 +280,7 @@ export function LoanDesk({
 
   const endBatch = () => {
     setBatch(null);
+    setLastChosen(null);
     setScan((s) => (s === "batch" ? null : s));
     setBorrower("");
     setNote("");
@@ -368,9 +373,14 @@ export function LoanDesk({
                     const g = gameById.get(id);
                     return g ? (
                       <li key={id}>
-                        <button type="button" onClick={() => pick(id)} className="rounded-full border border-accent px-3 py-1 hover:bg-accent/10">
+                        <button
+                          type="button"
+                          onClick={() => pick(id)}
+                          className={`rounded-full border border-accent px-3 py-1 ${chosen.has(id) ? "bg-accent text-accent-foreground" : "hover:bg-accent/10"}`}
+                        >
+                          {chosen.has(id) && "✓ "}
                           {g.name}
-                          {g.year && <span className="text-muted"> ({g.year})</span>}
+                          {g.year && <span className={chosen.has(id) ? "" : "text-muted"}> ({g.year})</span>}
                         </button>
                       </li>
                     ) : [];
@@ -386,7 +396,11 @@ export function LoanDesk({
             {found.length === 0 && <li className="px-3 py-2 text-sm text-muted">{t.noMatch}</li>}
             {found.map(({ game: g, aka }) => (
               <li key={g.id}>
-                <button type="button" onClick={() => pick(g.id)} className="flex w-full flex-wrap items-baseline gap-x-2 px-3 py-2 text-left hover:bg-border/40">
+                <button
+                  type="button"
+                  onClick={() => pick(g.id)}
+                  className={`flex w-full flex-wrap items-baseline gap-x-2 px-3 py-2 text-left ${chosen.has(g.id) ? "bg-accent/10" : "hover:bg-border/40"}`}
+                >
                   <span className="font-medium">{g.name}</span>
                   {g.year && <span className="text-sm text-muted">({g.year})</span>}
                   {g.expansion && <span className="text-xs text-muted">{t.expansion}</span>}
@@ -395,7 +409,10 @@ export function LoanDesk({
                       {t.aka} {aka}
                     </span>
                   )}
-                  {loanByGame.has(g.id) && <span className="ml-auto text-xs font-medium text-accent">{t.lent}</span>}
+                  {chosen.has(g.id) && (
+                    <span className="ml-auto self-center rounded-full bg-accent px-2 py-0.5 text-xs font-medium text-accent-foreground">✓ {t.chosen}</span>
+                  )}
+                  {loanByGame.has(g.id) && !chosen.has(g.id) && <span className="ml-auto text-xs font-medium text-accent">{t.lent}</span>}
                 </button>
               </li>
             ))}
@@ -420,14 +437,27 @@ export function LoanDesk({
             }}
           >
             <BorrowerFields borrower={borrower} setBorrower={setBorrower} note={note} setNote={setNote} people={people} t={t} />
+            <h4 className="font-semibold">
+              {t.batchChosen} <span className="font-normal text-muted">({batch.length})</span>
+            </h4>
             {batch.length === 0 ? (
-              <p className="text-sm text-muted">{t.batchEmpty}</p>
+              <p className="-mt-2 text-sm text-muted">{t.batchEmpty}</p>
             ) : (
-              <ul className="flex flex-col divide-y divide-border border-y border-border" data-testid="loan-batch-games">
+              <ul className="-mt-1 flex flex-col gap-2" data-testid="loan-batch-games">
                 {batch.flatMap((id) => {
                   const g = gameById.get(id);
                   return g ? (
-                    <li key={id} className="flex flex-wrap items-baseline gap-x-2 py-2">
+                    <li
+                      key={id}
+                      // the one added or read again last stands out
+                      aria-current={id === lastChosen ? "true" : undefined}
+                      className={`flex flex-wrap items-baseline gap-x-2 rounded-md border px-3 py-2 transition-colors ${
+                        id === lastChosen ? "border-accent bg-accent/20 ring-1 ring-accent" : "border-accent/40 bg-accent/10"
+                      }`}
+                    >
+                      <span className="font-bold text-accent" aria-hidden>
+                        ✓
+                      </span>
                       <span className="font-medium">{g.name}</span>
                       {g.year && <span className="text-sm text-muted">({g.year})</span>}
                       {g.expansion && <span className="text-xs text-muted">{t.expansion}</span>}

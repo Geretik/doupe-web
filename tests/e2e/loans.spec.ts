@@ -296,6 +296,10 @@ test("lending: several games to one person, box after box", async ({ page }) => 
   await search.fill(CODE);
   await search.press("Enter");
   await expect(page.getByTestId("loan-notice")).toContainText("1775: Rebellion už v seznamu je.");
+  // the game read again stands out on the list, the chosen ones in the search
+  await expect(batch.locator('[aria-current="true"]')).toHaveText(/1775: Rebellion/);
+  await search.fill("akropolis");
+  await expect(page.getByTestId("loan-found").getByRole("button").first()).toContainText("✓ Vybraná");
   await search.fill("6 bere");
   await page.getByTestId("loan-found").getByRole("button", { name: /6 bere!/ }).click();
   await expect(page.getByTestId("loan-notice")).toContainText("6 bere! Jubilejní edice je půjčená: Petr Svoboda.");

@@ -86,6 +86,8 @@ export const loansAdminCs = {
     batchAlready: "{game} už v seznamu je.",
     batchOut: "{game} je půjčená: {who}. Nejdřív ji vrať.",
     batchRemove: "Odebrat ze seznamu",
+    batchChosen: "Vybrané hry",
+    chosen: "Vybraná",
     batchLend: "Půjčit {n}",
     batchCancel: "Zrušit",
     /** 1, 2–4, 5+ games */
@@ -173,6 +175,8 @@ export const loansAdminEn: LoansAdminDict = {
     batchAlready: "{game} is on the list already.",
     batchOut: "{game} is lent to {who}. Take it back first.",
     batchRemove: "Remove from the list",
+    batchChosen: "Chosen games",
+    chosen: "Chosen",
     batchLend: "Lend {n}",
     batchCancel: "Cancel",
     games: ["game", "games", "games"],
