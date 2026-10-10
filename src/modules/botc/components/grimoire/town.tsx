@@ -5,6 +5,7 @@ import { linkedRoleOf } from "@/modules/botc/lib/botc-roles";
 import {
   abilityWorks,
   diedLately,
+  fiddleSeats,
   hasFabled,
   hermitHas,
   moveSeat,
@@ -446,7 +447,7 @@ function DeadMarks({ seat }: { seat: GrimoireSeat }) {
  * the Witch's cursed player, the Mastermind's extra day, the Evil Twin, the Boomdandy executed, the Goblin's claim;
  * the Saint executed, the Klutz, Moonchild and Sweetheart who died, the Butler's master; the Atheist executed, the
  * Mayor with three alive, the Pacifist, the Virgin not nominated yet, the Banshee killed by the Demon; the
- * Buddhist's silence, the Ferryman's final day.
+ * Buddhist's silence, the Ferryman's final day, the Fiddler's contest.
  */
 function dayRules(state: GrimoireState, characters: Record<string, GrimoireCharacter>, t: GrimoireTexts) {
   const alive = (role: string) => players(state).some((s) => s.role === role && !s.dead);
@@ -487,6 +488,8 @@ function dayRules(state: GrimoireState, characters: Record<string, GrimoireChara
   // the Fabled
   if (hasFabled(state, "buddhist")) rules.push(t.buddhistDay);
   if (hasFabled(state, "ferryman") && players(state).filter((s) => !s.dead).length === 3) rules.push(t.ferrymanDay);
+  const contest = hasFabled(state, "fiddler") ? fiddleSeats(state) : null;
+  if (contest) rules.push(fill(t.fiddle.day, { a: contest.demon.name || "?", b: contest.opponent.name || "?" }));
   return rules;
 }
 

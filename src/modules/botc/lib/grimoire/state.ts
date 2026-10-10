@@ -112,6 +112,8 @@ export type GrimoireState = {
   log?: GrimoireEvent[];
   /** The Storyteller's Fabled and Loric in the game: the script's, and the ones added for this table */
   fabled?: string[];
+  /** The Fiddler's contest, once started: the Demon and the opposing player they chose (seat ids) */
+  fiddle?: { demon: string; opponent: string };
 };
 
 /** Up to this many places in the circle; the official game goes to 15 players and a few travellers, then the gaps. */
@@ -749,6 +751,41 @@ export function voteMath(state: Pick<GrimoireState, "seats">) {
   const alive = players(state).filter((s) => !s.dead).length;
   const votes = players(state).filter((s) => !s.dead || !s.voteUsed).length;
   return { alive, votes, toExecute: Math.ceil(alive / 2) };
+}
+
+/**
+ * Who chooses in the Fiddler's contest: the living Demons, else the dead ones (the Zombuul who only registers as
+ * dead); without a Demon in the circle (the Lil' Monsta's babysitter) the evil players, for the Storyteller to pick.
+ */
+export function fiddleDemons(state: Pick<GrimoireState, "seats">, characters: Record<string, GrimoireCharacter>) {
+  const demons = players(state).filter((s) => findRole(s.role)?.team === "demon");
+  const living = demons.filter((s) => !s.dead);
+  if (living.length) return living;
+  return demons.length ? demons : players(state).filter((s) => seatSide(s, characters, state) === "evil");
+}
+
+/** Whom the Demon may choose for the Fiddler's contest: any player of the other side (a good Demon an evil one), the living first. */
+export function fiddleOpponents(state: Pick<GrimoireState, "seats">, demon: GrimoireSeat, characters: Record<string, GrimoireCharacter>) {
+  const side: Side = seatSide(demon, characters, state) === "good" ? "evil" : "good";
+  const opponents = players(state).filter((s) => s.id !== demon.id && seatSide(s, characters, state) === side);
+  return [...opponents.filter((s) => !s.dead), ...opponents.filter((s) => s.dead)];
+}
+
+/** The Fiddler's contest of the Demon and the player they chose, when both still sit in the circle; else null. */
+export function fiddleSeats(state: Pick<GrimoireState, "seats" | "fiddle">) {
+  const seat = (id: string | undefined) => players(state).find((s) => s.id === id);
+  const demon = seat(state.fiddle?.demon);
+  const opponent = seat(state.fiddle?.opponent);
+  return demon && opponent ? { demon, opponent } : null;
+}
+
+/**
+ * The Fiddler's contest decided: the game ends, won by the side of the player who got more votes (`winnerId`);
+ * a tie (null) is evil's win.
+ */
+export function endFiddle(state: GrimoireState, winnerId: string | null, characters: Record<string, GrimoireCharacter>, notes = state.notes): GrimoireState {
+  const winner = winnerId ? state.seats.find((s) => s.id === winnerId) : undefined;
+  return endGame(state, winner ? seatSide(winner, characters, state) : "evil", notes);
 }
 
 /** The Ferryman's final day: every dead player has their vote token again. */

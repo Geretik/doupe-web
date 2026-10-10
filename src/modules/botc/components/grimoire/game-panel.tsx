@@ -13,7 +13,7 @@ import { DeleteGrimoireButton } from "./delete-grimoire";
 
 const button = "min-h-12 rounded-lg border px-3 py-2 text-sm font-semibold";
 /** As long as the game form's note */
-const NOTES_MAX = 1000;
+export const NOTES_MAX = 1000;
 
 type GameProps = {
   id: number;

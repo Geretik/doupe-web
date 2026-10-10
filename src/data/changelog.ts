@@ -14,7 +14,7 @@ export type ChangelogEntry = { /** YYYY-MM-DD */ date: string; title: string; it
 export const changelog: ChangelogEntry[] = [
   {
     date: "2026-10-10",
-    title: "Prezenčka klubu; grimoár: mřížka, pocestní, skrytí stavu hry a velikost žetonů",
+    title: "Prezenčka klubu; grimoár: mřížka, pocestní, skrytí stavu hry, velikost žetonů a Houslista",
     items: [
       {
         for: "organizers",
@@ -53,6 +53,11 @@ export const changelog: ChangelogEntry[] = [
       {
         for: "organizers",
         text: "Grimoár, Báje a Loric: při výběru je u každé vidět celá schopnost. Během hry jde Báji přidat i tlačítkem + v rohu města – podle pravidel jen ty, které jdou přidat kdykoli (Houslista, Pekelná knihovnice, Převozník, Věštec zkázy); ostatní Báje a všechny Loric se přidávají na začátku hry.",
+        href: "/admin/botc/grimoary",
+      },
+      {
+        for: "organizers",
+        text: "Grimoár, Houslista: když ho přidáš (během hry tlačítkem + v rohu města), panel ukáže, jak ho vést. Při souboji vybereš hráče, na kterého Démon ukázal – oba se ve městě zvýrazní a přes den je uprostřed města připomínka, že už nikdo nepoužívá schopnosti. Po hlasování ťukneš na toho, kdo dostal víc hlasů (nebo na rovnost – vyhrává zlo), a hra skončí vítězstvím jeho týmu; výsledek souboje se zapíše do poznámky ke hře.",
         href: "/admin/botc/grimoary",
       },
       {

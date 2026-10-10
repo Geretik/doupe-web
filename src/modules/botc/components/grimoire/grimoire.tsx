@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "r
 import { createPortal } from "react-dom";
 import type { Locale } from "@/i18n/dictionaries";
 import type { GrimoireCharacter } from "@/modules/botc/lib/grimoire/characters";
-import { isPlayer, nextPhase, nightSteps, putToken, type GrimoireSeat, type GrimoireState } from "@/modules/botc/lib/grimoire/state";
+import { fiddleSeats, isPlayer, nextPhase, nightSteps, putToken, type GrimoireSeat, type GrimoireState } from "@/modules/botc/lib/grimoire/state";
 import { useAutosave, type SaveStatus } from "./autosave";
 import { ChroniclePanel } from "./chronicle";
 import { DrawView } from "./draw";
@@ -237,6 +237,8 @@ export function Grimoire({
   const shown = tabs.includes(tab) ? tab : "seat";
   // taken out of the game (in the setup, by undo): the panel is the player's again
   const fabledShown = fabledOpen && state.fabled?.includes(fabledOpen) ? fabledOpen : null;
+  // the Fiddler open in the panel: the two players of its contest stand out in the town
+  const contest = fabledShown === "fiddler" && shown === "seat" ? fiddleSeats(state) : null;
   const tapFabled = (id: string) => {
     setAddingFabled(false);
     if (id === fabledShown && shown === "seat") return setFabledOpen(null);
@@ -352,7 +354,7 @@ export function Grimoire({
               <div className="relative min-h-0 basis-[55%] lg:basis-auto lg:flex-1">
                 <Town
                   selectedId={shown === "seat" && !fabledShown ? selected : null}
-                  highlightIds={hidden ? [] : (focused?.seatIds ?? [])}
+                  highlightIds={hidden ? [] : contest ? [contest.demon.id, contest.opponent.id] : (focused?.seatIds ?? [])}
                   onSelect={tapSeat}
                   onBackground={() => (placing ? setPlacing(null) : (setSelected(null), setFabledOpen(null), setAddingFabled(false)))}
                   onMove={context.readOnly || state.seatsLocked ? undefined : moveSeats}

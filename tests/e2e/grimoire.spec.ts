@@ -11,7 +11,11 @@ import {
   evilDead,
   evilLivingNeighbours,
   evilPairs,
+  endFiddle,
   expectedSetup,
+  fiddleDemons,
+  fiddleOpponents,
+  fiddleSeats,
   impairment,
   lineUpTyphon,
   nearestEvilWay,
@@ -790,6 +794,28 @@ test("Fabled and Loric: the Pope's duplicate good characters – twice in the ba
   expect(bluffCandidates({ ...dealt, fabled: [] })).not.toContain("empath");
 });
 
+test("Fabled: the Fiddler's contest – the Demon chooses any player of the other side, the more votes win for their side, a tie for evil", () => {
+  let state: GrimoireState = { ...nightOf(["imp", "poisoner", "empath", "chef", "recluse"]), phase: "day", fabled: ["fiddler"] };
+  state = setDead(state, at(state, "chef").id, true, characters);
+  const [demon] = fiddleDemons(state, characters);
+  expect(demon.name).toBe("imp");
+  // any good player, the living first; the Recluse is good
+  expect(fiddleOpponents(state, demon, characters).map((s) => s.name)).toEqual(["empath", "recluse", "chef"]);
+  state = { ...state, fiddle: { demon: demon.id, opponent: at(state, "empath").id } };
+  expect(grimoireStateSchema.safeParse(state).success).toBe(true);
+  expect(fiddleSeats(state)?.opponent.name).toBe("empath");
+  expect(endFiddle(state, at(state, "empath").id, characters)).toMatchObject({ phase: "ended", winner: "good" });
+  expect(endFiddle(state, demon.id, characters)).toMatchObject({ phase: "ended", winner: "evil" });
+  expect(endFiddle(state, null, characters)).toMatchObject({ phase: "ended", winner: "evil" });
+  // a player who left the circle: no contest
+  expect(fiddleSeats({ ...state, seats: state.seats.filter((s) => s.name !== "empath") })).toBeNull();
+
+  // no Demon in the circle (Lil' Monsta): the evil players; one on the good side chooses an evil player
+  const monsta = nightOf(["poisoner", "spy", "empath"]);
+  expect(fiddleDemons(monsta, characters).map((s) => s.name)).toEqual(["poisoner", "spy"]);
+  expect(fiddleOpponents(monsta, at(monsta, "empath"), characters).map((s) => s.name)).toEqual(["poisoner", "spy"]);
+});
+
 test("travellers: on the side the Storyteller gave them – grey until then; the Empath and the Chef count an evil one", () => {
   const state = nightOf(["empath", "thief", "imp", "chef"]);
   expect(seatSide(at(state, "thief"))).toBeNull();
@@ -1497,6 +1523,47 @@ test("grimoire: during the game only the Fabled meant for any time can be added 
   await expect(fabled.getByRole("button", { name: /^Přidat do hry: / })).toHaveCount(4);
   await expect(fabled.getByRole("button", { name: "Přidat do hry: Převozník" })).toHaveAttribute("aria-pressed", "true");
   await expect(fabled.getByRole("button", { name: "Přidat do hry: Lapač bouří" })).toHaveCount(0);
+});
+
+test("grimoire: the Fiddler added during the game – how to run it, the player the Demon pointed at, the more votes end the game", async ({ page }) => {
+  await adminLogin(page);
+  await newGrimoire(page);
+  await addPlayer(page, "Olga");
+  await stored((st) => st.seats.length, 3);
+  await closeSetup(page);
+  const [row] = await sql<{ id: number; state: GrimoireState }>("select id, state from grimoires order by id desc limit 1");
+  const roles: Record<string, string> = { Jana: "imp", Petr: "empath", Olga: "poisoner" };
+  const game = { ...row.state, seats: row.state.seats.map((x) => ({ ...x, role: roles[x.name] })), phase: "day", round: 2 };
+  await sql("update grimoires set state = $1, version = version + 1 where id = $2", [JSON.stringify(game), row.id]);
+  await page.reload();
+  type Fiddled = { fiddle?: { demon: string; opponent: string }; winner: string | null; notes?: string };
+
+  // added from the town's corner, it opens with how to run it
+  await page.getByTestId("fabled-add").click();
+  await page.getByTestId("fabled-add-panel").getByRole("button", { name: "Přidat do hry: Houslista" }).click();
+  const fiddle = page.getByTestId("fiddle");
+  await expect(fiddle).toContainText("Jak vést Houslistu");
+  await expect(fiddle).toContainText("Při rovnosti vyhrává zlo.");
+  // the Demon points at a good player
+  const start = page.getByTestId("fiddle-start");
+  await expect(start.getByRole("button", { name: /^Zvolený hráč: / })).toHaveCount(1);
+  await start.getByRole("button", { name: "Zvolený hráč: Petr" }).click();
+  await stored((st) => !!(st as unknown as Fiddled).fiddle, true);
+  await expect(page.getByTestId("town")).toContainText("Houslista: souboj Jana × Petr");
+
+  // Petr got more votes: good wins, the note says how
+  const contest = page.getByTestId("fiddle-contest");
+  await contest.getByRole("button", { name: "Zvolený hráč: Petr" }).click();
+  await stored((st) => [st.phase, (st as unknown as Fiddled).winner], ["ended", "good"]);
+  await expect(page.getByTestId("game-button")).toHaveText("🏁 😇 Vyhrálo dobro");
+  await stored((st) => (st as unknown as Fiddled).notes, "Houslista: souboj Jana (Čert) × Petr (Empat), víc hlasů dostal/a Petr.");
+
+  // back into the game and decided again: a tie is evil's win, the note says the new result only
+  await page.getByTestId("game-button").click();
+  await page.getByTestId("game-panel").getByRole("button", { name: "Vrátit se do hry" }).click();
+  await contest.getByRole("button", { name: "Rovnost hlasů – vyhrává zlo" }).click();
+  await stored((st) => [st.phase, (st as unknown as Fiddled).winner], ["ended", "evil"]);
+  await stored((st) => (st as unknown as Fiddled).notes, "Houslista: souboj Jana (Čert) × Petr (Empat) skončil rovností hlasů.");
 });
 
 test("grimoire: the bag counts each team against the setup for the players, also over the whole screen", async ({ page }) => {

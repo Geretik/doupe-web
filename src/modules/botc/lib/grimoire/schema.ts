@@ -76,4 +76,5 @@ export const grimoireStateSchema: z.ZodType<GrimoireState> = z.object({
     .max(MAX_EVENTS)
     .optional(),
   fabled: fabledList.optional(),
+  fiddle: z.object({ demon: shortId, opponent: shortId }).optional(),
 });

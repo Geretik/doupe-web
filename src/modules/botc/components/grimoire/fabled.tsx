@@ -3,8 +3,21 @@
 import { useState } from "react";
 import { findStorytellerRole, roleTeams, storytellerRoles, type RoleTeam, type StorytellerTeam } from "@/modules/botc/lib/botc-roles";
 import { jinxesAmong } from "@/modules/botc/lib/grimoire/characters";
-import { remindersOf, returnVotes, type GrimoireState } from "@/modules/botc/lib/grimoire/state";
+import {
+  endFiddle,
+  fiddleDemons,
+  fiddleOpponents,
+  fiddleSeats,
+  remindersOf,
+  returnVotes,
+  seatSide,
+  type GrimoireSeat,
+  type GrimoireState,
+} from "@/modules/botc/lib/grimoire/state";
+import { fill } from "@/modules/botc/lib/grimoire/text";
+import { chronicleText } from "./chronicle";
 import { nameOf, RoleIcon, useGrimoire } from "./context";
+import { NOTES_MAX } from "./game-panel";
 import type { Placing } from "./night-panel";
 
 /** The Fabled gold, the Loric green: as on the official tokens */
@@ -26,12 +39,13 @@ function addable(state: Pick<GrimoireState, "phase">) {
   return storytellerRoles.filter((r) => state.phase === "setup" || r.anyTime).map((r) => r.id);
 }
 
-/** The game without the Fabled or Loric, and without its tokens at the players. */
+/** The game without the Fabled or Loric, and without its tokens at the players (and the Fiddler's contest). */
 function withoutFabled(s: GrimoireState, id: string): GrimoireState {
   return {
     ...s,
     fabled: (s.fabled ?? []).filter((x) => x !== id),
     seats: s.seats.map((seat) => (seat.reminders.some((r) => r.roleId === id) ? { ...seat, reminders: seat.reminders.filter((r) => r.roleId !== id) } : seat)),
+    ...(id === "fiddler" ? { fiddle: undefined } : {}),
   };
 }
 
@@ -154,6 +168,8 @@ export function FabledPanel({
 
       {roleId === "bootlegger" && <Homebrew />}
 
+      {roleId === "fiddler" && <Fiddle />}
+
       {roleId === "ferryman" && !readOnly && (
         <button type="button" className={plain} onClick={() => update(returnVotes)} disabled={!state.seats.some((s) => s.dead && s.voteUsed)}>
           🗳 {t.ferrymanReturn}
@@ -238,6 +254,159 @@ function Homebrew() {
         </section>
       )}
     </div>
+  );
+}
+
+const chip = "flex min-h-11 items-center gap-1.5 rounded-full border-2 bg-card py-0.5 pr-3 pl-1 text-sm";
+
+/**
+ * The Fiddler's: how to run it, and its contest – who the Demon is, the player they pointed at, then the one of the
+ * two who got more votes, which ends the game with their side's win (a tie: evil's). Started during the game; once
+ * it is over, only to read. Hidden, only how to run it: the contest shows who the Demon is.
+ */
+function Fiddle() {
+  const { state, update, readOnly, hidden, characters, locale, t } = useGrimoire();
+  const f = t.fiddle;
+  const [demonId, setDemonId] = useState<string | null>(null);
+  // back in the setup by undo, there is no contest yet
+  const contest = state.phase === "setup" ? null : fiddleSeats(state);
+  const playing = state.phase === "night" || state.phase === "day";
+  const demons = fiddleDemons(state, characters);
+  const demon = demons.find((s) => s.id === demonId) ?? demons[0];
+  const roleOf = (seat: GrimoireSeat) => (seat.role ? nameOf(seat.role, locale) : t.noRole);
+  const sideBorder = (seat: GrimoireSeat) => (seatSide(seat, characters, state) === "good" ? "border-good" : "border-accent");
+  const end = (winner: GrimoireSeat | null) => {
+    if (!contest) return;
+    const label = (seat: GrimoireSeat) => `${seat.name || "?"} (${roleOf(seat)})`;
+    const pair = { demon: label(contest.demon), opponent: label(contest.opponent) };
+    const noteOf = (won: GrimoireSeat | null) => fill(won ? f.noteWon : f.noteTie, { ...pair, name: won?.name || "?" });
+    const line = noteOf(winner);
+    update((s) => {
+      // the note starts with the contest: ended for the first time, the chronicle follows as the end dialog has it;
+      // back in the game and decided again, the earlier result makes way
+      const rest =
+        s.notes === undefined
+          ? chronicleText(s, locale, t, NOTES_MAX - line.length - 1)
+          : [contest.demon, contest.opponent, null].reduce((n, won) => n.replace(noteOf(won), ""), s.notes).trim();
+      return endFiddle(s, winner?.id ?? null, characters, [line, rest].filter(Boolean).join(" ").slice(0, NOTES_MAX));
+    });
+  };
+  return (
+    <div className="flex flex-col gap-4" data-testid="fiddle">
+      <section className="flex flex-col gap-1.5">
+        <h3 className={heading}>{f.howTo}</h3>
+        <ol className="flex list-decimal flex-col gap-1 pl-5 text-sm leading-snug">
+          {f.steps.map((step, i) => (
+            <li key={i}>{step}</li>
+          ))}
+        </ol>
+      </section>
+
+      {hidden ? null : contest ? (
+        <section className="flex flex-col gap-2" data-testid="fiddle-contest">
+          <h3 className={heading}>{f.contest}</h3>
+          {!readOnly && <p className="text-sm">{f.who}</p>}
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { seat: contest.demon, as: f.demon },
+              { seat: contest.opponent, as: f.opponent },
+            ].map(({ seat, as }) => (
+              <button
+                key={seat.id}
+                type="button"
+                disabled={readOnly}
+                onClick={() => end(seat)}
+                aria-label={`${as}: ${seat.name || "?"}`}
+                className={`flex flex-col items-center gap-1 rounded-xl border-2 bg-card p-3 text-center ${sideBorder(seat)} ${readOnly ? "" : "hover:bg-border/40"}`}
+              >
+                <span className={heading}>{as}</span>
+                {seat.role && <RoleIcon roleId={seat.role} size={44} />}
+                <span className="font-semibold">{seat.name || "?"}</span>
+                <span className="text-xs text-muted">
+                  {roleOf(seat)}
+                  {seat.dead && " · 💀"}
+                </span>
+              </button>
+            ))}
+          </div>
+          {!readOnly && (
+            <div className="flex flex-wrap gap-2">
+              <button type="button" className={`${plain} flex-1`} onClick={() => end(null)}>
+                {f.tie}
+              </button>
+              <button type="button" className={plain} onClick={() => update((s) => ({ ...s, fiddle: undefined }))}>
+                {f.cancel}
+              </button>
+            </div>
+          )}
+        </section>
+      ) : state.phase === "setup" ? (
+        <p className="text-sm text-muted">{f.duringGame}</p>
+      ) : (
+        playing &&
+        !readOnly && (
+          <section className="flex flex-col gap-2" data-testid="fiddle-start">
+            {demons.length > 1 && (
+              <>
+                <h3 className={heading}>{f.whoDemon}</h3>
+                <div className="flex flex-wrap gap-1.5">
+                  {demons.map((s) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      aria-pressed={s.id === demon?.id}
+                      onClick={() => setDemonId(s.id)}
+                      className={`${chip} ${s.id === demon?.id ? "border-accent" : "border-border hover:border-accent/50"}`}
+                    >
+                      {s.role && <RoleIcon roleId={s.role} size={28} />}
+                      {s.name || "?"}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+            {!demon ? (
+              <p className="text-sm text-muted">{f.noDemon}</p>
+            ) : (
+              <FiddleOpponents demon={demon} />
+            )}
+          </section>
+        )
+      )}
+    </div>
+  );
+}
+
+/** Whom the Demon pointed at, from the players of the other side: a tap starts the contest. */
+function FiddleOpponents({ demon }: { demon: GrimoireSeat }) {
+  const { state, update, characters, locale, t } = useGrimoire();
+  const opponents = fiddleOpponents(state, demon, characters);
+  return (
+    <>
+      <h3 className={heading}>{t.fiddle.choose}</h3>
+      {opponents.length === 0 ? (
+        <p className="text-sm text-muted">{t.fiddle.noOpponent}</p>
+      ) : (
+        <div className="flex flex-wrap gap-1.5">
+          {opponents.map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              onClick={() => update((x) => ({ ...x, fiddle: { demon: demon.id, opponent: s.id } }))}
+              aria-label={`${t.fiddle.opponent}: ${s.name || "?"}`}
+              className={`${chip} border-border hover:border-accent/50`}
+            >
+              {s.role && <RoleIcon roleId={s.role} size={28} />}
+              {s.name || "?"}
+              <span className="text-xs text-muted">
+                {s.role ? nameOf(s.role, locale) : t.noRole}
+                {s.dead && " · 💀"}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+    </>
   );
 }
 
