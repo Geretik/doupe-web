@@ -1,24 +1,15 @@
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { sessions } from "@/db/schema";
-import type { Dict } from "@/i18n/dictionaries";
 import { getDict } from "@/i18n/server";
 import { isAdmin } from "@/lib/admin-auth";
+import { toCsv } from "@/lib/csv";
 import { listRegistrationsForSession } from "@/modules/botc/lib/queries";
 import { shownEmail } from "@/lib/retention";
 import { formatTime } from "@/lib/time";
 import { parseId } from "@/lib/validation";
 
 export const dynamic = "force-dynamic";
-
-function cell(v: string | number | boolean | null | undefined, t: Dict["admin"]["csv"]) {
-  if (v === null || v === undefined) return "";
-  let s = typeof v === "boolean" ? (v ? t.yes : t.no) : String(v);
-  // players type nicknames and notes themselves: Excel must not run "=HYPERLINK(…)" as a formula
-  // (a bare number such as the phone "+420777123456" cannot do anything and stays as it is)
-  if (/^[=+\-@\t\r]/.test(s) && !/^[+-]?\d+$/.test(s)) s = `'${s}`;
-  return /[";\n\r]/.test(s) ? `"${s.replaceAll('"', '""')}"` : s;
-}
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   if (!(await isAdmin())) return new Response("Unauthorized", { status: 401 });
@@ -32,7 +23,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   if (!session) return new Response("Not found", { status: 404 });
   const t = dict.admin.csv;
 
-  const header = t.header;
+  const yesNo = (v: boolean | null) => (v === null ? "" : v ? t.yes : t.no);
   const rows = regs.map((r) => [
     r.firstName,
     r.lastName,
@@ -42,14 +33,14 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     t.status[r.status] ?? r.status,
     session.arrivalMode === "late" ? (r.arrivesLate ? dict.admin.session.late : dict.admin.session.fromStart) : (r.arrivalTime ?? formatTime(session.startsAt, locale)),
     session.arrivalMode === "late" ? "" : (r.departureTime ?? formatTime(session.endsAt, locale)),
-    r.canStorytell,
-    r.isNewbie,
-    r.attended === null ? "" : r.attended,
+    yesNo(r.canStorytell),
+    yesNo(r.isNewbie),
+    yesNo(r.attended),
     r.note,
     r.createdAt.toISOString(),
   ]);
-  // semicolon-separated + BOM so Czech Excel opens it correctly
-  const csv = "﻿" + [header, ...rows].map((row) => row.map((v) => cell(v, t)).join(";")).join("\r\n") + "\r\n";
+  // players type nicknames and notes themselves: toCsv keeps Excel from running them as formulas
+  const csv = toCsv([t.header, ...rows]);
   // header values must be ASCII: strip diacritics, keep letters/digits
   const safeTitle = session.title
     .normalize("NFD")

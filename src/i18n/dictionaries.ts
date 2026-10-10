@@ -1,3 +1,4 @@
+import { attendanceAdminCs, attendanceAdminEn, attendanceCs, attendanceEn } from "./attendance";
 import { draftCs, draftEn } from "./draft";
 import { grimoireCs, grimoireEn } from "./grimoire";
 import type { LogAction, LoginMethod } from "@/lib/admin-log";
@@ -395,6 +396,7 @@ export const cs = {
     title: "Ochrana osobních údajů",
     subtitle: "Jaké údaje při registraci sbíráme, k čemu je potřebujeme, kdo k nim má přístup a kdy je smažeme.",
   },
+  attendance: attendanceCs,
   draft: draftCs,
   grimoire: grimoireCs,
   admin: {
@@ -411,6 +413,7 @@ export const cs = {
         [turns && `na tahu: ${turns}`, invites && `pozvánky: ${invites}`].filter(Boolean).join(", "),
       club: "Klub",
       web: "Texty webu",
+      attendance: "Prezenčka",
       news: "Novinky",
       newsUnread: "Přibyly novinky",
       accounts: "Účty",
@@ -596,7 +599,7 @@ export const cs = {
       area: "Oblast",
       allAreas: "Vše",
       show: "Zobrazit",
-      areas: { session: "Termíny", draft: "Drafty", grimoire: "Grimoáry", script: "Scripty", web: "Texty webu", account: "Účty a přihlášení" },
+      areas: { session: "Termíny", draft: "Drafty", grimoire: "Grimoáry", script: "Scripty", web: "Texty webu", attendance: "Prezenčka", account: "Účty a přihlášení" },
       onlySession: "Jen jeden termín.",
       showAll: "Zobrazit vše",
       sessionHistory: "Historie změn",
@@ -658,6 +661,8 @@ export const cs = {
         "grimoire.create": "Nový grimoár",
         "grimoire.delete": "Smazaný grimoár",
         "grimoire.record": "Hra z grimoáru zapsaná",
+        "attendance.add": "Přidaný zápis do prezenčky",
+        "attendance.delete": "Smazaný zápis z prezenčky",
       } satisfies Record<LogAction, string>,
       loginMethods: { password: "heslem", link: "odkazem z e-mailu", qr: "QR kódem", reset: "odkazem pro nové heslo", invite: "z pozvánky, nový účet", setup: "první účet" } satisfies Record<LoginMethod, string>,
       intents: { save: "uloženo", default: "vráceno na text z kódu", restore: "vrácena starší verze" },
@@ -843,6 +848,7 @@ export const cs = {
       grimoires: "Tvoje rozehrané grimoáry",
       clubPage: "Web klubu",
       games: "Sbírka her",
+      attendanceTonight: (n: number) => `dnes ${n} ${cz(n, "člověk", "lidé", "lidí")}`,
     },
     list: {
       upcoming: "Nadcházející termíny",
@@ -1150,6 +1156,7 @@ export const cs = {
       wonInGames: "Vyhrálo dobro / zlo",
       scripts: "Scripty",
     },
+    attendance: attendanceAdminCs,
     poster: {
       back: "← Zpět na termín",
       print: "🖨️ Vytisknout",
@@ -1583,6 +1590,7 @@ export const en: Dict = {
     title: "Privacy",
     subtitle: "What we collect when you sign up, what we need it for, who can see it and when we delete it.",
   },
+  attendance: attendanceEn,
   draft: draftEn,
   grimoire: grimoireEn,
   admin: {
@@ -1598,6 +1606,7 @@ export const en: Dict = {
       draftsAttention: (turns, invites) => [turns && `your turn: ${turns}`, invites && `invitations: ${invites}`].filter(Boolean).join(", "),
       club: "Club",
       web: "Site texts",
+      attendance: "Attendance sheet",
       news: "What's new",
       newsUnread: "New changes",
       accounts: "Accounts",
@@ -1771,7 +1780,7 @@ export const en: Dict = {
       area: "Area",
       allAreas: "Everything",
       show: "Show",
-      areas: { session: "Sessions", draft: "Drafts", grimoire: "Grimoires", script: "Scripts", web: "Site texts", account: "Accounts and logins" },
+      areas: { session: "Sessions", draft: "Drafts", grimoire: "Grimoires", script: "Scripts", web: "Site texts", attendance: "Attendance sheet", account: "Accounts and logins" },
       onlySession: "One session only.",
       showAll: "Show everything",
       sessionHistory: "History of changes",
@@ -1833,6 +1842,8 @@ export const en: Dict = {
         "grimoire.create": "New grimoire",
         "grimoire.delete": "Grimoire deleted",
         "grimoire.record": "Game from a grimoire recorded",
+        "attendance.add": "Entry added to the attendance sheet",
+        "attendance.delete": "Entry deleted from the attendance sheet",
       },
       loginMethods: { password: "with password", link: "with an e-mailed link", qr: "with a QR code", reset: "with a new password link", invite: "from an invitation, new account", setup: "first account" },
       intents: { save: "saved", default: "back to the text in the code", restore: "earlier version restored" },
@@ -1978,6 +1989,7 @@ export const en: Dict = {
       grimoires: "Your grimoires in play",
       clubPage: "The club's site",
       games: "Game collection",
+      attendanceTonight: (n: number) => `${n} ${n === 1 ? "person" : "people"} today`,
     },
     list: {
       upcoming: "Upcoming sessions",
@@ -2280,6 +2292,7 @@ export const en: Dict = {
       wonInGames: "Good / evil won",
       scripts: "Scripts",
     },
+    attendance: attendanceAdminEn,
     poster: {
       back: "← Back to the session",
       print: "🖨️ Print",

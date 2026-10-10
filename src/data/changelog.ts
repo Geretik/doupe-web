@@ -14,8 +14,18 @@ export type ChangelogEntry = { /** YYYY-MM-DD */ date: string; title: string; it
 export const changelog: ChangelogEntry[] = [
   {
     date: "2026-10-10",
-    title: "Grimoár: mřížka, pocestní, skrytí stavu hry a velikost žetonů",
+    title: "Prezenčka klubu; grimoár: mřížka, pocestní, skrytí stavu hry a velikost žetonů",
     items: [
+      {
+        for: "organizers",
+        text: "Prezenčka: v adminu pod Klub → Prezenčka je QR kód a kartička na stůl k vytištění. Odkaz je pořád stejný – v úterý a ve čtvrtek otevře prezenčku toho večera (zápis po půlnoci do 5:00 patří ještě k večeru předtím), jindy řekne, kdy je další. Uvidíš tam, kdo na večer přišel, můžeš někoho přidat ručně nebo smazat, a za zvolené období počty zápisů a různých lidí podle vztahu k UP s exportem do CSV. Na webu na prezenčku žádný odkaz nevede.",
+        href: "/admin/prezence",
+      },
+      {
+        for: "players",
+        text: "Prezenčka klubových večerů: načti QR kód na stole a zapiš jméno, příjmení a vztah k UP. Telefon si tě může zapamatovat, příště pak stačí jedno ťuknutí; kamaráda bez telefonu zapíšeš tlačítkem Zapsat někoho dalšího.",
+        href: "/prezence",
+      },
       {
         for: "organizers",
         text: "Grimoár: tlačítkem pod zámkem v rohu města přepneš z kruhu na mřížku a hráče (i dveře, vypravěče a překážky) přetáhneš, kam chceš – třeba jak sedí u stolu. Žeton se přichytí k mřížce a zařadí se mezi dva hráče, ke kterým ho položíš nejblíž; přerušovaná čára ukazuje, kdo s kým sousedí. Zpátky do kruhu stejným tlačítkem, rozmístění na mřížce zůstane uložené. Se zamčeným rozesazením mřížka ani přepínač nejsou vidět.",

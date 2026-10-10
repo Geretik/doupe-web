@@ -1,5 +1,6 @@
 import {
   boolean,
+  date,
   index,
   integer,
   jsonb,
@@ -335,10 +336,10 @@ export const loginFailures = pgTable(
   (t) => [index("login_failures_ip_hash_idx").on(t.ipHash, t.createdAt)],
 );
 
-export const linkKinds = ["my_games", "admin_reset", "admin_login", "message"] as const;
+export const linkKinds = ["my_games", "admin_reset", "admin_login", "message", "attendance"] as const;
 export type LinkKind = (typeof linkKinds)[number];
 
-/** "Send me a link" requests ("my games", forgotten admin password) and messages from the club page, for throttling them (lib/link-throttle); the daily cron deletes old rows. */
+/** "Send me a link" requests ("my games", forgotten admin password), messages from the club page and attendance sheet entries, for throttling them (lib/link-throttle); the daily cron deletes old rows. */
 export const linkRequests = pgTable(
   "link_requests",
   {
@@ -679,6 +680,39 @@ export const grimoires = pgTable(
 );
 
 export type Grimoire = typeof grimoires.$inferSelect;
+
+/** How someone on the club's attendance sheet is related to Palacký University (UP), the club's host. */
+export const attendanceAffiliations = ["student", "employee", "graduate", "external"] as const;
+export type AttendanceAffiliation = (typeof attendanceAffiliations)[number];
+
+/**
+ * The club's attendance sheet (lib/attendance): one row per person and club night, filled in on their own phone from
+ * the QR code on the table (/prezence) or added by an organiser. The daily cron deletes the names
+ * ATTENDANCE_RETENTION_YEARS after the night; the day and the affiliation stay for the club's numbers.
+ */
+export const attendance = pgTable(
+  "attendance",
+  {
+    id: serial("id").primaryKey(),
+    /** The club night, "YYYY-MM-DD" in Prague; an entry made after midnight counts to the evening before */
+    day: date("day", { mode: "string" }).notNull(),
+    /** null once deleted after the retention period */
+    firstName: text("first_name"),
+    lastName: text("last_name"),
+    affiliation: text("affiliation", { enum: attendanceAffiliations }).notNull(),
+    /**
+     * sha256 of the key in the cookie of the phone that remembers this person: one entry per phone and night, and
+     * corrections from that phone change it. Not personal: the key says nothing about the phone.
+     */
+    deviceKeyHash: text("device_key_hash"),
+    /** The organiser who added it by hand; null = the person themselves (or the account is gone) */
+    addedBy: integer("added_by").references(() => adminUsers.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("attendance_day_idx").on(t.day), uniqueIndex("attendance_day_device_idx").on(t.day, t.deviceKeyHash)],
+);
+
+export type AttendanceEntry = typeof attendance.$inferSelect;
 
 export type Draft = typeof drafts.$inferSelect;
 export type DraftSession = typeof draftSessions.$inferSelect;

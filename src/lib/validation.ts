@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { adminRoles, arrivalModes, gameLanguages, gameWinners, registrationStates, type ArrivalMode } from "@/db/schema";
+import { adminRoles, arrivalModes, attendanceAffiliations, gameLanguages, gameWinners, registrationStates, type ArrivalMode } from "@/db/schema";
 import type { Dict } from "@/i18n/dictionaries";
 import { BLUFF_COUNT, bluffTeams, findRole, linkedRoleOf, SAT_OUT, STORYTELLER } from "@/modules/botc/lib/botc-roles";
 import { PASSWORD_MIN_LENGTH } from "./password";
@@ -281,6 +281,25 @@ export function messageSchema(t: Dict["club"]["message"], errors: Dict["errors"]
     email: emailSchema(errors),
     text: z.string().trim().min(1, t.fillText).max(MESSAGE_MAX_LENGTH, t.textTooLong),
     // honeypot: any value is accepted here, and the action then pretends success without sending
+    website: z.string().optional(),
+  });
+}
+
+/** A name as people type it on a phone: inner spaces squeezed, never empty. */
+const personName = (fill: string) =>
+  z
+    .string()
+    .optional()
+    .transform((v) => (v ?? "").replace(/\s+/g, " ").trim())
+    .pipe(z.string().min(1, fill).max(100));
+
+/** The attendance sheet's form (/prezence) and an organiser adding someone by hand. */
+export function attendanceSchema(t: Dict["attendance"]["errors"]) {
+  return z.object({
+    firstName: personName(t.fillFirstName),
+    lastName: personName(t.fillLastName),
+    affiliation: z.enum(attendanceAffiliations, { error: t.pickAffiliation }),
+    // honeypot, see messageSchema
     website: z.string().optional(),
   });
 }

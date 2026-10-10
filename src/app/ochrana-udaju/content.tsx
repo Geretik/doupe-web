@@ -1,5 +1,6 @@
 import type { Locale } from "@/i18n/dictionaries";
 import { H2, P, Ul } from "@/components/prose";
+import { ATTENDANCE_RETENTION_YEARS } from "@/lib/attendance";
 import { RETENTION_DAYS } from "@/lib/retention";
 import { CLUB_DISCORD_URL } from "@/lib/site";
 
@@ -59,13 +60,18 @@ function Czech({ contact, discordAlerts }: Props) {
           (nepovinné), e-mail a text vzkazu, abychom ti mohli odpovědět.
         </li>
         <li>
+          <strong>Prezenčka</strong> – když se na klubovém večeru zapíšeš přes QR kód na stole: jméno, příjmení, vztah
+          k Univerzitě Palackého (student/ka, zaměstnanec/kyně, absolvent/ka, nebo bez vztahu) a kdy ses zapsal/a.
+          Vedeme ji, abychom věděli, kdo klub navštěvuje, a mohli to doložit fakultě, v jejíchž prostorách hrajeme.
+        </li>
+        <li>
           <strong>Otisk IP adresy</strong> (samotnou adresu neukládáme) – ochrana proti hromadným falešným registracím.
         </li>
       </Ul>
       <P>
         Údaje zpracováváme, protože jsou potřeba k uspořádání hraní, na které se přihlašuješ
-        (čl. 6 odst. 1 písm. b GDPR). Statistiky klubu, odpovědi na vzkazy a ochrana proti zneužití jsou
-        náš oprávněný zájem (čl. 6 odst. 1 písm. f GDPR).
+        (čl. 6 odst. 1 písm. b GDPR). Statistiky klubu, prezenční listina, odpovědi na vzkazy a ochrana proti
+        zneužití jsou náš oprávněný zájem (čl. 6 odst. 1 písm. f GDPR).
       </P>
 
       <H2>Kdo údaje uvidí</H2>
@@ -86,6 +92,11 @@ function Czech({ contact, discordAlerts }: Props) {
         <li>
           Když si necháš poslat odkaz na „Moje hry“ nebo nám pošleš vzkaz, uložíme na jeden den otisk
           e-mailu a IP adresy (ne adresy samotné), abychom mohli omezit, kolik odkazů a vzkazů odchází.
+          U prezenčky stejně tak otisk jména a IP adresy.
+        </li>
+        <li>
+          <strong>Jméno a příjmení z prezenčky</strong> se automaticky smažou {ATTENDANCE_RETENTION_YEARS} roky po
+          večeru. Zůstane jen den a vztah k UP, kvůli počtům návštěv.
         </li>
         <li>
           <strong>Vzkaz</strong> web neukládá, jen ho přepošle e-mailem organizátorům. V jejich schránce
@@ -140,8 +151,10 @@ function Czech({ contact, discordAlerts }: Props) {
 
       <H2>Cookies</H2>
       <P>
-        Web nepoužívá analytické ani reklamní cookies. Ukládá jen zvolený jazyk a přihlášení
-        organizátorů do administrace.
+        Web nepoužívá analytické ani reklamní cookies. Ukládá jen zvolený jazyk, přihlášení
+        organizátorů do administrace a – když si to u prezenčky zaškrtneš – tvoje jméno, příjmení, vztah k UP
+        a náhodný klíč, aby ti příště stačilo jedno ťuknutí. Tahle cookie zůstane jen v tvém prohlížeči 400 dní
+        od posledního zápisu; smažeš ji na stránce prezenčky tlačítkem „To nejsem já“ nebo „Zapomenout“.
       </P>
     </>
   );
@@ -186,14 +199,20 @@ function English({ contact, discordAlerts }: Props) {
           or nickname (optional), e-mail and the message, so we can reply.
         </li>
         <li>
+          <strong>The attendance sheet</strong> – when you sign in at a club night through the QR code on the
+          table: your first and last name, your relation to Palacký University (student, employee, graduate or
+          none) and when you signed in. We keep it to know who comes to the club and to show it to the faculty
+          whose rooms we play in.
+        </li>
+        <li>
           <strong>A fingerprint of your IP address</strong> (not the address itself) – protection against
           mass fake sign-ups.
         </li>
       </Ul>
       <P>
         We process the data because it is needed to run the game night you sign up for (Art. 6(1)(b)
-        GDPR). The club&apos;s stats, replying to messages and protection against abuse are our
-        legitimate interest (Art. 6(1)(f) GDPR).
+        GDPR). The club&apos;s stats, the attendance sheet, replying to messages and protection against abuse
+        are our legitimate interest (Art. 6(1)(f) GDPR).
       </P>
 
       <H2>Who can see it</H2>
@@ -215,7 +234,12 @@ function English({ contact, discordAlerts }: Props) {
         <li>
           When you ask for a &quot;My games&quot; link or send us a message, we keep a fingerprint of the
           e-mail and of your IP address (not the addresses themselves) for one day, to limit how many
-          links and messages go out.
+          links and messages go out. The same goes for your name and IP address on the attendance sheet.
+        </li>
+        <li>
+          <strong>First and last names on the attendance sheet</strong> are deleted automatically{" "}
+          {ATTENDANCE_RETENTION_YEARS} years after the night. Only the day and the relation to UP stay, for the
+          number of visits.
         </li>
         <li>
           The site doesn&apos;t keep <strong>your message</strong>; it only e-mails it to the organisers.
@@ -268,8 +292,11 @@ function English({ contact, discordAlerts }: Props) {
 
       <H2>Cookies</H2>
       <P>
-        The site uses no analytics or advertising cookies. It only stores your chosen language and the
-        organisers&apos; admin login.
+        The site uses no analytics or advertising cookies. It only stores your chosen language, the
+        organisers&apos; admin login and – when you tick it on the attendance sheet – your name, relation to UP
+        and a random key, so next time a single tap is enough. That cookie stays only in your browser, for 400
+        days after your last sign-in; you delete it on the attendance page with &quot;That&apos;s not me&quot; or
+        &quot;Forget&quot;.
       </P>
     </>
   );

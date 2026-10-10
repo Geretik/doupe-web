@@ -20,6 +20,7 @@ const env = {
   CRON_SECRET: "e2e-cron",
   DISCORD_WEBHOOK_URL: "",
   REGISTRATION_RATE_LIMIT: "1000", // tests sign up many times from one IP
+  ATTENDANCE_WEEKDAYS: process.env.ATTENDANCE_WEEKDAYS ?? "0,1,2,3,4,5,6", // the attendance sheet is open whatever day the tests run
   PORT: String(WEB_PORT),
 };
 

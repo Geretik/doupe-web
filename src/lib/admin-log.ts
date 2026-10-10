@@ -12,6 +12,7 @@ import {
   sessions,
   type AdminLogRow,
   type AdminRole,
+  type AttendanceAffiliation,
   type RegistrationState,
 } from "@/db/schema";
 
@@ -43,6 +44,8 @@ type OnDraft = { draft: NamedRef };
 /** A script made in a draft (draft_scripts), not one of the library */
 type OnDraftScript = OnDraft & { draftScript: NamedRef };
 type Nothing = Record<string, never>;
+/** An entry of the club's attendance sheet: its night ("YYYY-MM-DD") and how the person is related to UP */
+type OnNight = { day: string; affiliation: AttendanceAffiliation };
 
 export type LogData = {
   "account.login": { method: LoginMethod; device?: string };
@@ -97,11 +100,14 @@ export type LogData = {
   "grimoire.create": { grimoire: NamedRef };
   "grimoire.delete": { grimoire: NamedRef };
   "grimoire.record": { grimoire: NamedRef; session: SessionRef | null };
+  /** Who is on the sheet stays out of the log, like a player's name: only the night and the affiliation */
+  "attendance.add": OnNight;
+  "attendance.delete": OnNight;
 };
 
 export type LogAction = keyof LogData;
 
-export const logAreas = ["session", "draft", "grimoire", "script", "web", "account"] as const;
+export const logAreas = ["session", "draft", "grimoire", "script", "web", "attendance", "account"] as const;
 export type LogArea = (typeof logAreas)[number];
 
 export function isLogArea(v: unknown): v is LogArea {

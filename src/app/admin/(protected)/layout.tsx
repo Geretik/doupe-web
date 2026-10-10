@@ -59,6 +59,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           </div>
           <div className="flex flex-wrap items-center gap-1 whitespace-nowrap sm:border-l sm:border-border sm:pl-2">
             <span className={groupClass}>{n.club}</span>
+            <NavLink href="/admin/prezence" prefixes={["/admin/prezence"]} className={linkClass}>{n.attendance}</NavLink>
             <NavLink href="/admin/web" prefixes={["/admin/web"]} className={linkClass}>{n.web}</NavLink>
             {hasRole(me, "admin") && <NavLink href="/admin/ucty" className={linkClass}>{n.accounts}</NavLink>}
             {hasRole(me, "admin") && <NavLink href="/admin/historie" className={linkClass}>{n.log}</NavLink>}

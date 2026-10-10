@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { PrintButton } from "@/modules/botc/components/admin/print-button";
+import { PrintButton } from "@/components/admin/print-button";
 import { getDict } from "@/i18n/server";
 import { requireAdmin } from "@/lib/admin-auth";
 import { sessionUrl } from "@/modules/botc/lib/ics";

@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import type { Dict, Locale } from "@/i18n/dictionaries";
 import type { FieldChange, listAdminLog, LogEntry, LogValue, NamedRef, SessionRef } from "@/lib/admin-log";
+import { dayDate } from "@/lib/attendance";
 import { findRole, roleName } from "@/modules/botc/lib/botc-roles";
 import { formatShortDate, formatStamp } from "@/lib/time";
 
@@ -211,6 +212,16 @@ function details(entry: LogEntry, ctx: Ctx): ReactNode[] {
         </Ref>,
         entry.action === "grimoire.record" &&
           (entry.data.session ? <SessionLink key="s" session={entry.data.session} ctx={ctx} /> : l.noSession),
+      ];
+    }
+    case "attendance.add":
+    case "attendance.delete": {
+      const { day, affiliation } = entry.data;
+      return [
+        <Ref key="n" href={`/admin/prezence?den=${day}`} live>
+          {formatShortDate(dayDate(day), locale)}
+        </Ref>,
+        ctx.t.attendance.affiliations[affiliation],
       ];
     }
   }
