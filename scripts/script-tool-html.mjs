@@ -1,6 +1,7 @@
 // `node scripts/script-tool-html.mjs <path to apps/botc/index.html>`: the club's copy of the script tool
-// (.github/workflows/script-tool.yml) differs from Štefan Bačkor's original in its index.html only, changed here
-// before Vercel builds it – the original stays as it is:
+// (.github/workflows/script-tool.yml) differs from Štefan Bačkor's original in its index.html, changed here before
+// Vercel builds it, and in what scripts/script-tool.patch adds (homebrew characters, sets, a new script) – the
+// original stays as it is:
 // - no Google Analytics: the tool reports to botcscript.app's own Google Analytics, the club's copy should not.
 //   The tag goes, and the cookie banner gets "denied" for every visitor who has not answered it (there is nothing
 //   left to consent to; the banner reads that answer from localStorage);

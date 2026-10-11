@@ -4,11 +4,18 @@ name: Script tool
 # github.com/stefanbackor/boardgames, app apps/botc) in the Vercel project botc-skript (root directory apps/botc,
 # Node 22 like upstream's CI). Every night the newest upstream main goes live once upstream's checks have passed,
 # as it is but for what is done here and not upstream: no Google Analytics, buttons to load a script from the club's
-# library and to save one into it (scripts/script-tool-html.mjs).
-# Run it by hand to deploy at once.
+# library and to save one into it (scripts/script-tool-html.mjs), the homebrew characters of the club's collections
+# and a set to pick characters from in the dialog for adding them, a button for a new script (scripts/script-tool.patch).
+# A change to those goes live when pushed; run it by hand to deploy at once.
 on:
   schedule:
     - cron: "23 2 * * *"
+  push:
+    branches: [main]
+    paths:
+      - scripts/script-tool-html.mjs
+      - scripts/script-tool.patch
+      - .github/workflows/script-tool.yml
   workflow_dispatch:
     inputs:
       force:
@@ -35,7 +42,8 @@ jobs:
         id: upstream
         env:
           GH_TOKEN: ${{ github.token }}
-          FORCE: ${{ inputs.force }}
+          # the club's changes are new even when upstream's commit is live already
+          FORCE: ${{ inputs.force || github.event_name == 'push' }}
         run: |
           sha=$(gh api "repos/$UPSTREAM/commits/main" --jq .sha)
           # upstream's tests, lint and e2e of the tool; Chromatic checks their other app
@@ -70,9 +78,18 @@ jobs:
         if: steps.upstream.outputs.deploy == 'true'
         with:
           node-version: 24
-      - name: The club's changes (no Google Analytics, the buttons to load from and save into Doupě)
+      - name: The club's changes (no Google Analytics, the buttons to load from and save into Doupě, homebrew and sets)
         if: steps.upstream.outputs.deploy == 'true'
-        run: node scripts/script-tool-html.mjs boardgames/apps/botc/index.html
+        run: |
+          node scripts/script-tool-html.mjs boardgames/apps/botc/index.html
+          # made with `git diff` in a checkout of upstream; when upstream changes the lines it touches, it does not
+          # apply and the live copy stays until the patch is made again on the new upstream
+          git -C boardgames apply --verbose "$GITHUB_WORKSPACE/scripts/script-tool.patch" || {
+            echo "::error::scripts/script-tool.patch does not apply to upstream main $SHA any more – make it again there"
+            exit 1
+          }
+        env:
+          SHA: ${{ steps.upstream.outputs.sha }}
       - name: Deploy
         if: steps.upstream.outputs.deploy == 'true'
         # built on Vercel from the whole monorepo (yarn workspaces); the commit goes into the deployment's meta

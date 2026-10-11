@@ -27,6 +27,11 @@ export const changelog: ChangelogEntry[] = [
       },
       {
         for: "organizers",
+        text: "Klubový script tool: tlačítkem Nový script začneš prázdný script a postavy přidáš přes + u každého týmu. V okně Přidat postavu vybereš sadu, ze které je bereš – oficiální postavy, jen Trouble Brewing, Bad Moon Rising, Sects & Violets nebo experimentální, homebrew postavy všech klubových kolekcí nebo jen jedné (česky, se schopností), případně úplně všechny; tool si sadu pamatuje. Homebrew postava jde do scriptu celá a Pašerák se přidá sám.",
+        href: "https://skript.doupeol.cz",
+      },
+      {
+        for: "organizers",
         text: "Krátké odkazy na scripty z knihovny (doupeol.cz/botc/script/…): formulář termínu je doplní místo dlouhého odkazu, takže se uloží i u scriptu s homebrew postavami, a vždy otevřou aktuální verzi scriptu. Krátký odkaz pro Discord je u každého scriptu v knihovně.",
         href: "/admin/botc/scripty",
       },

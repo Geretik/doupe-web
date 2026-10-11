@@ -1,0 +1,380 @@
+diff --git a/apps/botc/src/components/FileUploadControls.tsx b/apps/botc/src/components/FileUploadControls.tsx
+index 1366391..97871ec 100644
+--- a/apps/botc/src/components/FileUploadControls.tsx
++++ b/apps/botc/src/components/FileUploadControls.tsx
+@@ -15,6 +15,7 @@ import { PrintDropdown, PrintSections } from './PrintDropdown'
+ import type { ScriptData } from '@/types/script'
+ import { useDisplayOptionsStore } from '@/stores/displayOptionsStore'
+ import { sendEvent } from '@/utils/analytics'
++import { NewScriptButton } from '@/doupe/roleSets'
+ 
+ interface FileUploadControlsProps {
+   onFileUpload: (event: React.ChangeEvent<HTMLInputElement>) => void
+@@ -193,6 +194,9 @@ export function FileUploadControls({
+               align="center"
+               wrap="wrap"
+             >
++              {onJsonPaste && (
++                <NewScriptButton onCreate={onJsonPaste} hasScript={hasScript} />
++              )}
+               {fileButton}
+               {urlButton}
+               {pasteJsonButton}
+diff --git a/apps/botc/src/components/script/AddRoleModal.tsx b/apps/botc/src/components/script/AddRoleModal.tsx
+index fc04f1c..2eb1829 100644
+--- a/apps/botc/src/components/script/AddRoleModal.tsx
++++ b/apps/botc/src/components/script/AddRoleModal.tsx
+@@ -17,6 +17,7 @@ import { useTeamLabels } from '@/hooks/useTeamLabels'
+ import { roles as baseRoles } from '@/data/roles.en'
+ import { useAddRoleModalStore } from '@/stores/addRoleModalStore'
+ import { getProxiedImageUrl } from '@/utils/imageUrl'
++import { RoleSetSelect, useRoleSet } from '@/doupe/roleSets'
+ 
+ interface AddRoleModalProps {
+   open: boolean
+@@ -90,6 +91,8 @@ export function AddRoleModal({
+     state.getSearchQuery(team),
+   )
+   const setSearchQuery = useAddRoleModalStore((state) => state.setSearchQuery)
++  // DoUPě: the set of characters to pick from (doupe/roleSets)
++  const roleSet = useRoleSet(allRoles, open)
+ 
+   // Use team labels hook for translated labels
+   const teamLabels = teamLabelsMap[team]
+@@ -105,7 +108,7 @@ export function AddRoleModal({
+   // When searching, search across all teams; when empty, show only current team
+   const filteredRoles = useMemo(() => {
+     const query = searchQuery.toLowerCase()
+-    return allRoles
++    return roleSet.roles
+       .filter((role) => {
+         // If no search query, only show roles from current team
+         if (!query) {
+@@ -119,7 +122,7 @@ export function AddRoleModal({
+         )
+       })
+       .sort((a, b) => a.name.localeCompare(b.name))
+-  }, [allRoles, team, searchQuery])
++  }, [roleSet.roles, team, searchQuery])
+ 
+   const handleSelectRole = (role: Role) => {
+     if (replaceRoleId && onReplaceRole) {
+@@ -179,6 +182,7 @@ export function AddRoleModal({
+         </Flex>
+ 
+         <Flex direction="column" gap="3" style={{ flex: 1, minHeight: 0 }}>
++          <RoleSetSelect {...roleSet} />
+           <TextField.Root
+             placeholder={t('Search characters...')}
+             value={searchQuery}
+@@ -219,7 +223,7 @@ export function AddRoleModal({
+                 align="center"
+                 style={{ padding: 'var(--space-4) 0' }}
+               >
+-                {t('No characters found')}
++                {roleSet.status ?? t('No characters found')}
+               </Text>
+             ) : (
+               filteredRoles.map((role) => {
+@@ -262,7 +266,7 @@ export function AddRoleModal({
+                                 textAlign: 'end',
+                               }}
+                             >
+-                              {role.edition || ''}
++                              {roleSet.edition(role) || ''}
+                             </Text>
+                             {role.image && (
+                               <img
+@@ -287,6 +291,20 @@ export function AddRoleModal({
+                                 highlight={searchQuery}
+                               />
+                             </Text>
++                            {roleSet.collection(role) && (
++                              <Text
++                                size="1"
++                                color="gray"
++                                style={{
++                                  textAlign: 'start',
++                                  flexShrink: 100,
++                                  minWidth: 0,
++                                  overflowWrap: 'anywhere',
++                                }}
++                              >
++                                {roleSet.collection(role)}
++                              </Text>
++                            )}
+                           </Flex>
+                         </Tooltip>
+                         {isInScript && (
+diff --git a/apps/botc/src/doupe/roleSets.tsx b/apps/botc/src/doupe/roleSets.tsx
+new file mode 100644
+index 0000000..424f7c4
+--- /dev/null
++++ b/apps/botc/src/doupe/roleSets.tsx
+@@ -0,0 +1,266 @@
++/**
++ * Only in the copy of the tool run by the DoUPě Olomouc club at skript.doupeol.cz, not in the original: the club's
++ * web applies it as a patch every time it deploys the tool (scripts/script-tool.patch there).
++ *
++ * - The dialog for adding a character picks from one set at a time: the official characters, one of their
++ *   editions, or the homebrew characters of the club's collections from botchomebrew.wiki - all of them or one
++ *   collection - which the club's web serves with its own Czech translation. The set chosen stays for the next
++ *   dialog and the next visit.
++ * - "New script": an empty script to add characters to.
++ */
++import { useEffect, useMemo, useState } from 'react'
++import { Button, Flex, Select, Text, Tooltip } from '@radix-ui/themes'
++import { FilePlus } from 'lucide-react'
++import { useTranslation } from 'react-i18next'
++import { create } from 'zustand'
++import { persist, createJSONStorage } from 'zustand/middleware'
++import type { Role } from '@/types'
++
++/** The club's web; VITE_DOUPE_URL points the tool at another copy of it (a local one) */
++const DOUPE_URL = (
++  import.meta.env.VITE_DOUPE_URL || 'https://www.doupeol.cz'
++).replace(/\/$/, '')
++
++/** The texts in Czech, the club's language; any other language of the tool gets the English ones */
++const CS: Record<string, string> = {
++  'Set': 'Sada',
++  'Official characters': 'Oficiální postavy',
++  'Experimental characters': 'Experimentální postavy',
++  'All collections': 'Všechny kolekce',
++  'All characters': 'Všechny postavy',
++  'Loading the homebrew characters…': 'Načítám homebrew postavy…',
++  'The homebrew characters could not be loaded from doupeol.cz':
++    'Homebrew postavy se nepodařilo načíst z doupeol.cz',
++  'None in this set - try "All characters"':
++    'V této sadě nic není – zkus „Všechny postavy“',
++  'New script': 'Nový script',
++  'New': 'Nový',
++  'An empty script to add characters to':
++    'Prázdný script, do kterého přidáš postavy',
++}
++
++function useDoupeText() {
++  const { i18n } = useTranslation()
++  const cs = (i18n.language ?? 'en').startsWith('cs')
++  return (text: string) => (cs && CS[text]) || text
++}
++
++/** A collection of homebrew characters, each in full as a script's entry */
++interface Collection {
++  key: string
++  name: string
++  author: string | null
++  characters: Role[]
++}
++
++/** The club's web has them in Czech and in English */
++const homebrewLanguage = (language: string | undefined) =>
++  (language ?? 'en').startsWith('cs') ? 'cs' : 'en'
++
++const loading = new Map<string, Promise<Collection[]>>()
++
++/** Loaded once per language; one that failed is tried again by the next dialog */
++function loadHomebrew(language: string) {
++  let collections = loading.get(language)
++  if (!collections) {
++    collections = fetch(`${DOUPE_URL}/botc/homebrew/${language}`)
++      .then((res) => {
++        if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
++        return res.json() as Promise<{ collections: Collection[] }>
++      })
++      .then((data) => data.collections)
++    collections.catch(() => loading.delete(language))
++    loading.set(language, collections)
++  }
++  return collections
++}
++
++const OFFICIAL = 'official'
++const EDITIONS = ['tb', 'bmr', 'snv', 'carousel']
++const isEdition = (set: string) => EDITIONS.includes(set)
++const HOMEBREW = 'homebrew'
++const ALL = 'all'
++const collectionSet = (key: string) => `hb:${key}`
++
++const useRoleSetStore = create<{
++  roleSet: string
++  setRoleSet: (roleSet: string) => void
++}>()(
++  persist(
++    (set) => ({
++      roleSet: OFFICIAL,
++      setRoleSet: (roleSet) => set({ roleSet }),
++    }),
++    {
++      name: 'doupe-role-set',
++      storage: createJSONStorage(() => localStorage),
++    },
++  ),
++)
++
++/**
++ * The characters of the set chosen, for the dialog to filter by team and search as before, and what to show
++ * about them. The homebrew ones are loaded when a dialog opens.
++ */
++export function useRoleSet(allRoles: Role[], open: boolean) {
++  const { i18n } = useTranslation()
++  const text = useDoupeText()
++  const language = homebrewLanguage(i18n.language)
++  const roleSet = useRoleSetStore((state) => state.roleSet)
++  const setRoleSet = useRoleSetStore((state) => state.setRoleSet)
++  const [homebrew, setHomebrew] = useState<
++    Record<string, Collection[] | 'error'>
++  >({})
++
++  useEffect(() => {
++    if (!open) return
++    let current = true
++    loadHomebrew(language).then(
++      (collections) =>
++        current && setHomebrew((h) => ({ ...h, [language]: collections })),
++      () => current && setHomebrew((h) => ({ ...h, [language]: 'error' })),
++    )
++    return () => {
++      current = false
++    }
++  }, [open, language])
++
++  const loaded = homebrew[language]
++  const collections = useMemo(
++    () => (Array.isArray(loaded) ? loaded : []),
++    [loaded],
++  )
++  const collectionOf = useMemo(
++    () =>
++      new Map(
++        collections.flatMap((c) => c.characters.map((role) => [role.id, c])),
++      ),
++    [collections],
++  )
++  // a collection no longer served is no set to pick from
++  const set =
++    roleSet.startsWith('hb:') &&
++    Array.isArray(loaded) &&
++    !collections.some((c) => collectionSet(c.key) === roleSet)
++      ? OFFICIAL
++      : roleSet
++
++  const roles = useMemo(() => {
++    if (set === OFFICIAL) return allRoles
++    if (isEdition(set)) {
++      // the Fabled and Loric are no edition's own: every edition has them
++      return allRoles.filter(
++        (role) =>
++          role.edition === set ||
++          role.team === 'fabled' ||
++          role.team === 'loric',
++      )
++    }
++    if (set === ALL) {
++      return [...allRoles, ...collections.flatMap((c) => c.characters)]
++    }
++    if (set === HOMEBREW) return collections.flatMap((c) => c.characters)
++    return (
++      collections.find((c) => collectionSet(c.key) === set)?.characters ?? []
++    )
++  }, [set, allRoles, collections])
++
++  const wantsHomebrew = set !== OFFICIAL && !isEdition(set)
++  /** Instead of "No characters found" when the set has none to list */
++  const status =
++    set === OFFICIAL
++      ? undefined
++      : wantsHomebrew && loaded === 'error'
++        ? text('The homebrew characters could not be loaded from doupeol.cz')
++        : wantsHomebrew && !loaded
++          ? text('Loading the homebrew characters…')
++          : set === ALL
++            ? undefined
++            : text('None in this set - try "All characters"')
++
++  return {
++    roleSet: set,
++    setRoleSet,
++    collections,
++    roles,
++    status,
++    /** The column with the edition: homebrew for those of the collections */
++    edition: (role: Role) => (collectionOf.has(role.id) ? 'hb' : role.edition),
++    /** The collection of a homebrew character, unless the set is that one collection */
++    collection: (role: Role) =>
++      set.startsWith('hb:') ? undefined : collectionOf.get(role.id)?.name,
++  }
++}
++
++export function RoleSetSelect({
++  roleSet,
++  setRoleSet,
++  collections,
++}: Pick<
++  ReturnType<typeof useRoleSet>,
++  'roleSet' | 'setRoleSet' | 'collections'
++>) {
++  const text = useDoupeText()
++
++  return (
++    <Flex align="center" gap="2">
++      <Text as="label" htmlFor="doupe-role-set" size="2" color="gray">
++        {text('Set')}
++      </Text>
++      <Select.Root value={roleSet} onValueChange={setRoleSet}>
++        <Select.Trigger id="doupe-role-set" style={{ flex: 1 }} />
++        <Select.Content position="popper">
++          <Select.Item value={OFFICIAL}>
++            {text('Official characters')}
++          </Select.Item>
++          <Select.Item value="tb">Trouble Brewing</Select.Item>
++          <Select.Item value="bmr">Bad Moon Rising</Select.Item>
++          <Select.Item value="snv">Sects &amp; Violets</Select.Item>
++          <Select.Item value="carousel">
++            {text('Experimental characters')}
++          </Select.Item>
++          <Select.Separator />
++          <Select.Group>
++            <Select.Label>Homebrew (botchomebrew.wiki)</Select.Label>
++            <Select.Item value={HOMEBREW}>
++              {text('All collections')}
++            </Select.Item>
++            {collections.map((c) => (
++              <Select.Item key={c.key} value={collectionSet(c.key)}>
++                {c.name} ({c.characters.length})
++              </Select.Item>
++            ))}
++          </Select.Group>
++          <Select.Separator />
++          <Select.Item value={ALL}>{text('All characters')}</Select.Item>
++        </Select.Content>
++      </Select.Root>
++    </Flex>
++  )
++}
++
++/** An empty script, given its name in the tool's language, loaded like a pasted one */
++export function NewScriptButton({
++  onCreate,
++  hasScript,
++}: {
++  onCreate: (json: string) => void
++  hasScript: boolean
++}) {
++  const text = useDoupeText()
++
++  return (
++    <Tooltip content={text('An empty script to add characters to')}>
++      <Button
++        onClick={() =>
++          onCreate(JSON.stringify([{ id: '_meta', name: text('New script') }]))
++        }
++        variant={hasScript ? 'soft' : 'solid'}
++      >
++        <FilePlus size={16} />
++        <span className="hidden md:inline">{text('New script')}</span>
++        <span className="md:hidden">{text('New')}</span>
++      </Button>
++    </Tooltip>
++  )
++}

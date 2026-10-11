@@ -241,6 +241,25 @@ test("homebrew in the library, the catalogue, a draft and a game record: a colle
   expect(await sql("select role from game_players where registration_id = $1", [reg.id])).toEqual([{ role: COBBLER }]);
 });
 
+test("homebrew for the club's script tool: every collection with its characters in full, in Czech or English, open to its origin", async ({ request }) => {
+  type Served = { collections: { key: string; name: string; author: string | null; characters: Record<string, unknown>[] }[] };
+  const cs = await request.get("/botc/homebrew/cs");
+  expect(cs.status()).toBe(200);
+  expect(cs.headers()["access-control-allow-origin"]).toBe("*");
+  const { collections } = (await cs.json()) as Served;
+  expect(collections.map((c) => c.key)).toEqual(homebrewList.collections.map((c) => c.key));
+  expect(collections.flatMap((c) => c.characters)).toHaveLength(homebrewList.roles.length);
+  const luis = collections.find((c) => c.key === "luis")!;
+  expect(luis).toMatchObject({ name: "Homebrews by Luis", author: "Luis S" });
+  // each as the script gets it from the dialog: the script tool, the library and the grimoire read it as it is
+  expect(luis.characters).toContainEqual(withHomebrewInFull([COBBLER])[0]);
+  expect(luis.characters.find((c) => c.id === COBBLER)).toMatchObject({ name: cobbler.name, team: "townsfolk", ability: cobbler.ability });
+
+  const en = (await (await request.get("/botc/homebrew/en")).json()) as Served;
+  expect(en.collections.find((c) => c.key === "luis")!.characters.find((c) => c.id === COBBLER)).toMatchObject({ name: "Cobbler", ability: data[COBBLER].ability });
+  expect((await request.get("/botc/homebrew/de")).status()).toBe(404);
+});
+
 test("script builder: a new script from official, Fabled and homebrew characters found by name; its characters changed later, the rest of its file kept", async ({ page }) => {
   await adminLogin(page);
   await page.goto("/admin/botc/scripty");
