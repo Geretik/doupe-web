@@ -41,7 +41,7 @@ test("scripts library: add a JSON pasted or as a file, see its characters, open 
   // what is not a script is never saved
   await form.locator("#json").fill("{nějaký text");
   await form.locator("button[type=submit]").click();
-  await expect(form).toContainText("Tohle není platný JSON.");
+  await expect(form).toContainText("Tohle není platný JSON ani odkaz ze script toolu.");
   await form.locator("#json").fill('{"name": "Moje TB"}');
   await form.locator("button[type=submit]").click();
   await expect(form).toContainText("Tohle není script.");
@@ -137,8 +137,49 @@ test("scripts library: the session form and its vote offer the library's scripts
   await expect(page.locator("#script-suggestions option[value='Moje TB']")).toHaveCount(1);
   await expect(page.locator("#poll-suggestions option[value='Moje TB']")).toHaveCount(1);
   await page.locator("input[name=scriptName] >> nth=0").fill("moje tb");
+  // the library's short link, which opens the script tool with the script as the library has it
   const url = await page.locator("input[name=scriptUrl] >> nth=0").inputValue();
-  expect(scriptOfLink(url)).toEqual(SCRIPT);
+  expect(url).toMatch(/\/botc\/script\/\d+$/);
+  const redirect = await page.request.get(new URL(url).pathname, { maxRedirects: 0 });
+  expect(redirect.status()).toBe(302);
+  expect(scriptOfLink(redirect.headers().location)).toEqual(SCRIPT);
   await page.locator("input[name=pollName] >> nth=0").fill("Moje TB");
-  expect(scriptOfLink(await page.locator("input[name=pollUrl] >> nth=0").inputValue())).toEqual(SCRIPT);
+  expect(await page.locator("input[name=pollUrl] >> nth=0").inputValue()).toBe(url);
+});
+
+/** A link of the club's script tool to its Trouble Brewing sample, as the tool writes it (URL-safe base64 of gzip) */
+const TOOL_LINK = "https://skript.doupeol.cz/?script=H4sIAAAAAAAAA11RsU7FMAz8lSrz-wJGNjYGNoSQ2_olVhMncpxWFeLfyZMQdRjvnPNdzu9fjlb35D4TKribY0jY4ZvkNkecngUPYt8H0DRkeYwCTq_AK6bM1NL0wlVJm6L7vv0uO6AGlCMn4IuMNAsIWYp4xy72oH3zH7sEvF8IUwENF75n0caoGCMaUeuBRGGzXA-4XUhgR94Qi32yk3gyiWqE085rjisNO-G0WeemQ4xV2uCJS2zVNFOBWC9YMtXMg2E5DVhAIuq_ImeQbEtMZVAU9BmMh29cY7-hdZnRexi-IQhtEavTQI87fPwADIzyECICAAA";
+
+test("scripts library: a script from the script tool – its link pasted, or sent by the tool's button; the short link opens it", async ({ page }) => {
+  await adminLogin(page);
+
+  // the tool's link pasted instead of the JSON
+  await page.goto("/admin/botc/scripty");
+  const form = page.getByTestId("library-script-form");
+  await form.locator("#json").fill(TOOL_LINK);
+  await form.locator("#name").fill("TB ze script toolu");
+  await form.locator("button[type=submit]").click();
+  await page.waitForURL(/\/admin\/botc\/scripty\/\d+$/);
+  for (const name of ["Pradlena", "Mnich", "Čert"]) await expect(page.locator("#characters")).toContainText(name);
+
+  // the short link: the script tool with the script as the library has it now
+  const shortLink = await page.getByTestId("short-link").getAttribute("href");
+  expect(shortLink).toMatch(/\/botc\/script\/\d+$/);
+  const redirect = await page.request.get(new URL(shortLink!).pathname, { maxRedirects: 0 });
+  expect(redirect.status()).toBe(302);
+  const opened = scriptOfLink(redirect.headers().location);
+  expect(opened[0]).toMatchObject({ id: "_meta", name: "TB ze script toolu" });
+  expect(opened).toContainEqual({ id: "washerwoman" });
+  expect((await page.request.get("/botc/script/99999", { maxRedirects: 0 })).status()).toBe(404);
+
+  // the tool's button opens the library with its link filled in; out of the address bar once read
+  await page.goto(`/admin/botc/scripty#ze-toolu=${encodeURIComponent(TOOL_LINK)}`);
+  await expect(form).toContainText("Níž je vložený script ze script toolu");
+  await expect(form.locator("#json")).toHaveValue(TOOL_LINK);
+  await expect(page).toHaveURL(/\/admin\/botc\/scripty$/);
+  await form.locator("#name").fill("TB z tlačítka");
+  await form.locator("button[type=submit]").click();
+  await page.waitForURL(/\/admin\/botc\/scripty\/\d+$/);
+  await expect(page.locator("h1")).toHaveText("TB z tlačítka");
+  await expect(page.locator("#characters")).toContainText("Pradlena");
 });

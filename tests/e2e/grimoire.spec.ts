@@ -1004,7 +1004,8 @@ test("grimoire: from a session, hand out the bag, the first night, a death and a
   );
   expect(games).toHaveLength(1);
   expect(games[0]).toMatchObject({ script_name: "Trouble Brewing", winner: "good", players: 7, demon_bluffs: ["fortuneteller"], notes: "Opilec to celé otočil." });
-  expect(games[0].script_url).toContain("?script=");
+  // the library's short link, which opens the script tool with the script as the library has it
+  expect(games[0].script_url).toMatch(/\/botc\/script\/\d+$/);
   const ada = await sql<{ role: string; believed_role: string }>(
     "select gp.role, gp.believed_role from game_players gp join registrations r on r.id = gp.registration_id where r.nickname = 'Ada'",
   );

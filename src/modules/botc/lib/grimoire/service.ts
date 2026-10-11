@@ -5,7 +5,7 @@ import { hasRole } from "@/lib/admin-auth";
 import { botcRoles, linkedRoleOf } from "@/modules/botc/lib/botc-roles";
 import { saveRoster } from "@/modules/botc/lib/game-roster";
 import { scriptToolLinkForJson } from "@/modules/botc/lib/draft/script";
-import { libraryScriptExtras, libraryScriptToolLink, withCurrentRoles } from "@/modules/botc/lib/scripts";
+import { libraryScriptExtras, libraryScriptShortLink, withCurrentRoles } from "@/modules/botc/lib/scripts";
 import type { RosterValue } from "@/lib/validation";
 import { newGap, newGrimoireState, newSeat, players, type GrimoireState } from "./state";
 
@@ -166,8 +166,8 @@ async function writeGameRecord(tx: Tx, g: Grimoire, sessionId: number, state: Gr
   if (!session) return null;
   let scriptUrl: string | null = null;
   if (state.script.id) {
-    const [library] = await tx.select({ json: scripts.json }).from(scripts).where(eq(scripts.id, state.script.id));
-    if (library) scriptUrl = libraryScriptToolLink(library);
+    const [library] = await tx.select({ id: scripts.id }).from(scripts).where(eq(scripts.id, state.script.id));
+    if (library) scriptUrl = libraryScriptShortLink(library.id);
   }
   const name = state.script.name.trim().toLowerCase();
   scriptUrl ??= session.scripts.find((s) => s.name.trim().toLowerCase() === name)?.url ?? null;

@@ -7,7 +7,7 @@ import { TeamRows } from "@/modules/botc/components/draft/role-chips";
 import { Card } from "@/components/ui";
 import { getDict } from "@/i18n/server";
 import { requireAdmin } from "@/lib/admin-auth";
-import { canEditScript, getLibraryScript, libraryScriptToolLink, MAX_LINK, scriptExtras } from "@/modules/botc/lib/scripts";
+import { canEditScript, getLibraryScript, libraryScriptShortLink, libraryScriptToolLink, scriptExtras } from "@/modules/botc/lib/scripts";
 import { formatDay, formatStamp } from "@/lib/time";
 import { parseId } from "@/lib/validation";
 
@@ -48,7 +48,12 @@ export default async function LibraryScriptPage({ params }: { params: Promise<{ 
           <a href={toolLink} target="_blank" rel="noopener noreferrer" className={pill}>{s.openInTool}</a>
           <a href={`/admin/botc/scripty/${script.id}/script.json`} className={pill}>{s.downloadJson}</a>
         </span>
-        {toolLink.length > MAX_LINK && <p className="text-xs text-muted">{s.noLink}</p>}
+        <p className="text-xs text-muted">
+          {s.shareLink}:{" "}
+          <a href={libraryScriptShortLink(script.id)} target="_blank" rel="noopener noreferrer" className="break-all text-accent hover:underline" data-testid="short-link">
+            {libraryScriptShortLink(script.id)}
+          </a>
+        </p>
       </div>
 
       <Card className="flex flex-col gap-3" id="characters">

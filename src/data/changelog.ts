@@ -22,6 +22,20 @@ export const changelog: ChangelogEntry[] = [
       },
       {
         for: "organizers",
+        text: "Knihovna scriptů: script ze script toolu přidáš i tak, že místo JSONu vložíš jeho odkaz. V klubovém script toolu je vpravo dole tlačítko 📚 Uložit do Doupěte – otevře knihovnu se scriptem připraveným k uložení (stačí být přihlášený).",
+        href: "/admin/botc/scripty",
+      },
+      {
+        for: "organizers",
+        text: "Krátké odkazy na scripty z knihovny (doupeol.cz/botc/script/…): formulář termínu je doplní místo dlouhého odkazu, takže se uloží i u scriptu s homebrew postavami, a vždy otevřou aktuální verzi scriptu. Krátký odkaz pro Discord je u každého scriptu v knihovně.",
+        href: "/admin/botc/scripty",
+      },
+      {
+        for: "players",
+        text: "U termínů vede odkaz na script do klubového script toolu i u scriptů s homebrew postavami.",
+      },
+      {
+        for: "organizers",
         text: "Homebrew postavy: web zná 1206 postav z 24 kolekcí botchomebrew.wiki (Homebrews by Luis, Odyssey, The Menagerie a kurátorské kolekce wiki), přeložených do češtiny – jména, schopnosti, texty pro vypravěče i žetony (překlad AI, u jména je i původní anglické). Přehled kolekcí s autory a schopnostmi je pod Scripty → 🧪 Homebrew postavy; celou kolekci si odtud stáhneš jako JSON pro script tool, i česky.",
         href: "/admin/botc/scripty/homebrew",
       },

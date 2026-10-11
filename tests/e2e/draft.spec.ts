@@ -324,7 +324,7 @@ test("draft: invitations, snake turns over days, a race of two tabs, bundles, co
 
   // it opens in the club's script tool and downloads as the official JSON
   const toolLink = await page.locator("a:has-text('Otevřít ve script toolu')").getAttribute("href");
-  expect(toolLink).toMatch(/^https:\/\/botcscript\.app\/\?script=/);
+  expect(toolLink).toMatch(/^https:\/\/skript\.doupeol\.cz\/\?script=/);
   const json = await page.request.get(`/admin/botc/drafty/script/${scriptId}/script.json`);
   expect(await json.json()).toEqual([{ id: "_meta", name: "Alicin script", author: "Alice" }, "librarian", "washerwoman"]);
 

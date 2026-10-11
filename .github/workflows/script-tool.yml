@@ -3,7 +3,8 @@ name: Script tool
 # The club's copy of the script tool at skript.doupeol.cz: Štefan Bačkor's BoardGames (MIT,
 # github.com/stefanbackor/boardgames, app apps/botc) in the Vercel project botc-skript (root directory apps/botc,
 # Node 22 like upstream's CI). Every night the newest upstream main goes live once upstream's checks have passed,
-# as it is but for one thing done here and not upstream: no Google Analytics (scripts/script-tool-html.mjs).
+# as it is but for what is done here and not upstream: no Google Analytics, a button to save the script into the
+# club's library (scripts/script-tool-html.mjs).
 # Run it by hand to deploy at once.
 on:
   schedule:
@@ -69,7 +70,7 @@ jobs:
         if: steps.upstream.outputs.deploy == 'true'
         with:
           node-version: 24
-      - name: Leave out Google Analytics
+      - name: The club's changes (no Google Analytics, the button to save into Doupě)
         if: steps.upstream.outputs.deploy == 'true'
         run: node scripts/script-tool-html.mjs boardgames/apps/botc/index.html
       - name: Deploy

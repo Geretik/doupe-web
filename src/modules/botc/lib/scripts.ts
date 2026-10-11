@@ -1,7 +1,9 @@
+import { gunzipSync } from "node:zlib";
 import { and, desc, eq, ne, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { adminUsers, scripts, type AdminUser, type LibraryScript, type ScriptLink } from "@/db/schema";
 import { hasRole } from "@/lib/admin-auth";
+import { siteUrl } from "@/lib/site";
 import { findRole, isHomebrew, matchHomebrew, matchStorytellerId } from "./botc-roles";
 import { HOMEBREW_LIMITS, type Homebrew } from "./grimoire/state";
 import { matchRoleId, sortRoleIds } from "./draft/roles";
@@ -16,8 +18,29 @@ import { scriptToolLinkForJson } from "./draft/script";
 
 /** Bigger files are refused; a script with homebrew characters and their texts stays far below this. */
 export const MAX_SCRIPT_BYTES = 512 * 1024;
-/** Longest link the session form takes (lib/validation scriptUrlSchema); a longer one is not offered there. */
-export const MAX_LINK = 2000;
+
+/**
+ * The script of a script tool link – `…?script=<gzip + base64>` as the club's script tool, botcscript.app or their
+ * share links write it (URL-safe base64 or the older one, whose "+" a query string may have turned into a space) –
+ * as JSON text; null when the text is no such link.
+ */
+export function scriptFromToolLink(text: string): string | null {
+  let url: URL;
+  try {
+    url = new URL(text.trim());
+  } catch {
+    return null;
+  }
+  const encoded = url.searchParams.get("script");
+  if (!encoded || !/^https?:$/.test(url.protocol)) return null;
+  const bytes = Buffer.from(encoded.replace(/-/g, "+").replace(/_/g, "/").replace(/ /g, "+"), "base64");
+  try {
+    // a gzip file starts 1f 8b; the oldest links have the JSON itself
+    return (bytes[0] === 0x1f && bytes[1] === 0x8b ? gunzipSync(bytes, { maxOutputLength: MAX_SCRIPT_BYTES + 1 }) : bytes).toString("utf8");
+  } catch {
+    return null;
+  }
+}
 
 export type ParsedScript = {
   items: unknown[];
@@ -46,8 +69,9 @@ function entryId(item: unknown): string | null {
   return null;
 }
 
-/** Reads a script file; what it cannot use is an error, so a wrong file is never saved. */
-export function parseScriptFile(text: string): { ok: true; script: ParsedScript } | { ok: false; error: ScriptFileError } {
+/** Reads a script file, or a script tool link with the script in it; what it cannot use is an error, so a wrong file is never saved. */
+export function parseScriptFile(input: string): { ok: true; script: ParsedScript } | { ok: false; error: ScriptFileError } {
+  const text = scriptFromToolLink(input) ?? input;
   if (Buffer.byteLength(text, "utf8") > MAX_SCRIPT_BYTES) return { ok: false, error: "tooLarge" };
   let data: unknown;
   try {
@@ -142,6 +166,15 @@ export function libraryScriptToolLink(script: Pick<LibraryScript, "json">) {
   return scriptToolLinkForJson(JSON.parse(script.json));
 }
 
+/**
+ * A short link of a library script, /botc/script/<id>: it opens the script tool with the script as the library has
+ * it then. Short enough for a session's scripts and a Discord post, whatever the script (the tool's own link carries
+ * the whole script, homebrew characters with their texts too).
+ */
+export function libraryScriptShortLink(id: number) {
+  return `${siteUrl()}/botc/script/${id}`;
+}
+
 export function canEditScript(me: AdminUser, script: Pick<LibraryScript, "createdBy">) {
   return script.createdBy === me.id || hasRole(me, "admin");
 }
@@ -194,11 +227,8 @@ export async function homebrewByScript(): Promise<Record<string, string[]>> {
   );
 }
 
-/** The library for the session form: by name with a link to the script tool (none when too long for the form). */
+/** The library for the session form: by name with its short link to the script tool. */
 export async function libraryScriptLinks(): Promise<ScriptLink[]> {
-  const rows = await db.select({ name: scripts.name, json: scripts.json }).from(scripts).orderBy(desc(scripts.updatedAt));
-  return rows.map((r) => {
-    const url = libraryScriptToolLink(r);
-    return { name: r.name, url: url.length <= MAX_LINK ? url : "" };
-  });
+  const rows = await db.select({ id: scripts.id, name: scripts.name }).from(scripts).orderBy(desc(scripts.updatedAt));
+  return rows.map((r) => ({ name: r.name, url: libraryScriptShortLink(r.id) }));
 }

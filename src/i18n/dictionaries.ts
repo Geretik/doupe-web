@@ -336,7 +336,7 @@ export const cs = {
     delete: "Smazat script",
     deleteConfirm: (name: string) => `Smazat script „${name}“? U termínů, kde už je, zůstane název i odkaz.`,
     readOnly: "Upravit nebo smazat ho může ten, kdo ho přidal, a správci.",
-    noLink: "Script je na odkaz u termínu moc dlouhý (homebrew postavy s texty), formulář termínu nabídne jen jeho název.",
+    shareLink: "Krátký odkaz do script toolu (k termínu, na Discord)",
     homebrewLink: "🧪 Homebrew postavy",
     homebrewTitle: "Homebrew postavy",
     homebrewIntro:
@@ -351,9 +351,10 @@ export const cs = {
     /** Plain strings only – passed to the script form (client). */
     form: {
       file: "Soubor JSON",
-      json: "nebo vlož JSON",
+      json: "nebo vlož JSON či odkaz ze script toolu",
+      fromTool: "Níž je vložený script ze script toolu – zkontroluj název a autora a ulož ho.",
       replaceFile: "Nový soubor JSON",
-      replaceJson: "nebo vlož nový JSON",
+      replaceJson: "nebo vlož nový JSON či odkaz ze script toolu",
       replaceHint: "Nový JSON nahradí postavy scriptu. Prázdné = postavy zůstanou.",
       name: "Název",
       nameFromFile: "Prázdné = název ze souboru.",
@@ -365,7 +366,7 @@ export const cs = {
     },
     errors: {
       tooLarge: "Soubor je moc velký (nejvýš 512 kB).",
-      notJson: "Tohle není platný JSON.",
+      notJson: "Tohle není platný JSON ani odkaz ze script toolu.",
       notScript: "Tohle není script. Čekám pole postav, např. [{\"id\": \"_meta\", \"name\": \"Můj script\"}, \"washerwoman\", …].",
       noCharacters: "Ve scriptu nejsou žádné postavy.",
       noFile: "Vyber soubor JSON, nebo ho vlož do pole.",
@@ -1552,7 +1553,7 @@ export const en: Dict = {
     delete: "Delete script",
     deleteConfirm: (name) => `Delete the script “${name}”? Sessions that list it keep its name and link.`,
     readOnly: "Whoever added it and administrators can edit or delete it.",
-    noLink: "The script is too long for a session link (homebrew characters with their texts), so the session form offers only its name.",
+    shareLink: "Short link to the script tool (for a session, on Discord)",
     homebrewLink: "🧪 Homebrew characters",
     homebrewTitle: "Homebrew characters",
     homebrewIntro:
@@ -1566,9 +1567,10 @@ export const en: Dict = {
     savedWithFile: "Saved with the new JSON.",
     form: {
       file: "JSON file",
-      json: "or paste the JSON",
+      json: "or paste the JSON or a script tool link",
+      fromTool: "The script from the script tool is filled in below – check its name and author and save it.",
       replaceFile: "New JSON file",
-      replaceJson: "or paste new JSON",
+      replaceJson: "or paste new JSON or a script tool link",
       replaceHint: "New JSON replaces the script's characters. Empty = the characters stay.",
       name: "Name",
       nameFromFile: "Empty = the name in the file.",
@@ -1580,7 +1582,7 @@ export const en: Dict = {
     },
     errors: {
       tooLarge: "The file is too big (512 kB at most).",
-      notJson: "This is not valid JSON.",
+      notJson: "This is neither valid JSON nor a script tool link.",
       notScript: "This is not a script. Expected a list of characters, e.g. [{\"id\": \"_meta\", \"name\": \"My script\"}, \"washerwoman\", …].",
       noCharacters: "The script has no characters.",
       noFile: "Choose a JSON file or paste it into the field.",
