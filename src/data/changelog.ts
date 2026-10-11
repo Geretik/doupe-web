@@ -14,8 +14,12 @@ export type ChangelogEntry = { /** YYYY-MM-DD */ date: string; title: string; it
 export const changelog: ChangelogEntry[] = [
   {
     date: "2026-10-11",
-    title: "Homebrew postavy z botchomebrew.wiki",
+    title: "Homebrew postavy z botchomebrew.wiki, klubový script tool",
     items: [
+      {
+        for: "organizers",
+        text: "Script tool klubu běží na skript.doupeol.cz: je to kopie botcscript.app, která se každou noc sama aktualizuje, jen bez Google Analytics a cookie lišty. Odkazy z draftů, knihovny scriptů, grimoáru i nově uložených termínů vedou tam; dřív uložené odkazy na botcscript.app fungují dál.",
+      },
       {
         for: "organizers",
         text: "Homebrew postavy: web zná 1206 postav z 24 kolekcí botchomebrew.wiki (Homebrews by Luis, Odyssey, The Menagerie a kurátorské kolekce wiki), přeložených do češtiny – jména, schopnosti, texty pro vypravěče i žetony (překlad AI, u jména je i původní anglické). Přehled kolekcí s autory a schopnostmi je pod Scripty → 🧪 Homebrew postavy; celou kolekci si odtud stáhneš jako JSON pro script tool, i česky.",

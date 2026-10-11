@@ -49,9 +49,10 @@ export function draftUrl(draftId: number) {
 }
 
 /**
- * The club's script tool (BoardGames, botcscript.app), which opens a script from `?script=<gzip + base64 JSON>`:
- * scripts made from a draft are printed and translated there. SCRIPT_TOOL_URL points it elsewhere.
+ * The club's script tool, which opens a script from `?script=<gzip + base64 JSON>`: scripts made from a draft are
+ * printed and translated there. The club's own copy of Štefan Bačkor's BoardGames (botcscript.app), kept up to date
+ * every night and without Google Analytics (.github/workflows/script-tool.yml). SCRIPT_TOOL_URL points it elsewhere.
  */
 export function scriptToolUrl() {
-  return (process.env.SCRIPT_TOOL_URL?.trim() || "https://botcscript.app").replace(/\/$/, "");
+  return (process.env.SCRIPT_TOOL_URL?.trim() || "https://skript.doupeol.cz").replace(/\/$/, "");
 }
