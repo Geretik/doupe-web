@@ -1,5 +1,6 @@
 import { gunzipSync } from "node:zlib";
 import { expect, test, type Page } from "@playwright/test";
+import { E2E } from "../../playwright.config";
 import homebrewList from "../../src/data/homebrew-roles.json";
 import homebrewData from "../../src/data/homebrew-characters.json";
 import homebrewCs from "../../src/data/homebrew-cs.json";
@@ -9,7 +10,6 @@ import { grimoireCharacters } from "../../src/modules/botc/lib/grimoire/characte
 import { grimoireStateSchema } from "../../src/modules/botc/lib/grimoire/schema";
 import { newGrimoireState, newSeat, nightSteps } from "../../src/modules/botc/lib/grimoire/state";
 import { homebrewGrimoireCharacters, withHomebrewInFull } from "../../src/modules/botc/lib/homebrew";
-import { parseScriptFile } from "../../src/modules/botc/lib/scripts";
 import { adminLogin, createSession, resetDb, sql } from "./helpers";
 
 test.describe.configure({ mode: "serial" });
@@ -41,7 +41,12 @@ const cobbler = czech[COBBLER];
 /** Luis's evening: Trouble Brewing's first-night characters and the Cobbler, as a script downloaded from the wiki */
 const LUIS_SCRIPT = [{ id: "_meta", name: "Luisův večer", author: "Luis S" }, "washerwoman", "chef", "empath", "poisoner", "imp", wikiEntry(COBBLER)];
 
-test("homebrew: characters of the club's collections – a wiki script's entries matched, the grimoire's data and night, its checks, the tools get them in full", () => {
+test("homebrew: characters of the club's collections – a wiki script's entries matched, the grimoire's data and night, its checks, the tools get them in full", async () => {
+  // lib/scripts brings the database module, whose pool takes DATABASE_URL once per process: set it first, as
+  // organizer-emails.spec does, or a later spec in this worker gets a pool without it
+  process.env.DATABASE_URL ??= E2E.databaseUrl;
+  const { parseScriptFile } = await import("../../src/modules/botc/lib/scripts");
+
   // by the id here, by the id on the wiki with its name and ability
   expect(matchHomebrew(COBBLER)).toBe(COBBLER);
   expect(matchHomebrew(wikiEntry(COBBLER))).toBe(COBBLER);
