@@ -62,7 +62,7 @@ export default async function LibraryScriptPage({ params }: { params: Promise<{ 
       </div>
 
       <Card className="flex flex-col gap-3" id="characters">
-        <TeamRows roleIds={script.roleIds} locale={locale} labels={t.admin.session.roleTeams} />
+        <TeamRows roleIds={script.roleIds} locale={locale} labels={t.admin.session.roleTeams} names={script.names} />
         {extras.length > 0 && (
           <div className="flex flex-col gap-1 border-t border-border pt-3">
             <p className="text-xs font-semibold tracking-wide text-muted uppercase">{s.extrasTitle}</p>

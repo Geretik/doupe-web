@@ -1,5 +1,6 @@
 import data from "@/data/botc-characters.json";
 import type { Locale } from "@/i18n/dictionaries";
+import { findRole, findStorytellerRole, roleName, type ScriptNames } from "../botc-roles";
 
 /**
  * What the grimoire needs about a character in one language: its ability, when it wakes (the script tool's
@@ -90,6 +91,37 @@ type CharacterData = Pick<GrimoireCharacter, "firstNight" | "otherNight" | "setu
   jinxes?: { id: string; reason: string }[];
 };
 export type CharacterTexts = Pick<GrimoireCharacter, "ability" | "firstNightReminder" | "otherNightReminder" | "reminders" | "remindersGlobal">;
+
+/**
+ * The characters' texts in a script that renames some of them (scripts.names): where an ability, the Storyteller's
+ * text or a jinx (in English) says a renamed character's own name, in the page's language or in English, it says
+ * the script's. Only the name as it stands: Czech declines it ("Probuďte Čerta"), and those forms stay. Reminder
+ * tokens keep their texts: the grimoire knows what they mean by them.
+ */
+export function withScriptNames(characters: Record<string, GrimoireCharacter>, names: ScriptNames | undefined, locale: Locale) {
+  const given = new Map<string, string>();
+  for (const [id, to] of Object.entries(names ?? {})) {
+    const role = findRole(id) ?? findStorytellerRole(id);
+    if (role && to) for (const from of [roleName(role, locale), role.en]) if (from !== to && !given.has(from)) given.set(from, to);
+  }
+  if (!given.size) return characters;
+  // the longer name first, where one name is part of another
+  const alternatives = [...given.keys()].sort((a, b) => b.length - a.length).map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  const pattern = new RegExp(`(?<![\\p{L}\\p{N}])(?:${alternatives.join("|")})(?![\\p{L}\\p{N}])`, "gu");
+  const rename = (text: string) => text.replace(pattern, (name) => given.get(name) ?? name);
+  return Object.fromEntries(
+    Object.entries(characters).map(([id, c]) => [
+      id,
+      {
+        ...c,
+        ability: rename(c.ability),
+        firstNightReminder: rename(c.firstNightReminder),
+        otherNightReminder: rename(c.otherNightReminder),
+        jinxes: Object.fromEntries(Object.entries(c.jinxes).map(([other, reason]) => [other, rename(reason)])),
+      },
+    ]),
+  );
+}
 
 /** Pairs of these characters with a jinx between them (listed by either of the two), each once, with the reason. */
 export function jinxesAmong(roleIds: (string | null)[], characters: Record<string, GrimoireCharacter>) {

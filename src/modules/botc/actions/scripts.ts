@@ -9,7 +9,7 @@ import type { Dict } from "@/i18n/dictionaries";
 import { getDict } from "@/i18n/server";
 import { requireAdmin } from "@/lib/admin-auth";
 import { logAction } from "@/lib/admin-log";
-import { findRole, findStorytellerRole } from "@/modules/botc/lib/botc-roles";
+import { findRole, findStorytellerRole, MAX_SCRIPT_NAME, type ScriptNames } from "@/modules/botc/lib/botc-roles";
 import {
   builtScriptItems,
   canEditScript,
@@ -137,7 +137,14 @@ export async function saveBuiltScriptAction(id: number | null, _prev: ScriptForm
   const json = scriptText(builtScriptItems(picked, previous?.ok ? previous.script.items : []), name, author);
   const parsed = parseScriptFile(json);
   if (!parsed.ok) return { error: s.errors[parsed.error] };
-  const values = { name, author, json, roleIds: parsed.script.roleIds };
+  // what the script calls its characters: only the picked ones, only a name of its own
+  const names: ScriptNames = {};
+  for (const id of picked) {
+    const given = text(formData, `rename:${id}`).slice(0, MAX_SCRIPT_NAME);
+    const role = findRole(id) ?? findStorytellerRole(id);
+    if (given && role && given !== role.cs && given !== role.en) names[id] = given;
+  }
+  const values = { name, author, json, roleIds: parsed.script.roleIds, names: Object.keys(names).length ? names : null };
   let savedId = id;
   if (row && id !== null) {
     await db.update(scripts).set({ ...values, updatedAt: new Date() }).where(eq(scripts.id, id));

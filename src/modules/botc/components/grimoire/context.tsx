@@ -2,7 +2,7 @@
 
 import { createContext, useContext } from "react";
 import type { Dict, Locale } from "@/i18n/dictionaries";
-import { characterName, roleIcon } from "@/modules/botc/lib/botc-roles";
+import { nameInScript, roleIcon, type ScriptNames } from "@/modules/botc/lib/botc-roles";
 import type { GrimoireCharacter } from "@/modules/botc/lib/grimoire/characters";
 import type { ShowCard } from "@/modules/botc/lib/grimoire/show";
 import type { GrimoireState } from "@/modules/botc/lib/grimoire/state";
@@ -32,6 +32,8 @@ export type GrimoireContextValue = {
   characters: Record<string, GrimoireCharacter>;
   /** Adds homebrew characters, those of a script pasted on the page */
   addCharacters: (characters: Record<string, GrimoireCharacter>) => void;
+  /** What the game's script calls its characters (state.script.names), for nameOf */
+  scriptNames: ScriptNames | undefined;
   /** The session's signed-up players (sign-up id, nickname), for naming the seats; empty without a session */
   sessionPlayers: { id: number; nickname: string }[];
   locale: Locale;
@@ -46,9 +48,9 @@ export function useGrimoire() {
   return value;
 }
 
-/** A character's name: a player's, a Fabled's or a Loric's. */
-export function nameOf(roleId: string | null, locale: Locale) {
-  return characterName(roleId, locale);
+/** A character's name – a player's, a Fabled's or a Loric's – as the game's script calls it (`names`, the script's). */
+export function nameOf(roleId: string | null, locale: Locale, names?: ScriptNames) {
+  return nameInScript(roleId, locale, names);
 }
 
 /** A character's icon; tiny pre-sized WebP from public/, no image optimisation needed. */

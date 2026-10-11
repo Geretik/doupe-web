@@ -4,9 +4,9 @@ import { E2E } from "../../playwright.config";
 import homebrewList from "../../src/data/homebrew-roles.json";
 import homebrewData from "../../src/data/homebrew-characters.json";
 import homebrewCs from "../../src/data/homebrew-cs.json";
-import { characterName, findRole, findStorytellerRole, homebrewRoles, matchHomebrew, roleIcon } from "../../src/modules/botc/lib/botc-roles";
+import { characterName, findRole, findStorytellerRole, homebrewRoles, matchHomebrew, nameInRecord, roleIcon } from "../../src/modules/botc/lib/botc-roles";
 import { resolveRoleSource, roleIdsFromScriptJson } from "../../src/modules/botc/lib/draft/roles";
-import { grimoireCharacters } from "../../src/modules/botc/lib/grimoire/characters";
+import { grimoireCharacters, withScriptNames } from "../../src/modules/botc/lib/grimoire/characters";
 import { grimoireStateSchema } from "../../src/modules/botc/lib/grimoire/schema";
 import { newGrimoireState, newSeat, nightSteps } from "../../src/modules/botc/lib/grimoire/state";
 import { homebrewGrimoireCharacters, withHomebrewInFull } from "../../src/modules/botc/lib/homebrew";
@@ -314,4 +314,74 @@ test("script builder: a new script from official, Fabled and homebrew characters
   ]);
   await page.goto("/admin/historie");
   await expect(page.getByTestId("log-entry").nth(0)).toContainText("nové postavy");
+});
+
+test("script names: a themed script renames characters – in the texts where the name stands as it is, at the Djinn's jinxes, in the records with the own name", async ({ page }) => {
+  // the texts: the name as it stands, not its declined forms; the jinxes (English) too
+  const cs = withScriptNames(grimoireCharacters("cs"), { imp: "Krampus", boffin: "Profík" }, "cs");
+  expect(cs.imp.otherNightReminder).toMatch(/^Krampus vybere 1 hráče\. Pokud Krampus vybere sám sebe/);
+  expect(cs.imp.otherNightReminder).toContain("žetonem Čerta");
+  expect(cs.imp.ability).toContain("stane Čertem");
+  expect(cs.alchemist.jinxes.boffin).toBe("If the Alchemist has the Profík ability, the Alchemist does not learn what ability the Demon has.");
+  expect(nameInRecord("imp", "cs", { imp: "Krampus" })).toBe("Krampus (Čert)");
+  expect(nameInRecord("imp", "cs", null)).toBe("Čert");
+
+  // the builder: a name for this script only
+  await adminLogin(page);
+  await page.goto("/admin/botc/scripty/novy");
+  const builder = page.getByTestId("script-builder");
+  for (const [query, name] of [["pradl", "Pradlena"], ["kuch", "Kuchař"], ["empat", "Empat"], ["travič", "Travič"], ["čert", "Čert"]]) {
+    await builder.locator("#builder-search").fill(query);
+    await builder.getByRole("checkbox", { name, exact: true }).check();
+  }
+  await builder.getByTestId("builder-rename").locator("summary").click();
+  await builder.getByLabel("Jméno ve scriptu: Čert").fill("Krampus");
+  await expect(builder.getByTestId("builder-picked")).toContainText("Krampus");
+  await builder.locator("#name").fill("Vánoční večer");
+  await builder.getByRole("button", { name: "Uložit do knihovny" }).click();
+  await page.waitForURL(/\/admin\/botc\/scripty\/\d+$/);
+  await expect(page.locator("#characters")).toContainText("Krampus (Čert)");
+  const id = Number(page.url().split("/").pop());
+  expect(await sql("select names from scripts where id = $1", [id])).toEqual([{ names: { imp: "Krampus" } }]);
+  await page.getByRole("link", { name: "🧩 Upravit postavy" }).click();
+  await expect(builder.getByLabel("Jméno ve scriptu: Čert")).toHaveValue("Krampus");
+
+  // a game of it: the grimoire says Krampus, the record "Krampus (Čert)"
+  const sessionId = await createSession({ title: "Vánoční večer", capacity: 10 });
+  await sql("update sessions set scripts = $1 where id = $2", [JSON.stringify([{ name: "Vánoční večer", url: `https://www.doupeol.cz/botc/script/${id}` }]), sessionId]);
+  for (const [i, nick] of ["Ada", "Bára", "Cyril", "Dan", "Eva"].entries()) {
+    await sql("insert into registrations (session_id, nickname, email, edit_token) values ($1, $2, $3, $4)", [sessionId, nick, `v${i}@example.com`, `vn-${i}`]);
+  }
+  await page.setViewportSize({ width: 1180, height: 820 });
+  await page.goto(`/admin/botc/termin/${sessionId}`);
+  await page.getByRole("button", { name: "Nový grimoár z tohoto termínu" }).click();
+  await page.getByTestId("setup-button").click();
+  await page.getByTestId("setup-screen").getByRole("button", { name: "🎒 Výběr žetonů" }).click();
+  const tokens = page.getByTestId("bag-screen");
+  for (const name of ["Krampus", "Pradlena", "Kuchař", "Empat", "Travič"]) await tokens.getByRole("button", { name: `Do pytlíku: ${name}` }).click();
+  await tokens.getByRole("button", { name: "Hotovo", exact: true }).click();
+  await page.getByTestId("setup-screen").getByRole("button", { name: "Rozdat náhodně" }).click();
+  await page.getByTestId("ask-yes").click();
+  await page.getByTestId("setup-screen").getByRole("button", { name: "Hotovo", exact: true }).click();
+  await expect.poll(async () => (await sql<{ state: { seats: { role: string | null }[] } }>("select state from grimoires"))[0].state.seats.every((s) => s.role)).toBe(true);
+  const [{ state }] = await sql<{ state: { seats: { name: string; role: string }[]; script: { names?: Record<string, string> } } }>("select state from grimoires");
+  expect(state.script.names).toEqual({ imp: "Krampus" });
+  const krampus = state.seats.find((s) => s.role === "imp")!.name;
+  await page.locator(`[data-testid=seat][data-seat="${krampus}"]`).click();
+  await expect(page.getByTestId("seat-panel")).toContainText("Krampus");
+  await page.getByTestId("game-button").click();
+  await page.getByTestId("game-panel").getByRole("button", { name: "😈 Zlo" }).click();
+  await page.getByTestId("game-panel").getByRole("button", { name: "Ukončit hru" }).click();
+  await expect.poll(() => sql("select names from games where session_id = $1", [sessionId])).toEqual([{ names: { imp: "Krampus" } }]);
+  await page.goto(`/admin/botc/termin/${sessionId}`);
+  await expect(page.locator("main ol").filter({ hasText: "Vánoční večer" })).toContainText("Krampus (Čert)");
+
+  // a game recorded in the form takes the names of the library's script of its name
+  const [reg] = await sql<{ id: number }>("select id from registrations where session_id = $1 and nickname = 'Ada'", [sessionId]);
+  const form = page.locator("form").filter({ has: page.locator("#homebrew") }).last();
+  await form.locator("#scriptPick").selectOption("Vánoční večer");
+  await form.locator("summary:has-text('Kdo co hrál')").click();
+  await form.locator(`select[name="role:${reg.id}"]`).selectOption("imp");
+  await form.getByRole("button", { name: "Přidat hru" }).click();
+  await expect.poll(() => sql("select names from games where session_id = $1 order by id", [sessionId])).toEqual([{ names: { imp: "Krampus" } }, { names: { imp: "Krampus" } }]);
 });

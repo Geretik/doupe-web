@@ -67,7 +67,7 @@ export function FabledTokens({
   /** During the game: + for the Fabled that may be added at any time (FabledAddPanel) */
   onAdd?: () => void;
 }) {
-  const { state, scale, locale, t } = useGrimoire();
+  const { state, scale, locale, t, scriptNames } = useGrimoire();
   const fabled = state.fabled ?? [];
   const canAdd = !!onAdd && addable(state).some((id) => !fabled.includes(id));
   if (!fabled.length && !canAdd) return null;
@@ -80,8 +80,8 @@ export function FabledTokens({
           type="button"
           onClick={() => onSelect(id)}
           aria-pressed={id === selectedId}
-          aria-label={nameOf(id, locale)}
-          title={nameOf(id, locale)}
+          aria-label={nameOf(id, locale, scriptNames)}
+          title={nameOf(id, locale, scriptNames)}
           className={`flex size-10 items-center justify-center rounded-full border-[3px] bg-card shadow-md sm:size-12 ${teamBorder[teamOf(id)]} ${id === selectedId ? "outline-4 outline-offset-2 outline-accent" : ""}`}
         >
           <RoleIcon roleId={id} size={36} className="max-h-[75%] max-w-[75%]" />
@@ -119,7 +119,7 @@ export function FabledPanel({
   onPlace: (placing: Placing | null) => void;
   onClose: () => void;
 }) {
-  const { state, update, readOnly, hidden, characters, locale, t } = useGrimoire();
+  const { state, update, readOnly, hidden, characters, locale, t, scriptNames } = useGrimoire();
   const c = characters[roleId];
   const team = teamOf(roleId);
   const placed = remindersOf(state, roleId);
@@ -133,7 +133,7 @@ export function FabledPanel({
             <RoleIcon roleId={roleId} size={42} />
           </span>
           <span className="flex min-w-0 flex-col">
-            <span className="text-xl font-bold">{nameOf(roleId, locale)}</span>
+            <span className="text-xl font-bold">{nameOf(roleId, locale, scriptNames)}</span>
             <span className={heading}>{t.storytellerTeams[team]}</span>
           </span>
         </div>
@@ -160,7 +160,7 @@ export function FabledPanel({
                 <RoleIcon roleId={b} size={22} />
                 <span>
                   <span className="font-semibold">
-                    {nameOf(a, locale)} + {nameOf(b, locale)}:
+                    {nameOf(a, locale, scriptNames)} + {nameOf(b, locale, scriptNames)}:
                   </span>{" "}
                   <span lang="en">{reason}</span>
                 </span>
@@ -228,7 +228,7 @@ export function FabledPanel({
  * them like the official ones) and other homebrew characters, only to read – no player gets one of those.
  */
 function Homebrew() {
-  const { state, locale, t } = useGrimoire();
+  const { state, locale, t, scriptNames } = useGrimoire();
   const { rules = [], characters = [] } = state.script.homebrew ?? {};
   const known = [...state.script.roleIds, ...(state.script.fabled ?? [])].filter(isHomebrew);
   const teamName = (team: string | null) =>
@@ -243,7 +243,7 @@ function Homebrew() {
             {known.map((id) => (
               <li key={id} className="flex items-center gap-2">
                 <RoleIcon roleId={id} size={22} />
-                <span className="font-semibold">{nameOf(id, locale)}</span>
+                <span className="font-semibold">{nameOf(id, locale, scriptNames)}</span>
                 <span className="text-xs text-muted">{homebrewCollectionOf(id)?.name}</span>
               </li>
             ))}
@@ -288,7 +288,7 @@ const chip = "flex min-h-11 items-center gap-1.5 rounded-full border-2 bg-card p
  * it is over, only to read. Hidden, only how to run it: the contest shows who the Demon is.
  */
 function Fiddle() {
-  const { state, update, readOnly, hidden, characters, locale, t } = useGrimoire();
+  const { state, update, readOnly, hidden, characters, locale, t, scriptNames } = useGrimoire();
   const f = t.fiddle;
   const [demonId, setDemonId] = useState<string | null>(null);
   // back in the setup by undo, there is no contest yet
@@ -296,7 +296,7 @@ function Fiddle() {
   const playing = state.phase === "night" || state.phase === "day";
   const demons = fiddleDemons(state, characters);
   const demon = demons.find((s) => s.id === demonId) ?? demons[0];
-  const roleOf = (seat: GrimoireSeat) => (seat.role ? nameOf(seat.role, locale) : t.noRole);
+  const roleOf = (seat: GrimoireSeat) => (seat.role ? nameOf(seat.role, locale, scriptNames) : t.noRole);
   const sideBorder = (seat: GrimoireSeat) => (seatSide(seat, characters, state) === "good" ? "border-good" : "border-accent");
   const end = (winner: GrimoireSeat | null) => {
     if (!contest) return;
@@ -402,7 +402,7 @@ function Fiddle() {
 
 /** Whom the Demon pointed at, from the players of the other side: a tap starts the contest. */
 function FiddleOpponents({ demon }: { demon: GrimoireSeat }) {
-  const { state, update, characters, locale, t } = useGrimoire();
+  const { state, update, characters, locale, t, scriptNames } = useGrimoire();
   const opponents = fiddleOpponents(state, demon, characters);
   return (
     <>
@@ -422,7 +422,7 @@ function FiddleOpponents({ demon }: { demon: GrimoireSeat }) {
               {s.role && <RoleIcon roleId={s.role} size={28} />}
               {s.name || "?"}
               <span className="text-xs text-muted">
-                {s.role ? nameOf(s.role, locale) : t.noRole}
+                {s.role ? nameOf(s.role, locale, scriptNames) : t.noRole}
                 {s.dead && " · 💀"}
               </span>
             </button>
@@ -435,7 +435,7 @@ function FiddleOpponents({ demon }: { demon: GrimoireSeat }) {
 
 /** In the setup: the Fabled and Loric in the game (the script's come by themselves), more to add, any to take out. */
 export function FabledSetup({ wide = false }: { wide?: boolean }) {
-  const { state, update, readOnly, locale, t } = useGrimoire();
+  const { state, update, readOnly, locale, t, scriptNames } = useGrimoire();
   const [open, setOpen] = useState(false);
   const fabled = state.fabled ?? [];
   const fromScript = new Set(state.script.fabled ?? []);
@@ -461,11 +461,11 @@ export function FabledSetup({ wide = false }: { wide?: boolean }) {
                 type="button"
                 disabled={readOnly}
                 onClick={() => toggle(id)}
-                aria-label={`${t.fabledRemove}: ${nameOf(id, locale)}`}
+                aria-label={`${t.fabledRemove}: ${nameOf(id, locale, scriptNames)}`}
                 className={`flex min-h-10 items-center gap-1.5 rounded-full border-2 bg-card py-0.5 pr-3 pl-1 text-sm ${teamBorder[teamOf(id)]}`}
               >
                 <RoleIcon roleId={id} size={28} />
-                {nameOf(id, locale)}
+                {nameOf(id, locale, scriptNames)}
                 {fromScript.has(id) && <span className="text-xs text-muted">({t.fabledFromScript})</span>}
                 {!readOnly && <span className="text-muted">✕</span>}
               </button>
@@ -523,10 +523,10 @@ export function FabledAddPanel({ onAdded, onClose }: { onAdded: (id: string) => 
 
 /** Fabled and Loric to pick, by team, each with its ability to read before picking; `picked` ones highlighted. */
 function FabledChoices({ ids, picked, onPick, wide = false }: { ids: string[]; picked: Set<string>; onPick: (id: string) => void; wide?: boolean }) {
-  const { characters, locale, t } = useGrimoire();
+  const { characters, locale, t, scriptNames } = useGrimoire();
   const collator = new Intl.Collator(locale);
   const groups = (["fabled", "loric"] as const)
-    .map((team) => ({ team, ids: ids.filter((id) => teamOf(id) === team).sort((a, b) => collator.compare(nameOf(a, locale), nameOf(b, locale))) }))
+    .map((team) => ({ team, ids: ids.filter((id) => teamOf(id) === team).sort((a, b) => collator.compare(nameOf(a, locale, scriptNames), nameOf(b, locale, scriptNames))) }))
     .filter((g) => g.ids.length > 0);
   return (
     <div className="flex flex-col gap-2">
@@ -542,12 +542,12 @@ function FabledChoices({ ids, picked, onPick, wide = false }: { ids: string[]; p
                   type="button"
                   onClick={() => onPick(id)}
                   aria-pressed={on}
-                  aria-label={`${t.fabledAddLabel}: ${nameOf(id, locale)}`}
+                  aria-label={`${t.fabledAddLabel}: ${nameOf(id, locale, scriptNames)}`}
                   className={`flex items-start gap-2 rounded-lg border p-2 text-left text-sm ${on ? "border-accent bg-accent/10" : "border-border bg-card hover:border-accent/50"}`}
                 >
                   <RoleIcon roleId={id} size={36} />
                   <span className="flex min-w-0 flex-col gap-0.5">
-                    <span className="font-semibold">{nameOf(id, locale)}</span>
+                    <span className="font-semibold">{nameOf(id, locale, scriptNames)}</span>
                     {characters[id] && <span className="text-xs leading-snug text-muted">{characters[id].ability}</span>}
                   </span>
                 </button>

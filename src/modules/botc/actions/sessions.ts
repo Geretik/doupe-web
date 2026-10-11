@@ -33,6 +33,7 @@ import {
   type FormState,
 } from "@/lib/validation";
 import { promoteWaitlist } from "@/modules/botc/lib/waitlist";
+import { libraryNamesFor } from "@/modules/botc/lib/scripts";
 import { ANON_SUFFIX, erasedFields, hasEmail, isAnonymized, isErased, noEmailAddress, playerPseudonym } from "@/lib/retention";
 import type { SimpleResult } from "@/app/actions/admin";
 
@@ -640,8 +641,10 @@ export async function addGameAction(sessionId: number, _prev: FormState, formDat
   if (!parsed.success || !roster || demonBluffs === undefined) {
     return { error: t.admin.errors.checkForm, fieldErrors: parsed.success ? undefined : fieldErrorsOf(parsed.error) };
   }
+  // a themed script of the library names its characters in the record too
+  const names = await libraryNamesFor(parsed.data.scriptName);
   const gameId = await db.transaction(async (tx) => {
-    const [game] = await tx.insert(games).values({ sessionId, ...parsed.data, demonBluffs }).returning({ id: games.id });
+    const [game] = await tx.insert(games).values({ sessionId, ...parsed.data, demonBluffs, names }).returning({ id: games.id });
     await saveRoster(tx, game.id, sessionId, roster);
     return game.id;
   });
@@ -660,10 +663,12 @@ export async function updateGameAction(gameId: number, _prev: FormState, formDat
   if (!parsed.success || !roster || demonBluffs === undefined) {
     return { error: t.admin.errors.checkForm, fieldErrors: parsed.success ? undefined : fieldErrorsOf(parsed.error) };
   }
+  // the library's names of the script; a script no longer in the library keeps the names the record has
+  const names = await libraryNamesFor(parsed.data.scriptName);
   const row = await db.transaction(async (tx) => {
     const [game] = await tx
       .update(games)
-      .set({ ...parsed.data, demonBluffs })
+      .set({ ...parsed.data, demonBluffs, ...(names ? { names } : {}) })
       .where(eq(games.id, gameId))
       .returning({ sessionId: games.sessionId });
     if (game) await saveRoster(tx, gameId, game.sessionId, roster);

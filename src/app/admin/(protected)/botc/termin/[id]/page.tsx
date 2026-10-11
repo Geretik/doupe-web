@@ -599,7 +599,7 @@ export default async function AdminSessionPage({
                     {g.players && <span className="text-muted"> · {dict.archive.gamePlayers(g.players)}</span>}
                     {g.notes && <span className="text-muted"> · {g.notes}</span>}
                   </span>
-                  <GameRoster players={g.roster} bluffs={g.demonBluffs} locale={locale} t={{ storyteller: dict.session.storytellerLabel, sides: dict.archive.sides, linked: dict.archive.linked, satOut: dict.archive.satOut }} />
+                  <GameRoster players={g.roster} bluffs={g.demonBluffs} names={g.names} locale={locale} t={{ storyteller: dict.session.storytellerLabel, sides: dict.archive.sides, linked: dict.archive.linked, satOut: dict.archive.satOut }} />
                 </div>
               </GameItem>
             ))}

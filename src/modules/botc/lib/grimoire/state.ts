@@ -1,5 +1,5 @@
 import type { GameWinner } from "@/db/schema";
-import { BLUFF_COUNT, bluffTeams, findRole, linkedRoleOf, roleSide, type RoleTeam } from "@/modules/botc/lib/botc-roles";
+import { BLUFF_COUNT, bluffTeams, findRole, linkedRoleOf, roleSide, type RoleTeam, type ScriptNames } from "@/modules/botc/lib/botc-roles";
 import type { GrimoireCharacter, TokenKind } from "./characters";
 
 /**
@@ -85,9 +85,10 @@ export type GrimoireEvent = {
 export type GrimoireState = {
   /**
    * The characters to play with: a script of the club's library (id), one pasted as JSON (json), else every
-   * character; `fabled`: its Fabled and Loric, `homebrew`: its own rules and characters (the Bootlegger's)
+   * character; `fabled`: its Fabled and Loric, `homebrew`: its own rules and characters (the Bootlegger's),
+   * `names`: what the script calls its characters (a themed script's Krampus for the Imp, scripts.names)
    */
-  script: { id: number | null; json?: boolean; name: string; roleIds: string[]; fabled?: string[]; homebrew?: Homebrew };
+  script: { id: number | null; json?: boolean; name: string; roleIds: string[]; fabled?: string[]; homebrew?: Homebrew; names?: ScriptNames };
   /** The circle in seating order, clockwise: the players and the gaps between them */
   seats: GrimoireSeat[];
   /** How the town shows the places: on a circle (absent), or where the Storyteller put them on a grid (GrimoireSeat.pos) */

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { Locale } from "@/i18n/dictionaries";
-import type { GrimoireCharacter } from "@/modules/botc/lib/grimoire/characters";
+import { withScriptNames, type GrimoireCharacter } from "@/modules/botc/lib/grimoire/characters";
 import { canStart, fiddleSeats, isPlayer, nextPhase, nightSteps, putToken, withoutRole, type GrimoireSeat, type GrimoireState } from "@/modules/botc/lib/grimoire/state";
 import { useAsk } from "./ask";
 import { useAutosave, type SaveStatus } from "./autosave";
@@ -88,7 +88,9 @@ export function Grimoire({
   const [history, dispatch] = useReducer(reducer, { present: initial.state, past: [], floor: 0 });
   // the homebrew characters of a script pasted on this page come with it (setup-panel ScriptPicker)
   const [added, setAdded] = useState<Record<string, GrimoireCharacter>>({});
-  const characters = useMemo(() => ({ ...initialCharacters, ...added }), [initialCharacters, added]);
+  const names = history.present.script.names;
+  // a script that renames characters says its names in their texts too (withScriptNames)
+  const characters = useMemo(() => withScriptNames({ ...initialCharacters, ...added }, names, locale), [initialCharacters, added, names, locale]);
   const addCharacters = useCallback((more: Record<string, GrimoireCharacter>) => setAdded((had) => ({ ...had, ...more })), []);
   const state = history.present;
   const [tab, setTab] = useState<Tab>(initial.state.phase === "night" ? "night" : "seat");
@@ -196,6 +198,7 @@ export function Grimoire({
     show: setShowing,
     characters,
     addCharacters,
+    scriptNames: names,
     sessionPlayers,
     locale,
     t,
@@ -376,7 +379,7 @@ export function Grimoire({
                 />
                 {placing && (
                   <div className="absolute inset-x-0 top-0 z-20 mx-auto flex w-fit max-w-full flex-wrap items-center gap-2 rounded-full border border-accent bg-card px-3 py-1.5 text-sm shadow-md" data-testid="placing">
-                    <span>{fill(t.placeHint, { token: placing.text, role: nameOf(placing.roleId, locale) })}</span>
+                    <span>{fill(t.placeHint, { token: placing.text, role: nameOf(placing.roleId, locale, names) })}</span>
                     <button type="button" onClick={() => setPlacing(null)} className="min-h-9 rounded-full border border-border px-3 text-xs">
                       {t.cancel}
                     </button>

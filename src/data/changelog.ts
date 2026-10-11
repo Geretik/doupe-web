@@ -36,6 +36,11 @@ export const changelog: ChangelogEntry[] = [
         href: "/admin/botc/scripty/novy",
       },
       {
+        for: "organizers",
+        text: "Tematické scripty: v sestavení scriptu (i u Upravit postavy) můžeš postavám dát jméno jen pro tenhle script, třeba Čert → Krampus. Grimoár hry s tímhle scriptem je ukazuje všude – na žetonech, v noci, u Džina i v textech schopností, kde jméno stojí ve stejném tvaru – a záznam hry jako „Krampus (Čert)“. Statistiky počítají dál podle postavy.",
+        href: "/admin/botc/scripty/novy",
+      },
+      {
         for: "players",
         text: "U termínů vede odkaz na script do klubového script toolu i u scriptů s homebrew postavami.",
       },

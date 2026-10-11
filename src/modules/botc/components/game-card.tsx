@@ -38,6 +38,7 @@ export function GameCard({
       <GameRoster
         players={g.roster}
         bluffs={g.demonBluffs}
+        names={g.names}
         locale={locale}
         t={{ storyteller: t.session.storytellerLabel, sides: t.archive.sides, linked: t.archive.linked }}
         me={me}

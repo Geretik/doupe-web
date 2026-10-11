@@ -357,6 +357,23 @@ export function characterName(id: string | null | undefined, locale: Locale) {
   return role ? roleName(role, locale) : (id ?? "");
 }
 
+/** Names a script gives its characters, by id: a themed script calls the Imp "Krampus" (scripts.names) */
+export type ScriptNames = Record<string, string>;
+/** Longest name a script gives a character */
+export const MAX_SCRIPT_NAME = 40;
+
+/** A character's name in a script that may rename it: the grimoire of a game of that script. */
+export function nameInScript(id: string | null | undefined, locale: Locale, names?: ScriptNames | null) {
+  return (id && names?.[id]) || characterName(id, locale);
+}
+
+/** A character's name in a game record: the script's name with the character's own in brackets, "Krampus (Čert)". */
+export function nameInRecord(id: string | null | undefined, locale: Locale, names?: ScriptNames | null) {
+  const own = characterName(id, locale);
+  const given = id ? names?.[id] : undefined;
+  return given && given !== own ? `${given} (${own})` : own;
+}
+
 /** A homebrew character the wiki had no art for gets this: its name tells it apart */
 export const NO_ICON = "/botc/roles/hb/_.webp";
 

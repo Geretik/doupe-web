@@ -1,5 +1,5 @@
 import type { Locale } from "@/i18n/dictionaries";
-import { findRole, roleIcon, roleName, roleSide, roleTeams, type RoleTeam } from "@/modules/botc/lib/botc-roles";
+import { findRole, nameInRecord, roleIcon, roleName, roleSide, roleTeams, type RoleTeam, type ScriptNames } from "@/modules/botc/lib/botc-roles";
 import { groupHeadingClass, splitByGroup } from "./team-section";
 
 const chip = "inline-flex items-center gap-1 rounded-full border border-border bg-card py-0.5 pr-2.5 pl-1 text-xs";
@@ -11,14 +11,14 @@ export function sideClass(roleId: string) {
   return side === "good" ? "text-good" : side === "evil" ? "text-accent" : "text-muted";
 }
 
-/** One character: icon and name. */
-export function RoleChip({ roleId, locale }: { roleId: string; locale: Locale }) {
+/** One character: icon and name; `names`: what a script calls it, shown with its own name. */
+export function RoleChip({ roleId, locale, names }: { roleId: string; locale: Locale; names?: ScriptNames | null }) {
   const role = findRole(roleId);
   return (
     <span className={chip}>
       {/* eslint-disable-next-line @next/next/no-img-element -- tiny pre-sized WebP from public/, no optimisation needed */}
       <img src={roleIcon(roleId)} alt="" width={22} height={22} className="h-[22px] w-[22px]" />
-      <span className={sideClass(roleId)}>{role ? roleName(role, locale) : roleId}</span>
+      <span className={sideClass(roleId)}>{role ? (names ? nameInRecord(roleId, locale, names) : roleName(role, locale)) : roleId}</span>
     </span>
   );
 }
@@ -62,7 +62,17 @@ export function sortByShownName(roleIds: string[], locale: Locale) {
 }
 
 /** A pool's characters in one row per team, the team's name in its colour in front. */
-export function TeamRows({ roleIds, locale, labels }: { roleIds: string[]; locale: Locale; labels: Record<RoleTeam, string> }) {
+export function TeamRows({
+  roleIds,
+  locale,
+  labels,
+  names,
+}: {
+  roleIds: string[];
+  locale: Locale;
+  labels: Record<RoleTeam, string>;
+  names?: ScriptNames | null;
+}) {
   const groups = splitByGroup(sortByShownName(roleIds, locale), (id) => [id]);
   return (
     <div className="flex flex-col divide-y divide-border">
@@ -72,7 +82,7 @@ export function TeamRows({ roleIds, locale, labels }: { roleIds: string[]; local
             {g.group === "bundles" ? "" : labels[g.group]} <span className="font-normal opacity-70">{g.items.length}</span>
           </span>
           {g.items.map((id) => (
-            <RoleChip key={id} roleId={id} locale={locale} />
+            <RoleChip key={id} roleId={id} locale={locale} names={names} />
           ))}
         </div>
       ))}

@@ -107,7 +107,7 @@ export function ShowScreen({ card, onChange, onClose }: { card: ShowCard; onChan
 
 /** One line of the card as the player sees it: heading, players, characters, then a number, yes or no, a side, a text. */
 function CardLine({ line, names }: { line: ShowLine; names: string[] }) {
-  const { characters, locale, t } = useGrimoire();
+  const { characters, locale, t, scriptNames } = useGrimoire();
   const big = line.roles.length < 3;
   return (
     <div className="flex flex-col items-center gap-4" data-testid="show-line">
@@ -120,7 +120,7 @@ function CardLine({ line, names }: { line: ShowLine; names: string[] }) {
             return (
               <div key={id} className="flex max-w-xs flex-col items-center gap-2">
                 <RoleIcon roleId={id} size={big ? 160 : 112} />
-                <span className={`text-3xl font-bold sm:text-4xl ${team ? groupHeadingClass(team) : ""}`}>{nameOf(id, locale)}</span>
+                <span className={`text-3xl font-bold sm:text-4xl ${team ? groupHeadingClass(team) : ""}`}>{nameOf(id, locale, scriptNames)}</span>
                 {line.title === "youAre" && characters[id] && <span className="text-lg leading-snug">{characters[id].ability}</span>}
               </div>
             );
@@ -137,7 +137,7 @@ function CardLine({ line, names }: { line: ShowLine; names: string[] }) {
 
 /** A line of the card for the Storyteller: each part with its way to change or remove it, the missing parts to add. */
 function LineEditor({ line, onChange, onRemove }: { line: ShowLine; onChange: (change: (line: ShowLine) => ShowLine) => void; onRemove?: () => void }) {
-  const { state, locale, t } = useGrimoire();
+  const { state, locale, t, scriptNames } = useGrimoire();
   const [picking, setPicking] = useState<"roles" | "players" | null>(null);
   const without = <K extends keyof ShowLine>(key: K) => onChange((l) => Object.fromEntries(Object.entries(l).filter(([k]) => k !== key)) as ShowLine);
   const toggleRole = (id: string) => onChange((l) => ({ ...l, roles: l.roles.includes(id) ? l.roles.filter((x) => x !== id) : [...l.roles, id] }));
@@ -177,9 +177,9 @@ function LineEditor({ line, onChange, onRemove }: { line: ShowLine; onChange: (c
             </button>
           ))}
           {line.roles.map((id) => (
-            <button key={id} type="button" className={`${chip} border-border bg-card pl-1`} onClick={() => toggleRole(id)} aria-label={`${t.remove}: ${nameOf(id, locale)}`}>
+            <button key={id} type="button" className={`${chip} border-border bg-card pl-1`} onClick={() => toggleRole(id)} aria-label={`${t.remove}: ${nameOf(id, locale, scriptNames)}`}>
               <RoleIcon roleId={id} size={28} />
-              {nameOf(id, locale)} {remove}
+              {nameOf(id, locale, scriptNames)} {remove}
             </button>
           ))}
         </div>

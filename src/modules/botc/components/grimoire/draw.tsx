@@ -18,7 +18,7 @@ const big = "min-h-14 rounded-xl px-6 text-lg font-semibold";
  * and sees their character on a screen of its own, then hides it again. Nothing else of the grimoire shows.
  */
 export function DrawView() {
-  const { state, update, ask, characters, locale, t } = useGrimoire();
+  const { state, update, ask, characters, locale, t, scriptNames } = useGrimoire();
   const [open, setOpen] = useState<Open | null>(null);
   const left = remainingBag(state).length;
 
@@ -80,7 +80,7 @@ export function DrawView() {
                 <p className="text-muted">{t.drawGot}</p>
                 <RoleIcon roleId={role.id} size={160} />
                 <p className={`text-4xl font-bold ${groupHeadingClass(role.team)}`} data-testid="drawn-role">
-                  {nameOf(role.id, locale)}
+                  {nameOf(role.id, locale, scriptNames)}
                 </p>
                 <p className={`text-sm font-semibold tracking-wide uppercase ${groupHeadingClass(role.team)}`}>{t.teams[role.team]}</p>
                 {characters[role.id] && <p className="max-w-md text-lg leading-snug">{characters[role.id].ability}</p>}

@@ -40,14 +40,14 @@ export function RoleGrid({
   label?: string;
   wide?: boolean;
 }) {
-  const { locale, t } = useGrimoire();
+  const { locale, t, scriptNames } = useGrimoire();
   const collator = new Intl.Collator(locale);
   const groups = roleTeams
     .map((team) => ({
       team,
       ids: roleIds
         .filter((id) => findRole(id)?.team === team)
-        .sort((a, b) => collator.compare(nameOf(a, locale), nameOf(b, locale))),
+        .sort((a, b) => collator.compare(nameOf(a, locale, scriptNames), nameOf(b, locale, scriptNames))),
     }))
     .filter((g) => g.ids.length > 0);
   return (
@@ -67,14 +67,14 @@ export function RoleGrid({
                   type="button"
                   onClick={() => onPick(id)}
                   aria-pressed={on}
-                  aria-label={label ? `${label}: ${nameOf(id, locale)}` : undefined}
+                  aria-label={label ? `${label}: ${nameOf(id, locale, scriptNames)}` : undefined}
                   className={`flex ${wide ? "min-h-14" : "min-h-12"} items-center gap-2 rounded-lg border px-1.5 py-1 text-left text-sm ${
                     on ? "border-accent bg-accent/10 font-semibold" : "border-border bg-card hover:border-accent/50"
                   }`}
                 >
                   <RoleIcon roleId={id} size={wide ? 42 : 34} />
                   <span className="flex min-w-0 flex-col leading-tight">
-                    <span className="truncate">{nameOf(id, locale)}</span>
+                    <span className="truncate">{nameOf(id, locale, scriptNames)}</span>
                     {notes?.get(id) && <span className="truncate text-xs font-normal text-muted">{notes.get(id)}</span>}
                     {badges?.get(id) && (
                       <span className="truncate text-xs font-medium text-amber-700 dark:text-amber-400" data-testid="role-badge">

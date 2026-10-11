@@ -395,7 +395,7 @@ function SeatToken({
   onClick: () => void;
   hidden: boolean;
 } & Moving) {
-  const { state, characters, scale, locale, t } = useGrimoire();
+  const { state, characters, scale, locale, t, scriptNames } = useGrimoire();
   const nameSize = { fontSize: 14 * scale };
   const ring = selected ? "outline-4 outline-offset-2 outline-accent" : highlighted ? "outline-4 outline-offset-2 outline-amber-400" : "";
   if (hidden) {
@@ -448,7 +448,7 @@ function SeatToken({
           <>
             <RoleIcon roleId={seat.role} size={size * 0.56} className={seat.dead ? "grayscale" : ""} />
             <span className="max-w-[88%] truncate leading-tight font-semibold" style={{ fontSize: clamp(size * 0.12, 9 * scale, 13 * scale) }}>
-              {nameOf(seat.role, locale)}
+              {nameOf(seat.role, locale, scriptNames)}
             </span>
           </>
         ) : (

@@ -139,7 +139,7 @@ export function SeatPanel({
 
 /** What only the Storyteller sees of a player: the character, who they think they are, death, reminders. */
 function SeatSecrets({ seat }: { seat: GrimoireSeat }) {
-  const { state, update, readOnly, characters, locale, t } = useGrimoire();
+  const { state, update, readOnly, characters, locale, t, scriptNames } = useGrimoire();
   const [picking, setPicking] = useState<"role" | "linked" | "reminder" | null>(null);
   const [custom, setCustom] = useState("");
   const set = (change: (seat: GrimoireSeat) => GrimoireSeat) => update((s) => changeSeat(s, seat.id, change));
@@ -160,7 +160,7 @@ function SeatSecrets({ seat }: { seat: GrimoireSeat }) {
         <h3 className="text-xs font-semibold tracking-wide text-muted uppercase">{t.role}</h3>
         <div className="flex items-center gap-3">
           {seat.role ? <RoleIcon roleId={seat.role} size={48} /> : <span className="flex h-12 w-12 items-center justify-center rounded-full border border-dashed border-border text-muted">?</span>}
-          <span className="flex-1 text-lg font-semibold">{seat.role ? nameOf(seat.role, locale) : t.noRole}</span>
+          <span className="flex-1 text-lg font-semibold">{seat.role ? nameOf(seat.role, locale, scriptNames) : t.noRole}</span>
           {!readOnly && (
             <button type="button" className={plain} onClick={() => setPicking(picking === "role" ? null : "role")} aria-expanded={picking === "role"}>
               {t.changeRole}
@@ -208,7 +208,7 @@ function SeatSecrets({ seat }: { seat: GrimoireSeat }) {
           <h3 className="text-xs font-semibold tracking-wide text-muted uppercase">{t.linked[linked.kind]}</h3>
           <div className="flex items-center gap-3">
             {seat.believedRole ? <RoleIcon roleId={seat.believedRole} size={40} /> : <span className="text-sm text-accent">{t.linkedMissing}</span>}
-            <span className="flex-1 font-semibold">{seat.believedRole && nameOf(seat.believedRole, locale)}</span>
+            <span className="flex-1 font-semibold">{seat.believedRole && nameOf(seat.believedRole, locale, scriptNames)}</span>
             {!readOnly && (
               <button type="button" className={plain} onClick={() => setPicking(picking === "linked" ? null : "linked")} aria-expanded={picking === "linked"}>
                 {t.pick}
@@ -496,7 +496,7 @@ function SeatName({ name, onSave }: { name: string; onSave: (name: string) => vo
 
 /** The reminder tokens of the characters in play (the Fabled and Loric too), and the ones any character of the script may hand out. */
 function ReminderChoices({ onPick }: { onPick: (roleId: string, text: string) => void }) {
-  const { state, characters, locale } = useGrimoire();
+  const { state, characters, locale, scriptNames } = useGrimoire();
   const inPlay = new Set([...charactersInPlay(state), ...(state.fabled ?? [])]);
   const options = [...new Set([...inPlay, ...state.script.roleIds])]
     .map((id) => {
@@ -511,7 +511,7 @@ function ReminderChoices({ onPick }: { onPick: (roleId: string, text: string) =>
       {options.map((o) => (
         <li key={o.id} className="flex flex-wrap items-center gap-1.5">
           <RoleIcon roleId={o.id} size={28} />
-          <span className="text-xs text-muted">{nameOf(o.id, locale)}</span>
+          <span className="text-xs text-muted">{nameOf(o.id, locale, scriptNames)}</span>
           {o.texts.map((text) => (
             <button
               key={text}

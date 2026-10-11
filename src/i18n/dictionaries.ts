@@ -391,6 +391,10 @@ export const cs = {
       noName: "Vyplň název",
       noCharacters: "Vyber aspoň jednu postavu hráče.",
       count: { one: "{n} postava", few: "{n} postavy", other: "{n} postav" },
+      renameTitle: "Jména ve scriptu",
+      renameHint:
+        "Tematický script může postavy přejmenovat (třeba Čert → Krampus). Jméno platí jen v tomhle scriptu: ukáže se v grimoáru – i v textech, kde stojí ve stejném tvaru, a u Džina – a v záznamech her jako „Krampus (Čert)“. Statistiky počítají dál podle postavy a vytištěný script ze script toolu má u oficiálních postav jejich oficiální jména. Prázdné = vlastní jméno.",
+      renameLabel: "Jméno ve scriptu",
     },
     errors: {
       tooLarge: "Soubor je moc velký (nejvýš 512 kB).",
@@ -1635,6 +1639,10 @@ export const en: Dict = {
       noName: "Enter a name",
       noCharacters: "Pick at least one player's character.",
       count: { one: "{n} character", few: "{n} characters", other: "{n} characters" },
+      renameTitle: "Names in this script",
+      renameHint:
+        "A themed script may rename characters (the Imp → Krampus, say). The name holds in this script only: in the grimoire – in the texts too where it stands as it is, and at the Djinn – and in game records as \"Krampus (Imp)\". Statistics still count by the character, and the script tool prints official characters by their official names. Empty = its own name.",
+      renameLabel: "Name in this script",
     },
     errors: {
       tooLarge: "The file is too big (512 kB at most).",

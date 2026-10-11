@@ -1,13 +1,14 @@
 "use client";
 
 import type { Locale } from "@/i18n/dictionaries";
+import type { ScriptNames } from "@/modules/botc/lib/botc-roles";
 import type { GrimoireEvent, GrimoireState } from "@/modules/botc/lib/grimoire/state";
 import { fill } from "@/modules/botc/lib/grimoire/text";
 import { nameOf, useGrimoire, type GrimoireTexts } from "./context";
 
 /** One line of the chronicle: who died (by whose ability), lived through an attack, came back, became whom. */
-function eventLine(e: GrimoireEvent, locale: Locale, t: GrimoireTexts) {
-  const x = { name: e.name || "?", role: e.role ? nameOf(e.role, locale) : t.noRole, by: e.by ? nameOf(e.by, locale) : "" };
+function eventLine(e: GrimoireEvent, locale: Locale, t: GrimoireTexts, scriptNames?: ScriptNames) {
+  const x = { name: e.name || "?", role: e.role ? nameOf(e.role, locale, scriptNames) : t.noRole, by: e.by ? nameOf(e.by, locale, scriptNames) : "" };
   const c = t.chronicle;
   if (e.kind === "death") return fill(e.fake ? c.fake : e.by ? c.deathBy : c.death, x);
   if (e.kind === "survived") return fill(c.survived, x);
@@ -16,7 +17,7 @@ function eventLine(e: GrimoireEvent, locale: Locale, t: GrimoireTexts) {
 }
 
 /** The game's log by night and day, in order: what the chronicle shows. */
-export function chronicle(state: Pick<GrimoireState, "log">, locale: Locale, t: GrimoireTexts) {
+export function chronicle(state: Pick<GrimoireState, "log" | "script">, locale: Locale, t: GrimoireTexts) {
   const groups: { key: string; label: string; lines: string[] }[] = [];
   for (const e of state.log ?? []) {
     const key = `${e.round}${e.day ? "d" : "n"}`;
@@ -24,13 +25,13 @@ export function chronicle(state: Pick<GrimoireState, "log">, locale: Locale, t: 
       const label = e.round === 0 ? t.chronicle.setup : fill(e.day ? t.phases.day : t.phases.night, { n: e.round });
       groups.push({ key, label, lines: [] });
     }
-    groups.at(-1)!.lines.push(eventLine(e, locale, t));
+    groups.at(-1)!.lines.push(eventLine(e, locale, t, state.script.names));
   }
   return groups;
 }
 
 /** The chronicle as one paragraph for the game's note, cut after the last night or day that fits in `max`. */
-export function chronicleText(state: Pick<GrimoireState, "log">, locale: Locale, t: GrimoireTexts, max: number) {
+export function chronicleText(state: Pick<GrimoireState, "log" | "script">, locale: Locale, t: GrimoireTexts, max: number) {
   let text = "";
   for (const { label, lines } of chronicle(state, locale, t)) {
     const part = `${text ? " " : ""}${label}: ${lines.join("; ")}.`;

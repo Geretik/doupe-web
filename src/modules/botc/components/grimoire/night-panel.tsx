@@ -81,7 +81,7 @@ export function NightPanel({
   placing: Placing | null;
   onPlace: (placing: Placing | null) => void;
 }) {
-  const { state, update, readOnly, characters, locale, t } = useGrimoire();
+  const { state, update, readOnly, characters, locale, t, scriptNames } = useGrimoire();
   const first = preview || state.round === 1;
   const done = new Set(state.nightDone);
   const seats = new Map(state.seats.map((s) => [s.id, s]));
@@ -97,7 +97,7 @@ export function NightPanel({
           const isDone = !preview && done.has(step.id);
           const isCurrent = step.id === currentId;
           const open = isCurrent || step.id === focusId;
-          const name = step.special ? t.steps[step.special] : nameOf(step.roleId, locale);
+          const name = step.special ? t.steps[step.special] : nameOf(step.roleId, locale, scriptNames);
           const text = step.special
             ? t.stepTexts[step.special]
             : step.roleId
@@ -132,7 +132,7 @@ export function NightPanel({
                     {woken.length > 0 && (
                       <span className={`truncate text-xs ${allDead ? "text-muted" : ""}`}>
                         {woken
-                          .map((s) => `${s.name}${s.role && step.roleId && s.role !== step.roleId ? ` (${nameOf(s.role, locale)})` : ""}${s.dead ? " ☠" : ""}`)
+                          .map((s) => `${s.name}${s.role && step.roleId && s.role !== step.roleId ? ` (${nameOf(s.role, locale, scriptNames)})` : ""}${s.dead ? " ☠" : ""}`)
                           .join(", ")}
                       </span>
                     )}
@@ -189,7 +189,7 @@ function StepHelp({
   onPlace: (placing: Placing | null) => void;
   canPlace: boolean;
 }) {
-  const { state, update, characters, locale, t } = useGrimoire();
+  const { state, update, characters, locale, t, scriptNames } = useGrimoire();
   const c = characters[roleId];
   if (!c) return null;
   const used = usedToken(c, t.abilityUsed);
@@ -201,7 +201,7 @@ function StepHelp({
   const placed = remindersOf(state, roleId);
   const { info, notes } = stepInfo(state, roleId, woken, characters, locale, t);
   const pass = roleId === "imp" && state.phase === "night" ? starPass(state, characters) : null;
-  const imp = nameOf("imp", locale);
+  const imp = nameOf("imp", locale, scriptNames);
   if (pass && !pass.heir && !pass.choices.length) info.push(t.noHeir);
   // a Fabled's or Loric's step is the Storyteller's: a drunk player woken for it (the Storm Catcher's evil) learns the truth
   const warnings = findStorytellerRole(roleId)
@@ -329,6 +329,7 @@ function stepInfo(
   t: GrimoireTexts,
 ): { info: string[]; notes: string[] } {
   const c = characters[roleId];
+  const scriptNames = state.script.names;
   const info: string[] = [];
   const notes: string[] = [];
   const nameAt = (seatId: string) => state.seats.find((s) => s.id === seatId)?.name || "?";
@@ -336,7 +337,7 @@ function stepInfo(
   const misregistering = (seats: GrimoireSeat[]) =>
     seats.forEach((s) => {
       const m = misregistration(state, s, characters);
-      if (m) notes.push(fill(t.misregisters[m.roleId as keyof GrimoireTexts["misregisters"]], { name: s.name || "?", role: nameOf(m.roleId, locale) }));
+      if (m) notes.push(fill(t.misregisters[m.roleId as keyof GrimoireTexts["misregisters"]], { name: s.name || "?", role: nameOf(m.roleId, locale, scriptNames) }));
     });
   const vortox = falseInfo(state, woken, characters);
   const night = state.phase === "night";
@@ -363,11 +364,11 @@ function stepInfo(
     else {
       const team = LEARNS_TEAM[roleId];
       const roles = team ? registersAs(state, right.seat, team, characters) : [];
-      if (roles.length < 2) info.push(fill(t.infoShow, { role: nameOf(roles[0] ?? right.seat.role, locale), ...two }));
+      if (roles.length < 2) info.push(fill(t.infoShow, { role: nameOf(roles[0] ?? right.seat.role, locale, scriptNames), ...two }));
       else {
         misregistering([right.seat]);
         if (roles.length > MAX_LISTED) info.push(fill(t.infoShowTeam, { team: t.teams[team], ...two }));
-        else info.push(fill(t.infoShowAny, { roles: or(roles.map((id) => nameOf(id, locale))), ...two }));
+        else info.push(fill(t.infoShowAny, { roles: or(roles.map((id) => nameOf(id, locale, scriptNames))), ...two }));
       }
     }
     return result();
@@ -397,7 +398,7 @@ function stepInfo(
     if (!executed.length) info.push(t.undertakerNone);
     executed.forEach((e) => {
       const seat = state.seats.find((x) => x.id === e.seatId);
-      const roles = seat ? shownAs(state, { ...seat, role: e.role }, characters).map((id) => nameOf(id, locale)) : [nameOf(e.role, locale)];
+      const roles = seat ? shownAs(state, { ...seat, role: e.role }, characters).map((id) => nameOf(id, locale, scriptNames)) : [nameOf(e.role, locale, scriptNames)];
       if (seat && roles.length > 1) misregistering([seat]);
       info.push(fill(vortox ? t.undertakerFalse : t.undertaker, { name: e.name || "?", roles: or(roles) }));
     });
@@ -415,7 +416,7 @@ function stepInfo(
   // who became the Demon by day (the Scarlet Woman) learns it at her step
   log
     .filter((e) => night && e.kind === "became" && e.day && e.round === state.round - 1 && e.role === roleId && e.by)
-    .forEach((e) => info.push(fill(t.newDemon, { role: nameOf(e.by!, locale), name: e.name || "?" })));
+    .forEach((e) => info.push(fill(t.newDemon, { role: nameOf(e.by!, locale, scriptNames), name: e.name || "?" })));
 
   if (roleId === "godfather" && night && state.round > 1) {
     const outsiders = diedToday(state).filter((e) => findRole(e.role)?.team === "outsider");
@@ -427,7 +428,7 @@ function stepInfo(
   if (roleId === "lordoftyphon" && first) {
     woken.forEach((s) => {
       const two = neighbours(state, s.id).map((id) => state.seats.find((x) => x.id === id)!);
-      info.push(fill(t.typhonNeighbours, { list: two.map((x) => `${x.name || "?"} (${nameOf(x.role, locale)})`).join(", ") }));
+      info.push(fill(t.typhonNeighbours, { list: two.map((x) => `${x.name || "?"} (${nameOf(x.role, locale, scriptNames)})`).join(", ") }));
     });
     if (typhonInLine(state) === false) notes.push(t.typhonApart);
   }
@@ -456,12 +457,12 @@ function stepInfo(
   if (roleId === "mezepheles" && night) info.push(fill(t.mezepheles, { token: tokenOf(c, "turnsEvil") ?? "" }));
   if (roleId === "boffin" && first) {
     const gives = woken.find((s) => s.believedRole)?.believedRole;
-    info.push(gives ? fill(t.boffinGives, { role: nameOf(gives, locale) }) : t.boffinPick);
+    info.push(gives ? fill(t.boffinGives, { role: nameOf(gives, locale, scriptNames) }) : t.boffinPick);
   }
   // the Outsiders: the Lunatic's pretend Demon, the Goon's chooser, who died lately, the Ogre's friend
   if (roleId === "lunatic") {
     const lunatic = woken.find((s) => s.role === "lunatic");
-    if (lunatic?.believedRole) info.push(fill(t.lunaticActs, { role: nameOf(lunatic.believedRole, locale), token: c.reminders[0] ?? "" }));
+    if (lunatic?.believedRole) info.push(fill(t.lunaticActs, { role: nameOf(lunatic.believedRole, locale, scriptNames), token: c.reminders[0] ?? "" }));
     const chosen = remindersOf(state, roleId).filter(({ reminder }) => night && reminder.round === state.round);
     if (lunatic && chosen.length) info.push(fill(t.lunaticChose, { name: lunatic.name || "?", names: chosen.map(({ seat }) => seat.name || "?").join(", ") }));
   }
@@ -494,7 +495,7 @@ function stepInfo(
   for (const { seat, reminder } of remindersOf(state, roleId)) {
     if (seat.dead || reminder.round !== state.round || c.tokenKinds[reminder.text] !== "dead") continue;
     const by = seat.reminders.some((r) => r.roleId === "fool" && r.round === state.round) ? "fool" : (demonProtection(state, seat.id, characters) ?? survives(state, seat, characters));
-    if (by) info.push(fill(t.survives, { name: seat.name || "?", role: nameOf(by, locale) }));
+    if (by) info.push(fill(t.survives, { name: seat.name || "?", role: nameOf(by, locale, scriptNames) }));
   }
   // the Mayor attacked tonight may have someone else die instead
   if (remindersOf(state, roleId).some(({ seat, reminder }) => seat.role === "mayor" && reminder.round === state.round && c.tokenKinds[reminder.text] === "dead")) {
@@ -506,7 +507,7 @@ function stepInfo(
   // who became this Demon tonight: the Imp's heir, the Fang Gu's Outsider
   log
     .filter((e) => e.kind === "became" && !e.day && e.round === state.round && e.by === roleId)
-    .forEach((e) => info.push(fill(t.newDemon, { role: nameOf(roleId, locale), name: `${e.name || "?"} (${nameOf(e.role, locale)})` })));
+    .forEach((e) => info.push(fill(t.newDemon, { role: nameOf(roleId, locale, scriptNames), name: `${e.name || "?"} (${nameOf(e.role, locale, scriptNames)})` })));
 
   if (roleId === "zombuul") {
     const today = diedToday(state);
@@ -560,7 +561,7 @@ function EvilInfoHelp() {
  * the Storyteller picks who dies with the token.
  */
 function OjoChoice() {
-  const { state, update, characters, locale, t } = useGrimoire();
+  const { state, update, characters, locale, t, scriptNames } = useGrimoire();
   const [picked, setPicked] = useState("");
   const dead = tokenOf(characters.ojo, "dead") ?? "";
   const roleIds = state.script.roleIds.filter((id) => findRole(id)?.team !== "traveller");
@@ -578,12 +579,12 @@ function OjoChoice() {
           <option value="">–</option>
           {roleIds.map((id) => (
             <option key={id} value={id}>
-              {nameOf(id, locale)}
+              {nameOf(id, locale, scriptNames)}
             </option>
           ))}
         </select>
       </label>
-      {picked && !inPlay && <p className="rounded-md bg-amber-400/15 px-2 py-1 font-semibold">👉 {fill(t.ojoNone, { role: nameOf(picked, locale), token: dead })}</p>}
+      {picked && !inPlay && <p className="rounded-md bg-amber-400/15 px-2 py-1 font-semibold">👉 {fill(t.ojoNone, { role: nameOf(picked, locale, scriptNames), token: dead })}</p>}
     </div>
   );
 }

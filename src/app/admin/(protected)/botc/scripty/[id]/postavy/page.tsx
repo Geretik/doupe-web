@@ -36,7 +36,7 @@ export default async function ScriptCharactersPage({ params }: { params: Promise
       <p className="max-w-3xl text-sm text-muted">{s.builder.editIntro}</p>
       <ScriptBuilder
         action={saveBuiltScriptAction.bind(null, script.id)}
-        initial={{ name: script.name, author: script.author ?? "", picked: knownCharactersOf(script) }}
+        initial={{ name: script.name, author: script.author ?? "", picked: knownCharactersOf(script), names: script.names ?? undefined }}
         abilities={homebrewAbilities(locale)}
         teamLabels={{ ...t.admin.session.roleTeams, ...t.grimoire.storytellerTeams }}
         locale={locale}

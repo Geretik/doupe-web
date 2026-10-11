@@ -33,10 +33,15 @@ export function allCharactersScript(name: string): GrimoireState["script"] {
 /** The club's library, for picking a grimoire's script: its characters, its Fabled and Loric, its homebrew. */
 export async function grimoireScripts(): Promise<(GrimoireState["script"] & { id: number })[]> {
   const rows = await db
-    .select({ id: scripts.id, name: scripts.name, roleIds: scripts.roleIds, json: scripts.json })
+    .select({ id: scripts.id, name: scripts.name, roleIds: scripts.roleIds, json: scripts.json, names: scripts.names })
     .from(scripts)
     .orderBy(sql`lower(${scripts.name})`);
-  return rows.map(({ json, ...script }) => ({ ...script, roleIds: withCurrentRoles({ json, roleIds: script.roleIds }).roleIds, ...libraryScriptExtras({ json }) }));
+  return rows.map(({ json, names, ...script }) => ({
+    ...script,
+    roleIds: withCurrentRoles({ json, roleIds: script.roleIds }).roleIds,
+    ...libraryScriptExtras({ json }),
+    ...(names && Object.keys(names).length ? { names } : {}),
+  }));
 }
 
 /** Sessions a new grimoire can start from: the last week's and the coming weeks'. */
@@ -182,6 +187,8 @@ async function writeGameRecord(tx: Tx, g: Grimoire, sessionId: number, state: Gr
     // the game form takes 5–20 players
     players: count >= 5 && count <= 20 ? count : null,
     demonBluffs: bluffs.length ? bluffs : null,
+    // what the script called the characters, shown in the record with their own names
+    names: state.script.names && Object.keys(state.script.names).length ? state.script.names : null,
     // a grimoire ended before it had a note leaves the record's own note alone
     ...(state.notes !== undefined ? { notes: state.notes.trim() || null } : {}),
   };

@@ -12,7 +12,7 @@ import {
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
-import type { RoleEdition, RoleTeam } from "@/modules/botc/lib/botc-roles";
+import type { RoleEdition, RoleTeam, ScriptNames } from "@/modules/botc/lib/botc-roles";
 import type { GrimoireState } from "@/modules/botc/lib/grimoire/state";
 
 export const cities = ["olomouc", "praha"] as const;
@@ -171,6 +171,8 @@ export const games = pgTable("games", {
   notes: text("notes"),
   /** Not-in-play good characters the Demon was shown (character ids, up to 3); null = not entered */
   demonBluffs: jsonb("demon_bluffs").$type<string[]>(),
+  /** Names its script gave characters (a themed script's Krampus for the Imp), by id: shown with the character's own */
+  names: jsonb("names").$type<ScriptNames>(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -388,6 +390,11 @@ export const scripts = pgTable("scripts", {
   json: text("json").notNull(),
   /** The characters of `json` this site knows (modules/botc/lib/botc-roles), for showing them; Fabled and homebrew are only in `json` */
   roleIds: jsonb("role_ids").$type<string[]>().notNull(),
+  /**
+   * Names the script gives its characters, by id – a themed script calls the Imp Krampus; the grimoire and the game
+   * records use them. Only here, not in `json`: the script tool prints official characters by their own name anyway.
+   */
+  names: jsonb("names").$type<ScriptNames>(),
   createdBy: integer("created_by").references(() => adminUsers.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

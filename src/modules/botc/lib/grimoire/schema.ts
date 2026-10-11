@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { gameWinners } from "@/db/schema";
-import { BLUFF_COUNT, findRole, findStorytellerRole, homebrewStorytellerRoles, storytellerRoles } from "@/modules/botc/lib/botc-roles";
+import { BLUFF_COUNT, findRole, findStorytellerRole, homebrewStorytellerRoles, MAX_SCRIPT_NAME, storytellerRoles } from "@/modules/botc/lib/botc-roles";
 import { eventKinds, gapKinds, HOMEBREW_LIMITS, MAX_EVENTS, MAX_REMINDERS, MAX_SEATS, sides, townLayouts, type GrimoireState } from "./state";
 
 const roleId = z.string().max(40).refine((id) => findRole(id) !== undefined);
@@ -16,6 +16,10 @@ const homebrew = z.object({
     .array(z.object({ name: z.string().trim().min(1).max(HOMEBREW_LIMITS.name), team: z.string().max(20).nullable(), ability: homebrewText }))
     .max(HOMEBREW_LIMITS.characters),
 });
+/** What the script calls its characters, by id (scripts.names) */
+const scriptNames = z
+  .record(z.string().max(40), z.string().trim().min(1).max(MAX_SCRIPT_NAME))
+  .refine((names) => Object.keys(names).length <= 300 && Object.keys(names).every((id) => findRole(id) || findStorytellerRole(id)));
 const shortId = z.string().min(1).max(20);
 const round = z.number().int().min(0).max(99);
 const fraction = z.number().min(0).max(1);
@@ -29,6 +33,7 @@ export const grimoireStateSchema: z.ZodType<GrimoireState> = z.object({
     roleIds: z.array(roleId).max(300),
     fabled: fabledList.optional(),
     homebrew: homebrew.optional(),
+    names: scriptNames.optional(),
   }),
   seats: z
     .array(

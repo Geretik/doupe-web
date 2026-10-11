@@ -1,5 +1,5 @@
 import type { Locale } from "@/i18n/dictionaries";
-import { findRole, linkedRoleOf, roleIcon, roleName, roleSide, roleTeams, STORYTELLER, type BotcRole, type LinkedKind } from "@/modules/botc/lib/botc-roles";
+import { findRole, linkedRoleOf, nameInRecord, roleIcon, roleSide, roleTeams, STORYTELLER, type BotcRole, type LinkedKind, type ScriptNames } from "@/modules/botc/lib/botc-roles";
 
 export type RosterEntry = { registrationId: number; role: string | null; believedRole: string | null; registration: { nickname: string } };
 
@@ -19,17 +19,20 @@ const chip = "inline-flex items-center gap-1 rounded-full border bg-card py-0.5 
 /**
  * Who ran a game and who played which character: storytellers on one line, then the players as chips
  * (icon, nickname, character) in rows for good, evil and travellers, and the Demon's bluffs.
- * `me` – the viewing player's registrations, whose chip stands out ("my games").
+ * `me` – the viewing player's registrations, whose chip stands out ("my games"). `names` – what the game's script
+ * called its characters, shown with their own names: "Krampus (Čert)".
  */
 export function GameRoster({
   players,
   bluffs,
+  names,
   locale,
   t,
   me,
 }: {
   players: RosterEntry[];
   bluffs?: string[] | null;
+  names?: ScriptNames | null;
   locale: Locale;
   t: RosterLabels;
   me?: ReadonlySet<number>;
@@ -85,8 +88,8 @@ export function GameRoster({
                         <img src={roleIcon(role.id)} alt="" width={22} height={22} className="h-[22px] w-[22px]" />
                         <span className={mine ? "font-bold" : "font-medium"}>{registration.nickname}</span>
                         <span className={roleSide(role.team) === "evil" ? "text-accent" : "text-muted"}>
-                          · {roleName(role, locale)}
-                          {believed && kind && <> ({t.linked[kind](roleName(believed, locale))})</>}
+                          · {nameInRecord(role.id, locale, names)}
+                          {believed && kind && <> ({t.linked[kind](nameInRecord(believed.id, locale, names))})</>}
                         </span>
                       </li>
                     );
@@ -104,7 +107,7 @@ export function GameRoster({
                     <li key={role.id} className={`${chip} border-dashed border-border`}>
                       {/* eslint-disable-next-line @next/next/no-img-element -- tiny pre-sized WebP from public/, no optimisation needed */}
                       <img src={roleIcon(role.id)} alt="" width={22} height={22} className="h-[22px] w-[22px] opacity-80" />
-                      <span className="text-muted">{roleName(role, locale)}</span>
+                      <span className="text-muted">{nameInRecord(role.id, locale, names)}</span>
                     </li>
                   ))}
                 </ul>

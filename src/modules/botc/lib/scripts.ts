@@ -4,7 +4,16 @@ import { db } from "@/db";
 import { adminUsers, scripts, type AdminUser, type LibraryScript, type ScriptLink } from "@/db/schema";
 import { hasRole } from "@/lib/admin-auth";
 import { siteUrl } from "@/lib/site";
-import { findRole, findStorytellerRole, homebrewStorytellerRoles, isHomebrew, matchHomebrew, matchStorytellerId, storytellerRoles } from "./botc-roles";
+import {
+  findRole,
+  findStorytellerRole,
+  homebrewStorytellerRoles,
+  isHomebrew,
+  matchHomebrew,
+  matchStorytellerId,
+  storytellerRoles,
+  type ScriptNames,
+} from "./botc-roles";
 import { HOMEBREW_LIMITS, type Homebrew } from "./grimoire/state";
 import { matchRoleId, sortRoleIds } from "./draft/roles";
 import { scriptToolLinkForJson } from "./draft/script";
@@ -247,6 +256,16 @@ export async function scriptNameTaken(name: string, exceptId?: number, q: Pick<t
     .where(and(sql`lower(${scripts.name}) = lower(${name})`, exceptId ? ne(scripts.id, exceptId) : undefined))
     .limit(1);
   return Boolean(row);
+}
+
+/** What the library's script of this name (in any case) calls its characters; null when it renames none or there is no such script. */
+export async function libraryNamesFor(scriptName: string): Promise<ScriptNames | null> {
+  const [row] = await db
+    .select({ names: scripts.names })
+    .from(scripts)
+    .where(sql`lower(${scripts.name}) = lower(${scriptName.trim()})`)
+    .limit(1);
+  return row?.names && Object.keys(row.names).length ? row.names : null;
 }
 
 /** The homebrew characters of the library's scripts, by the script's name in lower case: the game form offers them. */

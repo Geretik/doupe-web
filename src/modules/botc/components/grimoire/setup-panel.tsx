@@ -293,7 +293,7 @@ export function SetupPanel({ scripts, onSelectSeat, wide = false }: { scripts: S
 
 /** What the characters in the bag and at the table do to the setup, and what is still missing; only for the Storyteller's eyes. */
 function SetupWarnings({ onSelectSeat }: { onSelectSeat: (seatId: string) => void }) {
-  const { state, update, readOnly, characters, locale, t } = useGrimoire();
+  const { state, update, readOnly, characters, locale, t, scriptNames } = useGrimoire();
   const setupChanges = setupChangesOf(state, characters, t);
   const missingLinked = state.seats.filter((s) => linkedRoleOf(s.role) && !s.believedRole);
   return (
@@ -302,7 +302,7 @@ function SetupWarnings({ onSelectSeat }: { onSelectSeat: (seatId: string) => voi
         <ul className="text-sm">
           {setupChanges.map((c) => (
             <li key={c.id}>
-              ⚠️ {nameOf(c.id, locale)}: {c.note}
+              ⚠️ {nameOf(c.id, locale, scriptNames)}: {c.note}
             </li>
           ))}
         </ul>
@@ -321,7 +321,7 @@ function SetupWarnings({ onSelectSeat }: { onSelectSeat: (seatId: string) => voi
       <JinxWarnings />
       {missingLinked.map((s) => (
         <button key={s.id} type="button" onClick={() => onSelectSeat(s.id)} className="text-left text-sm text-accent underline">
-          {fill(t.linkedNeeded, { name: s.name, role: nameOf(s.role, locale), what: t.linked[linkedRoleOf(s.role)!.kind] })}
+          {fill(t.linkedNeeded, { name: s.name, role: nameOf(s.role, locale, scriptNames), what: t.linked[linkedRoleOf(s.role)!.kind] })}
         </button>
       ))}
     </>
@@ -385,7 +385,7 @@ function SetupTown({ onOpen }: { onOpen: (seatId: string) => void }) {
 
 /** The place tapped in the setup's town: the player's name, or a session player's, its place in the circle, taking it away. */
 function SeatEditor({ seat, onSelect, onOpen }: { seat: GrimoireSeat; onSelect: (seatId: string | null) => void; onOpen: (seatId: string) => void }) {
-  const { state, update, hidden, ask, sessionPlayers, locale, t } = useGrimoire();
+  const { state, update, hidden, ask, sessionPlayers, locale, t, scriptNames } = useGrimoire();
   const ref = useRef<HTMLDivElement>(null);
   // on a phone it is under the town (a block: the browser's scrollIntoView may return a promise, no cleanup)
   useEffect(() => {
@@ -430,7 +430,7 @@ function SeatEditor({ seat, onSelect, onOpen }: { seat: GrimoireSeat; onSelect: 
       {seat.role && !hidden && (
         <p className="-mt-1 flex items-center gap-1.5 text-sm">
           <RoleIcon roleId={seat.role} size={24} />
-          {nameOf(seat.role, locale)}
+          {nameOf(seat.role, locale, scriptNames)}
         </p>
       )}
       {seat.registrationId && <p className="-mt-1 text-xs text-muted">✓ {t.linkedToSession}</p>}
@@ -520,7 +520,7 @@ function SeatNameInput({ name, onSave, onEnter }: { name: string; onSave: (name:
 
 /** The bag, the Demon's bluffs and handing the characters out. */
 function SetupSecrets({ wide }: { wide: boolean }) {
-  const { state, readOnly, locale, t } = useGrimoire();
+  const { state, readOnly, locale, t, scriptNames } = useGrimoire();
   const [bagOpen, setBagOpen] = useState(false);
   return (
     <>
@@ -549,7 +549,7 @@ function SetupSecrets({ wide }: { wide: boolean }) {
                 ? [
                     <li key={b} className={chip}>
                       <RoleIcon roleId={b} size={26} />
-                      {nameOf(b, locale)}
+                      {nameOf(b, locale, scriptNames)}
                     </li>,
                   ]
                 : [],
@@ -627,7 +627,7 @@ const chip = "flex items-center gap-1.5 rounded-full border border-border bg-car
 
 /** The tokens in the bag by team, each with how many are in it and how many the rules want; nothing to tap. */
 function BagContents({ wide }: { wide: boolean }) {
-  const { state, locale, t } = useGrimoire();
+  const { state, locale, t, scriptNames } = useGrimoire();
   const expected = expectedSetup(playerSeats(state).length, setupRoles(state), true);
   const inBag = teamCounts(state.bag);
   if (!state.bag.length) return <p className="text-sm text-muted">{t.bagEmpty}</p>;
@@ -652,7 +652,7 @@ function BagContents({ wide }: { wide: boolean }) {
                   // the Pope's duplicates twice
                   <li key={`${id}-${i}`} className={chip}>
                     <RoleIcon roleId={id} size={26} />
-                    {nameOf(id, locale)}
+                    {nameOf(id, locale, scriptNames)}
                   </li>
                 ))}
             </ul>
@@ -746,7 +746,7 @@ function PlayerCountButtons() {
 
 /** The Demon's bluffs as three places to tap; the `selected` one is being chosen. */
 function BluffSlots({ selected, onSelect, compact = false }: { selected: number | null; onSelect: (slot: number | null) => void; compact?: boolean }) {
-  const { state, readOnly, locale, t } = useGrimoire();
+  const { state, readOnly, locale, t, scriptNames } = useGrimoire();
   return (
     <div className="grid grid-cols-3 gap-2">
       {Array.from({ length: BLUFF_COUNT }, (_, i) => {
@@ -764,7 +764,7 @@ function BluffSlots({ selected, onSelect, compact = false }: { selected: number 
             }`}
           >
             {b ? <RoleIcon roleId={b} size={compact ? 26 : 36} /> : <span className={`text-lg text-muted ${compact ? "w-full text-center" : ""}`}>+</span>}
-            {(b || !compact) && <span className={`leading-tight ${compact ? "truncate" : ""}`}>{b ? nameOf(b, locale) : t.bluffEmpty}</span>}
+            {(b || !compact) && <span className={`leading-tight ${compact ? "truncate" : ""}`}>{b ? nameOf(b, locale, scriptNames) : t.bluffEmpty}</span>}
           </button>
         );
       })}
@@ -827,10 +827,10 @@ function BluffChoices({ slot, onDone, wide = false }: { slot: number; onDone: ()
 
 /** Why the players cannot draw: a character in the bag they must not see (the Drunk…). */
 function UndrawableWarning() {
-  const { state, locale, t } = useGrimoire();
+  const { state, locale, t, scriptNames } = useGrimoire();
   const blocked = undrawable(state.bag);
   if (!blocked.length) return null;
-  return <p className="text-sm text-accent">{fill(t.undrawable, { roles: blocked.map((id) => nameOf(id, locale)).join(", ") })}</p>;
+  return <p className="text-sm text-accent">{fill(t.undrawable, { roles: blocked.map((id) => nameOf(id, locale, scriptNames)).join(", ") })}</p>;
 }
 
 /** Legion in the bag: most players are Legion, as many of its tokens as the Storyteller likes. */
@@ -856,7 +856,7 @@ function LegionCount() {
 
 /** Characters in the bag (or at the table) with a jinx between them: how the two work together. */
 function JinxWarnings() {
-  const { state, characters, locale, t } = useGrimoire();
+  const { state, characters, locale, t, scriptNames } = useGrimoire();
   const jinxes = jinxesAmong(setupRoles(state), characters);
   if (!jinxes.length) return null;
   return (
@@ -869,7 +869,7 @@ function JinxWarnings() {
             <RoleIcon roleId={b} size={22} />
             <span>
               <span className="font-semibold">
-                {nameOf(a, locale)} + {nameOf(b, locale)}:
+                {nameOf(a, locale, scriptNames)} + {nameOf(b, locale, scriptNames)}:
               </span>{" "}
               <span lang="en">{reason}</span>
             </span>
@@ -923,7 +923,7 @@ function BagGrid({ wide = false }: { wide?: boolean }) {
 
 /** The bag over the whole screen, so a script's characters fit on a tablet without scrolling. */
 function BagScreen({ onClose }: { onClose: () => void }) {
-  const { state, characters, locale, t } = useGrimoire();
+  const { state, characters, locale, t, scriptNames } = useGrimoire();
   const [bluffSlot, setBluffSlot] = useState<number | null>(null);
   const players = playerSeats(state).length;
   const expected = expectedSetup(players, setupRoles(state), true);
@@ -973,7 +973,7 @@ function BagScreen({ onClose }: { onClose: () => void }) {
               {want && changed(want) && (
                 // who changed the rulebook's number
                 <span className="text-xs text-muted" data-testid="bag-summary-by">
-                  {want.by.map((id) => nameOf(id, locale)).join(", ")} · {fill(t.baseCount, { n: want.base })}
+                  {want.by.map((id) => nameOf(id, locale, scriptNames)).join(", ")} · {fill(t.baseCount, { n: want.base })}
                 </span>
               )}
             </div>
@@ -991,7 +991,7 @@ function BagScreen({ onClose }: { onClose: () => void }) {
         <ul className="flex flex-wrap gap-x-4 text-sm">
           {setupChanges.map((c) => (
             <li key={c.id}>
-              ⚠️ {nameOf(c.id, locale)}: {c.note}
+              ⚠️ {nameOf(c.id, locale, scriptNames)}: {c.note}
             </li>
           ))}
         </ul>

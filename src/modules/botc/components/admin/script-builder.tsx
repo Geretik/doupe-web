@@ -11,6 +11,7 @@ import {
   homebrewCollections,
   homebrewRoles,
   homebrewStorytellerRoles,
+  MAX_SCRIPT_NAME,
   roleIcon,
   roleName,
   roleTeams,
@@ -52,7 +53,7 @@ export function ScriptBuilder({
   t,
 }: {
   action: (prev: ScriptFormState, formData: FormData) => Promise<ScriptFormState>;
-  initial: { name: string; author: string; picked: string[] };
+  initial: { name: string; author: string; picked: string[]; names?: Record<string, string> };
   /** The homebrew characters' abilities in the page's language */
   abilities: Record<string, string>;
   teamLabels: Record<Team, string>;
@@ -62,6 +63,8 @@ export function ScriptBuilder({
   const [state, formAction, pending] = useActionState(action, {});
   const [picked, setPicked] = useState<Set<string>>(() => new Set(initial.picked));
   const [query, setQuery] = useState("");
+  // what this script calls its characters (scripts.names); a name of a character no longer picked is not sent
+  const [renamed, setRenamed] = useState<Record<string, string>>(() => initial.names ?? {});
   // the collections with a character of the script open at the start, the others stay folded
   const [openAtStart] = useState(() => new Set(initial.picked.flatMap((id) => (findRole(id) ?? findStorytellerRole(id))?.collection ?? [])));
   const errors = state.fieldErrors ?? {};
@@ -150,7 +153,9 @@ export function ScriptBuilder({
                 <span key={c.id} className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5">
                   {/* eslint-disable-next-line @next/next/no-img-element -- tiny pre-sized WebP from public/ */}
                   <img src={roleIcon(c.id)} alt="" width={16} height={16} className="h-4 w-4" />
-                  <span className={sideClass(c.id)}>{name(c)}</span>
+                  <span className={sideClass(c.id)} title={renamed[c.id]?.trim() ? name(c) : undefined}>
+                    {renamed[c.id]?.trim() || name(c)}
+                  </span>
                   <button type="button" onClick={() => toggle(c.id, false)} aria-label={`${t.remove}: ${name(c)}`} className="text-muted hover:text-accent">
                     ✕
                   </button>
@@ -158,6 +163,32 @@ export function ScriptBuilder({
               ))}
             </div>
           ))
+        )}
+        {pickedByTeam.length > 0 && (
+          <details className="text-sm" open={Object.values(renamed).some((v) => v.trim()) || undefined} data-testid="builder-rename">
+            <summary className="cursor-pointer font-medium">{t.renameTitle}</summary>
+            <p className="mt-1 text-xs text-muted">{t.renameHint}</p>
+            <div className="mt-2 grid gap-x-4 gap-y-1.5 sm:grid-cols-2">
+              {pickedByTeam.flatMap(({ characters }) =>
+                characters.map((c) => (
+                  <label key={c.id} className="flex min-w-0 items-center gap-2">
+                    {/* eslint-disable-next-line @next/next/no-img-element -- tiny pre-sized WebP from public/ */}
+                    <img src={roleIcon(c.id)} alt="" width={20} height={20} className="h-5 w-5 shrink-0" />
+                    <span className={`w-24 shrink-0 truncate sm:w-32 ${sideClass(c.id)}`}>{name(c)}</span>
+                    <input
+                      name={`rename:${c.id}`}
+                      value={renamed[c.id] ?? ""}
+                      onChange={(e) => setRenamed({ ...renamed, [c.id]: e.target.value })}
+                      maxLength={MAX_SCRIPT_NAME}
+                      placeholder={name(c)}
+                      aria-label={`${t.renameLabel}: ${name(c)}`}
+                      className={`${inputClass} min-w-0 flex-1 py-1 text-sm`}
+                    />
+                  </label>
+                )),
+              )}
+            </div>
+          </details>
         )}
       </section>
 
