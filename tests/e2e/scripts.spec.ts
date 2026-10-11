@@ -183,3 +183,24 @@ test("scripts library: a script from the script tool – its link pasted, or sen
   await expect(page.locator("h1")).toHaveText("TB z tlačítka");
   await expect(page.locator("#characters")).toContainText("Pradlena");
 });
+
+test("scripts library from the script tool's \"Načíst z Doupěte\": a script picked opens back in the tool", async ({ page }) => {
+  await adminLogin(page);
+  await page.goto("/admin/botc/scripty");
+  await page.locator("#json").fill(JSON.stringify(SCRIPT));
+  await page.click("button:has-text('Přidat script')");
+  await page.waitForURL(/\/admin\/botc\/scripty\/\d+$/);
+  const id = Number(page.url().split("/").pop());
+
+  await page.goto("/admin/botc/scripty?do-toolu");
+  await expect(page.locator("main")).toContainText("Vyber script – otevře se ve script toolu.");
+  // nothing else to do here: no form, no other links
+  await expect(page.getByTestId("library-script-form")).toHaveCount(0);
+  const pick = page.getByTestId("pick-for-tool").filter({ hasText: "Moje TB" });
+  await expect(pick).toHaveAttribute("href", `/botc/script/${id}`);
+  // in the same tab, through the short link, which leads to the tool with the script
+  await expect(pick).not.toHaveAttribute("target", /.*/);
+  const redirect = await page.request.get(`/botc/script/${id}`, { maxRedirects: 0 });
+  expect(redirect.headers().location).toMatch(/^https:\/\/skript\.doupeol\.cz\/\?script=/);
+  expect(scriptOfLink(redirect.headers().location)).toEqual(SCRIPT);
+});

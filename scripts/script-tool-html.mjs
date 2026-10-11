@@ -5,32 +5,42 @@
 //   The tag goes, and the cookie banner gets "denied" for every visitor who has not answered it (there is nothing
 //   left to consent to; the banner reads that answer from localStorage);
 // - a "📚 Uložit do Doupěte" button: it opens the club's library of scripts with the script of the tool's address
-//   filled in (admin → Scripty, components/admin/library-script-form FROM_TOOL), to save it there.
+//   filled in (admin → Scripty, components/admin/library-script-form FROM_TOOL), to save it there;
+// - a "📂 Načíst z Doupěte" button: the library to pick a script from, which then opens back here (scripty?do-toolu).
 // Anything that does not go as expected fails: the deploy stops and the live copy stays.
 import { readFileSync, writeFileSync } from "node:fs";
 
 /** The tool's localStorage key of the visitor's answer (apps/botc/src/utils/consent.ts CONSENT_KEY) */
 const CONSENT_KEY = "botc-cookie-consent";
-/** Where the button sends the tool's address: the library's form fills it in (library-script-form FROM_TOOL) */
+/** Where the save button sends the tool's address: the library's form fills it in (library-script-form FROM_TOOL) */
 const LIBRARY = "https://www.doupeol.cz/admin/botc/scripty#ze-toolu=";
+/** The library to pick a script from: a script picked there opens in the tool through its short link */
+const PICK = "https://www.doupeol.cz/admin/botc/scripty?do-toolu";
 
 const TAG = /\s*<script\b[^>]*\bsrc="https:\/\/www\.googletagmanager\.com\/[^"]*"[^>]*>\s*<\/script>/g;
 /** An inline script that calls gtag(…): the tag's set-up */
 const SETUP = /\s*<script\b[^>]*>(?:(?!<\/script>)[\s\S])*?\bgtag\((?:(?!<\/script>)[\s\S])*?<\/script>/g;
 const COMMENT = /\s*<!--[^>]*Google tag[\s\S]*?-->/g;
 
-/** The tool keeps the script it shows in its address (`?script=…`); the button sends that address */
+/** The tool keeps the script it shows in its address (`?script=…`); the save button sends that address */
 const SAVE_BUTTON = `
     <script>
       (function () {
         function add() {
-          if (document.getElementById("doupe-save")) return;
-          var a = document.createElement("a");
-          a.id = "doupe-save";
-          a.href = "#";
-          a.textContent = "📚 Uložit do Doupěte";
-          a.title = "Otevře knihovnu scriptů Doupěte s tímto scriptem";
-          a.addEventListener("click", function (e) {
+          if (document.getElementById("doupe-bar")) return;
+          var bar = document.createElement("div");
+          bar.id = "doupe-bar";
+          var load = document.createElement("a");
+          load.id = "doupe-load";
+          load.href = ${JSON.stringify(PICK)};
+          load.textContent = "📂 Načíst z Doupěte";
+          load.title = "Vybrat script z knihovny Doupěte";
+          var save = document.createElement("a");
+          save.id = "doupe-save";
+          save.href = "#";
+          save.textContent = "📚 Uložit do Doupěte";
+          save.title = "Otevře knihovnu scriptů Doupěte s tímto scriptem";
+          save.addEventListener("click", function (e) {
             e.preventDefault();
             if (!/[?&]script=/.test(location.search)) {
               alert("Nejdřív otevři nebo uprav script – do Doupěte se pošle ten, který je v adrese stránky.");
@@ -38,18 +48,23 @@ const SAVE_BUTTON = `
             }
             window.open(${JSON.stringify(LIBRARY)} + encodeURIComponent(location.href), "_blank", "noopener");
           });
-          document.body.appendChild(a);
+          bar.appendChild(load);
+          bar.appendChild(save);
+          document.body.appendChild(bar);
         }
         if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", add);
         else add();
       })();
     </script>
     <style>
-      #doupe-save { position: fixed; right: 12px; bottom: 12px; z-index: 2147483000; padding: 8px 12px; border-radius: 999px;
-        background: #7a1f2b; color: #fff; font: 600 13px/1.2 system-ui, sans-serif; text-decoration: none;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25); }
-      #doupe-save:hover { background: #5f1621; }
-      @media print { #doupe-save { display: none !important; } }
+      #doupe-bar { position: fixed; right: 12px; bottom: 12px; z-index: 2147483000; display: flex; gap: 8px; flex-wrap: wrap;
+        justify-content: flex-end; }
+      #doupe-bar a { padding: 8px 12px; border-radius: 999px; background: #7a1f2b; color: #fff;
+        font: 600 13px/1.2 system-ui, sans-serif; text-decoration: none; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25); }
+      #doupe-bar a:hover { background: #5f1621; }
+      #doupe-bar #doupe-load { background: #fff; color: #7a1f2b; border: 1px solid #7a1f2b; }
+      #doupe-bar #doupe-load:hover { background: #f6eef0; }
+      @media print { #doupe-bar { display: none !important; } }
     </style>`;
 
 export function clubIndexHtml(html) {
@@ -73,7 +88,7 @@ const file = process.argv[2];
 if (file) {
   try {
     writeFileSync(file, clubIndexHtml(readFileSync(file, "utf8")));
-    console.log(`${file}: Google Analytics out, the button to save into Doupě in`);
+    console.log(`${file}: Google Analytics out, the buttons to load from and save into Doupě in`);
   } catch (e) {
     console.error(`::error::${file}: ${e.message} – the tool's index.html changed, scripts/script-tool-html.mjs needs a look`);
     process.exit(1);

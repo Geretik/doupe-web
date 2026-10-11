@@ -22,7 +22,7 @@ export const changelog: ChangelogEntry[] = [
       },
       {
         for: "organizers",
-        text: "Knihovna scriptů: script ze script toolu přidáš i tak, že místo JSONu vložíš jeho odkaz. V klubovém script toolu je vpravo dole tlačítko 📚 Uložit do Doupěte – otevře knihovnu se scriptem připraveným k uložení (stačí být přihlášený).",
+        text: "Knihovna scriptů: script ze script toolu přidáš i tak, že místo JSONu vložíš jeho odkaz. V klubovém script toolu jsou vpravo dole tlačítka 📚 Uložit do Doupěte – otevře knihovnu se scriptem připraveným k uložení – a 📂 Načíst z Doupěte – vybereš script z knihovny a otevře se v toolu (stačí být přihlášený).",
         href: "/admin/botc/scripty",
       },
       {
