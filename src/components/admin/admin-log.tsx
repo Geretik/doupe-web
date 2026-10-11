@@ -200,6 +200,7 @@ function details(entry: LogEntry, ctx: Ctx): ReactNode[] {
           {script.name}
         </Ref>,
         entry.action === "script.update" && entry.data.file && l.withFile,
+        entry.action === "script.update" && entry.data.characters && l.withCharacters,
       ];
     }
     case "grimoire.create":

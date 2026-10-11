@@ -97,7 +97,8 @@ export type LogData = {
   "draft.scriptLibrary": OnDraftScript & { libraryId: number; updated: boolean };
   "draft.scriptDelete": OnDraftScript;
   "script.create": { script: NamedRef };
-  "script.update": { script: NamedRef; file: boolean };
+  /** `characters`: picked anew in the script builder */
+  "script.update": { script: NamedRef; file: boolean; characters?: boolean };
   "script.delete": { script: NamedRef };
   "grimoire.create": { grimoire: NamedRef };
   "grimoire.delete": { grimoire: NamedRef };

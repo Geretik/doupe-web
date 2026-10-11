@@ -31,6 +31,11 @@ export const changelog: ChangelogEntry[] = [
         href: "/admin/botc/scripty",
       },
       {
+        for: "organizers",
+        text: "Sestavení scriptu: ve Scripty → 🧩 Sestavit script z postav zaškrtáš oficiální postavy, Báje a Loric i homebrew postavy z klubových kolekcí (u nich vidíš schopnost), hledáš česky i anglicky a script uložíš do knihovny. U scriptu v knihovně tlačítkem 🧩 Upravit postavy změníš jeho postavy; homebrew pravidla a postavy, které web nezná, zůstanou.",
+        href: "/admin/botc/scripty/novy",
+      },
+      {
         for: "players",
         text: "U termínů vede odkaz na script do klubového script toolu i u scriptů s homebrew postavami.",
       },

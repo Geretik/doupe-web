@@ -4,7 +4,7 @@ import { db } from "@/db";
 import { adminUsers, scripts, type AdminUser, type LibraryScript, type ScriptLink } from "@/db/schema";
 import { hasRole } from "@/lib/admin-auth";
 import { siteUrl } from "@/lib/site";
-import { findRole, isHomebrew, matchHomebrew, matchStorytellerId } from "./botc-roles";
+import { findRole, findStorytellerRole, homebrewStorytellerRoles, isHomebrew, matchHomebrew, matchStorytellerId, storytellerRoles } from "./botc-roles";
 import { HOMEBREW_LIMITS, type Homebrew } from "./grimoire/state";
 import { matchRoleId, sortRoleIds } from "./draft/roles";
 import { scriptToolLinkForJson } from "./draft/script";
@@ -131,6 +131,39 @@ export function parseScriptFile(input: string): { ok: true; script: ParsedScript
     ok: true,
     script: { items: data, meta: { name: str(meta?.name), author: str(meta?.author) }, roleIds: sortRoleIds(new Set(roleIds)), extras, fabled, homebrew },
   };
+}
+
+/** A script entry's character on this site – a player's, a Fabled or a Loric, official or homebrew – or null. */
+function knownCharacter(item: unknown): string | null {
+  const id = entryId(item);
+  if (!id) return null;
+  return matchRoleId(id) ?? matchHomebrew(item) ?? matchStorytellerId(id);
+}
+
+/** Order of the Storyteller's characters in a built script: the official ones as listed, then the homebrew ones */
+const storytellerOrder = new Map([...storytellerRoles, ...homebrewStorytellerRoles].map((r, i) => [r.id, i]));
+
+/**
+ * The entries of a script built from characters picked on the site (the script builder): the players' characters
+ * in the usual order, then the Fabled and Loric – by id, homebrew ones too (the tools get them in full, see
+ * homebrew.ts). `previous`: the entries of the script it replaces, whose "_meta" (homebrew rules, logo…) and
+ * entries the site does not know stay as they were.
+ */
+export function builtScriptItems(picked: string[], previous: unknown[] = []): unknown[] {
+  const players = sortRoleIds(picked.filter((id) => findRole(id)));
+  const storyteller = [...new Set(picked.filter((id) => findStorytellerRole(id)))].sort(
+    (a, b) => storytellerOrder.get(a)! - storytellerOrder.get(b)!,
+  );
+  const meta = previous.filter(isMeta);
+  const unknown = previous.filter((item) => !isMeta(item) && !knownCharacter(item));
+  return [...meta, ...players, ...storyteller, ...unknown];
+}
+
+/** The characters of a library script the builder starts from: those the site knows, by their id here. */
+export function knownCharactersOf(script: Pick<LibraryScript, "json">): string[] {
+  const parsed = parseScriptFile(script.json);
+  if (!parsed.ok) return [];
+  return [...new Set(parsed.script.items.flatMap((item) => (isMeta(item) ? [] : (knownCharacter(item) ?? []))))];
 }
 
 /** The file as saved: name and author written into its "_meta" (first), everything else as it was. */

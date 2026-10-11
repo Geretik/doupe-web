@@ -9,7 +9,16 @@ import type { Dict } from "@/i18n/dictionaries";
 import { getDict } from "@/i18n/server";
 import { requireAdmin } from "@/lib/admin-auth";
 import { logAction } from "@/lib/admin-log";
-import { canEditScript, getLibraryScript, parseScriptFile, scriptNameTaken, scriptText, type ParsedScript } from "@/modules/botc/lib/scripts";
+import { findRole, findStorytellerRole } from "@/modules/botc/lib/botc-roles";
+import {
+  builtScriptItems,
+  canEditScript,
+  getLibraryScript,
+  parseScriptFile,
+  scriptNameTaken,
+  scriptText,
+  type ParsedScript,
+} from "@/modules/botc/lib/scripts";
 import type { FormState } from "@/lib/validation";
 import type { SimpleResult } from "@/app/actions/admin";
 
@@ -105,6 +114,41 @@ export async function updateLibraryScriptAction(id: number, _prev: ScriptFormSta
   await logAction(me, "script.update", { script: { id, name: named.name }, file: Boolean(read) });
   revalidateScripts();
   return { ok: true, message: read ? s.savedWithFile : s.saved };
+}
+
+/**
+ * A script built from characters picked on the site (the script builder): a new one (`id` null) or the characters
+ * of one in the library, whose own rules, logo and characters the site does not know stay.
+ */
+export async function saveBuiltScriptAction(id: number | null, _prev: ScriptFormState, formData: FormData): Promise<ScriptFormState> {
+  const me = await requireAdmin();
+  const { t } = await getDict();
+  const s = t.scripts;
+  const row = id === null ? null : await getLibraryScript(id);
+  if (id !== null && !row) return { error: s.errors.notFound };
+  if (row && !canEditScript(me, row.script)) return { error: s.errors.notYours };
+  const picked = [...new Set(formData.getAll("role").map(String))].filter((r) => findRole(r) || findStorytellerRole(r));
+  if (!picked.some((r) => findRole(r))) return { error: s.builder.noCharacters };
+  const name = text(formData, "name").slice(0, MAX_NAME);
+  const author = text(formData, "author").slice(0, MAX_NAME) || null;
+  if (!name) return { error: s.builder.noName, fieldErrors: { name: [s.builder.noName] } };
+  if (await scriptNameTaken(name, id ?? undefined)) return { error: s.errors.nameTaken(name), fieldErrors: { name: [s.errors.nameTaken(name)] } };
+  const previous = row ? parseScriptFile(row.script.json) : null;
+  const json = scriptText(builtScriptItems(picked, previous?.ok ? previous.script.items : []), name, author);
+  const parsed = parseScriptFile(json);
+  if (!parsed.ok) return { error: s.errors[parsed.error] };
+  const values = { name, author, json, roleIds: parsed.script.roleIds };
+  let savedId = id;
+  if (row && id !== null) {
+    await db.update(scripts).set({ ...values, updatedAt: new Date() }).where(eq(scripts.id, id));
+    await logAction(me, "script.update", { script: { id, name }, file: false, characters: true });
+  } else {
+    const [created] = await db.insert(scripts).values({ ...values, createdBy: me.id }).returning({ id: scripts.id });
+    savedId = created.id;
+    await logAction(me, "script.create", { script: { id: created.id, name } });
+  }
+  revalidateScripts();
+  redirect(`/admin/botc/scripty/${savedId}`);
 }
 
 export async function deleteLibraryScriptAction(id: number): Promise<SimpleResult> {

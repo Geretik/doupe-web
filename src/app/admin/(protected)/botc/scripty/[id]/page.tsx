@@ -47,6 +47,11 @@ export default async function LibraryScriptPage({ params }: { params: Promise<{ 
         <span className="flex flex-wrap gap-2">
           <a href={toolLink} target="_blank" rel="noopener noreferrer" className={pill}>{s.openInTool}</a>
           <a href={`/admin/botc/scripty/${script.id}/script.json`} className={pill}>{s.downloadJson}</a>
+          {editable && (
+            <Link href={`/admin/botc/scripty/${script.id}/postavy`} className={pill}>
+              🧩 {s.builderEditLink}
+            </Link>
+          )}
         </span>
         <p className="text-xs text-muted">
           {s.shareLink}:{" "}

@@ -102,6 +102,11 @@ export function withHomebrewInFull(script: unknown[], locale: Locale = "cs"): un
   });
 }
 
+/** Every homebrew character's ability in this language, for picking characters in the script builder */
+export function homebrewAbilities(locale: Locale): Record<string, string> {
+  return Object.fromEntries(Object.keys(characters).map((id) => [id, textsIn(id, locale).ability]));
+}
+
 /** A homebrew character's ability in this language and whether it changes the setup, for the catalogue of the collections */
 export function homebrewAbility(id: string, locale: Locale) {
   return isHomebrew(id) ? { ability: textsIn(id, locale).ability, setup: characters[id].setup } : null;

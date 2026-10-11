@@ -240,3 +240,78 @@ test("homebrew in the library, the catalogue, a draft and a game record: a colle
   await expect(page.locator("main ol").filter({ hasText: "Ručně psaný homebrew" })).toContainText(cobbler.name);
   expect(await sql("select role from game_players where registration_id = $1", [reg.id])).toEqual([{ role: COBBLER }]);
 });
+
+test("script builder: a new script from official, Fabled and homebrew characters found by name; its characters changed later, the rest of its file kept", async ({ page }) => {
+  await adminLogin(page);
+  await page.goto("/admin/botc/scripty");
+  await page.getByRole("link", { name: "🧩 Sestavit script z postav →" }).click();
+  await expect(page.locator("h1")).toHaveText("Sestavit script");
+  const builder = page.getByTestId("script-builder");
+  await expect(builder.locator("#author")).toHaveValue("Správce");
+
+  // found by the Czech or the English name, homebrew with its ability
+  const search = builder.locator("#builder-search");
+  const tick = async (query: string, name: string) => {
+    await search.fill(query);
+    await builder.getByRole("checkbox", { name, exact: true }).check();
+  };
+  await tick("pradl", "Pradlena");
+  await tick("čert", "Čert");
+  await tick("džin", "Džin");
+  await search.fill("cobbler");
+  // another collection has a Cobbler too: the collection tells them apart
+  const luis = builder.locator("[data-collection=luis]");
+  await expect(luis).toContainText(cobbler.ability);
+  await luis.getByRole("checkbox", { name: cobbler.name, exact: true }).check();
+  await search.fill("nic takového tu není");
+  await expect(builder).toContainText("Hledání neodpovídá žádná postava.");
+  await search.fill("");
+
+  // what is picked, by team; taken back with ✕
+  const picked = builder.getByTestId("builder-picked");
+  await expect(picked).toContainText("Vybrané postavy: 4 postavy");
+  await tick("kuchař", "Kuchař");
+  await picked.getByRole("button", { name: "Odebrat: Kuchař" }).click();
+  await expect(picked).not.toContainText("Kuchař");
+
+  await builder.locator("#name").fill("Ševcův večer");
+  await builder.getByRole("button", { name: "Uložit do knihovny" }).click();
+  await page.waitForURL(/\/admin\/botc\/scripty\/\d+$/);
+  await expect(page.locator("h1")).toHaveText("Ševcův večer");
+  for (const name of ["Pradlena", "Čert", cobbler.name]) await expect(page.locator("#characters")).toContainText(name);
+  const id = Number(page.url().split("/").pop());
+  const [row] = await sql<{ json: string; role_ids: string[]; author: string }>("select json, role_ids, author from scripts where id = $1", [id]);
+  expect(row.author).toBe("Správce");
+  // the players' characters in the usual order (by team, then by the English name), then the Fabled; by id
+  expect(JSON.parse(row.json)).toEqual([{ id: "_meta", name: "Ševcův večer", author: "Správce" }, COBBLER, "washerwoman", "imp", "djinn"]);
+  expect([...row.role_ids].sort()).toEqual(["imp", COBBLER, "washerwoman"].sort());
+  // the tools get the homebrew character in full
+  const file = (await (await page.request.get(`/admin/botc/scripty/${id}/script.json`)).json()) as unknown[];
+  expect(file).toContainEqual(expect.objectContaining({ id: COBBLER, name: cobbler.name, ability: cobbler.ability }));
+  expect(file).toContain("djinn");
+
+  // a script from a file: its own rules and a character the site does not know stay when its characters change
+  const unknown = { id: "hrdina_x", name: "Homebrew Hrdina", team: "townsfolk", ability: "Každou noc…" };
+  const [own] = await sql<{ id: number }>("insert into scripts (name, json, role_ids) values ($1, $2, $3) returning id", [
+    "Vlastní pravidla",
+    JSON.stringify([{ id: "_meta", name: "Vlastní pravidla", logo: "https://example.com/logo.png", bootlegger: ["Nikdo nesmí šeptat."] }, "washerwoman", unknown]),
+    JSON.stringify(["washerwoman"]),
+  ]);
+  await page.goto(`/admin/botc/scripty/${own.id}`);
+  await page.getByRole("link", { name: "🧩 Upravit postavy" }).click();
+  await expect(page.locator("h1")).toHaveText("Postavy scriptu Vlastní pravidla");
+  await expect(builder.getByRole("checkbox", { name: "Pradlena", exact: true })).toBeChecked();
+  await tick("kuchař", "Kuchař");
+  await builder.getByRole("button", { name: "Uložit do knihovny" }).click();
+  await page.waitForURL(new RegExp(`/admin/botc/scripty/${own.id}$`));
+  await expect(page.locator("#characters")).toContainText("Kuchař");
+  const [changed] = await sql<{ json: string }>("select json from scripts where id = $1", [own.id]);
+  expect(JSON.parse(changed.json)).toEqual([
+    { id: "_meta", name: "Vlastní pravidla", logo: "https://example.com/logo.png", bootlegger: ["Nikdo nesmí šeptat."] },
+    "chef",
+    "washerwoman",
+    unknown,
+  ]);
+  await page.goto("/admin/historie");
+  await expect(page.getByTestId("log-entry").nth(0)).toContainText("nové postavy");
+});
