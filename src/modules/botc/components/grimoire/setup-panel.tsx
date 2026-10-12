@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { readGrimoireScriptAction } from "@/modules/botc/actions/grimoire";
 import { BLUFF_COUNT, botcRoles, findRole, isHomebrew, linkedRoleOf, type RoleTeam } from "@/modules/botc/lib/botc-roles";
@@ -18,7 +18,6 @@ import {
   lineUpTyphon,
   marionetteApart,
   MAX_SEATS,
-  moveSeat,
   newGap,
   newSeat,
   offCount,
@@ -49,8 +48,8 @@ import { nameOf, RoleIcon, useGrimoire, type GrimoireContextValue, type Grimoire
 import { RoleGrid, teamBox } from "./role-grid";
 import { FabledSetup } from "./fabled";
 import { ShowButton } from "./show";
-import { freeSessionPlayers, holders, nameSeat, nextUnnamed, SidePicker } from "./seat-panel";
-import { gapIcon, SeatingButtons, Town } from "./town";
+import { holders, nextUnnamed, SidePicker } from "./seat-panel";
+import { gapIcon } from "./town";
 import { HideButton } from "./grimoire";
 
 /** A script of the club's library: its characters, and its Fabled and Loric */
@@ -180,9 +179,9 @@ export function SetupPanel({ scripts, onSelectSeat, wide = false }: { scripts: S
 
       <section className="flex flex-col gap-1.5">
         <PlayersHeading />
-        <SetupTown onOpen={onSelectSeat} />
+        <PlayerList onOpen={onSelectSeat} />
         <AddToCircle />
-        <p className="text-xs text-muted">{t.seatOrderHint}</p>
+        <p className="text-xs text-muted">{t.setupPlayersHint}</p>
       </section>
 
       <section className="flex flex-col gap-1.5" data-testid="distribution">
@@ -371,192 +370,53 @@ function SetupWarnings({ onSelectSeat }: { onSelectSeat: (seatId: string) => voi
 }
 
 /**
- * The seating in the setup: the town as in the grimoire, the players dragged to where they sit; a place tapped gets
- * its name beside the town (Enter on to the next place without one) and its place in the circle. Read only, a place
- * opens in the grimoire.
+ * The circle in the setup as a list: a place tapped opens in the grimoire (name, character, reminders), ✕ takes it
+ * away – a player with a name or a character after asking. Who sits where is up to the grimoire's own circle.
  */
-function SetupTown({ onOpen }: { onOpen: (seatId: string) => void }) {
-  const { state, update, readOnly, hidden, t } = useGrimoire();
-  const [selected, setSelected] = useState<string | null>(null);
-  const seat = state.seats.find((s) => s.id === selected) ?? null;
-  const first = nextUnnamed(state, -1);
-  return (
-    <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_20rem]">
-      <div className="relative h-80 rounded-xl border border-border bg-card/40 sm:h-[26rem]" data-testid="setup-town">
-        <Town
-          selectedId={seat?.id ?? null}
-          highlightIds={[]}
-          onSelect={(id) => (readOnly ? onOpen(id) : setSelected(id === selected ? null : id))}
-          onBackground={() => setSelected(null)}
-          onMove={
-            readOnly || state.seatsLocked
-              ? undefined
-              : (move) =>
-                  update((s) => {
-                    const seats = move(s.seats);
-                    return seats === s.seats ? s : { ...s, seats };
-                  })
-          }
-          center={
-            <>
-              <span className="text-lg font-bold">{fill(t.players, { n: playersOf(state).length })}</span>
-              {!readOnly && !state.seatsLocked && state.seats.length > 1 && <span className="max-w-48 text-xs text-muted">{t.setupTownDrag}</span>}
-            </>
-          }
-          empty={t.setupNoSeats}
-          hideRoles={hidden}
-        />
-        <SeatingButtons />
-      </div>
-      {!readOnly &&
-        (seat ? (
-          <SeatEditor key={seat.id} seat={seat} onSelect={setSelected} onOpen={onOpen} />
-        ) : (
-          <div className="flex flex-col items-start gap-2">
-            <p className="text-sm text-muted">{t.setupSeatHint}</p>
-            {first && (
-              <button type="button" className={plain} onClick={() => setSelected(first.id)}>
-                {t.seatNameThem}
-              </button>
-            )}
-          </div>
-        ))}
-    </div>
-  );
-}
-
-/** The place tapped in the setup's town: the player's name, or a session player's, its place in the circle, taking it away. */
-function SeatEditor({ seat, onSelect, onOpen }: { seat: GrimoireSeat; onSelect: (seatId: string | null) => void; onOpen: (seatId: string) => void }) {
-  const { state, update, hidden, ask, sessionPlayers, locale, t, scriptNames } = useGrimoire();
-  const ref = useRef<HTMLDivElement>(null);
-  // on a phone it is under the town (a block: the browser's scrollIntoView may return a promise, no cleanup)
-  useEffect(() => {
-    ref.current?.scrollIntoView({ block: "nearest" });
-  }, []);
-  const index = state.seats.indexOf(seat);
-  const next = nextUnnamed(state, index);
-  const free = seat.gap ? [] : freeSessionPlayers(state, seat, sessionPlayers);
-  const move = (by: number) => update((s) => ({ ...s, seats: moveSeat(s.seats, index, (index + by + s.seats.length) % s.seats.length) }));
-  const remove = async () => {
+function PlayerList({ onOpen }: { onOpen: (seatId: string) => void }) {
+  const { state, update, readOnly, hidden, ask, t } = useGrimoire();
+  const inCircle = state.seats.filter(isPlayer);
+  const remove = async (seat: GrimoireSeat) => {
     if (!seat.gap && (seat.name || seat.role) && !(await ask(fill(t.removeSeatConfirm, { name: seat.name || "?" }), t.removeSeat))) return;
     update((s) => ({ ...s, seats: s.seats.filter((x) => x.id !== seat.id) }));
-    onSelect(null);
   };
   return (
-    <div ref={ref} className="flex flex-col gap-3 self-start rounded-xl border border-accent/50 bg-card p-3" data-testid="setup-seat">
-      <div className="flex items-start gap-2">
-        {seat.gap ? (
-          <h4 className="flex min-h-11 flex-1 items-center gap-2 text-lg font-bold">
-            <span aria-hidden>{gapIcon[seat.gap]}</span>
-            {t.gaps[seat.gap]}
-          </h4>
-        ) : (
-          <SeatNameInput
-            key={seat.name}
-            name={seat.name}
-            onSave={(name) => update((s) => nameSeat(s, seat.id, name, sessionPlayers))}
-            onEnter={() => onSelect(next?.id ?? null)}
-          />
-        )}
-        <button
-          type="button"
-          onClick={() => onSelect(null)}
-          aria-label={t.deselect}
-          title={t.deselect}
-          className="flex size-11 shrink-0 items-center justify-center rounded-full border border-border bg-card text-lg hover:border-accent/50"
-        >
-          ✕
-        </button>
-      </div>
-      {seat.gap && <p className="text-sm text-muted">{t.gapHints[seat.gap]}</p>}
-      {seat.role && !hidden && (
-        <p className="-mt-1 flex items-center gap-1.5 text-sm">
-          <RoleIcon roleId={seat.role} size={24} />
-          {nameOf(seat.role, locale, scriptNames)}
-        </p>
-      )}
-      {seat.registrationId && <p className="-mt-1 text-xs text-muted">✓ {t.linkedToSession}</p>}
-      {free.length > 0 && (
-        <div className="flex flex-col gap-1.5">
-          <h5 className={heading}>{t.fromSession}</h5>
-          <div className="flex flex-wrap gap-1.5">
-            {free.map((p) => (
+    <ol className="flex flex-wrap gap-1.5" data-testid="setup-players">
+      {state.seats.map((s) => {
+        const edge = s.gap ? "border-dashed border-muted/60 text-muted" : "border-border bg-card";
+        const label = s.gap ? t.gaps[s.gap] : s.name || "?";
+        return (
+          <li key={s.id} className="flex">
+            <button
+              type="button"
+              onClick={() => onOpen(s.id)}
+              className={`flex min-h-10 items-center gap-1.5 border px-3 text-sm hover:border-accent/50 ${edge} ${readOnly ? "rounded-full" : "rounded-l-full"}`}
+            >
+              {s.gap ? (
+                <span aria-hidden>{gapIcon[s.gap]}</span>
+              ) : (
+                <>
+                  <span className="text-xs text-muted">{inCircle.indexOf(s) + 1}.</span>
+                  {s.role && !hidden && <RoleIcon roleId={s.role} size={22} />}
+                </>
+              )}
+              {label}
+            </button>
+            {!readOnly && (
               <button
-                key={p.id}
                 type="button"
-                onClick={() => {
-                  update((s) => nameSeat(s, seat.id, p.nickname, sessionPlayers, p.id));
-                  onSelect(next?.id ?? null);
-                }}
-                className="min-h-10 rounded-full border border-border bg-card px-3 text-sm hover:border-accent/50"
+                onClick={() => remove(s)}
+                aria-label={`${t.remove}: ${label}`}
+                title={t.remove}
+                className={`flex min-h-10 items-center rounded-r-full border border-l-0 pr-3 pl-2 text-sm text-muted hover:border-accent/50 hover:text-accent ${edge}`}
               >
-                {p.nickname}
+                ✕
               </button>
-            ))}
-          </div>
-        </div>
-      )}
-      <div className="flex flex-wrap gap-2">
-        <button type="button" className={plain} onClick={() => move(-1)} disabled={state.seats.length < 2}>
-          {t.moveBack}
-        </button>
-        <button type="button" className={plain} onClick={() => move(1)} disabled={state.seats.length < 2}>
-          {t.moveOn}
-        </button>
-        {next && next.id !== seat.id && (
-          <button type="button" className={plain} onClick={() => onSelect(next.id)}>
-            {t.seatNext}
-          </button>
-        )}
-      </div>
-      <div className="flex flex-wrap gap-2 border-t border-border pt-3">
-        {!seat.gap && !hidden && (
-          <button type="button" className={plain} onClick={() => onOpen(seat.id)}>
-            {t.seatOpen}
-          </button>
-        )}
-        <button type="button" className={`${button} ml-auto border-accent text-accent hover:bg-accent/10`} onClick={remove}>
-          {t.removeSeat}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-/**
- * A player's name, saved when the field is left; Enter saves it and goes on (`onEnter`). An empty place gets the
- * field ready to type in.
- */
-function SeatNameInput({ name, onSave, onEnter }: { name: string; onSave: (name: string) => void; onEnter: () => void }) {
-  const { t } = useGrimoire();
-  const [value, setValue] = useState(name);
-  // saved once: Enter, then the field goes away
-  const saved = useRef(false);
-  const save = () => {
-    const v = value.trim().slice(0, 60);
-    if (saved.current || v === name) return;
-    saved.current = true;
-    onSave(v);
-  };
-  return (
-    <input
-      value={value}
-      onChange={(e) => setValue(e.target.value)}
-      onBlur={save}
-      onKeyDown={(e) => {
-        if (e.key !== "Enter") return;
-        e.preventDefault();
-        save();
-        onEnter();
-      }}
-      autoFocus={!name}
-      enterKeyHint="next"
-      aria-label={t.seatName}
-      placeholder={t.seatName}
-      maxLength={60}
-      className="min-h-11 min-w-0 flex-1 rounded-lg border border-border bg-card px-3 text-lg font-bold"
-      data-testid="setup-seat-name"
-    />
+            )}
+          </li>
+        );
+      })}
+    </ol>
   );
 }
 

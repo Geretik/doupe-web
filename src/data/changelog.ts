@@ -13,6 +13,17 @@ export type ChangelogEntry = { /** YYYY-MM-DD */ date: string; title: string; it
 
 export const changelog: ChangelogEntry[] = [
   {
+    date: "2026-10-13",
+    title: "Příprava grimoáru zase se seznamem hráčů",
+    items: [
+      {
+        for: "organizers",
+        text: "Grimoár, Příprava: místo kruhu na rozesazení je tam zase jen seznam hráčů. Přidáš je jménem, tlačítkem + nebo jako pocestného, ✕ u hráče ho odebere (se jménem nebo postavou až po potvrzení) a ťuknutím na hráče ho otevřeš v grimoáru. Kdo kde sedí, přetáhneš v kruhu grimoáru.",
+        href: "/admin/botc/grimoary",
+      },
+    ],
+  },
+  {
     date: "2026-10-12",
     title: "Oprávnění účtů: Krvavka a Klub, postavy v liště script toolu",
     items: [

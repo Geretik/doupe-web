@@ -60,7 +60,6 @@ export function Town({
   center,
   hideRoles = false,
   onBackground,
-  empty,
 }: {
   selectedId: string | null;
   /** Seats that wake on the night step in focus */
@@ -73,8 +72,6 @@ export function Town({
   hideRoles?: boolean;
   /** A tap on the square where there is no place, e.g. to let go of the selected player */
   onBackground?: () => void;
-  /** What to do without any places; by default to add players in the setup */
-  empty?: string;
 }) {
   const { state, scale, t } = useGrimoire();
   const ref = useRef<HTMLDivElement>(null);
@@ -281,7 +278,7 @@ export function Town({
           {n === 0 && (
             // under the phase in the middle
             <p className="absolute inset-x-0 text-center text-muted" style={{ top: cy + 24 }}>
-              {empty ?? t.noSeats}
+              {t.noSeats}
             </p>
           )}
         </>
@@ -291,7 +288,7 @@ export function Town({
 }
 
 /**
- * In the town's corner: the seating locked, and the circle or the grid; in the grimoire and in the setup's town alike.
+ * In the town's corner: the seating locked, and the circle or the grid.
  * `hint`: the lock stands out, the seating of a new grimoire is to be finished with it.
  */
 export function SeatingButtons({ hint = false }: { hint?: boolean }) {

@@ -1207,16 +1207,13 @@ test("grimoire: the door and the Storyteller's spot, a pasted script, players dr
   await expect(page.getByTestId("gap")).toHaveCount(2);
   await expect(page.getByTestId("town")).toContainText("Živí 5 z 5");
 
-  // an obstacle and a second door, taken out of the circle again in the setup's town
+  // an obstacle and a second door, taken out of the circle again with ✕ in the setup's list, without asking
   const setup = await openSetup(page);
-  // the add buttons come after the setup's town, where the door is already
   await setup.getByRole("button", { name: "🚧 Překážka" }).click();
-  await setup.getByRole("button", { name: "🚪 Dveře" }).last().click();
+  await setup.getByRole("button", { name: "🚪 Dveře" }).click();
   await expect(page.getByTestId("gap")).toHaveCount(4);
-  await setup.locator("[data-gap=obstacle]").click();
-  await setup.getByTestId("setup-seat").getByRole("button", { name: "Odebrat z kruhu" }).click();
-  await setup.locator("[data-gap=door]").last().click();
-  await setup.getByTestId("setup-seat").getByRole("button", { name: "Odebrat z kruhu" }).click();
+  await setup.getByRole("button", { name: "Odebrat: Překážka" }).click();
+  await setup.getByRole("button", { name: "Odebrat: Dveře" }).last().click();
   await expect(page.locator("[data-gap=obstacle]")).toHaveCount(0);
   await expect(page.locator("[data-gap=door]")).toHaveCount(1);
   await expect(page.locator("[data-gap=storyteller]")).toHaveCount(1);
@@ -1330,49 +1327,44 @@ test("grimoire: players dragged to other places in the circle, then the seating 
   await expect(page.locator("body > header")).toBeVisible();
 });
 
-test("grimoire: the players seated in the setup's own town – named one after another, moved, dragged; the game starts only once each has a character", async ({ page }) => {
+test("grimoire: the setup lists the players – added, removed, opened in the grimoire; the game starts only once each has a character", async ({ page }) => {
   await page.setViewportSize({ width: 1180, height: 820 }); // a tablet on its side
   await adminLogin(page);
   await newGrimoire(page);
   const setup = page.getByTestId("setup-screen");
-  const town = setup.getByTestId("setup-town");
-  const editor = setup.getByTestId("setup-seat");
+  const list = setup.getByTestId("setup-players");
   const names = (st: { seats: { name: string }[] }) => st.seats.map((x) => x.name);
-  for (let i = 0; i < 3; i++) await setup.getByRole("button", { name: "Přidat místo" }).click();
-  await expect(town.getByTestId("seat")).toHaveCount(5);
-  await expect(town).toContainText("Hráči (5)");
+  for (let i = 0; i < 4; i++) await setup.getByRole("button", { name: "Přidat místo" }).click();
+  await expect(list.getByRole("listitem")).toHaveCount(6);
+  await expect(setup).toContainText("Hráči (6)");
+  // no map to seat them in: that is the grimoire's circle
+  await expect(setup.getByTestId("town")).toHaveCount(0);
   // no character yet: the game cannot start, the setup says where they are handed out
   await expect(setup.getByRole("button", { name: "Začít hru → 1. noc" })).toBeDisabled();
   await expect(setup).toContainText("Hru začneš, až budou mít postavu všichni hráči – rozdej je dole v části Rozdání.");
 
-  // the names one after another: Enter goes on to the next place without one, after the last the field closes
-  await setup.getByRole("button", { name: "Napsat jména hráčů →" }).click();
-  for (const name of ["Ada", "Bára", "Cyril"]) {
-    await expect(editor.getByTestId("setup-seat-name")).toBeFocused();
+  // ✕: an empty place goes without asking, a player with a name after a yes
+  await list.getByRole("button", { name: "Odebrat: ?" }).last().click();
+  await expect(page.getByTestId("ask")).toHaveCount(0);
+  await stored(names, ["Jana", "Petr", "", "", ""]);
+  await list.getByRole("button", { name: "Odebrat: Petr" }).click();
+  await answer(page, false);
+  await expect(list.getByRole("listitem")).toHaveCount(5);
+  await list.getByRole("button", { name: "Odebrat: Petr" }).click();
+  await answer(page, true);
+  await stored(names, ["Jana", "", "", ""]);
+  await addPlayer(page, "Cyril");
+  await expect(setup).toContainText("Hráči (5)");
+
+  // a place tapped opens in the grimoire, its name ready to type; Enter goes on to the next place without one
+  await list.getByRole("listitem").nth(1).getByRole("button").first().click();
+  await expect(setup).toHaveCount(0);
+  for (const name of ["Ada", "Petra", "Bára"]) {
+    await expect(page.getByTestId("seat-panel").getByRole("textbox", { name: "Jméno hráče" })).toBeFocused();
     await page.keyboard.type(name);
     await page.keyboard.press("Enter");
   }
-  await expect(editor).toHaveCount(0);
-  await stored(names, ["Jana", "Petr", "Ada", "Bára", "Cyril"]);
-
-  // a place tapped: renamed, moved on by one
-  await town.locator('[data-testid=seat][data-seat="Petr"]').click();
-  await editor.getByTestId("setup-seat-name").fill("Petra");
-  await editor.getByRole("button", { name: "O místo dál ▶" }).click();
   await stored(names, ["Jana", "Ada", "Petra", "Bára", "Cyril"]);
-
-  // dragged onto another place in the setup's town
-  const drag = async (from: string, to: string) => {
-    const [a, b] = [(await town.locator(`[data-seat="${from}"]`).boundingBox())!, (await town.locator(`[data-seat="${to}"]`).boundingBox())!];
-    await page.mouse.move(a.x + a.width / 2, a.y + a.width / 2);
-    await page.mouse.down();
-    await page.mouse.move(b.x + b.width / 2, b.y + b.width / 2, { steps: 12 });
-    await page.mouse.up();
-  };
-  await drag("Cyril", "Jana");
-  await stored(names, ["Cyril", "Ada", "Petra", "Bára", "Jana"]);
-  await editor.getByRole("button", { name: "Zrušit výběr hráče" }).click();
-  await expect(editor).toHaveCount(0);
 
   // all but one with a character: who is missing, both in the setup and beside the start in the grimoire
   const [row] = await sql<{ id: number; state: GrimoireState }>("select id, state from grimoires order by id desc limit 1");
@@ -1427,9 +1419,10 @@ test("grimoire: the players seated in the grimoire itself before the setup – a
   await stored(names, ["Jana", "Petr", "Olga", ""]);
   await expect(seating.getByRole("button", { name: "Napsat jména hráčů →" })).toHaveCount(0);
 
-  // the setup has the same circle; opened once, the grimoire guides no more, the seating stays in the panel
+  // the setup lists them; opened once, the grimoire guides no more, the seating stays in the panel
   const setup = await openSetup(page);
-  await expect(setup.getByTestId("setup-town").getByTestId("seat")).toHaveCount(3);
+  await expect(setup.getByTestId("setup-players").getByRole("listitem")).toHaveCount(4);
+  await expect(setup).toContainText("Hráči (3)");
   await closeSetup(page);
   await expect(page.getByTestId("seating-guide")).toHaveCount(0);
   await expect(seating).toBeVisible();
@@ -1581,8 +1574,8 @@ test("grimoire hidden: someone else holds it without seeing characters, reminder
   await expect(setup.getByTestId("setup-hidden")).toBeVisible();
   await expect(setup.getByTestId("bag-contents")).toHaveCount(0);
   await expect(setup.getByTestId("bluffs-view")).toHaveCount(0);
-  await expect(setup.getByTestId("setup-town").getByTestId("seat")).toHaveCount(3);
-  await expect(setup.getByTestId("setup-town").locator("img")).toHaveCount(0);
+  await expect(setup.getByTestId("setup-players").getByRole("listitem")).toHaveCount(3);
+  await expect(setup.getByTestId("setup-players").locator("img")).toHaveCount(0);
   await expect(setup.getByTestId("distribution").locator("th")).toHaveCount(2);
   await expect(setup.getByRole("button", { name: "Začít hru → 1. noc" })).toHaveCount(0);
   await expect(setup.getByTestId("hide-button")).toHaveAttribute("aria-pressed", "true");

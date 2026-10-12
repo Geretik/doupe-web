@@ -383,18 +383,15 @@ export function Grimoire({
 
             <div className="flex min-h-0 flex-1 flex-col gap-3 lg:flex-row">
               <div className="relative min-h-0 basis-[55%] lg:basis-auto lg:flex-1">
-                {/* the setup over the screen has a town of its own to seat the players in */}
-                {!setupOpen && (
-                  <Town
-                    selectedId={shown === "seat" && !fabledShown ? selected : null}
-                    highlightIds={hidden ? [] : contest ? [contest.demon.id, contest.opponent.id] : (focused?.seatIds ?? [])}
-                    onSelect={tapSeat}
-                    onBackground={() => (placing ? setPlacing(null) : (setSelected(null), setFabledOpen(null), setAddingFabled(false)))}
-                    onMove={context.readOnly || state.seatsLocked ? undefined : moveSeats}
-                    center={<TownCenter phaseLabel={phaseLabel} />}
-                    hideRoles={hidden}
-                  />
-                )}
+                <Town
+                  selectedId={shown === "seat" && !fabledShown ? selected : null}
+                  highlightIds={hidden ? [] : contest ? [contest.demon.id, contest.opponent.id] : (focused?.seatIds ?? [])}
+                  onSelect={tapSeat}
+                  onBackground={() => (placing ? setPlacing(null) : (setSelected(null), setFabledOpen(null), setAddingFabled(false)))}
+                  onMove={context.readOnly || state.seatsLocked ? undefined : moveSeats}
+                  center={<TownCenter phaseLabel={phaseLabel} />}
+                  hideRoles={hidden}
+                />
                 <FabledTokens
                   selectedId={shown === "seat" ? fabledShown : null}
                   onSelect={tapFabled}
@@ -408,7 +405,7 @@ export function Grimoire({
                     </button>
                   </div>
                 )}
-                {!setupOpen && <SeatingButtons hint={lockHint} />}
+                <SeatingButtons hint={lockHint} />
               </div>
               <aside className="flex min-h-0 flex-1 flex-col rounded-xl border border-border bg-card lg:w-[25rem] lg:flex-none">
                 <div className={`border-b border-border ${tabs.length > 1 ? "flex" : "hidden"}`} role="tablist">
@@ -438,7 +435,7 @@ export function Grimoire({
                     ) : fabledShown ? (
                       <FabledPanel key={fabledShown} roleId={fabledShown} placing={placing} onPlace={setPlacing} onClose={() => setFabledOpen(null)} />
                     ) : state.phase === "setup" && !context.readOnly && !state.seats.some((s) => s.id === selected) ? (
-                      // before the game, nobody tapped: the seating (the setup over the screen has its own)
+                      // before the game, nobody tapped: the seating (the setup over the screen has its own list of the players)
                       !setupOpen && <SeatingSetup guide={seating} onSelect={selectSeat} />
                     ) : (
                       <SeatPanel key={selected} seatId={selected} onRemoved={() => setSelected(null)} onSelect={setSelected} onClose={() => setSelected(null)} />

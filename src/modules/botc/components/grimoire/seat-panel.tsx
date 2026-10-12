@@ -45,14 +45,14 @@ function changeSeat(s: GrimoireState, seatId: string, change: (seat: GrimoireSea
  * A place's name; a session player not seated elsewhere links the place to their sign-up, also when their
  * nickname is typed.
  */
-export function nameSeat(s: GrimoireState, seatId: string, name: string, sessionPlayers: { id: number; nickname: string }[], registrationId?: number) {
+function nameSeat(s: GrimoireState, seatId: string, name: string, sessionPlayers: { id: number; nickname: string }[], registrationId?: number) {
   const seatedElsewhere = new Set(s.seats.filter((x) => x.id !== seatId).map((x) => x.registrationId));
   const match = registrationId ?? sessionPlayers.find((p) => !seatedElsewhere.has(p.id) && p.nickname.toLowerCase() === name.toLowerCase())?.id;
   return changeSeat(s, seatId, (x) => ({ ...x, name, registrationId: match ?? null }));
 }
 
 /** The session's players not seated at another place, to pick for this one. */
-export function freeSessionPlayers(state: GrimoireState, seat: GrimoireSeat, sessionPlayers: { id: number; nickname: string }[]) {
+function freeSessionPlayers(state: GrimoireState, seat: GrimoireSeat, sessionPlayers: { id: number; nickname: string }[]) {
   const seatedElsewhere = new Set(state.seats.filter((x) => x.id !== seat.id).map((x) => x.registrationId));
   return sessionPlayers.filter((p) => !seatedElsewhere.has(p.id) && p.id !== seat.registrationId);
 }
