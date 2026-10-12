@@ -106,20 +106,499 @@ index fc04f1c..2eb1829 100644
                            </Flex>
                          </Tooltip>
                          {isInScript && (
+diff --git a/apps/botc/src/doupe/RoleSidebar.tsx b/apps/botc/src/doupe/RoleSidebar.tsx
+new file mode 100644
+index 0000000..c8f9780
+--- /dev/null
++++ b/apps/botc/src/doupe/RoleSidebar.tsx
+@@ -0,0 +1,473 @@
++/**
++ * Only in the club's copy of the tool (see roleSets): a sidebar with the characters to browse, like the one of the
++ * official script tool (script.bloodontheclocktower.com). A click adds a character to the script and another takes it
++ * out, without a team's + and its dialog for every one. It picks from the same set as that dialog (roleSets), narrows
++ * them to a team and by a search, Enter adds the first one found, and each one's ability shows on request.
++ * On a wide screen it stays beside the script and can be hidden; on a narrow one it slides over it from a button.
++ */
++import {
++  memo,
++  useCallback,
++  useEffect,
++  useLayoutEffect,
++  useMemo,
++  useRef,
++  useState,
++} from 'react'
++import {
++  Button,
++  Flex,
++  IconButton,
++  Select,
++  Text,
++  TextField,
++} from '@radix-ui/themes'
++import {
++  Check,
++  ChevronDown,
++  ChevronsLeft,
++  Lock,
++  Search,
++  Users,
++  X,
++} from 'lucide-react'
++import { useTranslation } from 'react-i18next'
++import { create } from 'zustand'
++import { persist, createJSONStorage } from 'zustand/middleware'
++import type { Role } from '@/types'
++import { TEAMS, TEAM_CONFIG, Team } from '@/constants'
++import { useTeamLabels } from '@/hooks/useTeamLabels'
++import { roles as baseRoles } from '@/data/roles.en'
++import { useDisplayOptionsStore } from '@/stores/displayOptionsStore'
++import { formatRoleDisplayName } from '@/utils/roleDisplayName'
++import { getProxiedImageUrl } from '@/utils/imageUrl'
++import { RoleSetSelect, useRoleSet } from './roleSets'
++import { useDoupeText } from './text'
++import './roleSidebar.css'
++
++/** From this width the sidebar stays beside the script (roleSidebar.css has the same) */
++const WIDE = '(min-width: 1100px)'
++const ALL_TEAMS = 'all'
++
++const useSidebarStore = create<{
++  /** Hidden on a wide screen by its button; a narrow one opens it over the script each time */
++  hidden: boolean
++  team: string
++  setHidden: (hidden: boolean) => void
++  setTeam: (team: string) => void
++}>()(
++  persist(
++    (set) => ({
++      hidden: false,
++      team: ALL_TEAMS,
++      setHidden: (hidden) => set({ hidden }),
++      setTeam: (team) => set({ team }),
++    }),
++    {
++      name: 'doupe-role-sidebar',
++      storage: createJSONStorage(() => localStorage),
++    },
++  ),
++)
++
++function useMediaQuery(query: string) {
++  const [matches, setMatches] = useState(() => window.matchMedia(query).matches)
++  useEffect(() => {
++    const list = window.matchMedia(query)
++    const change = () => setMatches(list.matches)
++    change()
++    list.addEventListener('change', change)
++    return () => list.removeEventListener('change', change)
++  }, [query])
++  return matches
++}
++
++/** For a search without diacritics and case: "vedma" finds the Vědma */
++const fold = (text: string) =>
++  text.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase()
++
++const englishNames = new Map(baseRoles.map((role) => [role.id, role.name]))
++
++const EDITION_TAGS: Record<string, string> = {
++  tb: 'TB',
++  bmr: 'BMR',
++  snv: 'SnV',
++  carousel: 'Exp',
++  hb: 'HB',
++}
++
++interface RoleSidebarProps {
++  /** The tool's characters, in its language */
++  roles: Role[]
++  /** The characters of the script */
++  scriptRoles: Role[]
++  /** Those the tool keeps in the script (the Bootlegger, the Djinn), by id: why */
++  lockedRoles?: Record<string, string>
++  onAddRole: (role: Role) => void
++  onRemoveRole: (roleId: string) => void
++}
++
++export function RoleSidebar({
++  roles,
++  scriptRoles,
++  lockedRoles,
++  onAddRole,
++  onRemoveRole,
++}: RoleSidebarProps) {
++  const { t, i18n } = useTranslation()
++  const text = useDoupeText()
++  const teamLabels = useTeamLabels()
++  const showEnglishNames = useDisplayOptionsStore(
++    (state) => state.showEnglishNames,
++  )
++  const wide = useMediaQuery(WIDE)
++  const hidden = useSidebarStore((state) => state.hidden)
++  const setHidden = useSidebarStore((state) => state.setHidden)
++  const team = useSidebarStore((state) => state.team)
++  const setTeam = useSidebarStore((state) => state.setTeam)
++  const [drawerOpen, setDrawerOpen] = useState(false)
++  const [search, setSearch] = useState('')
++  const [shownAbilities, setShownAbilities] = useState<Set<string>>(
++    () => new Set(),
++  )
++  const searchRef = useRef<HTMLInputElement>(null)
++
++  const open = wide ? !hidden : drawerOpen
++  const docked = wide && open
++  const roleSet = useRoleSet(roles, open)
++
++  // the script moves aside for the sidebar beside it; the club's buttons (#doupe-bar) make room for this one's
++  useEffect(() => {
++    const classes = document.documentElement.classList
++    classes.toggle('doupe-sidebar-docked', docked)
++    classes.toggle('doupe-sidebar-drawer', !wide && open)
++    classes.toggle('doupe-sidebar-button', !open)
++    return () =>
++      classes.remove(
++        'doupe-sidebar-docked',
++        'doupe-sidebar-drawer',
++        'doupe-sidebar-button',
++      )
++  }, [docked, wide, open])
++
++  const inScript = useMemo(
++    () => new Set(scriptRoles.map((role) => role.id)),
++    [scriptRoles],
++  )
++  const inScriptByTeam = useMemo(() => {
++    const counts = new Map<string, number>()
++    for (const role of scriptRoles) {
++      counts.set(role.team, (counts.get(role.team) ?? 0) + 1)
++    }
++    return counts
++  }, [scriptRoles])
++
++  const query = fold(search.trim())
++  const groups = useMemo(() => {
++    const found = roleSet.roles.filter(
++      (role) =>
++        (team === ALL_TEAMS || role.team === team) &&
++        (!query ||
++          fold(role.name).includes(query) ||
++          fold(englishNames.get(role.id) ?? '').includes(query) ||
++          role.id.toLowerCase().includes(query)),
++    )
++    return TEAMS.map((teamId) => ({
++      team: teamId,
++      roles: found
++        .filter((role) => role.team === teamId)
++        .sort((a, b) => a.name.localeCompare(b.name, i18n.language)),
++    })).filter((group) => group.roles.length > 0)
++  }, [roleSet.roles, team, query, i18n.language])
++
++  // stable for the rows, which are many: they re-render only when their own state changes
++  const handlers = useRef({ onAddRole, onRemoveRole })
++  useLayoutEffect(() => {
++    handlers.current = { onAddRole, onRemoveRole }
++  })
++  const toggleRole = useCallback((role: Role, isInScript: boolean) => {
++    if (isInScript) handlers.current.onRemoveRole(role.id)
++    else handlers.current.onAddRole(role)
++  }, [])
++  const toggleAbility = useCallback((roleId: string) => {
++    setShownAbilities((shown) => {
++      const next = new Set(shown)
++      if (!next.delete(roleId)) next.add(roleId)
++      return next
++    })
++  }, [])
++
++  /** Enter adds the first character found that is not in the script yet, and the search is ready for the next */
++  const addFirst = () => {
++    const role = groups
++      .flatMap((group) => group.roles)
++      .find((r) => !inScript.has(r.id))
++    if (!role) return
++    onAddRole(role)
++    searchRef.current?.select()
++  }
++
++  const close = () => (wide ? setHidden(true) : setDrawerOpen(false))
++
++  if (!open) {
++    return (
++      <div className="doupe-sidebar-open no-print">
++        <Button
++          size="3"
++          radius="full"
++          onClick={() => (wide ? setHidden(false) : setDrawerOpen(true))}
++        >
++          <Users size={18} />
++          {text('Characters')}
++        </Button>
++      </div>
++    )
++  }
++
++  // "Recommended Travellers" are the script's; the sidebar has all of them
++  const teamOptions = TEAMS.map((teamId) => ({
++    team: teamId,
++    label:
++      teamId === Team.Traveler ? text('Travellers') : teamLabels[teamId].label,
++  }))
++  const labelOf = (teamId: string) =>
++    teamOptions.find((option) => option.team === teamId)?.label ?? teamId
++
++  return (
++    <>
++      {!wide && (
++        <div
++          className="doupe-sidebar-backdrop no-print"
++          onClick={() => setDrawerOpen(false)}
++        />
++      )}
++      <aside
++        className={`doupe-sidebar no-print ${wide ? 'is-docked' : 'is-drawer'}`}
++        aria-label={text('Characters')}
++      >
++        <Flex className="doupe-sidebar-top" align="center" justify="between">
++          <span className="doupe-sidebar-title">{text('Characters')}</span>
++          <IconButton
++            variant="ghost"
++            color="gray"
++            size="2"
++            onClick={close}
++            aria-label={wide ? text('Hide the characters') : t('Close')}
++            title={wide ? text('Hide the characters') : t('Close')}
++          >
++            {wide ? <ChevronsLeft size={20} /> : <X size={20} />}
++          </IconButton>
++        </Flex>
++
++        <Flex className="doupe-sidebar-panel" direction="column">
++          <Flex direction="column" gap="2" p="3" pb="2">
++            <RoleSetSelect {...roleSet} />
++            <Flex align="center" gap="2">
++              <Text
++                as="label"
++                htmlFor="doupe-sidebar-team"
++                size="2"
++                color="gray"
++              >
++                {text('Show')}
++              </Text>
++              <Select.Root value={team} onValueChange={setTeam}>
++                <Select.Trigger id="doupe-sidebar-team" style={{ flex: 1 }} />
++                <Select.Content position="popper">
++                  <Select.Item value={ALL_TEAMS}>
++                    {text('All teams')}
++                  </Select.Item>
++                  <Select.Separator />
++                  {teamOptions.map((option) => (
++                    <Select.Item key={option.team} value={option.team}>
++                      {option.label}
++                    </Select.Item>
++                  ))}
++                </Select.Content>
++              </Select.Root>
++            </Flex>
++            <TextField.Root
++              ref={searchRef}
++              placeholder={text('Search… (Enter adds the first)')}
++              value={search}
++              onChange={(e) => setSearch(e.target.value)}
++              onKeyDown={(e) => {
++                if (e.key === 'Enter') {
++                  e.preventDefault()
++                  addFirst()
++                } else if (e.key === 'Escape' && search) {
++                  e.preventDefault()
++                  setSearch('')
++                }
++              }}
++              aria-label={t('Search characters...')}
++            >
++              <TextField.Slot>
++                <Search size={16} />
++              </TextField.Slot>
++              {search && (
++                <TextField.Slot>
++                  <IconButton
++                    size="1"
++                    variant="ghost"
++                    color="gray"
++                    onClick={() => setSearch('')}
++                    aria-label={t('Clear')}
++                  >
++                    <X size={14} />
++                  </IconButton>
++                </TextField.Slot>
++              )}
++            </TextField.Root>
++            {scriptRoles.length === 0 && (
++              <Text size="1" color="gray">
++                {text(
++                  'Click a character to add it to the script, click it again to take it out.',
++                )}
++              </Text>
++            )}
++          </Flex>
++
++          <div className="doupe-sidebar-list">
++            {groups.length === 0 ? (
++              <Text as="p" size="2" color="gray" align="center" m="4">
++                {roleSet.status ?? text('No characters found')}
++              </Text>
++            ) : (
++              groups.map((group) => (
++                <section key={group.team}>
++                  <Flex
++                    className="doupe-sidebar-team"
++                    align="center"
++                    justify="between"
++                    style={{
++                      color: `var(--${TEAM_CONFIG[group.team].color}-11)`,
++                    }}
++                  >
++                    <span>{labelOf(group.team)}</span>
++                    {(inScriptByTeam.get(group.team) ?? 0) > 0 && (
++                      <span
++                        className="doupe-sidebar-team-count"
++                        title={text('In the script')}
++                      >
++                        <Check size={12} />
++                        {inScriptByTeam.get(group.team)}
++                      </span>
++                    )}
++                  </Flex>
++                  {group.roles.map((role) => (
++                    <RoleRow
++                      key={role.id}
++                      role={role}
++                      name={formatRoleDisplayName(role, showEnglishNames)}
++                      edition={EDITION_TAGS[roleSet.edition(role) ?? ''] ?? ''}
++                      collection={roleSet.collection(role)}
++                      isInScript={inScript.has(role.id)}
++                      locked={lockedRoles?.[role.id]}
++                      abilityShown={shownAbilities.has(role.id)}
++                      showLabel={text('Show the ability')}
++                      hideLabel={text('Hide the ability')}
++                      onToggle={toggleRole}
++                      onToggleAbility={toggleAbility}
++                    />
++                  ))}
++                </section>
++              ))
++            )}
++          </div>
++        </Flex>
++      </aside>
++    </>
++  )
++}
++
++const RoleRow = memo(function RoleRow({
++  role,
++  name,
++  edition,
++  collection,
++  isInScript,
++  locked,
++  abilityShown,
++  showLabel,
++  hideLabel,
++  onToggle,
++  onToggleAbility,
++}: {
++  role: Role
++  name: string
++  edition: string
++  collection?: string
++  isInScript: boolean
++  /** Why it cannot be taken out of the script */
++  locked?: string
++  abilityShown: boolean
++  showLabel: string
++  hideLabel: string
++  onToggle: (role: Role, isInScript: boolean) => void
++  onToggleAbility: (roleId: string) => void
++}) {
++  const color = TEAM_CONFIG[role.team as Team]?.color ?? 'gray'
++  const lockedIn = isInScript && !!locked
++
++  return (
++    <div
++      className={`doupe-sidebar-role${isInScript ? ' is-in-script' : ''}`}
++      style={isInScript ? { backgroundColor: `var(--${color}-a4)` } : undefined}
++    >
++      <Flex align="center">
++        <button
++          type="button"
++          className="doupe-sidebar-role-main"
++          onClick={() => !lockedIn && onToggle(role, isInScript)}
++          aria-pressed={isInScript}
++          aria-disabled={lockedIn || undefined}
++          title={lockedIn ? locked : undefined}
++        >
++          {role.image ? (
++            <img
++              src={getProxiedImageUrl(role.image, 64)}
++              alt=""
++              loading="lazy"
++              decoding="async"
++            />
++          ) : (
++            <span className="doupe-sidebar-role-noimage" />
++          )}
++          <span className="doupe-sidebar-role-name">
++            <span>{name}</span>
++            {collection && <small>{collection}</small>}
++          </span>
++          {edition && (
++            <span className="doupe-sidebar-role-edition">{edition}</span>
++          )}
++          {isInScript &&
++            (lockedIn ? (
++              <Lock
++                size={14}
++                style={{ color: 'var(--gray-10)', flexShrink: 0 }}
++              />
++            ) : (
++              <Check
++                size={16}
++                style={{ color: `var(--${color}-11)`, flexShrink: 0 }}
++              />
++            ))}
++        </button>
++        <button
++          type="button"
++          className={`doupe-sidebar-role-more${abilityShown ? ' is-open' : ''}`}
++          onClick={() => onToggleAbility(role.id)}
++          aria-expanded={abilityShown}
++          aria-label={abilityShown ? hideLabel : showLabel}
++          title={abilityShown ? hideLabel : showLabel}
++        >
++          <ChevronDown size={16} />
++        </button>
++      </Flex>
++      {abilityShown && (
++        <p className="doupe-sidebar-role-ability">{role.ability}</p>
++      )}
++    </div>
++  )
++})
 diff --git a/apps/botc/src/doupe/roleSets.tsx b/apps/botc/src/doupe/roleSets.tsx
 new file mode 100644
-index 0000000..424f7c4
+index 0000000..995fcf1
 --- /dev/null
 +++ b/apps/botc/src/doupe/roleSets.tsx
-@@ -0,0 +1,266 @@
+@@ -0,0 +1,243 @@
 +/**
 + * Only in the copy of the tool run by the DoUPě Olomouc club at skript.doupeol.cz, not in the original: the club's
 + * web applies it as a patch every time it deploys the tool (scripts/script-tool.patch there).
 + *
-+ * - The dialog for adding a character picks from one set at a time: the official characters, one of their
-+ *   editions, or the homebrew characters of the club's collections from botchomebrew.wiki - all of them or one
-+ *   collection - which the club's web serves with its own Czech translation. The set chosen stays for the next
-+ *   dialog and the next visit.
++ * - The dialog for adding a character and the sidebar with the characters (RoleSidebar) pick from one set at a
++ *   time: the official characters, one of their editions, or the homebrew characters of the club's collections from
++ *   botchomebrew.wiki - all of them or one collection - which the club's web serves with its own Czech translation.
++ *   The set chosen is the same in both and stays for the next visit.
 + * - "New script": an empty script to add characters to.
 + */
 +import { useEffect, useMemo, useState } from 'react'
@@ -129,35 +608,12 @@ index 0000000..424f7c4
 +import { create } from 'zustand'
 +import { persist, createJSONStorage } from 'zustand/middleware'
 +import type { Role } from '@/types'
++import { useDoupeText } from './text'
 +
 +/** The club's web; VITE_DOUPE_URL points the tool at another copy of it (a local one) */
 +const DOUPE_URL = (
 +  import.meta.env.VITE_DOUPE_URL || 'https://www.doupeol.cz'
 +).replace(/\/$/, '')
-+
-+/** The texts in Czech, the club's language; any other language of the tool gets the English ones */
-+const CS: Record<string, string> = {
-+  'Set': 'Sada',
-+  'Official characters': 'Oficiální postavy',
-+  'Experimental characters': 'Experimentální postavy',
-+  'All collections': 'Všechny kolekce',
-+  'All characters': 'Všechny postavy',
-+  'Loading the homebrew characters…': 'Načítám homebrew postavy…',
-+  'The homebrew characters could not be loaded from doupeol.cz':
-+    'Homebrew postavy se nepodařilo načíst z doupeol.cz',
-+  'None in this set - try "All characters"':
-+    'V této sadě nic není – zkus „Všechny postavy“',
-+  'New script': 'Nový script',
-+  'New': 'Nový',
-+  'An empty script to add characters to':
-+    'Prázdný script, do kterého přidáš postavy',
-+}
-+
-+function useDoupeText() {
-+  const { i18n } = useTranslation()
-+  const cs = (i18n.language ?? 'en').startsWith('cs')
-+  return (text: string) => (cs && CS[text]) || text
-+}
 +
 +/** A collection of homebrew characters, each in full as a script's entry */
 +interface Collection {
@@ -173,7 +629,7 @@ index 0000000..424f7c4
 +
 +const loading = new Map<string, Promise<Collection[]>>()
 +
-+/** Loaded once per language; one that failed is tried again by the next dialog */
++/** Loaded once per language; one that failed is tried again by the next dialog or sidebar opened */
 +function loadHomebrew(language: string) {
 +  let collections = loading.get(language)
 +  if (!collections) {
@@ -378,3 +834,308 @@ index 0000000..424f7c4
 +    </Tooltip>
 +  )
 +}
+diff --git a/apps/botc/src/doupe/roleSidebar.css b/apps/botc/src/doupe/roleSidebar.css
+new file mode 100644
+index 0000000..21c2dc1
+--- /dev/null
++++ b/apps/botc/src/doupe/roleSidebar.css
+@@ -0,0 +1,223 @@
++/* The sidebar with the characters (RoleSidebar.tsx), only in the club's copy of the tool */
++
++:root {
++  --doupe-sidebar-width: 320px;
++}
++
++/* beside the script on a wide screen (RoleSidebar's WIDE): the page moves aside for it, header included */
++@media screen and (min-width: 1100px) {
++  html.doupe-sidebar-docked body {
++    padding-left: var(--doupe-sidebar-width) !important;
++  }
++}
++
++.doupe-sidebar {
++  position: fixed;
++  top: 0;
++  bottom: 0;
++  left: 0;
++  width: var(--doupe-sidebar-width);
++  display: flex;
++  flex-direction: column;
++  background-image: url(/bg-tile-purple-pattern.webp);
++  background-repeat: repeat;
++  background-size: 100px;
++  color: #f1ead8;
++  /* under the tool's dialogs, which come later in the page */
++  z-index: 0;
++}
++
++/* over the script on a narrow screen, above the tool's sticky header */
++.doupe-sidebar.is-drawer {
++  width: min(var(--doupe-sidebar-width), 88vw);
++  z-index: 1002;
++  box-shadow: 4px 0 16px rgba(0, 0, 0, 0.35);
++}
++
++.doupe-sidebar-backdrop {
++  position: fixed;
++  inset: 0;
++  background: rgba(0, 0, 0, 0.35);
++  z-index: 1001;
++}
++
++.doupe-sidebar-top {
++  padding: 12px 12px 8px 16px;
++}
++
++.doupe-sidebar-top .rt-IconButton {
++  color: #f1ead8;
++}
++
++.doupe-sidebar-title {
++  font-family: 'LHF Unlovable', serif;
++  font-size: 32px;
++  line-height: 1;
++}
++
++.doupe-sidebar-panel {
++  flex: 1;
++  min-height: 0;
++  margin: 0 12px 12px;
++  border-radius: var(--radius-3);
++  background-color: #f1ead8;
++  color: var(--gray-12);
++  overflow: hidden;
++}
++
++.doupe-sidebar-list {
++  flex: 1;
++  min-height: 0;
++  overflow-y: auto;
++  overscroll-behavior: contain;
++  padding-bottom: 8px;
++}
++
++.doupe-sidebar-team {
++  position: sticky;
++  top: 0;
++  z-index: 1;
++  padding: 6px 12px 4px;
++  background-color: #e8dfc7;
++  font-size: 12px;
++  font-weight: 600;
++  letter-spacing: 0.06em;
++  text-transform: uppercase;
++}
++
++.doupe-sidebar-team-count {
++  display: inline-flex;
++  align-items: center;
++  gap: 2px;
++}
++
++.doupe-sidebar-role {
++  /* hundreds of rows: the browser leaves those off screen alone */
++  content-visibility: auto;
++  contain-intrinsic-size: auto 40px;
++  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
++}
++
++.doupe-sidebar-role-main {
++  flex: 1;
++  min-width: 0;
++  display: flex;
++  align-items: center;
++  gap: 8px;
++  padding: 4px 4px 4px 10px;
++  border: 0;
++  background: none;
++  color: inherit;
++  font: inherit;
++  font-size: var(--font-size-2);
++  text-align: start;
++  cursor: pointer;
++}
++
++.doupe-sidebar-role-main[aria-disabled='true'] {
++  cursor: default;
++}
++
++.doupe-sidebar-role:hover {
++  background-color: rgba(0, 0, 0, 0.05);
++}
++
++.doupe-sidebar-role-main:focus-visible,
++.doupe-sidebar-role-more:focus-visible {
++  outline: 2px solid var(--focus-8);
++  outline-offset: -2px;
++}
++
++.doupe-sidebar-role-main img,
++.doupe-sidebar-role-noimage {
++  width: 32px;
++  height: 32px;
++  flex-shrink: 0;
++  object-fit: contain;
++}
++
++.doupe-sidebar-role-name {
++  flex: 1;
++  min-width: 0;
++  display: flex;
++  flex-direction: column;
++  overflow-wrap: anywhere;
++}
++
++.doupe-sidebar-role.is-in-script .doupe-sidebar-role-name > span {
++  font-weight: 600;
++}
++
++.doupe-sidebar-role-name small {
++  font-size: var(--font-size-1);
++  color: var(--gray-10);
++  line-height: 1.2;
++}
++
++.doupe-sidebar-role-edition {
++  flex-shrink: 0;
++  font-size: 11px;
++  color: var(--gray-10);
++}
++
++.doupe-sidebar-role-more {
++  align-self: stretch;
++  width: 36px;
++  flex-shrink: 0;
++  display: flex;
++  align-items: center;
++  justify-content: center;
++  border: 0;
++  background: none;
++  color: var(--gray-10);
++  cursor: pointer;
++}
++
++.doupe-sidebar-role-more:hover {
++  color: var(--gray-12);
++}
++
++.doupe-sidebar-role-more svg {
++  transition: transform 0.15s;
++}
++
++.doupe-sidebar-role-more.is-open svg {
++  transform: rotate(180deg);
++}
++
++.doupe-sidebar-role-ability {
++  margin: 0;
++  padding: 0 12px 8px 50px;
++  font-size: var(--font-size-1);
++  line-height: 1.4;
++  color: var(--gray-11);
++}
++
++/* the button that brings the sidebar back, where the club's buttons (#doupe-bar, scripts/script-tool-html.mjs)
++   are not: they are bottom right and make room while it is there */
++.doupe-sidebar-open {
++  position: fixed;
++  left: 12px;
++  bottom: 12px;
++  z-index: 999;
++}
++
++.doupe-sidebar-open .rt-Button {
++  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
++}
++
++html.doupe-sidebar-button #doupe-bar {
++  left: 150px;
++}
++
++html.doupe-sidebar-drawer #doupe-bar {
++  display: none;
++}
++
++@media print {
++  .doupe-sidebar,
++  .doupe-sidebar-backdrop,
++  .doupe-sidebar-open {
++    display: none !important;
++  }
++}
+diff --git a/apps/botc/src/doupe/text.ts b/apps/botc/src/doupe/text.ts
+new file mode 100644
+index 0000000..f6001ab
+--- /dev/null
++++ b/apps/botc/src/doupe/text.ts
+@@ -0,0 +1,42 @@
++/**
++ * The texts of the club's additions (src/doupe) in Czech, the club's language; any other language of the tool gets
++ * the English ones. Kept here rather than in the tool's locales, which are upstream's.
++ */
++import { useTranslation } from 'react-i18next'
++
++const CS: Record<string, string> = {
++  // roleSets
++  'Set': 'Sada',
++  'Official characters': 'Oficiální postavy',
++  'Experimental characters': 'Experimentální postavy',
++  'All collections': 'Všechny kolekce',
++  'All characters': 'Všechny postavy',
++  'Loading the homebrew characters…': 'Načítám homebrew postavy…',
++  'The homebrew characters could not be loaded from doupeol.cz':
++    'Homebrew postavy se nepodařilo načíst z doupeol.cz',
++  'None in this set - try "All characters"':
++    'V této sadě nic není – zkus „Všechny postavy“',
++  'New script': 'Nový script',
++  'New': 'Nový',
++  'An empty script to add characters to':
++    'Prázdný script, do kterého přidáš postavy',
++  // RoleSidebar
++  'Characters': 'Postavy',
++  'Show': 'Zobrazit',
++  'All teams': 'Všechny týmy',
++  'Travellers': 'Pocestní',
++  'Search… (Enter adds the first)': 'Hledat… (Enter přidá první)',
++  'Click a character to add it to the script, click it again to take it out.':
++    'Kliknutím postavu přidáš do scriptu, dalším kliknutím ji odebereš.',
++  'In the script': 'Ve scriptu',
++  'Show the ability': 'Ukázat schopnost',
++  'Hide the ability': 'Skrýt schopnost',
++  'Hide the characters': 'Skrýt postavy',
++  'No characters found': 'Žádná postava neodpovídá',
++}
++
++export function useDoupeText() {
++  const { i18n } = useTranslation()
++  const cs = (i18n.language ?? 'en').startsWith('cs')
++  return (text: string) => (cs && CS[text]) || text
++}
+diff --git a/apps/botc/src/routes/index.tsx b/apps/botc/src/routes/index.tsx
+index 46ff275..fdf0f9b 100644
+--- a/apps/botc/src/routes/index.tsx
++++ b/apps/botc/src/routes/index.tsx
+@@ -35,6 +35,7 @@ import {
+ import { useSavedScriptsStore } from '@/stores/savedScriptsStore'
+ import { sendEvent } from '@/utils/analytics'
+ import { useTranslation } from 'react-i18next'
++import { RoleSidebar } from '@/doupe/RoleSidebar'
+ 
+ export const Route = createFileRoute('/')({ component: App })
+ 
+@@ -724,6 +725,15 @@ function App() {
+   return (
+     <>
+       <AppHeader language={language} onLanguageChange={changeLanguage} />
++      {scriptData && scriptRoles && (
++        <RoleSidebar
++          roles={roles}
++          scriptRoles={scriptRoles}
++          lockedRoles={lockedRoles}
++          onAddRole={handleAddRole}
++          onRemoveRole={handleRemoveRole}
++        />
++      )}
+       <Container size="4" p="4">
+         <Flex direction="column" gap="9">
+           {/* File upload controls */}

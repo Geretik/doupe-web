@@ -12,8 +12,8 @@ export function generateStaticParams() {
 /**
  * The homebrew characters of the club's collections in this language, each in full as a script's entry, by
  * collection: the club's script tool (skript.doupeol.cz, scripts/script-tool.patch) offers them in its dialog for
- * adding a character, a collection being one of the sets to pick from. Public and open to other origins: what the
- * wiki publishes, with the club's Czech translation.
+ * adding a character and in its sidebar with the characters, a collection being one of the sets to pick from. Public
+ * and open to other origins: what the wiki publishes, with the club's Czech translation.
  */
 export async function GET(_req: Request, { params }: { params: Promise<{ lang: string }> }) {
   const locale = (await params).lang as Locale;

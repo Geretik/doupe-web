@@ -14,8 +14,13 @@ export type ChangelogEntry = { /** YYYY-MM-DD */ date: string; title: string; it
 export const changelog: ChangelogEntry[] = [
   {
     date: "2026-10-12",
-    title: "Oprávnění účtů: Krvavka a Klub",
+    title: "Oprávnění účtů: Krvavka a Klub, postavy v liště script toolu",
     items: [
+      {
+        for: "organizers",
+        text: "Klubový script tool má vlevo lištu s postavami jako ten oficiální: kliknutím postavu přidáš do scriptu, dalším ji odebereš – bez + a okna u každého týmu. Nahoře vybereš sadu (stejnou jako v okně Přidat postavu) a tým, hledáš česky i anglicky, klidně bez diakritiky, a Enter přidá první nalezenou. Šipka u postavy ukáže její schopnost. Na počítači lištu schováš šipkami «, na telefonu ji otevře tlačítko Postavy vlevo dole.",
+        href: "https://skript.doupeol.cz",
+      },
       {
         for: "organizers",
         text: "Správce v Účtech u každého účtu změní roli (správce / organizátor) a nastaví, jestli organizátor Krvavku a Klub nevidí, jen čte, nebo upravuje; totéž zvolí už v pozvánce. Kdo část jen čte, vidí ji bez tlačítek a formulářů, které něco mění. Texty stránek Krvavky patří ke Krvavce, úvodní stránka klubu ke Klubu; e-maily k termínům chodí jen těm, kdo Krvavku upravují. Dosavadní účty můžou dál všechno.",
