@@ -587,23 +587,30 @@ index 0000000..dcc6c56
 +})
 diff --git a/apps/botc/src/doupe/roleSets.tsx b/apps/botc/src/doupe/roleSets.tsx
 new file mode 100644
-index 0000000..995fcf1
+index 0000000..45b8470
 --- /dev/null
 +++ b/apps/botc/src/doupe/roleSets.tsx
-@@ -0,0 +1,243 @@
+@@ -0,0 +1,402 @@
 +/**
 + * Only in the copy of the tool run by the DoUPě Olomouc club at skript.doupeol.cz, not in the original: the club's
 + * web applies it as a patch every time it deploys the tool (scripts/script-tool.patch there).
 + *
-+ * - The dialog for adding a character and the sidebar with the characters (RoleSidebar) pick from one set at a
-+ *   time: the official characters, one of their editions, or the homebrew characters of the club's collections from
-+ *   botchomebrew.wiki - all of them or one collection - which the club's web serves with its own Czech translation.
-+ *   The set chosen is the same in both and stays for the next visit.
++ * - The dialog for adding a character and the sidebar with the characters (RoleSidebar) pick from the sets chosen
++ *   by check boxes, any of them together: the editions of the official characters and the homebrew collections of
++ *   the club from botchomebrew.wiki, which the club's web serves with its own Czech translation. The sets chosen are
++ *   the same in both and stay for the next visit.
 + * - "New script": an empty script to add characters to.
 + */
 +import { useEffect, useMemo, useState } from 'react'
-+import { Button, Flex, Select, Text, Tooltip } from '@radix-ui/themes'
-+import { FilePlus } from 'lucide-react'
++import {
++  Button,
++  Checkbox,
++  Flex,
++  Popover,
++  Text,
++  Tooltip,
++} from '@radix-ui/themes'
++import { ChevronDown, FilePlus } from 'lucide-react'
 +import { useTranslation } from 'react-i18next'
 +import { create } from 'zustand'
 +import { persist, createJSONStorage } from 'zustand/middleware'
@@ -645,39 +652,63 @@ index 0000000..995fcf1
 +  return collections
 +}
 +
-+const OFFICIAL = 'official'
-+const EDITIONS = ['tb', 'bmr', 'snv', 'carousel']
-+const isEdition = (set: string) => EDITIONS.includes(set)
-+const HOMEBREW = 'homebrew'
-+const ALL = 'all'
++/** The official characters by edition; the Fabled and Loric are no edition's own and always offered */
++const EDITIONS = [
++  { id: 'tb', name: 'Trouble Brewing', short: 'TB' },
++  { id: 'bmr', name: 'Bad Moon Rising', short: 'BMR' },
++  { id: 'snv', name: 'Sects & Violets', short: 'SnV' },
++  { id: 'carousel', name: 'Experimental characters', short: 'Exp' },
++]
++const EDITION_IDS = EDITIONS.map((edition) => edition.id)
++const isAlwaysOffered = (role: Role) =>
++  role.team === 'fabled' || role.team === 'loric'
 +const collectionSet = (key: string) => `hb:${key}`
++/** Every collection the club's web serves, those it adds later too */
++const ALL_COLLECTIONS = 'hb:*'
 +
++/** The sets chosen: editions and collections (hb:<key>) */
 +const useRoleSetStore = create<{
-+  roleSet: string
-+  setRoleSet: (roleSet: string) => void
++  sets: string[]
++  setSets: (sets: string[]) => void
 +}>()(
 +  persist(
 +    (set) => ({
-+      roleSet: OFFICIAL,
-+      setRoleSet: (roleSet) => set({ roleSet }),
++      sets: EDITION_IDS,
++      setSets: (sets) => set({ sets }),
 +    }),
 +    {
 +      name: 'doupe-role-set',
 +      storage: createJSONStorage(() => localStorage),
++      version: 1,
++      // 0: one set at a time - the official characters, an edition, all collections, one, or everything
++      migrate: (persisted, version) => {
++        if (version > 0) return persisted as { sets: string[] }
++        const roleSet = (persisted as { roleSet?: string } | undefined)?.roleSet
++        const sets =
++          roleSet === 'all'
++            ? [...EDITION_IDS, ALL_COLLECTIONS]
++            : roleSet === 'homebrew'
++              ? [ALL_COLLECTIONS]
++              : roleSet &&
++                  (EDITION_IDS.includes(roleSet) || roleSet.startsWith('hb:'))
++                ? [roleSet]
++                : EDITION_IDS
++        return { sets }
++      },
 +    },
 +  ),
 +)
 +
 +/**
-+ * The characters of the set chosen, for the dialog to filter by team and search as before, and what to show
-+ * about them. The homebrew ones are loaded when a dialog opens.
++ * The characters of the sets chosen, for the dialog and the sidebar to filter by team and search, and what to show
++ * about them. The homebrew ones are loaded when a dialog or the sidebar opens.
 + */
 +export function useRoleSet(allRoles: Role[], open: boolean) {
 +  const { i18n } = useTranslation()
 +  const text = useDoupeText()
 +  const language = homebrewLanguage(i18n.language)
-+  const roleSet = useRoleSetStore((state) => state.roleSet)
-+  const setRoleSet = useRoleSetStore((state) => state.setRoleSet)
++  const storedSets = useRoleSetStore((state) => state.sets)
++  const setSets = useRoleSetStore((state) => state.setSets)
 +  const [homebrew, setHomebrew] = useState<
 +    Record<string, Collection[] | 'error'>
 +  >({})
@@ -707,104 +738,232 @@ index 0000000..995fcf1
 +      ),
 +    [collections],
 +  )
-+  // a collection no longer served is no set to pick from
-+  const set =
-+    roleSet.startsWith('hb:') &&
-+    Array.isArray(loaded) &&
-+    !collections.some((c) => collectionSet(c.key) === roleSet)
-+      ? OFFICIAL
-+      : roleSet
++  // once the collections are in, "all of them" is each of them, and one no longer served is no set to pick
++  const sets = useMemo(
++    () =>
++      Array.isArray(loaded)
++        ? storedSets.flatMap((set) =>
++            set === ALL_COLLECTIONS
++              ? collections.map((c) => collectionSet(c.key))
++              : set.startsWith('hb:') &&
++                  !collections.some((c) => collectionSet(c.key) === set)
++                ? []
++                : [set],
++          )
++        : storedSets,
++    [storedSets, loaded, collections],
++  )
 +
-+  const roles = useMemo(() => {
-+    if (set === OFFICIAL) return allRoles
-+    if (isEdition(set)) {
-+      // the Fabled and Loric are no edition's own: every edition has them
-+      return allRoles.filter(
-+        (role) =>
-+          role.edition === set ||
-+          role.team === 'fabled' ||
-+          role.team === 'loric',
-+      )
-+    }
-+    if (set === ALL) {
-+      return [...allRoles, ...collections.flatMap((c) => c.characters)]
-+    }
-+    if (set === HOMEBREW) return collections.flatMap((c) => c.characters)
-+    return (
-+      collections.find((c) => collectionSet(c.key) === set)?.characters ?? []
-+    )
-+  }, [set, allRoles, collections])
++  const roles = useMemo(
++    () =>
++      sets.length === 0
++        ? []
++        : [
++            ...allRoles.filter(
++              (role) => isAlwaysOffered(role) || sets.includes(role.edition),
++            ),
++            ...collections
++              .filter((c) => sets.includes(collectionSet(c.key)))
++              .flatMap((c) => c.characters),
++          ],
++    [sets, allRoles, collections],
++  )
 +
-+  const wantsHomebrew = set !== OFFICIAL && !isEdition(set)
-+  /** Instead of "No characters found" when the set has none to list */
++  const wantsHomebrew = sets.some((set) => set.startsWith('hb:'))
++  const chosenCollections = sets.filter((set) => set.startsWith('hb:')).length
++  /** Instead of "No characters found" when the sets have none to list */
 +  const status =
-+    set === OFFICIAL
-+      ? undefined
++    sets.length === 0
++      ? text('Choose at least one set')
 +      : wantsHomebrew && loaded === 'error'
 +        ? text('The homebrew characters could not be loaded from doupeol.cz')
 +        : wantsHomebrew && !loaded
 +          ? text('Loading the homebrew characters…')
-+          : set === ALL
-+            ? undefined
-+            : text('None in this set - try "All characters"')
++          : undefined
 +
 +  return {
-+    roleSet: set,
-+    setRoleSet,
++    sets,
++    setSets,
 +    collections,
++    homebrewStatus:
++      loaded === 'error'
++        ? text('The homebrew characters could not be loaded from doupeol.cz')
++        : loaded
++          ? undefined
++          : text('Loading the homebrew characters…'),
 +    roles,
 +    status,
 +    /** The column with the edition: homebrew for those of the collections */
 +    edition: (role: Role) => (collectionOf.has(role.id) ? 'hb' : role.edition),
-+    /** The collection of a homebrew character, unless the set is that one collection */
++    /** The collection of a homebrew character, unless only one is chosen */
 +    collection: (role: Role) =>
-+      set.startsWith('hb:') ? undefined : collectionOf.get(role.id)?.name,
++      chosenCollections === 1 ? undefined : collectionOf.get(role.id)?.name,
 +  }
 +}
 +
++/** Czech has three forms: 1 kolekce, 2-4 kolekce, 5 kolekcí */
++function collectionCount(count: number, cs: boolean) {
++  if (!cs) return `${count} collection${count === 1 ? '' : 's'}`
++  return `${count} ${count >= 5 || count === 0 ? 'kolekcí' : 'kolekce'}`
++}
++
++/** The sets to pick characters from, any of the editions and collections, in a box with check boxes */
 +export function RoleSetSelect({
-+  roleSet,
-+  setRoleSet,
++  sets,
++  setSets,
 +  collections,
++  homebrewStatus,
 +}: Pick<
 +  ReturnType<typeof useRoleSet>,
-+  'roleSet' | 'setRoleSet' | 'collections'
++  'sets' | 'setSets' | 'collections' | 'homebrewStatus'
 +>) {
++  const { i18n } = useTranslation()
 +  const text = useDoupeText()
++  const cs = (i18n.language ?? 'en').startsWith('cs')
++
++  const has = (set: string) => sets.includes(set)
++  const collectionSets = collections.map((c) => collectionSet(c.key))
++  /** All the collections are kept as all of them, so that those the club adds later come too */
++  const save = (chosen: string[]) =>
++    setSets(
++      collectionSets.length > 0 &&
++        collectionSets.every((set) => chosen.includes(set))
++        ? [...chosen.filter((set) => !set.startsWith('hb:')), ALL_COLLECTIONS]
++        : chosen,
++    )
++  const toggle = (set: string, on: boolean) =>
++    save(on ? [...sets, set] : sets.filter((s) => s !== set))
++  const editionsChosen = EDITION_IDS.filter(has)
++  const collectionsChosen = sets.filter((set) => set.startsWith('hb:'))
++  const allCollections = collectionSets.length > 0 && collectionSets.every(has)
++  /** A group's box: checked, unchecked, or some of it */
++  const groupState = (chosen: number, all: boolean) =>
++    all ? true : chosen > 0 ? ('indeterminate' as const) : false
++  const setGroup = (group: string[], on: boolean) =>
++    save([...sets.filter((set) => !group.includes(set)), ...(on ? group : [])])
++
++  const official =
++    editionsChosen.length === EDITION_IDS.length
++      ? text('Official')
++      : EDITIONS.filter((e) => has(e.id))
++          .map((e) => e.short)
++          .join(', ')
++  const homebrew = allCollections
++    ? 'Homebrew'
++    : collectionsChosen.length === 1
++      ? (collections.find((c) => collectionSet(c.key) === collectionsChosen[0])
++          ?.name ?? collectionCount(1, cs))
++      : collectionsChosen.length > 1
++        ? collectionCount(collectionsChosen.length, cs)
++        : ''
++  const summary =
++    editionsChosen.length === EDITION_IDS.length && allCollections
++      ? text('All characters')
++      : [official, homebrew].filter(Boolean).join(' + ') ||
++        text('Nothing chosen')
 +
 +  return (
 +    <Flex align="center" gap="2">
 +      <Text as="label" htmlFor="doupe-role-set" size="2" color="gray">
-+        {text('Set')}
++        {text('Sets')}
 +      </Text>
-+      <Select.Root value={roleSet} onValueChange={setRoleSet}>
-+        <Select.Trigger id="doupe-role-set" style={{ flex: 1 }} />
-+        <Select.Content position="popper">
-+          <Select.Item value={OFFICIAL}>
-+            {text('Official characters')}
-+          </Select.Item>
-+          <Select.Item value="tb">Trouble Brewing</Select.Item>
-+          <Select.Item value="bmr">Bad Moon Rising</Select.Item>
-+          <Select.Item value="snv">Sects &amp; Violets</Select.Item>
-+          <Select.Item value="carousel">
-+            {text('Experimental characters')}
-+          </Select.Item>
-+          <Select.Separator />
-+          <Select.Group>
-+            <Select.Label>Homebrew (botchomebrew.wiki)</Select.Label>
-+            <Select.Item value={HOMEBREW}>
-+              {text('All collections')}
-+            </Select.Item>
-+            {collections.map((c) => (
-+              <Select.Item key={c.key} value={collectionSet(c.key)}>
-+                {c.name} ({c.characters.length})
-+              </Select.Item>
++      <Popover.Root>
++        <Popover.Trigger>
++          <Button
++            id="doupe-role-set"
++            variant="surface"
++            color="gray"
++            style={{ flex: 1, minWidth: 0, justifyContent: 'space-between' }}
++          >
++            <span
++              style={{
++                overflow: 'hidden',
++                textOverflow: 'ellipsis',
++                whiteSpace: 'nowrap',
++                color: 'var(--gray-12)',
++              }}
++            >
++              {summary}
++            </span>
++            <ChevronDown size={14} style={{ flexShrink: 0 }} />
++          </Button>
++        </Popover.Trigger>
++        <Popover.Content
++          align="start"
++          size="1"
++          style={{
++            width: 'max(var(--radix-popover-trigger-width), 260px)',
++            maxWidth: 'calc(100vw - 24px)',
++            maxHeight:
++              'min(70vh, var(--radix-popover-content-available-height))',
++            overflowY: 'auto',
++          }}
++        >
++          <Flex direction="column" gap="1">
++            <Text as="label" size="2" weight="bold">
++              <Flex gap="2" align="center">
++                <Checkbox
++                  checked={groupState(
++                    editionsChosen.length,
++                    editionsChosen.length === EDITION_IDS.length,
++                  )}
++                  onCheckedChange={(on) => setGroup(EDITION_IDS, on === true)}
++                />
++                {text('Official characters')}
++              </Flex>
++            </Text>
++            {EDITIONS.map((edition) => (
++              <Text as="label" size="2" key={edition.id} ml="4">
++                <Flex gap="2" align="center">
++                  <Checkbox
++                    checked={has(edition.id)}
++                    onCheckedChange={(on) => toggle(edition.id, on === true)}
++                  />
++                  {text(edition.name)}
++                </Flex>
++              </Text>
 +            ))}
-+          </Select.Group>
-+          <Select.Separator />
-+          <Select.Item value={ALL}>{text('All characters')}</Select.Item>
-+        </Select.Content>
-+      </Select.Root>
++
++            <Text as="label" size="2" weight="bold" mt="2">
++              <Flex gap="2" align="center">
++                <Checkbox
++                  disabled={collections.length === 0}
++                  checked={groupState(collectionsChosen.length, allCollections)}
++                  onCheckedChange={(on) =>
++                    setGroup(collectionSets, on === true)
++                  }
++                />
++                Homebrew (botchomebrew.wiki)
++              </Flex>
++            </Text>
++            {homebrewStatus ? (
++              <Text size="1" color="gray" ml="4">
++                {homebrewStatus}
++              </Text>
++            ) : (
++              collections.map((c) => (
++                <Text as="label" size="2" key={c.key} ml="4">
++                  <Flex gap="2" align="center">
++                    <Checkbox
++                      checked={has(collectionSet(c.key))}
++                      onCheckedChange={(on) =>
++                        toggle(collectionSet(c.key), on === true)
++                      }
++                    />
++                    <span>
++                      {c.name} <Text color="gray">({c.characters.length})</Text>
++                    </span>
++                  </Flex>
++                </Text>
++              ))
++            )}
++
++            <Text size="1" color="gray" mt="2">
++              {text('The Fabled and Loric are always offered.')}
++            </Text>
++          </Flex>
++        </Popover.Content>
++      </Popover.Root>
 +    </Flex>
 +  )
 +}
@@ -1065,10 +1224,10 @@ index 0000000..21c2dc1
 +}
 diff --git a/apps/botc/src/doupe/text.ts b/apps/botc/src/doupe/text.ts
 new file mode 100644
-index 0000000..368d29f
+index 0000000..74004a2
 --- /dev/null
 +++ b/apps/botc/src/doupe/text.ts
-@@ -0,0 +1,42 @@
+@@ -0,0 +1,44 @@
 +/**
 + * The texts of the club's additions (src/doupe) in Czech, the club's language; any other language of the tool gets
 + * the English ones. Kept here rather than in the tool's locales, which are upstream's.
@@ -1077,16 +1236,18 @@ index 0000000..368d29f
 +
 +const CS: Record<string, string> = {
 +  // roleSets
-+  'Set': 'Sada',
++  'Sets': 'Sady',
 +  'Official characters': 'Oficiální postavy',
++  'Official': 'Oficiální',
 +  'Experimental characters': 'Experimentální postavy',
-+  'All collections': 'Všechny kolekce',
 +  'All characters': 'Všechny postavy',
++  'Nothing chosen': 'Nic nevybráno',
++  'Choose at least one set': 'Vyber aspoň jednu sadu',
++  'The Fabled and Loric are always offered.':
++    'Báje a Loric jsou v nabídce vždy.',
 +  'Loading the homebrew characters…': 'Načítám homebrew postavy…',
 +  'The homebrew characters could not be loaded from doupeol.cz':
 +    'Homebrew postavy se nepodařilo načíst z doupeol.cz',
-+  'None in this set - try "All characters"':
-+    'V této sadě nic není – zkus „Všechny postavy“',
 +  'New script': 'Nový script',
 +  'New': 'Nový',
 +  'An empty script to add characters to':
