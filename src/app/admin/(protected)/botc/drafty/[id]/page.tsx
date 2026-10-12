@@ -31,7 +31,7 @@ import type { DraftSessionMember } from "@/db/schema";
 import type { Dict, Locale } from "@/i18n/dictionaries";
 import { plural } from "@/i18n/plural";
 import { getDict } from "@/i18n/server";
-import { requireAdmin } from "@/lib/admin-auth";
+import { requireAccess } from "@/lib/admin-auth";
 import { draftModes, fits } from "@/modules/botc/lib/draft/modes";
 import { listInvitableAccounts, listScriptsOfSession, sessionIdOfDraft } from "@/modules/botc/lib/draft/queries";
 import { sortRoleIds, totalRoles } from "@/modules/botc/lib/draft/roles";
@@ -89,7 +89,7 @@ function CheckLine({ check, t, locale }: { check: StartCheck; t: Dict; locale: L
  * pools, scripts and history. The URL has the draft's id; the changes go to its run (the session row).
  */
 export default async function DraftPage({ params }: { params: Promise<{ id: string }> }) {
-  const me = await requireAdmin();
+  const me = await requireAccess("botc");
   const draftId = parseId((await params).id);
   if (!draftId) notFound();
   const sessionId = await sessionIdOfDraft(draftId);

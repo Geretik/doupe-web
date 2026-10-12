@@ -1,14 +1,17 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Card } from "@/components/ui";
 import { getDict } from "@/i18n/server";
-import { requireAdmin } from "@/lib/admin-auth";
+import { canAccess, requireAdmin } from "@/lib/admin-auth";
 import { lastPageEdits } from "@/lib/site-content";
-import { SITE_PAGES } from "@/lib/site-content-defaults";
+import { pageArea, SITE_PAGES } from "@/lib/site-content-defaults";
 import { formatStamp } from "@/lib/time";
 
-/** Site texts: the public pages whose texts organisers edit, each with its last change. */
+/** Site texts: the public pages whose texts organisers edit, each with its last change; those of the parts the account sees. */
 export default async function SiteTextsPage() {
-  await requireAdmin();
+  const me = await requireAdmin();
+  const pages = SITE_PAGES.filter((p) => canAccess(me, pageArea(p)));
+  if (!pages.length) redirect("/admin");
   const [{ locale, t }, edits] = await Promise.all([getDict(), lastPageEdits()]);
   const w = t.admin.web;
   return (
@@ -18,7 +21,7 @@ export default async function SiteTextsPage() {
         <p className="mt-1 max-w-3xl text-sm text-muted">{w.intro}</p>
       </div>
       <div className="flex flex-col gap-3">
-        {SITE_PAGES.map((p) => {
+        {pages.map((p) => {
           const edit = edits.get(p.slug);
           return (
             <Link key={p.slug} href={`/admin/web/${p.slug}`} className="block">

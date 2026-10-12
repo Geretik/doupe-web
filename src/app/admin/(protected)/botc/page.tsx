@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { rotateFeedKeyAction } from "@/modules/botc/actions/sessions";
 import { ActionButton } from "@/components/admin/action-button";
-import { Card } from "@/components/ui";
+import { Alert, Card } from "@/components/ui";
 import { getDict } from "@/i18n/server";
-import { requireAdmin } from "@/lib/admin-auth";
+import { canAccess, requireAccess } from "@/lib/admin-auth";
 import { listAllSessions } from "@/modules/botc/lib/queries";
 import { effectiveRegistrationState, scheduledOpening } from "@/modules/botc/lib/registration-state";
 import { formatDate, formatShortDate, formatTime } from "@/lib/time";
@@ -11,7 +11,8 @@ import { orgFeedUrl } from "@/modules/botc/lib/org-feed";
 
 /** Krvavka in the admin: every session, the upcoming ones first, and the organiser's calendar feed. */
 export default async function SessionsPage() {
-  const me = await requireAdmin();
+  const me = await requireAccess("botc");
+  const edit = canAccess(me, "botc", "edit");
   const [{ locale, t }, sessions, feedUrl] = await Promise.all([getDict(), listAllSessions(), orgFeedUrl(me)]);
   const a = t.admin.list;
   const now = new Date();
@@ -58,10 +59,13 @@ export default async function SessionsPage() {
       <section className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-2xl font-bold">{a.upcoming}</h1>
-          <Link href="/admin/botc/novy" className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:opacity-90">
-            {a.createNew}
-          </Link>
+          {edit && (
+            <Link href="/admin/botc/novy" className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:opacity-90">
+              {a.createNew}
+            </Link>
+          )}
         </div>
+        {!edit && <Alert kind="info">{t.admin.readOnly}</Alert>}
         {upcoming.length === 0 && <p className="text-muted">{a.none}</p>}
         {upcoming.map((s) => <Row key={s.id} s={s} />)}
       </section>

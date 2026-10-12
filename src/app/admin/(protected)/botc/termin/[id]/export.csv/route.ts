@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { sessions } from "@/db/schema";
 import { getDict } from "@/i18n/server";
-import { isAdmin } from "@/lib/admin-auth";
+import { canAccess, getAdmin } from "@/lib/admin-auth";
 import { toCsv } from "@/lib/csv";
 import { listRegistrationsForSession } from "@/modules/botc/lib/queries";
 import { shownEmail } from "@/lib/retention";
@@ -12,7 +12,7 @@ import { parseId } from "@/lib/validation";
 export const dynamic = "force-dynamic";
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
-  if (!(await isAdmin())) return new Response("Unauthorized", { status: 401 });
+  if (!canAccess(await getAdmin(), "botc")) return new Response("Unauthorized", { status: 401 });
   const numId = parseId((await params).id);
   if (!numId) return new Response("Not found", { status: 404 });
   const [{ locale, t: dict }, session, regs] = await Promise.all([

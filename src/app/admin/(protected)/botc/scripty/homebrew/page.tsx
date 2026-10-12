@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Card } from "@/components/ui";
 import { getDict } from "@/i18n/server";
-import { requireAdmin } from "@/lib/admin-auth";
+import { requireAccess } from "@/lib/admin-auth";
 import {
   homebrewCollections,
   homebrewRoles,
@@ -30,7 +30,7 @@ const teams: (RoleTeam | StorytellerTeam)[] = [...roleTeams, "fabled", "loric"];
  * script for the script tool.
  */
 export default async function HomebrewPage() {
-  await requireAdmin();
+  await requireAccess("botc");
   const { locale, t } = await getDict();
   const s = t.scripts;
   const all = [...homebrewRoles, ...homebrewStorytellerRoles];

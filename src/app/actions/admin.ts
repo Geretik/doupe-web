@@ -23,14 +23,14 @@ import {
   getOpenPasswordReset,
   RESET_EMAIL_HOURS,
 } from "@/lib/admin-users";
-import { logAction } from "@/lib/admin-log";
+import { logAction, type AccountAccess } from "@/lib/admin-log";
 import { throttleLinkRequest } from "@/lib/link-throttle";
 import { LOGIN_WINDOW_MINUTES, startLoginAttempt } from "@/lib/login-limit";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { sendLoginLinkEmail, sendPasswordResetEmail } from "@/lib/email";
 import { getDict } from "@/i18n/server";
 import { inviteUrl, loginLinkUrl, passwordResetUrl } from "@/lib/site";
-import { accountSchema, changePasswordSchema, emailSchema, fieldErrorsOf, inviteSchema, newPasswordSchema, type FormState } from "@/lib/validation";
+import { accessSchema, accountSchema, changePasswordSchema, emailSchema, fieldErrorsOf, inviteSchema, newPasswordSchema, parseId, type FormState } from "@/lib/validation";
 
 export type SimpleResult = { ok?: boolean; message?: string };
 
@@ -123,6 +123,8 @@ export async function acceptInviteAction(
         email: parsed.data.email,
         passwordHash,
         role: invite.role,
+        botcAccess: invite.botcAccess,
+        clubAccess: invite.clubAccess,
         lastLoginAt: new Date(),
       })
       .returning();
@@ -142,8 +144,9 @@ export async function createInviteAction(_prev: InviteResult, formData: FormData
   const { t } = await getDict();
   const parsed = inviteSchema.safeParse(Object.fromEntries(formData.entries()));
   if (!parsed.success) return { error: t.admin.errors.checkForm, fieldErrors: fieldErrorsOf(parsed.error) };
-  const invite = await createInvite(me.id, parsed.data.role, parsed.data.note);
-  await logAction(me, "account.inviteCreate", { role: invite.role, note: invite.note });
+  const { role, botc, club, note } = parsed.data;
+  const invite = await createInvite(me.id, role, { botc, club }, note);
+  await logAction(me, "account.inviteCreate", { role, botc, club, note: invite.note });
   revalidatePath("/admin/ucty");
   return { ok: true, url: inviteUrl(invite.token) };
 }
@@ -174,6 +177,33 @@ export async function deleteAdminUserAction(id: number): Promise<SimpleResult> {
   });
   if (!deleted) return { message: t.admin.errors.cannotDeleteLastAdmin };
   await logAction(me, "account.delete", { account: { id: target.id, nickname: target.nickname, role: target.role } });
+  revalidatePath("/admin/ucty");
+  return { ok: true };
+}
+
+/**
+ * Administrator changes an account's role and what it may do in each part of the admin: its pages and actions check it
+ * at once, its menu follows on the next page load. Nobody changes their own role, and the last administrator stays one.
+ */
+export async function updateAccountAccessAction(userId: number, access: AccountAccess): Promise<SimpleResult> {
+  const me = await requireAdmin("admin");
+  const { t } = await getDict();
+  const e = t.admin.errors;
+  const parsed = accessSchema.safeParse(access);
+  if (!parsed.success || parseId(userId) === null) return { message: e.checkForm };
+  const { role, botc, club } = parsed.data;
+  const target = await db.query.adminUsers.findFirst({ where: eq(adminUsers.id, userId) });
+  if (!target) return { message: e.forbidden };
+  if (target.id === me.id && role !== target.role) return { message: e.cannotChangeOwnRole };
+  const updated = await db.transaction(async (tx) => {
+    // like deleting: two administrators taking each other's role at once must not leave the club without one
+    const admins = await tx.select({ id: adminUsers.id }).from(adminUsers).where(eq(adminUsers.role, "admin")).for("update");
+    if (target.role === "admin" && role !== "admin" && !admins.some((a) => a.id !== target.id)) return false;
+    await tx.update(adminUsers).set({ role, botcAccess: botc, clubAccess: club }).where(eq(adminUsers.id, target.id));
+    return true;
+  });
+  if (!updated) return { message: e.lastAdmin };
+  await logAction(me, "account.access", { account: { id: target.id, nickname: target.nickname }, role, botc, club });
   revalidatePath("/admin/ucty");
   return { ok: true };
 }

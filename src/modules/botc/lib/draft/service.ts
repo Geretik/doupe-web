@@ -19,6 +19,7 @@ import {
   type DraftSessionMember,
 } from "@/db/schema";
 import type { Locale } from "@/i18n/dictionaries";
+import { canAccess } from "@/lib/admin-auth";
 import { canEditScript, scriptNameTaken, scriptText } from "../scripts";
 import { afterPick, drafterCanPick, firstTurn, type Turn } from "./engine";
 import { TURN_REMINDER_HOURS } from "./events";
@@ -222,9 +223,10 @@ export type InviteInput = { userIds: number[]; role: "organizer" | "participant"
  */
 export async function inviteMembers(user: AdminUser, sessionId: number, input: InviteInput, locale: Locale): Promise<Result<{ invited: string[] }>> {
   return preparing(sessionId, user, async (tx, rows) => {
-    const accounts = input.userIds.length
-      ? await tx.select().from(adminUsers).where(inArray(adminUsers.id, input.userIds)).orderBy(asc(adminUsers.id))
-      : [];
+    // only those who see Krvavka, like listInvitableAccounts offers
+    const accounts = (
+      input.userIds.length ? await tx.select().from(adminUsers).where(inArray(adminUsers.id, input.userIds)).orderBy(asc(adminUsers.id)) : []
+    ).filter((account) => canAccess(account, "botc"));
     const invited: string[] = [];
     const now = new Date();
     for (const account of accounts) {

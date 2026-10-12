@@ -1,7 +1,7 @@
 import { and, asc, desc, eq, gt, isNotNull, lt, or, sql, TransactionRollbackError } from "drizzle-orm";
 import { db } from "@/db";
 import { adminUsers, games, grimoires, registrations, scripts, sessions, type AdminUser, type Grimoire } from "@/db/schema";
-import { hasRole } from "@/lib/admin-auth";
+import { canAccess, hasRole } from "@/lib/admin-auth";
 import { botcRoles, linkedRoleOf } from "@/modules/botc/lib/botc-roles";
 import { saveRoster } from "@/modules/botc/lib/game-roster";
 import { scriptToolLinkForJson } from "@/modules/botc/lib/draft/script";
@@ -11,13 +11,13 @@ import { newGap, newGrimoireState, newSeat, players, type GrimoireState } from "
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
-/** The owner plays the grimoire; once the game has ended every account may look at it. */
+/** The owner plays the grimoire while Krvavka is editable for them; once the game has ended every account may look at it. */
 export function canEditGrimoire(me: AdminUser, g: Pick<Grimoire, "ownerId">) {
-  return g.ownerId === me.id;
+  return g.ownerId === me.id && canAccess(me, "botc", "edit");
 }
 
 export function canViewGrimoire(me: AdminUser, g: Pick<Grimoire, "ownerId" | "endedAt">) {
-  return canEditGrimoire(me, g) || g.endedAt !== null;
+  return g.ownerId === me.id || g.endedAt !== null;
 }
 
 /** Only the site's administrators delete grimoires: their own and every ended one (another account's running game stays hidden from them too). */

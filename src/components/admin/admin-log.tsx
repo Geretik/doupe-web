@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import type { Dict, Locale } from "@/i18n/dictionaries";
 import type { FieldChange, listAdminLog, LogEntry, LogValue, NamedRef, SessionRef } from "@/lib/admin-log";
 import { dayDate } from "@/lib/attendance";
+import { accessParts } from "./access-text";
 import { findRole, roleName } from "@/modules/botc/lib/botc-roles";
 import { formatShortDate, formatStamp } from "@/lib/time";
 
@@ -79,12 +80,15 @@ function details(entry: LogEntry, ctx: Ctx): ReactNode[] {
     case "account.feedKey":
       return [];
     case "account.inviteCreate":
+      return [...accessParts(t, entry.data), entry.data.note];
     case "account.inviteRevoke":
       return [t.roles[entry.data.role], entry.data.note];
     case "account.resetLink":
       return [entry.data.account.nickname];
     case "account.delete":
       return [entry.data.account.nickname, t.roles[entry.data.account.role]];
+    case "account.access":
+      return [entry.data.account.nickname, ...accessParts(t, entry.data)];
     case "web.texts": {
       const { page, locale: lang, blocks, intent } = entry.data;
       const pageTitle = (t.web.pages as Record<string, { title: string }>)[page]?.title ?? page;

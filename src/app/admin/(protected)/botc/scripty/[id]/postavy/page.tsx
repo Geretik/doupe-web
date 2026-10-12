@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { saveBuiltScriptAction } from "@/modules/botc/actions/scripts";
 import { ScriptBuilder } from "@/modules/botc/components/admin/script-builder";
 import { getDict } from "@/i18n/server";
-import { requireAdmin } from "@/lib/admin-auth";
+import { requireAccess } from "@/lib/admin-auth";
 import { homebrewAbilities } from "@/modules/botc/lib/homebrew";
 import { canEditScript, getLibraryScript, knownCharactersOf } from "@/modules/botc/lib/scripts";
 import { parseId } from "@/lib/validation";
@@ -20,7 +20,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
 /** The characters of a library script picked anew; for the one who added it and administrators. */
 export default async function ScriptCharactersPage({ params }: { params: Promise<{ id: string }> }) {
-  const me = await requireAdmin();
+  const me = await requireAccess("botc");
   const id = parseId((await params).id);
   const row = id ? await getLibraryScript(id) : null;
   if (!row || !canEditScript(me, row.script)) notFound();

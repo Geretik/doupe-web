@@ -2,7 +2,7 @@ import { gunzipSync } from "node:zlib";
 import { and, desc, eq, ne, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { adminUsers, scripts, type AdminUser, type LibraryScript, type ScriptLink } from "@/db/schema";
-import { hasRole } from "@/lib/admin-auth";
+import { canAccess, hasRole } from "@/lib/admin-auth";
 import { siteUrl } from "@/lib/site";
 import {
   findRole,
@@ -217,8 +217,9 @@ export function libraryScriptShortLink(id: number) {
   return `${siteUrl()}/botc/script/${id}`;
 }
 
+/** The one who added a script edits it while Krvavka is editable for them; administrators every script. */
 export function canEditScript(me: AdminUser, script: Pick<LibraryScript, "createdBy">) {
-  return script.createdBy === me.id || hasRole(me, "admin");
+  return (script.createdBy === me.id && canAccess(me, "botc", "edit")) || hasRole(me, "admin");
 }
 
 /**

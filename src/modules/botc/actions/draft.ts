@@ -7,7 +7,7 @@ import { db } from "@/db";
 import { drafts, draftSessionMembers, type AdminUser, type DraftRoleSource } from "@/db/schema";
 import type { Dict } from "@/i18n/dictionaries";
 import { getDict } from "@/i18n/server";
-import { requireAdmin } from "@/lib/admin-auth";
+import { requireAccess } from "@/lib/admin-auth";
 import { draftScriptRef, logAction, logDraftAction } from "@/lib/admin-log";
 import { roleName, findRole, homebrewCollections, roleTeams } from "@/modules/botc/lib/botc-roles";
 import { dispatchDraftEventsLater } from "@/modules/botc/lib/draft/events";
@@ -20,6 +20,8 @@ import type { SimpleResult } from "@/app/actions/admin";
 /*
  * Server actions of the drafts (admin → Drafty). Each one checks the login and leaves what is allowed to
  * modules/botc/lib/draft/service, which decides on the rows it locked; here only forms are read and answers worded.
+ * Taking part in a draft needs Krvavka only to be readable; setting up a new one and copying a script into the
+ * library need it editable.
  */
 
 type DraftT = Dict["draft"];
@@ -85,7 +87,7 @@ function parseDraftForm(formData: FormData, t: DraftT): { values?: service.Draft
 
 /** A new draft, owned by whoever sets it up; they invite the others on its page. */
 export async function createDraftAction(_prev: FormState, formData: FormData): Promise<FormState> {
-  const me = await requireAdmin();
+  const me = await requireAccess("botc", "edit");
   const { locale, t } = await getDict();
   const parsed = parseDraftForm(formData, t.draft);
   if (!parsed.values) return { error: t.draft.errors.checkForm, fieldErrors: parsed.fieldErrors };
@@ -99,7 +101,7 @@ export type MessageState = FormState & { message?: string };
 
 /** The draft's settings while it is being prepared; `sessionId` is its run, which the change locks. */
 export async function updateDraftAction(sessionId: number, _prev: MessageState, formData: FormData): Promise<MessageState> {
-  const me = await requireAdmin();
+  const me = await requireAccess("botc");
   const { t } = await getDict();
   const parsed = parseDraftForm(formData, t.draft);
   if (!parsed.values) return { error: t.draft.errors.checkForm, fieldErrors: parsed.fieldErrors };
@@ -111,7 +113,7 @@ export async function updateDraftAction(sessionId: number, _prev: MessageState, 
 }
 
 export async function deleteDraftAction(draftId: number): Promise<SimpleResult> {
-  const me = await requireAdmin();
+  const me = await requireAccess("botc");
   const { t } = await getDict();
   const draft = await db.query.drafts.findFirst({ where: eq(drafts.id, draftId), columns: { id: true, name: true } });
   const r = await service.deleteDraft(me, draftId);
@@ -124,7 +126,7 @@ export async function deleteDraftAction(draftId: number): Promise<SimpleResult> 
 // ─── Preparing ───────────────────────────────────────────────────────────────
 
 export async function inviteMembersAction(sessionId: number, _prev: MessageState, formData: FormData): Promise<MessageState> {
-  const me = await requireAdmin();
+  const me = await requireAccess("botc");
   const { locale, t } = await getDict();
   const userIds = formData.getAll("userId").map(parseId).filter((id): id is number => id !== null);
   if (!userIds.length) return { error: t.draft.inviteNobody };
@@ -139,7 +141,7 @@ export async function inviteMembersAction(sessionId: number, _prev: MessageState
 
 /** Runs a one-click change of a session, logs it once it went through and words its answer. */
 async function sessionChange(run: (me: AdminUser) => Promise<service.Result>, log: (me: AdminUser) => Promise<void>, notify = false): Promise<SimpleResult> {
-  const me = await requireAdmin();
+  const me = await requireAccess("botc");
   const { t } = await getDict();
   const r = await run(me);
   revalidateDrafts();
@@ -217,7 +219,7 @@ export type PickState = { ok?: boolean; error?: string; message?: string };
 
 /** One pick from the pick board; any refusal re-renders the page with the current state. */
 export async function pickAction(sessionId: number, _prev: PickState, formData: FormData): Promise<PickState> {
-  const me = await requireAdmin();
+  const me = await requireAccess("botc");
   const { locale, t } = await getDict();
   const optionId = parseId(formData.get("optionId"));
   const expectedPick = parseId(formData.get("pickNumber"));
@@ -252,7 +254,7 @@ async function logDraftScript(me: AdminUser, action: "draft.scriptCreate" | "dra
 }
 
 export async function createScriptAction(sessionId: number, poolId: number): Promise<SimpleResult> {
-  const me = await requireAdmin();
+  const me = await requireAccess("botc");
   const { t } = await getDict();
   const r = await service.createScript(me, sessionId, poolId);
   if (!r.ok) return { message: errorText(t.draft, r.error) };
@@ -262,7 +264,7 @@ export async function createScriptAction(sessionId: number, poolId: number): Pro
 }
 
 export async function saveScriptAction(scriptId: number, _prev: MessageState, formData: FormData): Promise<MessageState> {
-  const me = await requireAdmin();
+  const me = await requireAccess("botc");
   const { t } = await getDict();
   const name = text(formData, "name").slice(0, MAX_NAME);
   if (!name) return { error: t.draft.errors.checkForm, fieldErrors: { name: [t.draft.errors.fillName] } };
@@ -276,7 +278,7 @@ export async function saveScriptAction(scriptId: number, _prev: MessageState, fo
 }
 
 export async function saveScriptToLibraryAction(scriptId: number): Promise<SimpleResult> {
-  const me = await requireAdmin();
+  const me = await requireAccess("botc", "edit");
   const { t } = await getDict();
   const r = await service.saveScriptToLibrary(me, scriptId);
   if (!r.ok) return { message: errorText(t.draft, r.error) };
@@ -287,7 +289,7 @@ export async function saveScriptToLibraryAction(scriptId: number): Promise<Simpl
 }
 
 export async function deleteScriptAction(scriptId: number): Promise<SimpleResult> {
-  const me = await requireAdmin();
+  const me = await requireAccess("botc");
   const { t } = await getDict();
   const ref = await draftScriptRef(scriptId);
   const r = await service.deleteScript(me, scriptId);

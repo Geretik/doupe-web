@@ -8,7 +8,7 @@ import { splitByGroup } from "@/modules/botc/components/draft/team-section";
 import { Card } from "@/components/ui";
 import { db } from "@/db";
 import { getDict } from "@/i18n/server";
-import { requireAdmin } from "@/lib/admin-auth";
+import { canAccess, requireAccess } from "@/lib/admin-auth";
 import { findRole, roleName } from "@/modules/botc/lib/botc-roles";
 import { getScript } from "@/modules/botc/lib/draft/queries";
 import { scriptToolLink } from "@/modules/botc/lib/draft/script";
@@ -20,7 +20,7 @@ const pill = "rounded-md border border-border bg-card px-3 py-2 text-sm hover:bo
 
 /** A script made from a pool of a finished draft session: its author edits it, the session's members see it. */
 export default async function DraftScriptPage({ params }: { params: Promise<{ id: string }> }) {
-  const me = await requireAdmin();
+  const me = await requireAccess("botc");
   const id = parseId((await params).id);
   if (!id) notFound();
   const [{ locale, t }, script] = await Promise.all([getDict(), getScript(id)]);
@@ -33,6 +33,8 @@ export default async function DraftScriptPage({ params }: { params: Promise<{ id
   if (!pool) notFound();
   const owner = pool.memberId === null ? d.sharedPoolTitle : rows.members.find((m) => m.id === pool.memberId)?.nickname ?? "?";
   const editable = script.createdBy === me.id;
+  // the library is Krvavka's: copying into it needs Krvavka editable
+  const toLibrary = editable && canAccess(me, "botc", "edit");
   const groups = splitByGroup(sortByShownName(pool.roleIds, locale), (r) => [r]).map((g) => ({
     group: g.group,
     label: g.group === "bundles" ? d.bundles : t.admin.session.roleTeams[g.group],
@@ -54,14 +56,14 @@ export default async function DraftScriptPage({ params }: { params: Promise<{ id
           <a href={scriptToolLink(script)} target="_blank" rel="noopener noreferrer" className={pill}>{d.openInTool}</a>
           <a href={`/admin/botc/drafty/script/${script.id}/script.json`} className={pill}>{d.downloadJson}</a>
           {script.libraryScriptId && <Link href={`/admin/botc/scripty/${script.libraryScriptId}`} className={pill}>{d.inLibrary}</Link>}
-          {editable && (
+          {toLibrary && (
             <ActionButton
               action={saveScriptToLibraryAction.bind(null, script.id)}
               label={script.libraryScriptId ? d.updateInLibrary : d.saveToLibrary}
             />
           )}
         </span>
-        {editable && <p className="text-sm text-muted">{d.libraryHint}</p>}
+        {toLibrary && <p className="text-sm text-muted">{d.libraryHint}</p>}
       </div>
       {editable ? (
         <Card>

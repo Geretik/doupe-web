@@ -3,7 +3,7 @@ import Link from "next/link";
 import { saveBuiltScriptAction } from "@/modules/botc/actions/scripts";
 import { ScriptBuilder } from "@/modules/botc/components/admin/script-builder";
 import { getDict } from "@/i18n/server";
-import { requireAdmin } from "@/lib/admin-auth";
+import { requireAccess } from "@/lib/admin-auth";
 import { homebrewAbilities } from "@/modules/botc/lib/homebrew";
 
 export const dynamic = "force-dynamic";
@@ -15,7 +15,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 /** A new library script built from characters picked on the site, official and homebrew. */
 export default async function NewScriptPage() {
-  const me = await requireAdmin();
+  const me = await requireAccess("botc", "edit");
   const { locale, t } = await getDict();
   const s = t.scripts;
   return (

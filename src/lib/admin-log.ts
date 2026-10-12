@@ -10,6 +10,7 @@ import {
   registrations,
   scripts,
   sessions,
+  type AccessLevel,
   type AdminLogRow,
   type AdminRole,
   type AttendanceAffiliation,
@@ -31,6 +32,8 @@ export const LOG_PAGE_SIZE = 100;
 export type SessionRef = { id: number; title: string; /** ISO */ startsAt: string };
 export type NamedRef = { id: number; name: string };
 export type AccountRef = { id: number; nickname: string };
+/** An account's role and what it may do in each part of the admin */
+export type AccountAccess = { role: AdminRole; botc: AccessLevel; club: AccessLevel };
 
 export type LoginMethod = "password" | "link" | "qr" | "reset" | "invite" | "setup";
 export type LogValue = string | number | boolean | null;
@@ -55,10 +58,13 @@ export type LogData = {
   "account.password": Nothing;
   "account.feedKey": Nothing;
   "account.sessionEmails": { enabled: boolean };
-  "account.inviteCreate": { role: AdminRole; note: string | null };
+  /** `botc` and `club` since invitations give them (October 2026) */
+  "account.inviteCreate": { role: AdminRole; note: string | null } & Partial<AccountAccess>;
   "account.inviteRevoke": { role: AdminRole; note: string | null };
   "account.resetLink": { account: AccountRef };
   "account.delete": { account: AccountRef & { role: AdminRole } };
+  /** What the account may do from now on */
+  "account.access": { account: AccountRef } & AccountAccess;
   "web.texts": { page: string; locale: string; blocks: string[]; intent: "save" | "default" | "restore" };
   "session.create": OnSession & { count: number };
   "session.update": OnSession & { changes: FieldChange[] };

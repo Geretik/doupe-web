@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { accessParts } from "@/components/admin/access-text";
 import { InviteAcceptForm } from "@/components/admin/invite-accept-form";
 import { Alert, Card } from "@/components/ui";
 import { getDict } from "@/i18n/server";
@@ -27,6 +28,12 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
       <Card>
         <p className="mb-4 text-sm text-muted">
           {a.intro.replace("{site}", t.meta.title)} {a.role}: <strong>{t.admin.roles[invite.role]}</strong>.
+          {invite.role === "organizer" && (
+            <>
+              {" "}
+              {a.access}: {accessParts(t.admin, { role: invite.role, botc: invite.botcAccess, club: invite.clubAccess }).slice(1).join(", ")}.
+            </>
+          )}
         </p>
         <InviteAcceptForm token={token} t={a} />
       </Card>

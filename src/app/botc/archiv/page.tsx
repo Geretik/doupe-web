@@ -6,7 +6,7 @@ import { findRole } from "@/modules/botc/lib/botc-roles";
 import { ScriptLinks } from "@/modules/botc/components/script-links";
 import { Card } from "@/components/ui";
 import { getDict } from "@/i18n/server";
-import { isAdmin } from "@/lib/admin-auth";
+import { canEditArea } from "@/lib/admin-auth";
 import { gamesBySession, listPastSessions } from "@/modules/botc/lib/queries";
 import { formatDate } from "@/lib/time";
 
@@ -18,7 +18,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function ArchivePage() {
-  const [sessions, admin, { locale, t }] = await Promise.all([listPastSessions(), isAdmin(), getDict()]);
+  const [sessions, admin, { locale, t }] = await Promise.all([listPastSessions(), canEditArea("botc"), getDict()]);
   const played = await gamesBySession(sessions.map((s) => s.id));
   const anyIcon = [...played.values()].some((list) => list.some((g) => g.demonBluffs?.length || g.roster.some((p) => findRole(p.role))));
   return (

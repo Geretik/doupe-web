@@ -1,4 +1,4 @@
-import { getAdmin } from "@/lib/admin-auth";
+import { canAccess, getAdmin } from "@/lib/admin-auth";
 import { scriptFileName } from "@/modules/botc/lib/draft/script";
 import { withHomebrewInFull } from "@/modules/botc/lib/homebrew";
 import { getLibraryScript } from "@/modules/botc/lib/scripts";
@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 /** A script of the club's library as its JSON file, for the official script tool, clocktower.online and the like; homebrew characters in full. */
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
-  if (!(await getAdmin())) return new Response("Unauthorized", { status: 401 });
+  if (!canAccess(await getAdmin(), "botc")) return new Response("Unauthorized", { status: 401 });
   const id = parseId((await params).id);
   const row = id ? await getLibraryScript(id) : null;
   if (!row) return new Response("Not found", { status: 404 });

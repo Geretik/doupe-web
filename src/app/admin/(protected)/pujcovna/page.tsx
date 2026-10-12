@@ -1,7 +1,7 @@
 import { LoanDesk, type DeskGame, type DeskLoan } from "@/components/admin/loan-desk";
-import { Card } from "@/components/ui";
+import { Alert, Card } from "@/components/ui";
 import { getDict } from "@/i18n/server";
-import { requireAdmin } from "@/lib/admin-auth";
+import { canAccess, requireAccess } from "@/lib/admin-auth";
 import { collectionGames, knownPeople, lastReturnedLoans, listBarcodes, listOpenLoans, listReturnedLoans, LOAN_RETENTION_DAYS, otherGameNames } from "@/lib/loans";
 import { formatShortDate, pragueDaysBetween } from "@/lib/time";
 import { parseId } from "@/lib/validation";
@@ -9,10 +9,11 @@ import { parseId } from "@/lib/validation";
 /**
  * Admin → Půjčovna: lending the club's games. The desk finds a game by the bar code on its box or by its name and
  * lends it (or several to one person) or takes it back; below, the latest loans that came back. `?hra=` opens one
- * game (links from Historie).
+ * game (links from Historie). One who only reads the club sees what is lent instead of the desk.
  */
 export default async function LoansPage({ searchParams }: { searchParams: Promise<{ hra?: string }> }) {
-  await requireAdmin();
+  const me = await requireAccess("club");
+  const edit = canAccess(me, "club", "edit");
   const params = await searchParams;
   const [{ locale, t }, codes, open, returned, lastRows, people] = await Promise.all([
     getDict(),
@@ -54,21 +55,56 @@ export default async function LoansPage({ searchParams }: { searchParams: Promis
         <h1 className="text-2xl font-bold">{l.title}</h1>
         <p className="max-w-3xl text-sm text-muted">{l.intro(LOAN_RETENTION_DAYS)}</p>
         <p className="text-sm text-muted" data-testid="loan-codes-known">{l.codesKnown(known, games.length)}</p>
+        {!edit && <Alert kind="info">{t.admin.readOnly}</Alert>}
       </div>
 
-      <Card>
-        <LoanDesk
-          // the game asked for in the address opens again when it changes
-          key={initialGameId ?? "desk"}
-          games={games}
-          codes={codes}
-          loans={loans}
-          last={last}
-          people={people}
-          initialGameId={initialGameId}
-          t={l.desk}
-        />
-      </Card>
+      {edit ? (
+        <Card>
+          <LoanDesk
+            // the game asked for in the address opens again when it changes
+            key={initialGameId ?? "desk"}
+            games={games}
+            codes={codes}
+            loans={loans}
+            last={last}
+            people={people}
+            initialGameId={initialGameId}
+            t={l.desk}
+          />
+        </Card>
+      ) : (
+        <Card className="flex flex-col gap-3">
+          <h2 className="text-xl font-bold">{l.desk.openLoans}</h2>
+          {loans.length === 0 ? (
+            <p className="text-sm text-muted">{l.desk.noOpenLoans}</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm" data-testid="loan-open">
+                <thead className="text-muted">
+                  <tr className="border-b border-border">
+                    <th className="py-2 pr-3 font-medium">{l.game}</th>
+                    <th className="py-2 pr-3 font-medium">{l.borrower}</th>
+                    <th className="py-2 pr-3 font-medium">{l.lentAt}</th>
+                    <th className="py-2 font-medium">{l.note}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loans.map((o) => (
+                    <tr key={o.id} className="border-b border-border last:border-0">
+                      <td className="py-2 pr-3">{o.gameName}</td>
+                      <td className="py-2 pr-3">{o.borrower ?? <span className="text-muted">{l.erased}</span>}</td>
+                      <td className="py-2 pr-3 whitespace-nowrap">
+                        {o.since} <span className="text-muted">({o.age})</span>
+                      </td>
+                      <td className="py-2 text-muted">{[o.note, o.lentBy].filter(Boolean).join(" · ")}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Card>
+      )}
 
       <Card className="flex flex-col gap-3">
         <h2 className="text-xl font-bold">{l.returnedTitle}</h2>

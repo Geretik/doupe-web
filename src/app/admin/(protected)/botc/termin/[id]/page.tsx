@@ -20,7 +20,7 @@ import type { Registration } from "@/db/schema";
 import type { Dict, Locale } from "@/i18n/dictionaries";
 import { plural } from "@/i18n/plural";
 import { getDict } from "@/i18n/server";
-import { hasRole, requireAdmin } from "@/lib/admin-auth";
+import { canAccess, hasRole, requireAccess } from "@/lib/admin-auth";
 import { LATE_CANCEL_HOURS, sessionEmailsFor } from "@/lib/alerts";
 import { discordConfigured } from "@/lib/discord";
 import { getFormSuggestions } from "@/modules/botc/lib/form-suggestions";
@@ -71,6 +71,12 @@ function Storytold({ stats, willing, locale, t }: { stats?: StorytellerStats; wi
   );
 }
 
+/** Whether the player came, for one who only reads Krvavka (AttendanceToggle for the others). */
+function AttendanceMark({ attended, t }: { attended: boolean | null; t: Dict["admin"]["session"] }) {
+  if (attended === null) return <span className="text-muted">–</span>;
+  return attended ? <span title={t.came} aria-label={t.came}>✓</span> : <span title={t.noShow} aria-label={t.noShow}>✗</span>;
+}
+
 /** Deletes the player's personal data at their request, in all their sign-ups. */
 function EraseButton({ registrationId, t }: { registrationId: number; t: Dict["admin"]["session"] }) {
   return (
@@ -92,7 +98,9 @@ export default async function AdminSessionPage({
   /** poradi=prichod: the signed-up players in the order they come */
   searchParams: Promise<{ poradi?: string }>;
 }) {
-  const me = await requireAdmin();
+  const me = await requireAccess("botc");
+  // one who only reads Krvavka sees the session and its players without anything that changes them
+  const edit = canAccess(me, "botc", "edit");
   const numId = parseId((await params).id);
   const byArrivalOrder = (await searchParams).poradi === "prichod";
   if (!numId) notFound();
@@ -225,20 +233,30 @@ export default async function AdminSessionPage({
     <div className="flex flex-col gap-8">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <h1 className="flex items-center gap-3 text-2xl font-bold">{session.title}</h1>
-        <DeleteSessionButton
-          action={deleteSessionAction.bind(null, session.id)}
-          label={t.deleteSession}
-          confirmText={t.deleteConfirm}
-        />
+        {edit && (
+          <DeleteSessionButton
+            action={deleteSessionAction.bind(null, session.id)}
+            label={t.deleteSession}
+            confirmText={t.deleteConfirm}
+          />
+        )}
+        {/* the others have it in the form below */}
+        {!edit && (
+          <p className="w-full text-sm text-muted">
+            {formatDate(session.startsAt, locale)}, {sessionStart}–{sessionEnd} · {session.place}
+          </p>
+        )}
       </div>
 
       <div className="flex flex-wrap items-center gap-2 text-sm">
         <Link href={`/botc/termin/${session.id}`} className="rounded-md border border-border bg-card px-3 py-2 hover:border-accent">
           {t.publicPage}
         </Link>
-        <Link href={`/admin/botc/novy?from=${session.id}`} className="rounded-md border border-border bg-card px-3 py-2 hover:border-accent">
-          {t.duplicate}
-        </Link>
+        {edit && (
+          <Link href={`/admin/botc/novy?from=${session.id}`} className="rounded-md border border-border bg-card px-3 py-2 hover:border-accent">
+            {t.duplicate}
+          </Link>
+        )}
         <a href={`/admin/botc/termin/${session.id}/export.csv`} className="rounded-md border border-border bg-card px-3 py-2 hover:border-accent">
           {t.exportCsv}
         </a>
@@ -252,7 +270,7 @@ export default async function AdminSessionPage({
             {t.poster}
           </Link>
         )}
-        {!past && (
+        {!past && edit && (
           <ActionButton
             action={setRegistrationStateAction.bind(null, session.id, regState === "open" ? "paused" : "open")}
             label={regState === "open" ? t.pauseRegistration : opensAt ? t.openNow : t.openRegistration}
@@ -260,7 +278,7 @@ export default async function AdminSessionPage({
             variant={regState === "open" ? "secondary" : "primary"}
           />
         )}
-        {!past && (
+        {!past && edit && (
           <ActionButton
             action={sendRemindersNowAction.bind(null, session.id)}
             label={t.sendReminder(pendingReminders)}
@@ -268,7 +286,7 @@ export default async function AdminSessionPage({
             confirmText={t.sendReminderConfirm(pendingReminders)}
           />
         )}
-        {!past && (
+        {!past && edit && (
           <ActionButton
             action={announceDiscordAction.bind(null, session.id)}
             label={t.announceDiscord}
@@ -277,7 +295,7 @@ export default async function AdminSessionPage({
           />
         )}
         {/* this organiser's own e-mails about the session (a late cancellation); after it starts there are none */}
-        {!past && (
+        {!past && edit && (
           <ActionButton
             action={setSessionEmailsAction.bind(null, session.id, !emails.enabled)}
             label={emails.enabled ? dict.admin.emails.turnSessionOff : dict.admin.emails.turnSessionOn}
@@ -289,25 +307,28 @@ export default async function AdminSessionPage({
       {!past && opensAt && (
         <Alert kind="info">{t.scheduledOpening(formatShortDate(opensAt, locale), formatTime(opensAt, locale))}</Alert>
       )}
+      {!edit && <Alert kind="info">{dict.admin.readOnly}</Alert>}
 
-      <Card>
-        <h2 className="mb-4 text-lg font-semibold">{t.edit}</h2>
-        <SessionForm
-          action={updateSessionAction.bind(null, session.id)}
-          session={session}
-          mode="edit"
-          defaults={{
-            startsAt: dateToPragueLocal(session.startsAt),
-            endsAt: dateToPragueLocal(session.endsAt),
-            // once a scheduled opening has passed, the form shows the sign-ups as open
-            registrationState: regState,
-            registrationOpensAt: opensAt ? dateToPragueLocal(opensAt) : "",
-          }}
-          today={dateToPragueLocal(new Date()).slice(0, 10)}
-          suggestions={suggestions}
-          t={dict.admin.form}
-        />
-      </Card>
+      {edit && (
+        <Card>
+          <h2 className="mb-4 text-lg font-semibold">{t.edit}</h2>
+          <SessionForm
+            action={updateSessionAction.bind(null, session.id)}
+            session={session}
+            mode="edit"
+            defaults={{
+              startsAt: dateToPragueLocal(session.startsAt),
+              endsAt: dateToPragueLocal(session.endsAt),
+              // once a scheduled opening has passed, the form shows the sign-ups as open
+              registrationState: regState,
+              registrationOpensAt: opensAt ? dateToPragueLocal(opensAt) : "",
+            }}
+            today={dateToPragueLocal(new Date()).slice(0, 10)}
+            suggestions={suggestions}
+            t={dict.admin.form}
+          />
+        </Card>
+      )}
 
       <section className="flex flex-col gap-3">
         <h2 className="text-lg font-semibold">{t.registered(confirmed.length, session.capacity)}</h2>
@@ -326,29 +347,31 @@ export default async function AdminSessionPage({
             <PresenceChart slots={presence} total={confirmed.length} t={{ of: t.presenceOf }} />
           </Card>
         )}
-        <Card>
-          <h3 className="mb-1 font-semibold">{t.quickTitle}</h3>
-          <QuickRegistrationForm
-            sessionId={session.id}
-            t={{
-              hint: t.quickHint,
-              full: full ? t.quickFull(confirmed.length + 1) : null,
-              nickname: t.nickname,
-              email: t.email,
-              emailHint: t.quickEmailHint,
-              phone: t.phone,
-              optional: dict.form.optional,
-              more: t.quickMore,
-              firstName: dict.form.firstName,
-              lastName: dict.form.lastName,
-              note: t.playerNote,
-              storyteller: t.storyteller,
-              newbie: t.newbie,
-              submit: t.quickSubmit,
-              submitting: t.quickSubmitting,
-            }}
-          />
-        </Card>
+        {edit && (
+          <Card>
+            <h3 className="mb-1 font-semibold">{t.quickTitle}</h3>
+            <QuickRegistrationForm
+              sessionId={session.id}
+              t={{
+                hint: t.quickHint,
+                full: full ? t.quickFull(confirmed.length + 1) : null,
+                nickname: t.nickname,
+                email: t.email,
+                emailHint: t.quickEmailHint,
+                phone: t.phone,
+                optional: dict.form.optional,
+                more: t.quickMore,
+                firstName: dict.form.firstName,
+                lastName: dict.form.lastName,
+                note: t.playerNote,
+                storyteller: t.storyteller,
+                newbie: t.newbie,
+                submit: t.quickSubmit,
+                submitting: t.quickSubmitting,
+              }}
+            />
+          </Card>
+        )}
         {confirmed.length === 0 && <p className="text-muted">{t.nobody}</p>}
         {confirmed.length > 1 && (
           // the page stays where it is: only the table changes
@@ -402,11 +425,15 @@ export default async function AdminSessionPage({
                         </>
                       )}
                       <td className="p-3">
-                        <AttendanceToggle registrationId={r.id} attended={r.attended} labels={{ came: t.came, noShow: t.noShow }} />
+                        {edit ? (
+                          <AttendanceToggle registrationId={r.id} attended={r.attended} labels={{ came: t.came, noShow: t.noShow }} />
+                        ) : (
+                          <AttendanceMark attended={r.attended} t={t} />
+                        )}
                       </td>
                     </>
                   );
-                  const actions = (
+                  const actions = edit && (
                     <>
                       <a href={editUrl(r.editToken)} className="mr-3 text-muted hover:underline" target="_blank" rel="noreferrer">{t.link}</a>
                       {hasEmail(r.email) && (
@@ -430,7 +457,7 @@ export default async function AdminSessionPage({
                       </form>
                     </>
                   );
-                  return <EditablePlayerRow key={r.id} cells={cells} actions={actions} columns={columns} edit={editProps(r)} />;
+                  return <EditablePlayerRow key={r.id} cells={cells} actions={actions} columns={columns} edit={edit ? editProps(r) : null} />;
                 })}
                 {confirmed.some((r) => r.note) && (
                   <tr className="bg-border/20 text-xs text-muted">
@@ -459,18 +486,20 @@ export default async function AdminSessionPage({
             {waitlisted.map((r, i) => (
               <EditablePlayerItem
                 key={r.id}
-                edit={editProps(r)}
+                edit={edit ? editProps(r) : null}
                 actions={
-                  <>
-                    <a href={editUrl(r.editToken)} className="self-center text-muted hover:underline" target="_blank" rel="noreferrer">{t.link}</a>
-                    {!isErased(r.email) && <EraseButton registrationId={r.id} t={t} />}
-                    <form action={adminConfirmWaitlistedAction.bind(null, r.id)}>
-                      <SubmitButton variant="secondary">{full ? t.confirmFull : t.confirm}</SubmitButton>
-                    </form>
-                    <form action={adminCancelRegistrationAction.bind(null, r.id)}>
-                      <SubmitButton variant="danger" confirmText={t.cancelConfirm(r.nickname)}>{t.cancel}</SubmitButton>
-                    </form>
-                  </>
+                  edit && (
+                    <>
+                      <a href={editUrl(r.editToken)} className="self-center text-muted hover:underline" target="_blank" rel="noreferrer">{t.link}</a>
+                      {!isErased(r.email) && <EraseButton registrationId={r.id} t={t} />}
+                      <form action={adminConfirmWaitlistedAction.bind(null, r.id)}>
+                        <SubmitButton variant="secondary">{full ? t.confirmFull : t.confirm}</SubmitButton>
+                      </form>
+                      <form action={adminCancelRegistrationAction.bind(null, r.id)}>
+                        <SubmitButton variant="danger" confirmText={t.cancelConfirm(r.nickname)}>{t.cancel}</SubmitButton>
+                      </form>
+                    </>
+                  )
                 }
               >
                 <span>
@@ -494,14 +523,16 @@ export default async function AdminSessionPage({
                   {r.cancelledAt && <> · {t.cancelledAt} {formatDate(r.cancelledAt, locale)} {formatTime(r.cancelledAt, locale)}</>}
                   {r.cancelReason && <> · {t.cancelReason}: „{r.cancelReason}“</>}
                 </span>
-                <span className="flex gap-2">
-                  {!isErased(r.email) && <EraseButton registrationId={r.id} t={t} />}
-                  {!isErased(r.email) && (
-                    <form action={adminRestoreRegistrationAction.bind(null, r.id)}>
-                      <SubmitButton variant="secondary" confirmText={t.restoreConfirm(r.nickname, full || waitlisted.length > 0)}>{t.restore}</SubmitButton>
-                    </form>
-                  )}
-                </span>
+                {edit && (
+                  <span className="flex gap-2">
+                    {!isErased(r.email) && <EraseButton registrationId={r.id} t={t} />}
+                    {!isErased(r.email) && (
+                      <form action={adminRestoreRegistrationAction.bind(null, r.id)}>
+                        <SubmitButton variant="secondary" confirmText={t.restoreConfirm(r.nickname, full || waitlisted.length > 0)}>{t.restore}</SubmitButton>
+                      </form>
+                    )}
+                  </span>
+                )}
               </li>
             ))}
           </ul>
@@ -512,7 +543,7 @@ export default async function AdminSessionPage({
         <Card id="hlasovani" className="scroll-mt-4">
           <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-lg font-semibold">🗳️ {t.pollTitle}</h2>
-            {session.startsAt > new Date() && (
+            {edit && session.startsAt > new Date() && (
               <ActionButton
                 action={setScriptPollClosedAction.bind(null, session.id, !session.scriptPollClosedAt)}
                 label={session.scriptPollClosedAt ? t.pollReopen : t.pollClose}
@@ -548,10 +579,12 @@ export default async function AdminSessionPage({
         <section className="mb-4 flex flex-col gap-2 rounded-lg border border-border p-3" data-testid="session-grimoires">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <span className="text-sm text-muted">{dict.grimoire.sessionCardHint}</span>
-            <form action={createGrimoireAction}>
-              <input type="hidden" name="sessionId" value={session.id} />
-              <SubmitButton variant="secondary">{dict.grimoire.sessionNew}</SubmitButton>
-            </form>
+            {edit && (
+              <form action={createGrimoireAction}>
+                <input type="hidden" name="sessionId" value={session.id} />
+                <SubmitButton variant="secondary">{dict.grimoire.sessionNew}</SubmitButton>
+              </form>
+            )}
           </div>
           {sessionGrimoires.length > 0 && (
             <ul className="flex flex-col gap-1.5">
@@ -566,31 +599,8 @@ export default async function AdminSessionPage({
         {playedGames.length === 0 && <p className="mb-4 text-sm text-muted">{t.gamesNone}</p>}
         {playedGames.length > 0 && (
           <ol className="mb-4 flex flex-col gap-2 text-sm">
-            {playedGames.map((g, i) => (
-              <GameItem
-                key={g.id}
-                sessionId={session.id}
-                scripts={session.scripts}
-                homebrew={homebrew}
-                roster={roster}
-                locale={locale}
-                game={{
-                  id: g.id,
-                  scriptName: g.scriptName,
-                  scriptUrl: g.scriptUrl,
-                  winner: g.winner,
-                  players: g.players,
-                  notes: g.notes,
-                  demonBluffs: g.demonBluffs,
-                  roster: g.roster.map((p) => ({ registrationId: p.registrationId, role: p.role, believedRole: p.believedRole })),
-                }}
-                t={{ ...gameLabels, gameEdit: t.gameEdit }}
-                deleteButton={
-                  <form action={deleteGameAction.bind(null, g.id)}>
-                    <SubmitButton variant="danger">{t.gameDelete}</SubmitButton>
-                  </form>
-                }
-              >
+            {playedGames.map((g, i) => {
+              const summary = (
                 <div className="flex min-w-0 flex-1 flex-col gap-1.5">
                   <span>
                     <span className="mr-2 font-semibold text-muted">{i + 1}.</span>
@@ -601,14 +611,49 @@ export default async function AdminSessionPage({
                   </span>
                   <GameRoster players={g.roster} bluffs={g.demonBluffs} names={g.names} locale={locale} t={{ storyteller: dict.session.storytellerLabel, sides: dict.archive.sides, linked: dict.archive.linked, satOut: dict.archive.satOut }} />
                 </div>
-              </GameItem>
-            ))}
+              );
+              if (!edit) {
+                return (
+                  <li key={g.id} className="rounded-md border border-border px-3 py-2">
+                    {summary}
+                  </li>
+                );
+              }
+              return (
+                <GameItem
+                  key={g.id}
+                  sessionId={session.id}
+                  scripts={session.scripts}
+                  homebrew={homebrew}
+                  roster={roster}
+                  locale={locale}
+                  game={{
+                    id: g.id,
+                    scriptName: g.scriptName,
+                    scriptUrl: g.scriptUrl,
+                    winner: g.winner,
+                    players: g.players,
+                    notes: g.notes,
+                    demonBluffs: g.demonBluffs,
+                    roster: g.roster.map((p) => ({ registrationId: p.registrationId, role: p.role, believedRole: p.believedRole })),
+                  }}
+                  t={{ ...gameLabels, gameEdit: t.gameEdit }}
+                  deleteButton={
+                    <form action={deleteGameAction.bind(null, g.id)}>
+                      <SubmitButton variant="danger">{t.gameDelete}</SubmitButton>
+                    </form>
+                  }
+                >
+                  {summary}
+                </GameItem>
+              );
+            })}
           </ol>
         )}
-        <GameForm sessionId={session.id} scripts={session.scripts} homebrew={homebrew} roster={roster} locale={locale} t={gameLabels} />
+        {edit && <GameForm sessionId={session.id} scripts={session.scripts} homebrew={homebrew} roster={roster} locale={locale} t={gameLabels} />}
       </Card>
 
-      {!past && (
+      {!past && edit && (
         <Card>
           <h2 className="mb-1 text-lg font-semibold">{t.broadcastTitle}</h2>
           <p className="mb-4 text-sm text-muted">{t.broadcastHint}</p>

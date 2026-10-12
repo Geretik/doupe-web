@@ -1,4 +1,6 @@
 import { deleteAdminUserAction, revokeInviteAction } from "@/app/actions/admin";
+import { AccountAccessCells } from "@/components/admin/account-access";
+import { accessParts } from "@/components/admin/access-text";
 import { ActionButton } from "@/components/admin/action-button";
 import { InviteForm } from "@/components/admin/invite-form";
 import { ResetLinkButton } from "@/components/admin/password-forms";
@@ -13,6 +15,15 @@ export default async function AccountsPage() {
   const me = await requireAdmin("admin");
   const [{ locale, t }, users, invites] = await Promise.all([getDict(), listAdminUsers(), listOpenInvites()]);
   const a = t.admin.accounts;
+  const accessLabels = {
+    role: a.role,
+    roles: t.admin.roles,
+    areas: t.admin.areas,
+    access: t.admin.access,
+    allParts: a.allParts,
+    saved: a.saved,
+    ownRole: a.ownRole,
+  };
 
   return (
     <div className="flex flex-col gap-8">
@@ -25,6 +36,8 @@ export default async function AccountsPage() {
                 <th className="p-3">{a.nickname}</th>
                 <th className="p-3">{a.email}</th>
                 <th className="p-3">{a.role}</th>
+                <th className="p-3" title={t.admin.areasHint.botc}>{t.admin.areas.botc}</th>
+                <th className="p-3" title={t.admin.areasHint.club}>{t.admin.areas.club}</th>
                 <th className="p-3">{a.lastLogin}</th>
                 <th className="p-3"></th>
               </tr>
@@ -34,10 +47,16 @@ export default async function AccountsPage() {
                 <tr key={u.id} className="border-b border-border last:border-0">
                   <td className="p-3">
                     {u.nickname}
-                    {u.id === me!.id && <span className="ml-2 text-xs text-muted">({a.you})</span>}
+                    {u.id === me.id && <span className="ml-2 text-xs text-muted">({a.you})</span>}
                   </td>
                   <td className="p-3"><a href={`mailto:${u.email}`} className="hover:underline">{u.email}</a></td>
-                  <td className="p-3">{t.admin.roles[u.role]}</td>
+                  <AccountAccessCells
+                    userId={u.id}
+                    nickname={u.nickname}
+                    initial={{ role: u.role, botc: u.botcAccess, club: u.clubAccess }}
+                    self={u.id === me.id}
+                    t={accessLabels}
+                  />
                   <td className="p-3 whitespace-nowrap">{u.lastLoginAt ? formatDate(u.lastLoginAt, locale) : a.never}</td>
                   <td className="p-3">
                     <span className="flex flex-wrap items-center justify-end gap-2">
@@ -60,7 +79,15 @@ export default async function AccountsPage() {
             </tbody>
           </table>
         </div>
-        <p className="text-sm text-muted">{a.resetHint}</p>
+        <div className="flex flex-col gap-1 text-sm text-muted">
+          <p>{a.accessHint}</p>
+          {(["botc", "club"] as const).map((area) => (
+            <p key={area}>
+              <strong>{t.admin.areas[area]}:</strong> {t.admin.areasHint[area]}
+            </p>
+          ))}
+          <p>{a.resetHint}</p>
+        </div>
       </section>
 
       <Card>
@@ -78,6 +105,9 @@ export default async function AccountsPage() {
           }}
           roles={t.admin.roles}
           rolesHint={t.admin.rolesHint}
+          areas={t.admin.areas}
+          areasHint={t.admin.areasHint}
+          access={t.admin.access}
         />
       </Card>
 
@@ -89,7 +119,7 @@ export default async function AccountsPage() {
             {invites.map((i) => (
               <li key={i.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-card px-3 py-2">
                 <span>
-                  <strong>{t.admin.roles[i.role]}</strong>
+                  <strong>{accessParts(t.admin, { role: i.role, botc: i.botcAccess, club: i.clubAccess }).join(" · ")}</strong>
                   {i.note && <span className="text-muted"> · {i.note}</span>}
                   <span className="text-muted"> · {a.expires} {formatDate(i.expiresAt, locale)}</span>
                 </span>

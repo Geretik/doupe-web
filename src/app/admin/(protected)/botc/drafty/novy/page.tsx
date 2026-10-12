@@ -4,10 +4,10 @@ import { DraftForm } from "@/modules/botc/components/draft/draft-form";
 import { draftFormInitial, draftFormProps } from "@/modules/botc/components/draft/view";
 import { Card } from "@/components/ui";
 import { getDict } from "@/i18n/server";
-import { requireAdmin } from "@/lib/admin-auth";
+import { requireAccess } from "@/lib/admin-auth";
 
 export default async function NewDraftPage() {
-  await requireAdmin();
+  await requireAccess("botc", "edit");
   const { locale, t } = await getDict();
   return (
     <div className="flex flex-col gap-4">

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { EditPencil } from "@/components/edit-pencil";
 import { getDict } from "@/i18n/server";
-import { isAdmin } from "@/lib/admin-auth";
+import { canEditArea } from "@/lib/admin-auth";
 import { getPageTexts } from "@/lib/site-content";
 import { ClubContent } from "./club-content";
 
@@ -12,7 +12,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function ClubPage() {
-  const [{ locale, t }, admin] = await Promise.all([getDict(), isAdmin()]);
+  const [{ locale, t }, admin] = await Promise.all([getDict(), canEditArea("club")]);
   const texts = await getPageTexts("klub", locale);
   return (
     <article className="max-w-2xl">

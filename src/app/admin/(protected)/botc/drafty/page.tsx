@@ -2,11 +2,11 @@ import Link from "next/link";
 import { StatusBadge, YourTurnBadge } from "@/modules/botc/components/draft/view";
 import { Card } from "@/components/ui";
 import { getDict } from "@/i18n/server";
-import { requireAdmin } from "@/lib/admin-auth";
+import { canAccess, requireAccess } from "@/lib/admin-auth";
 import { listDraftsFor } from "@/modules/botc/lib/draft/queries";
 
 export default async function DraftsPage() {
-  const me = await requireAdmin();
+  const me = await requireAccess("botc");
   const [{ t }, drafts] = await Promise.all([getDict(), listDraftsFor(me)]);
   const d = t.draft;
 
@@ -14,9 +14,11 @@ export default async function DraftsPage() {
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">{d.title}</h1>
-        <Link href="/admin/botc/drafty/novy" className="rounded-md border border-border bg-card px-3 py-2 text-sm hover:border-accent">
-          {d.newDraft}
-        </Link>
+        {canAccess(me, "botc", "edit") && (
+          <Link href="/admin/botc/drafty/novy" className="rounded-md border border-border bg-card px-3 py-2 text-sm hover:border-accent">
+            {d.newDraft}
+          </Link>
+        )}
       </div>
       <p className="text-sm text-muted">{d.intro}</p>
       {drafts.length === 0 && <p className="text-muted">{d.none}</p>}

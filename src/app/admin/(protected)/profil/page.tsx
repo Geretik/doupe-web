@@ -4,7 +4,7 @@ import { ChangePasswordForm } from "@/components/admin/password-forms";
 import { LogoutOthersButton, QrScanner } from "@/components/admin/profile";
 import { Card } from "@/components/ui";
 import { getDict } from "@/i18n/server";
-import { requireAdmin } from "@/lib/admin-auth";
+import { canAccess, requireAdmin } from "@/lib/admin-auth";
 import { LATE_CANCEL_HOURS } from "@/lib/alerts";
 
 /** The organiser's own account: log in another device with a QR code, e-mails about sessions, change the password, log out other devices. */
@@ -24,17 +24,20 @@ export default async function ProfilePage() {
           <QrScanner t={p} />
         </Card>
       </section>
-      <section className="flex flex-col gap-2" data-testid="session-emails">
-        <h2 className="text-lg font-semibold">{e.title}</h2>
-        <Card>
-          <p className="mb-2 text-sm text-muted">{e.intro(LATE_CANCEL_HOURS)}</p>
-          <p className="mb-4 text-sm font-medium">{me.sessionEmails ? e.defaultIsOn : e.defaultIsOff}</p>
-          <ActionButton
-            action={setSessionEmailsDefaultAction.bind(null, !me.sessionEmails)}
-            label={me.sessionEmails ? e.turnDefaultOff : e.turnDefaultOn}
-          />
-        </Card>
-      </section>
+      {/* the e-mails about sessions only go to those who edit Krvavka (sessionEmailRecipients) */}
+      {canAccess(me, "botc", "edit") && (
+        <section className="flex flex-col gap-2" data-testid="session-emails">
+          <h2 className="text-lg font-semibold">{e.title}</h2>
+          <Card>
+            <p className="mb-2 text-sm text-muted">{e.intro(LATE_CANCEL_HOURS)}</p>
+            <p className="mb-4 text-sm font-medium">{me.sessionEmails ? e.defaultIsOn : e.defaultIsOff}</p>
+            <ActionButton
+              action={setSessionEmailsDefaultAction.bind(null, !me.sessionEmails)}
+              label={me.sessionEmails ? e.turnDefaultOff : e.turnDefaultOn}
+            />
+          </Card>
+        </section>
+      )}
       <section className="flex flex-col gap-2">
         <h2 className="text-lg font-semibold">{pw.title}</h2>
         <Card>

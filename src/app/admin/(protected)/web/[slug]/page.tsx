@@ -1,16 +1,17 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { saveSiteTextsAction } from "@/app/actions/site-content";
 import { SiteTextsForm, type SiteTextBlock } from "@/components/admin/site-texts-form";
 import { Markdown } from "@/components/markdown";
+import { Alert, Card } from "@/components/ui";
 import { locales, type Locale } from "@/i18n/dictionaries";
 import { getDict, isLocale } from "@/i18n/server";
-import { requireAdmin } from "@/lib/admin-auth";
+import { canAccess, requireAdmin } from "@/lib/admin-auth";
 import { getTextHistory } from "@/lib/site-content";
-import { sitePage } from "@/lib/site-content-defaults";
+import { pageArea, sitePage } from "@/lib/site-content-defaults";
 import { formatStamp } from "@/lib/time";
 
-/** The texts of one public page in one language (?lang=en), with their history. */
+/** The texts of one public page in one language (?lang=en), with their history; only the texts for one who only reads the page's part. */
 export default async function SiteTextsEditPage({
   params,
   searchParams,
@@ -18,9 +19,11 @@ export default async function SiteTextsEditPage({
   params: Promise<{ slug: string }>;
   searchParams: Promise<{ lang?: string }>;
 }) {
-  await requireAdmin();
+  const me = await requireAdmin();
   const page = sitePage((await params).slug);
   if (!page) notFound();
+  if (!canAccess(me, pageArea(page))) redirect("/admin");
+  const edit = canAccess(me, pageArea(page), "edit");
   const lang = (await searchParams).lang;
   const editLocale: Locale = isLocale(lang) ? lang : "cs";
   const [{ locale, t }, history] = await Promise.all([getDict(), getTextHistory(page, editLocale)]);
@@ -77,14 +80,27 @@ export default async function SiteTextsEditPage({
         </div>
         <span className="text-xs text-muted">{w.languageHint}</span>
       </div>
-      <SiteTextsForm
-        // a different language is a different form: nothing typed in one carries over to the other
-        key={editLocale}
-        action={saveSiteTextsAction.bind(null, page.slug, editLocale)}
-        blocks={blocks}
-        t={w.form}
-        editorStrings={w.editor}
-      />
+      {edit ? (
+        <SiteTextsForm
+          // a different language is a different form: nothing typed in one carries over to the other
+          key={editLocale}
+          action={saveSiteTextsAction.bind(null, page.slug, editLocale)}
+          blocks={blocks}
+          t={w.form}
+          editorStrings={w.editor}
+        />
+      ) : (
+        <div className="flex flex-col gap-4">
+          <Alert kind="info">{t.admin.readOnly}</Alert>
+          {blocks.map((b) => (
+            <Card key={b.key} className="flex flex-col gap-2">
+              <h2 className="font-semibold">{b.label}</h2>
+              <p className="text-xs text-muted">{b.status}</p>
+              {b.kind === "line" ? <p>{b.value}</p> : <Markdown text={b.value} />}
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

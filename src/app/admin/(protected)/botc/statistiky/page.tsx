@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Card } from "@/components/ui";
 import { getDict } from "@/i18n/server";
-import { requireAdmin } from "@/lib/admin-auth";
+import { requireAccess } from "@/lib/admin-auth";
 import { gameStats, pastSessionStats, regulars, storytellerStats, totals } from "@/modules/botc/lib/stats";
 import { formatDate } from "@/lib/time";
 
@@ -10,7 +10,7 @@ function pct(v: number | null) {
 }
 
 export default async function StatsPage() {
-  await requireAdmin();
+  await requireAccess("botc");
   const [{ locale, t }, sums, past, top, g, storytellers] = await Promise.all([
     getDict(),
     totals(),

@@ -13,6 +13,17 @@ export type ChangelogEntry = { /** YYYY-MM-DD */ date: string; title: string; it
 
 export const changelog: ChangelogEntry[] = [
   {
+    date: "2026-10-12",
+    title: "Oprávnění účtů: Krvavka a Klub",
+    items: [
+      {
+        for: "organizers",
+        text: "Správce v Účtech u každého účtu změní roli (správce / organizátor) a nastaví, jestli organizátor Krvavku a Klub nevidí, jen čte, nebo upravuje; totéž zvolí už v pozvánce. Kdo část jen čte, vidí ji bez tlačítek a formulářů, které něco mění. Texty stránek Krvavky patří ke Krvavce, úvodní stránka klubu ke Klubu; e-maily k termínům chodí jen těm, kdo Krvavku upravují. Dosavadní účty můžou dál všechno.",
+        href: "/admin/ucty",
+      },
+    ],
+  },
+  {
     date: "2026-10-11",
     title: "Homebrew postavy z botchomebrew.wiki, klubový script tool",
     items: [

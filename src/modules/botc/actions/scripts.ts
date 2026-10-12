@@ -7,7 +7,7 @@ import { db } from "@/db";
 import { scripts } from "@/db/schema";
 import type { Dict } from "@/i18n/dictionaries";
 import { getDict } from "@/i18n/server";
-import { requireAdmin } from "@/lib/admin-auth";
+import { requireAccess } from "@/lib/admin-auth";
 import { logAction } from "@/lib/admin-log";
 import { findRole, findStorytellerRole, MAX_SCRIPT_NAME, type ScriptNames } from "@/modules/botc/lib/botc-roles";
 import {
@@ -58,7 +58,7 @@ function revalidateScripts() {
 }
 
 export async function createLibraryScriptAction(_prev: ScriptFormState, formData: FormData): Promise<ScriptFormState> {
-  const me = await requireAdmin();
+  const me = await requireAccess("botc", "edit");
   const { t } = await getDict();
   const s = t.scripts;
   const read = await readScript(formData, s);
@@ -83,7 +83,7 @@ export async function createLibraryScriptAction(_prev: ScriptFormState, formData
 
 /** New name or author, and a new file when one is given (empty = the characters stay). */
 export async function updateLibraryScriptAction(id: number, _prev: ScriptFormState, formData: FormData): Promise<ScriptFormState> {
-  const me = await requireAdmin();
+  const me = await requireAccess("botc", "edit");
   const { t } = await getDict();
   const s = t.scripts;
   const row = await getLibraryScript(id);
@@ -121,7 +121,7 @@ export async function updateLibraryScriptAction(id: number, _prev: ScriptFormSta
  * of one in the library, whose own rules, logo and characters the site does not know stay.
  */
 export async function saveBuiltScriptAction(id: number | null, _prev: ScriptFormState, formData: FormData): Promise<ScriptFormState> {
-  const me = await requireAdmin();
+  const me = await requireAccess("botc", "edit");
   const { t } = await getDict();
   const s = t.scripts;
   const row = id === null ? null : await getLibraryScript(id);
@@ -159,7 +159,7 @@ export async function saveBuiltScriptAction(id: number | null, _prev: ScriptForm
 }
 
 export async function deleteLibraryScriptAction(id: number): Promise<SimpleResult> {
-  const me = await requireAdmin();
+  const me = await requireAccess("botc", "edit");
   const { t } = await getDict();
   const row = await getLibraryScript(id);
   if (!row) return { message: t.scripts.errors.notFound };

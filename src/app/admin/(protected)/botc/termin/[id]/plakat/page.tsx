@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PrintButton } from "@/components/admin/print-button";
 import { getDict } from "@/i18n/server";
-import { requireAdmin } from "@/lib/admin-auth";
+import { requireAccess } from "@/lib/admin-auth";
 import { sessionUrl } from "@/modules/botc/lib/ics";
 import { getSessionWithCount } from "@/modules/botc/lib/queries";
 import { siteName } from "@/lib/site";
@@ -15,7 +15,7 @@ const buttonClass = "rounded-md border border-border bg-card px-3 py-2 text-sm h
 
 /** Printable A4 poster with the session's details and a QR code to its sign-up page. */
 export default async function PosterPage({ params }: { params: Promise<{ id: string }> }) {
-  await requireAdmin();
+  await requireAccess("botc");
   const numId = parseId((await params).id);
   if (!numId) notFound();
   const [{ locale, t }, session] = await Promise.all([getDict(), getSessionWithCount(numId)]);

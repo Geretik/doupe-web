@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import { and, eq, isNull } from "drizzle-orm";
 import { db } from "@/db";
 import { adminUsers, type AdminUser } from "@/db/schema";
+import { canAccess } from "@/lib/admin-auth";
 import { siteUrl } from "@/lib/site";
 
 const newKey = () => randomBytes(16).toString("hex");
@@ -29,8 +30,9 @@ export async function rotateFeedKey(userId: number) {
   await db.update(adminUsers).set({ feedKey: newKey() }).where(eq(adminUsers.id, userId));
 }
 
-/** Whether the key belongs to an existing account. */
+/** Whether the key belongs to an existing account that sees Krvavka. */
 export async function feedKeyValid(key: string) {
   if (!/^[0-9a-f]{32}$/.test(key)) return false;
-  return Boolean(await db.query.adminUsers.findFirst({ where: eq(adminUsers.feedKey, key), columns: { id: true } }));
+  const owner = await db.query.adminUsers.findFirst({ where: eq(adminUsers.feedKey, key), columns: { role: true, botcAccess: true, clubAccess: true } });
+  return canAccess(owner ?? null, "botc");
 }

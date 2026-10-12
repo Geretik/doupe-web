@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { createInviteAction, type InviteResult } from "@/app/actions/admin";
-import type { AdminRole } from "@/db/schema";
+import type { AccessLevel, AdminArea, AdminRole } from "@/db/schema";
 import { Alert, Button, Field, inputClass } from "../ui";
 
 type Labels = {
@@ -19,10 +19,16 @@ export function InviteForm({
   t,
   roles,
   rolesHint,
+  areas,
+  areasHint,
+  access,
 }: {
   t: Labels;
   roles: Record<AdminRole, string>;
   rolesHint: Record<AdminRole, string>;
+  areas: Record<AdminArea, string>;
+  areasHint: Record<AdminArea, string>;
+  access: Record<AccessLevel, string>;
 }) {
   const [state, action, pending] = useActionState<InviteResult, FormData>(createInviteAction, {});
   const [role, setRole] = useState<AdminRole>("organizer");
@@ -63,6 +69,17 @@ export function InviteForm({
         <Field label={t.inviteNote} name="note">
           <input id="note" name="note" maxLength={200} className={inputClass} />
         </Field>
+        {/* an administrator may do everything anyway */}
+        {role === "organizer" &&
+          (["botc", "club"] as const).map((area) => (
+            <Field key={area} label={areas[area]} name={area} hint={areasHint[area]}>
+              <select id={area} name={area} defaultValue="edit" className={inputClass}>
+                {(Object.keys(access) as AccessLevel[]).map((level) => (
+                  <option key={level} value={level}>{access[level]}</option>
+                ))}
+              </select>
+            </Field>
+          ))}
       </div>
       <div>
         <Button type="submit" disabled={pending}>{pending ? t.creating : t.create}</Button>

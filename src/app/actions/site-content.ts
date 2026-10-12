@@ -5,10 +5,10 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import { siteTexts } from "@/db/schema";
 import { getDict, isLocale } from "@/i18n/server";
-import { requireAdmin } from "@/lib/admin-auth";
+import { canAccess, requireAdmin } from "@/lib/admin-auth";
 import { logAction } from "@/lib/admin-log";
 import { latestVersions } from "@/lib/site-content";
-import { MAX_TEXT_LENGTH, sitePage, type TextBlock } from "@/lib/site-content-defaults";
+import { MAX_TEXT_LENGTH, pageArea, sitePage, type TextBlock } from "@/lib/site-content-defaults";
 import type { FormState } from "@/lib/validation";
 
 export type SiteTextsState = FormState & { message?: string };
@@ -32,6 +32,8 @@ export async function saveSiteTextsAction(
   const w = t.admin.web;
   const page = sitePage(slug);
   if (!page || !isLocale(locale)) return { error: w.errors.unknownPage };
+  // the Krvavka pages' texts are Krvavka's, the others the club's
+  if (!canAccess(me, pageArea(page), "edit")) return { error: t.admin.errors.forbidden };
 
   const blocks: readonly TextBlock[] = page.blocks;
   const latest = await latestVersions(blocks.map((b) => b.key), locale);

@@ -1,7 +1,7 @@
 import { asc, gte } from "drizzle-orm";
 import { db } from "@/db";
 import { registrations, sessions, type Session } from "@/db/schema";
-import { isAdmin } from "@/lib/admin-auth";
+import { canAccess, getAdmin } from "@/lib/admin-auth";
 import { buildIcs, sessionUrl } from "@/modules/botc/lib/ics";
 import { feedKeyValid } from "@/modules/botc/lib/org-feed";
 import { shownEmail } from "@/lib/retention";
@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 /** Private iCal feed for organisers: every session with counts, storyteller and the players' e-mails. */
 export async function GET(req: Request) {
   const key = new URL(req.url).searchParams.get("key") ?? "";
-  if (!(await feedKeyValid(key)) && !(await isAdmin())) return new Response("Unauthorized", { status: 401 });
+  if (!(await feedKeyValid(key)) && !canAccess(await getAdmin(), "botc")) return new Response("Unauthorized", { status: 401 });
   const since = new Date(Date.now() - 90 * 864e5);
   const list = await db.query.sessions.findMany({
     where: gte(sessions.endsAt, since),

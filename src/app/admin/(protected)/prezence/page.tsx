@@ -2,10 +2,10 @@ import Link from "next/link";
 import { deleteAttendanceAction } from "@/app/actions/attendance-admin";
 import { AttendanceAddForm } from "@/components/admin/attendance-add-form";
 import { SubmitButton } from "@/components/admin/submit-button";
-import { Button, Card, inputClass } from "@/components/ui";
+import { Alert, Button, Card, inputClass } from "@/components/ui";
 import { attendanceAffiliations } from "@/db/schema";
 import { getDict } from "@/i18n/server";
-import { requireAdmin } from "@/lib/admin-auth";
+import { canAccess, requireAccess } from "@/lib/admin-auth";
 import {
   academicYearStart,
   addDays,
@@ -52,7 +52,9 @@ function href(params: Params) {
  * adding and deleting by hand, and the numbers of a period with its CSV for reports.
  */
 export default async function AttendanceAdminPage({ searchParams }: { searchParams: Promise<Params> }) {
-  await requireAdmin();
+  const me = await requireAccess("club");
+  // one who only reads the club sees the sheet without adding or deleting
+  const edit = canAccess(me, "club", "edit");
   const params = await searchParams;
   const today = attendanceDay();
   const night = parseDay(params.den) ?? lastClubDay(today);
@@ -71,6 +73,7 @@ export default async function AttendanceAdminPage({ searchParams }: { searchPara
       <div className="flex flex-col gap-2">
         <h1 className="text-2xl font-bold">{a.title}</h1>
         <p className="max-w-3xl text-sm text-muted">{a.intro(ATTENDANCE_RETENTION_YEARS)}</p>
+        {!edit && <Alert kind="info">{t.admin.readOnly}</Alert>}
       </div>
 
       <Card className="flex flex-wrap items-center gap-5">
@@ -154,12 +157,14 @@ export default async function AttendanceAdminPage({ searchParams }: { searchPara
                         {e.addedBy !== null && <span className="ml-2 text-xs text-muted">{a.byHand(e.addedByNickname)}</span>}
                       </td>
                       <td className="py-2 text-right">
-                        <form action={deleteAttendanceAction}>
-                          <input type="hidden" name="id" value={e.id} />
-                          <SubmitButton variant="danger" confirmText={a.deleteConfirm(name)} aria-label={`${a.delete}: ${name}`}>
-                            ✕
-                          </SubmitButton>
-                        </form>
+                        {edit && (
+                          <form action={deleteAttendanceAction}>
+                            <input type="hidden" name="id" value={e.id} />
+                            <SubmitButton variant="danger" confirmText={a.deleteConfirm(name)} aria-label={`${a.delete}: ${name}`}>
+                              ✕
+                            </SubmitButton>
+                          </form>
+                        )}
                       </td>
                     </tr>
                   );
@@ -169,12 +174,14 @@ export default async function AttendanceAdminPage({ searchParams }: { searchPara
           </div>
         )}
 
-        <details className="border-t border-border pt-3" open={entries.length === 0 && night === today}>
-          <summary className="cursor-pointer font-semibold">{a.add.title}</summary>
-          <div className="mt-3">
-            <AttendanceAddForm t={a.add} fields={t.attendance.form} day={night} />
-          </div>
-        </details>
+        {edit && (
+          <details className="border-t border-border pt-3" open={entries.length === 0 && night === today}>
+            <summary className="cursor-pointer font-semibold">{a.add.title}</summary>
+            <div className="mt-3">
+              <AttendanceAddForm t={a.add} fields={t.attendance.form} day={night} />
+            </div>
+          </details>
+        )}
       </Card>
 
       <Card className="flex flex-col gap-4" id="prehled">

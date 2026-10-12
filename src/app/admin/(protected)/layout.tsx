@@ -5,7 +5,7 @@ import { NavLink } from "@/components/nav-link";
 import { Button } from "@/components/ui";
 import { changelogStamp } from "@/data/changelog";
 import { getDict } from "@/i18n/server";
-import { getAdmin, hasRole } from "@/lib/admin-auth";
+import { canAccess, getAdmin, hasRole } from "@/lib/admin-auth";
 import { dispatchDraftEventsLater } from "@/modules/botc/lib/draft/events";
 import { countDraftAttention } from "@/modules/botc/lib/draft/queries";
 import { NEWS_COOKIE } from "@/lib/news";
@@ -20,7 +20,10 @@ const groupClass = "px-2 text-xs font-medium uppercase tracking-wide text-muted"
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const me = await getAdmin();
   if (!me) redirect("/admin/login");
-  const [{ t }, attention, jar] = await Promise.all([getDict(), countDraftAttention(me.id), cookies()]);
+  // the parts of the admin this account sees; the club's group stays for the news
+  const botc = canAccess(me, "botc");
+  const club = canAccess(me, "club");
+  const [{ t }, attention, jar] = await Promise.all([getDict(), botc ? countDraftAttention(me.id) : { turns: 0, invites: 0 }, cookies()]);
   const n = t.admin.nav;
   // sessions where it is this account's turn, and invitations it has not answered
   const draftBadge = attention.turns + attention.invites;
@@ -37,31 +40,34 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <div className="-mx-2 flex flex-wrap items-center gap-x-2 gap-y-1">
           {/* wraps between links on a narrow phone, never inside one */}
           <NavLink href="/admin" className={linkClass}>{n.overview}</NavLink>
-          <div className="flex flex-wrap items-center gap-1 sm:border-l sm:border-border sm:pl-2">
-            <span className={groupClass}>{n.botc}</span>
-            <NavLink href="/admin/botc" prefixes={["/admin/botc/termin", "/admin/botc/novy"]} className={linkClass}>{n.sessions}</NavLink>
-            <NavLink href="/admin/botc/statistiky" className={linkClass}>{n.stats}</NavLink>
-            <NavLink href="/admin/botc/drafty" prefixes={["/admin/botc/drafty"]} className={linkClass}>
-              {n.drafts}
-              {draftBadge > 0 && (
-                <span
-                  className="ml-1 rounded-full bg-accent px-1.5 text-xs font-semibold text-accent-foreground"
-                  title={n.draftsAttention(attention.turns, attention.invites)}
-                  aria-label={n.draftsAttention(attention.turns, attention.invites)}
-                  data-testid="draft-badge"
-                >
-                  {draftBadge}
-                </span>
-              )}
-            </NavLink>
-            <NavLink href="/admin/botc/scripty" prefixes={["/admin/botc/scripty"]} className={linkClass}>{n.scripts}</NavLink>
-            <NavLink href="/admin/botc/grimoary" prefixes={["/admin/botc/grimoary"]} className={linkClass}>{n.grimoires}</NavLink>
-          </div>
+          {botc && (
+            <div className="flex flex-wrap items-center gap-1 sm:border-l sm:border-border sm:pl-2">
+              <span className={groupClass}>{n.botc}</span>
+              <NavLink href="/admin/botc" prefixes={["/admin/botc/termin", "/admin/botc/novy"]} className={linkClass}>{n.sessions}</NavLink>
+              <NavLink href="/admin/botc/statistiky" className={linkClass}>{n.stats}</NavLink>
+              <NavLink href="/admin/botc/drafty" prefixes={["/admin/botc/drafty"]} className={linkClass}>
+                {n.drafts}
+                {draftBadge > 0 && (
+                  <span
+                    className="ml-1 rounded-full bg-accent px-1.5 text-xs font-semibold text-accent-foreground"
+                    title={n.draftsAttention(attention.turns, attention.invites)}
+                    aria-label={n.draftsAttention(attention.turns, attention.invites)}
+                    data-testid="draft-badge"
+                  >
+                    {draftBadge}
+                  </span>
+                )}
+              </NavLink>
+              <NavLink href="/admin/botc/scripty" prefixes={["/admin/botc/scripty"]} className={linkClass}>{n.scripts}</NavLink>
+              <NavLink href="/admin/botc/grimoary" prefixes={["/admin/botc/grimoary"]} className={linkClass}>{n.grimoires}</NavLink>
+            </div>
+          )}
           <div className="flex flex-wrap items-center gap-1 whitespace-nowrap sm:border-l sm:border-border sm:pl-2">
             <span className={groupClass}>{n.club}</span>
-            <NavLink href="/admin/prezence" prefixes={["/admin/prezence"]} className={linkClass}>{n.attendance}</NavLink>
-            <NavLink href="/admin/pujcovna" className={linkClass}>{n.loans}</NavLink>
-            <NavLink href="/admin/web" prefixes={["/admin/web"]} className={linkClass}>{n.web}</NavLink>
+            {club && <NavLink href="/admin/prezence" prefixes={["/admin/prezence"]} className={linkClass}>{n.attendance}</NavLink>}
+            {club && <NavLink href="/admin/pujcovna" className={linkClass}>{n.loans}</NavLink>}
+            {/* the texts of the Krvavka pages belong to Krvavka (pageArea) */}
+            {(club || botc) && <NavLink href="/admin/web" prefixes={["/admin/web"]} className={linkClass}>{n.web}</NavLink>}
             {hasRole(me, "admin") && <NavLink href="/admin/ucty" className={linkClass}>{n.accounts}</NavLink>}
             {hasRole(me, "admin") && <NavLink href="/admin/historie" className={linkClass}>{n.log}</NavLink>}
             <NavLink href="/admin/novinky" className={linkClass}>

@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { adminUsers, sessionEmailPrefs } from "@/db/schema";
 import { postToWebhook } from "./discord";
@@ -27,13 +27,21 @@ export async function notifyOrganizers(subject: string, text: string, about?: { 
   }
 }
 
-/** Accounts that get the e-mails about this session: their choice at the session, else their default. */
+/**
+ * Accounts that get the e-mails about this session: those who edit Krvavka (lib/admin-auth accessOf), by their choice
+ * at the session, else their default.
+ */
 export function sessionEmailRecipients(sessionId: number) {
   return db
     .select({ email: adminUsers.email })
     .from(adminUsers)
     .leftJoin(sessionEmailPrefs, and(eq(sessionEmailPrefs.userId, adminUsers.id), eq(sessionEmailPrefs.sessionId, sessionId)))
-    .where(sql`coalesce(${sessionEmailPrefs.enabled}, ${adminUsers.sessionEmails})`);
+    .where(
+      and(
+        or(eq(adminUsers.role, "admin"), eq(adminUsers.botcAccess, "edit")),
+        sql`coalesce(${sessionEmailPrefs.enabled}, ${adminUsers.sessionEmails})`,
+      ),
+    );
 }
 
 /** Whether this account gets the e-mails about this session, and whether that is its own choice there. */

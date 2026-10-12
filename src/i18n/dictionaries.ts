@@ -590,6 +590,7 @@ export const cs = {
       title: "Vytvoření účtu organizátora",
       intro: "Dostal/a jsi pozvánku do adminu webu {site}. Vyplň své údaje, účet vznikne hned a budeš přihlášený/á.",
       role: "Role",
+      access: "Přístup",
       nickname: "Přezdívka",
       email: "E-mail",
       emailHint: "Slouží k přihlášení.",
@@ -631,6 +632,11 @@ export const cs = {
       resetCreated: (days: number) =>
         `Pošli odkaz majiteli účtu. Platí ${days} ${days === 1 ? "den" : days < 5 ? "dny" : "dní"} a jde použít jednou; do té doby platí i staré heslo.`,
       resetHint: "Když někdo zapomene heslo, vytvoř mu u účtu odkaz pro nové heslo. Měj aspoň dva správce, aby si heslo mohli obnovit navzájem.",
+      allParts: "vše",
+      saved: "Uloženo",
+      ownRole: "Svou roli si změnit nemůžeš.",
+      accessHint:
+        "Organizátor každou část adminu buď nevidí, nebo ji jen čte (bez tlačítek a formulářů, které něco mění), nebo ji upravuje. Změna platí hned. Novinky a svůj profil vidí každý, Účty a Historii jen správce.",
     },
     /** Historie: what organisers did in the admin (lib/admin-log) */
     log: {
@@ -664,6 +670,7 @@ export const cs = {
         "account.inviteRevoke": "Zrušená pozvánka",
         "account.resetLink": "Odkaz pro nové heslo",
         "account.delete": "Smazaný účet",
+        "account.access": "Změna oprávnění",
         "web.texts": "Texty webu",
         "session.create": "Nový termín",
         "session.update": "Úprava termínu",
@@ -795,7 +802,19 @@ export const cs = {
       sessionOff: "E-maily k termínu ti chodit nebudou.",
     },
     roles: { admin: "správce", organizer: "organizátor" },
-    rolesHint: { admin: "Správce může vše včetně správy účtů a pozvánek.", organizer: "Organizátor spravuje termíny, registrace a texty webu." },
+    rolesHint: {
+      admin: "Správce může vše včetně správy účtů, pozvánek a historie.",
+      organizer: "Organizátor vidí a upravuje jen ty části adminu, které mu nastavíš.",
+    },
+    /** The parts of the admin an organiser is given separately (lib/admin-auth accessOf) */
+    areas: { botc: "Krvavka", club: "Klub" },
+    areasHint: {
+      botc: "Termíny a přihlášky, drafty, scripty, grimoáry, statistiky a texty stránek Krvavky.",
+      club: "Prezenčka, půjčovna her a text úvodní stránky klubu.",
+    },
+    access: { none: "nevidí", view: "jen čte", edit: "upravuje" },
+    /** On a part of the admin the account may only look at */
+    readOnly: "Tuhle část adminu si můžeš jen prohlížet, měnit v ní nic nemůžeš. Oprávnění nastavuje správce.",
     /** Site texts (Texty webu): the public pages' texts edited in the admin, see lib/site-content-defaults.ts */
     web: {
       title: "Texty webu",
@@ -1246,6 +1265,8 @@ export const cs = {
       forbidden: "Na tuto akci nemáš oprávnění.",
       cannotDeleteSelf: "Vlastní účet smazat nemůžeš.",
       cannotDeleteLastAdmin: "Poslední správce se smazat nedá.",
+      cannotChangeOwnRole: "Svou roli si změnit nemůžeš.",
+      lastAdmin: "Poslední správce musí zůstat správcem.",
       inviteCreated: "Pozvánka vytvořená.",
       linkSent: "E-mail s odkazem odeslán.",
       fillScript: "Vyber nebo napiš script",
@@ -1826,6 +1847,7 @@ export const en: Dict = {
       title: "Create an organiser account",
       intro: "You have been invited to the {site} admin. Fill in your details; the account is created right away and you will be logged in.",
       role: "Role",
+      access: "Access",
       nickname: "Nickname",
       email: "E-mail",
       emailHint: "Used to log in.",
@@ -1867,6 +1889,11 @@ export const en: Dict = {
       resetCreated: (days) =>
         `Send the link to the account owner. It is valid for ${days} ${days === 1 ? "day" : "days"} and works once; the old password keeps working until then.`,
       resetHint: "When someone forgets their password, make a new-password link at their account. Keep at least two administrators so they can reset each other.",
+      allParts: "everything",
+      saved: "Saved",
+      ownRole: "You cannot change your own role.",
+      accessHint:
+        "An organiser either does not see a part of the admin, only reads it (without the buttons and forms that change something) or edits it. A change applies at once. Everyone sees News and their profile; only administrators see Accounts and History.",
     },
     log: {
       title: "History",
@@ -1899,6 +1926,7 @@ export const en: Dict = {
         "account.inviteRevoke": "Invitation revoked",
         "account.resetLink": "New password link",
         "account.delete": "Account deleted",
+        "account.access": "Permissions changed",
         "web.texts": "Site texts",
         "session.create": "New session",
         "session.update": "Session edited",
@@ -2029,7 +2057,17 @@ export const en: Dict = {
       sessionOff: "E-mails about this session will not come to you.",
     },
     roles: { admin: "administrator", organizer: "organiser" },
-    rolesHint: { admin: "An administrator can do everything, including managing accounts and invitations.", organizer: "An organiser manages sessions, sign-ups and the site's texts." },
+    rolesHint: {
+      admin: "An administrator can do everything, including managing accounts, invitations and the history.",
+      organizer: "An organiser sees and edits only the parts of the admin you give them.",
+    },
+    areas: { botc: "Krvavka", club: "Club" },
+    areasHint: {
+      botc: "Sessions and sign-ups, drafts, scripts, grimoires, statistics and the texts of the Krvavka pages.",
+      club: "Attendance sheet, game lending and the text of the club's home page.",
+    },
+    access: { none: "hidden", view: "read only", edit: "edits" },
+    readOnly: "You can only look at this part of the admin, not change anything in it. Permissions are set by an administrator.",
     web: {
       title: "Site texts",
       intro: "Edit the texts of the public pages here. A change shows on the site as soon as you save it. Every version stays in the history, so you can always go back to it.",
@@ -2435,6 +2473,8 @@ export const en: Dict = {
       forbidden: "You are not allowed to do this.",
       cannotDeleteSelf: "You cannot delete your own account.",
       cannotDeleteLastAdmin: "The last administrator cannot be deleted.",
+      cannotChangeOwnRole: "You cannot change your own role.",
+      lastAdmin: "The last administrator has to stay one.",
       inviteCreated: "Invitation created.",
       linkSent: "E-mail with the link sent.",
       fillScript: "Pick or type a script",

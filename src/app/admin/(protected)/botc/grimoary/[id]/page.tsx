@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Grimoire } from "@/modules/botc/components/grimoire/grimoire";
 import { getDict } from "@/i18n/server";
-import { requireAdmin } from "@/lib/admin-auth";
+import { requireAccess } from "@/lib/admin-auth";
 import { grimoireCharacters } from "@/modules/botc/lib/grimoire/characters";
 import { homebrewGrimoireCharacters } from "@/modules/botc/lib/homebrew";
 import { canDeleteGrimoire, canEditGrimoire, canViewGrimoire, getGrimoire, grimoireScripts, sessionPlayers } from "@/modules/botc/lib/grimoire/service";
@@ -16,7 +16,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 }
 
 export default async function GrimoirePage({ params }: { params: Promise<{ id: string }> }) {
-  const me = await requireAdmin();
+  const me = await requireAccess("botc");
   const id = parseId((await params).id);
   const row = id ? await getGrimoire(id) : null;
   if (!row || !canViewGrimoire(me, row.grimoire)) notFound();

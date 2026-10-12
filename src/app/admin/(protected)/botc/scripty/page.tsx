@@ -3,7 +3,7 @@ import { createLibraryScriptAction } from "@/modules/botc/actions/scripts";
 import { LibraryScriptForm } from "@/modules/botc/components/admin/library-script-form";
 import { Alert, Card } from "@/components/ui";
 import { getDict } from "@/i18n/server";
-import { requireAdmin } from "@/lib/admin-auth";
+import { canAccess, requireAccess } from "@/lib/admin-auth";
 import { scriptToolUrl } from "@/lib/site";
 import { listScripts, scriptExtras } from "@/modules/botc/lib/scripts";
 import { formatDay } from "@/lib/time";
@@ -11,12 +11,14 @@ import { formatDay } from "@/lib/time";
 export const dynamic = "force-dynamic";
 
 /**
- * The club's library of scripts (modules/botc/lib/scripts): every account sees them all and may add one.
+ * The club's library of scripts (modules/botc/lib/scripts): every account that sees Krvavka sees them all, and may
+ * add one when Krvavka is editable for it.
  * `?do-toolu`: opened from the script tool's "Načíst z Doupěte" (scripts/script-tool-html.mjs) – a script picked
  * opens back in the tool, through its short link.
  */
 export default async function ScriptsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  await requireAdmin();
+  const me = await requireAccess("botc");
+  const edit = canAccess(me, "botc", "edit");
   const [{ locale, t }, rows, query] = await Promise.all([getDict(), listScripts(), searchParams]);
   const s = t.scripts;
   const forTool = "do-toolu" in query;
@@ -36,7 +38,7 @@ export default async function ScriptsPage({ searchParams }: { searchParams: Prom
           <>
             <p className="max-w-3xl text-sm text-muted">{s.intro}</p>
             <span className="flex flex-wrap gap-x-5 gap-y-1 text-sm font-medium">
-              <Link href="/admin/botc/scripty/novy" className="text-accent hover:underline">{s.builderLink} →</Link>
+              {edit && <Link href="/admin/botc/scripty/novy" className="text-accent hover:underline">{s.builderLink} →</Link>}
               <Link href="/admin/botc/scripty/homebrew" className="text-accent hover:underline">{s.homebrewLink} →</Link>
             </span>
           </>
@@ -78,7 +80,7 @@ export default async function ScriptsPage({ searchParams }: { searchParams: Prom
         </ul>
       )}
 
-      {!forTool && (
+      {!forTool && edit && (
         <section className="flex flex-col gap-3">
           <h2 className="text-lg font-semibold">{s.addTitle}</h2>
           <Card>

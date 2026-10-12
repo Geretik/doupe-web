@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { and, asc, desc, eq, gt, isNull, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { adminInvites, adminUsers, loginLinks, passwordResets, type AdminRole } from "@/db/schema";
+import { adminInvites, adminUsers, loginLinks, passwordResets, type AccessLevel, type AdminArea, type AdminRole } from "@/db/schema";
 
 export const INVITE_DAYS = 7;
 /** Links an administrator makes for someone. Keep in sync with scripts/reset-link.mjs */
@@ -29,13 +29,15 @@ export async function listOpenInvites() {
     .orderBy(desc(adminInvites.createdAt));
 }
 
-export async function createInvite(createdBy: number, role: AdminRole, note: string | null) {
+export async function createInvite(createdBy: number, role: AdminRole, access: Record<AdminArea, AccessLevel>, note: string | null) {
   const token = randomBytes(24).toString("base64url");
   const [invite] = await db
     .insert(adminInvites)
     .values({
       token,
       role,
+      botcAccess: access.botc,
+      clubAccess: access.club,
       note,
       createdBy,
       expiresAt: new Date(Date.now() + INVITE_DAYS * 864e5),

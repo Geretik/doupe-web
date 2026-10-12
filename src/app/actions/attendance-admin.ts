@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getDict } from "@/i18n/server";
-import { requireAdmin } from "@/lib/admin-auth";
+import { requireAccess } from "@/lib/admin-auth";
 import { logAction } from "@/lib/admin-log";
 import { deleteEntry, parseDay, recordAttendance } from "@/lib/attendance";
 import { formatTime } from "@/lib/time";
@@ -12,7 +12,7 @@ export type AddAttendanceState = FormState & { message?: string };
 
 /** Admin → Prezenčka: an organiser puts someone on the sheet of a night, e.g. who has no phone with them. */
 export async function addAttendanceAction(_prev: AddAttendanceState, formData: FormData): Promise<AddAttendanceState> {
-  const me = await requireAdmin();
+  const me = await requireAccess("club", "edit");
   const { locale, t } = await getDict();
   const a = t.admin.attendance;
   const day = parseDay(formData.get("day"));
@@ -33,7 +33,7 @@ export async function addAttendanceAction(_prev: AddAttendanceState, formData: F
 }
 
 export async function deleteAttendanceAction(formData: FormData) {
-  const me = await requireAdmin();
+  const me = await requireAccess("club", "edit");
   const id = parseId(formData.get("id"));
   const row = id ? await deleteEntry(id) : undefined;
   if (row) await logAction(me, "attendance.delete", { day: row.day, affiliation: row.affiliation });

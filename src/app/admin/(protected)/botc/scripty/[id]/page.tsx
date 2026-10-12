@@ -6,7 +6,7 @@ import { LibraryScriptForm } from "@/modules/botc/components/admin/library-scrip
 import { TeamRows } from "@/modules/botc/components/draft/role-chips";
 import { Card } from "@/components/ui";
 import { getDict } from "@/i18n/server";
-import { requireAdmin } from "@/lib/admin-auth";
+import { requireAccess } from "@/lib/admin-auth";
 import { canEditScript, getLibraryScript, libraryScriptShortLink, libraryScriptToolLink, scriptExtras } from "@/modules/botc/lib/scripts";
 import { formatDay, formatStamp } from "@/lib/time";
 import { parseId } from "@/lib/validation";
@@ -17,7 +17,7 @@ const pill = "rounded-md border border-border bg-card px-3 py-2 text-sm hover:bo
 
 /** One script of the library: its characters, the script tool and the file; the one who added it edits it. */
 export default async function LibraryScriptPage({ params }: { params: Promise<{ id: string }> }) {
-  const me = await requireAdmin();
+  const me = await requireAccess("botc");
   const id = parseId((await params).id);
   if (!id) notFound();
   const [{ locale, t }, row] = await Promise.all([getDict(), getLibraryScript(id)]);

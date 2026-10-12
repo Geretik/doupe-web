@@ -1,5 +1,5 @@
 import { getDict } from "@/i18n/server";
-import { isAdmin } from "@/lib/admin-auth";
+import { canAccess, getAdmin } from "@/lib/admin-auth";
 import { listEntries, parseDay } from "@/lib/attendance";
 import { toCsv } from "@/lib/csv";
 import { formatTime } from "@/lib/time";
@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 /** Admin → Prezenčka: every entry of a period (?od=YYYY-MM-DD&do=YYYY-MM-DD), for the club's reports. */
 export async function GET(req: Request) {
-  if (!(await isAdmin())) return new Response("Unauthorized", { status: 401 });
+  if (!canAccess(await getAdmin(), "club")) return new Response("Unauthorized", { status: 401 });
   const q = new URL(req.url).searchParams;
   let from = parseDay(q.get("od"));
   let to = parseDay(q.get("do"));

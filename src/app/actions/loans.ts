@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getDict } from "@/i18n/server";
-import { requireAdmin } from "@/lib/admin-auth";
+import { requireAccess } from "@/lib/admin-auth";
 import { logAction } from "@/lib/admin-log";
 import { normalizeBarcode } from "@/lib/barcode";
 import { assignBarcode, cleanName, findGame, guessGamesByCode, lendGame, removeBarcode, returnLoan } from "@/lib/loans";
@@ -22,7 +22,7 @@ const lendSchema = z.object({
 
 /** Admin → Půjčovna: lends games of the collection to someone, one or several at once (the boxes scanned in a row). */
 export async function lendGamesAction(input: { gameIds: number[]; borrower: string; note?: string }): Promise<LoanActionResult> {
-  const me = await requireAdmin();
+  const me = await requireAccess("club", "edit");
   const { t } = await getDict();
   const l = t.admin.loans;
   const parsed = lendSchema.safeParse(input);
@@ -50,7 +50,7 @@ export async function lendGamesAction(input: { gameIds: number[]; borrower: stri
 
 /** Which game of the collection an unknown code may be, by the name GameUPC gives it. */
 export async function guessGameAction(input: { code: string }): Promise<{ name: string | null; gameIds: number[] }> {
-  await requireAdmin();
+  await requireAccess("club", "edit");
   const code = typeof input?.code === "string" ? normalizeBarcode(input.code) : null;
   if (!code) return { name: null, gameIds: [] };
   return guessGamesByCode(code);
@@ -58,7 +58,7 @@ export async function guessGameAction(input: { code: string }): Promise<{ name: 
 
 /** The game of an open loan came back. */
 export async function returnLoanAction(loanId: number): Promise<LoanActionResult> {
-  const me = await requireAdmin();
+  const me = await requireAccess("club", "edit");
   const { t } = await getDict();
   const id = parseId(loanId);
   const loan = id ? await returnLoan(id, me.id) : undefined;
@@ -70,7 +70,7 @@ export async function returnLoanAction(loanId: number): Promise<LoanActionResult
 
 /** The bar code read from a box belongs to this game; scanning it again finds the game. */
 export async function assignBarcodeAction(input: { code: string; gameId: number }): Promise<LoanActionResult> {
-  const me = await requireAdmin();
+  const me = await requireAccess("club", "edit");
   const { t } = await getDict();
   const l = t.admin.loans;
   const code = typeof input?.code === "string" ? normalizeBarcode(input.code) : null;
@@ -85,7 +85,7 @@ export async function assignBarcodeAction(input: { code: string; gameId: number 
 
 /** Forgets a code given to the wrong game. */
 export async function removeBarcodeAction(input: { code: string }): Promise<LoanActionResult> {
-  const me = await requireAdmin();
+  const me = await requireAccess("club", "edit");
   const { t } = await getDict();
   const l = t.admin.loans;
   const code = typeof input?.code === "string" ? normalizeBarcode(input.code) : null;

@@ -225,14 +225,27 @@ export const registrationsRelations = relations(registrations, ({ one }) => ({
 export const adminRoles = ["admin", "organizer"] as const;
 export type AdminRole = (typeof adminRoles)[number];
 
+/** The parts of the admin an organiser is given separately: Krvavka (/admin/botc) and the club (attendance, loans). */
+export const adminAreas = ["botc", "club"] as const;
+export type AdminArea = (typeof adminAreas)[number];
+/** none = the part is hidden; view = its pages without anything that changes data; edit = everything in it */
+export const accessLevels = ["none", "view", "edit"] as const;
+export type AccessLevel = (typeof accessLevels)[number];
+
 /** Organiser accounts for /admin. Passwords are stored as scrypt hashes (see lib/password.ts). */
 export const adminUsers = pgTable("admin_users", {
   id: serial("id").primaryKey(),
   nickname: text("nickname").notNull(),
   email: text("email").notNull().unique(),
   passwordHash: text("password_hash").notNull(),
-  /** admin = manages accounts and invites too; organizer = sessions and registrations only */
+  /** admin = everything, accounts and invites too; organizer = the parts of the admin botcAccess and clubAccess give */
   role: text("role", { enum: adminRoles }).notNull().default("organizer"),
+  /**
+   * What an organiser sees and changes in each part of the admin (lib/admin-auth accessOf); an administrator may do
+   * everything whatever these say. The accounts from before these existed kept everything.
+   */
+  botcAccess: text("botc_access", { enum: accessLevels }).notNull().default("edit"),
+  clubAccess: text("club_access", { enum: accessLevels }).notNull().default("edit"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
   /** Login cookies issued before this stop working (password changed or reset) */
@@ -296,6 +309,9 @@ export const adminInvites = pgTable("admin_invites", {
   id: serial("id").primaryKey(),
   token: text("token").notNull().unique(),
   role: text("role", { enum: adminRoles }).notNull().default("organizer"),
+  /** What the new account gets, like adminUsers.botcAccess and clubAccess */
+  botcAccess: text("botc_access", { enum: accessLevels }).notNull().default("edit"),
+  clubAccess: text("club_access", { enum: accessLevels }).notNull().default("edit"),
   /** Optional note for the admin, e.g. who the invite is for */
   note: text("note"),
   createdBy: integer("created_by").references(() => adminUsers.id, { onDelete: "set null" }),

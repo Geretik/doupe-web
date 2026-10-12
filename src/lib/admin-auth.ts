@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
 import { db } from "@/db";
-import { adminUsers, type AdminRole, type AdminUser } from "@/db/schema";
+import { adminUsers, type AccessLevel, type AdminArea, type AdminRole, type AdminUser } from "@/db/schema";
 import { safeEqual } from "./token";
 import { parseId } from "./validation";
 
@@ -73,6 +73,38 @@ export async function isAdmin() {
 export function hasRole(user: AdminUser | null, role: AdminRole) {
   if (!user) return false;
   return role === "organizer" || user.role === "admin";
+}
+
+const RANK: Record<AccessLevel, number> = { none: 0, view: 1, edit: 2 };
+
+type AccessFields = Pick<AdminUser, "role" | "botcAccess" | "clubAccess">;
+
+/** What the account may do in a part of the admin: an administrator everything, an organiser what their account says. */
+export function accessOf(user: AccessFields | null, area: AdminArea): AccessLevel {
+  if (!user) return "none";
+  if (user.role === "admin") return "edit";
+  return area === "botc" ? user.botcAccess : user.clubAccess;
+}
+
+/** Whether the account may see (`view`) or also change (`edit`) a part of the admin. */
+export function canAccess(user: AccessFields | null, area: AdminArea, level: "view" | "edit" = "view") {
+  return RANK[accessOf(user, area)] >= RANK[level];
+}
+
+/**
+ * Signed-in organiser who may see (with `edit` also change) a part of the admin; anyone else goes to the login page,
+ * or to the admin home when the part is not theirs. Pages call it with `view` and hide what changes data from those
+ * who only look; every server action that changes something calls it with `edit`.
+ */
+export async function requireAccess(area: AdminArea, level: "view" | "edit" = "view"): Promise<AdminUser> {
+  const user = await requireAdmin();
+  if (!canAccess(user, area, level)) redirect("/admin");
+  return user;
+}
+
+/** Whether whoever is signed in may change a part of the admin: the edit pencils on the public pages. */
+export async function canEditArea(area: AdminArea) {
+  return canAccess(await getAdmin(), area, "edit");
 }
 
 export async function setAdminCookie(userId: number) {

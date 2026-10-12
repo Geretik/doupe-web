@@ -14,7 +14,7 @@ import { freeSpots } from "@/modules/botc/components/session-card";
 import { Alert, Card } from "@/components/ui";
 import { getDict } from "@/i18n/server";
 import { sessionUrl } from "@/modules/botc/lib/ics";
-import { isAdmin } from "@/lib/admin-auth";
+import { canEditArea } from "@/lib/admin-auth";
 import { getSessionWithCount, listPublicPlayers } from "@/modules/botc/lib/queries";
 import { scriptPollOpen, scriptPollResults } from "@/modules/botc/lib/script-poll";
 import { formatDate, formatRange, formatShortDate, formatTime } from "@/lib/time";
@@ -61,7 +61,7 @@ export default async function SessionPage({
   const [players, waitlist, admin, { locale, t }, poll] = await Promise.all([
     listPublicPlayers(session.id, "confirmed"),
     listPublicPlayers(session.id, "waitlisted"),
-    isAdmin(),
+    canEditArea("botc"),
     getDict(),
     // what is played is in the archive afterwards
     past ? null : scriptPollResults(session),

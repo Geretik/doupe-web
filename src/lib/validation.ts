@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { adminRoles, arrivalModes, attendanceAffiliations, gameLanguages, gameWinners, registrationStates, type ArrivalMode } from "@/db/schema";
+import { accessLevels, adminRoles, arrivalModes, attendanceAffiliations, gameLanguages, gameWinners, registrationStates, type ArrivalMode } from "@/db/schema";
 import type { Dict } from "@/i18n/dictionaries";
 import { BLUFF_COUNT, bluffTeams, findRole, linkedRoleOf, SAT_OUT, STORYTELLER } from "@/modules/botc/lib/botc-roles";
 import { PASSWORD_MIN_LENGTH } from "./password";
@@ -358,8 +358,18 @@ export function gameSchema(t: Dict["admin"]["errors"]) {
   });
 }
 
+/** An account's role and what it may do in each part of the admin (an administrator's parts do not matter) */
+export const accessSchema = z.object({
+  role: z.enum(adminRoles),
+  botc: z.enum(accessLevels),
+  club: z.enum(accessLevels),
+});
+
 export const inviteSchema = z.object({
   role: z.enum(adminRoles),
+  // the form leaves the parts out for an administrator
+  botc: z.enum(accessLevels).default("edit"),
+  club: z.enum(accessLevels).default("edit"),
   note: z
     .string()
     .trim()

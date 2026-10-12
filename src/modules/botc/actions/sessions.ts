@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/db";
 import { games, registrations, scriptVotes, sessions, type RegistrationState } from "@/db/schema";
-import { requireAdmin } from "@/lib/admin-auth";
+import { requireAccess } from "@/lib/admin-auth";
 import { fieldChanges, logAction, logSessionAction, sessionRef } from "@/lib/admin-log";
 import { saveRoster } from "@/modules/botc/lib/game-roster";
 import { rotateFeedKey } from "@/modules/botc/lib/org-feed";
@@ -93,7 +93,7 @@ export async function createSessionAction(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  const me = await requireAdmin();
+  const me = await requireAccess("botc", "edit");
   const r = await parseSessionForm(formData);
   if (r.error) return { error: r.message, fieldErrors: r.error };
   // optional series: the same session every N weeks, `repeatCount` times in total
@@ -128,7 +128,7 @@ export async function updateSessionAction(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  const me = await requireAdmin();
+  const me = await requireAccess("botc", "edit");
   const r = await parseSessionForm(formData);
   if (r.error) return { error: r.message, fieldErrors: r.error };
   const [before] = await db.select().from(sessions).where(eq(sessions.id, id));
@@ -161,7 +161,7 @@ const SESSION_FIELDS_WITH_VALUES = [
 ] as const;
 
 export async function deleteSessionAction(id: number) {
-  const me = await requireAdmin();
+  const me = await requireAccess("botc", "edit");
   const session = await sessionRef(id);
   const [deleted] = await db.delete(sessions).where(eq(sessions.id, id)).returning({ id: sessions.id });
   if (deleted && session) await logAction(me, "session.delete", { session });
@@ -176,7 +176,7 @@ function revalidateSession(sessionId: number) {
 }
 
 export async function adminCancelRegistrationAction(registrationId: number) {
-  const me = await requireAdmin();
+  const me = await requireAccess("botc", "edit");
   const now = new Date();
   const [row] = await db
     .update(registrations)
@@ -193,7 +193,7 @@ export async function adminCancelRegistrationAction(registrationId: number) {
 
 /** One-click "open" / "pause" of new sign-ups from the admin session page. */
 export async function setRegistrationStateAction(sessionId: number, state: RegistrationState): Promise<SimpleResult> {
-  const me = await requireAdmin();
+  const me = await requireAccess("botc", "edit");
   const { t } = await getDict();
   // a manual switch replaces any scheduled opening
   await db.update(sessions).set({ registrationState: state, registrationOpensAt: null }).where(eq(sessions.id, sessionId));
@@ -204,7 +204,7 @@ export async function setRegistrationStateAction(sessionId: number, state: Regis
 
 /** One-click end of the script vote from the admin session page, or opening it again. */
 export async function setScriptPollClosedAction(sessionId: number, closed: boolean): Promise<SimpleResult> {
-  const me = await requireAdmin();
+  const me = await requireAccess("botc", "edit");
   const { t } = await getDict();
   await db.update(sessions).set({ scriptPollClosedAt: closed ? new Date() : null }).where(eq(sessions.id, sessionId));
   await logSessionAction(me, "session.poll", sessionId, { closed });
@@ -218,7 +218,7 @@ export async function setScriptPollClosedAction(sessionId: number, closed: boole
  * whose e-mail the daily cron already replaced by the player's pseudonym.
  */
 export async function adminErasePlayerAction(registrationId: number): Promise<SimpleResult> {
-  const me = await requireAdmin();
+  const me = await requireAccess("botc", "edit");
   const { t } = await getDict();
   const reg = await db.query.registrations.findFirst({ where: eq(registrations.id, registrationId) });
   if (!reg) return { message: t.errors.regNotFound };
@@ -255,7 +255,7 @@ export async function adminErasePlayerAction(registrationId: number): Promise<Si
 
 /** Restores a cancelled registration: into a free spot, or onto the waitlist when full. */
 export async function adminRestoreRegistrationAction(registrationId: number) {
-  const me = await requireAdmin();
+  const me = await requireAccess("botc", "edit");
   const row = await db.transaction(async (tx) => {
     const reg = await tx.query.registrations.findFirst({
       where: eq(registrations.id, registrationId),
@@ -313,7 +313,7 @@ async function fitCapacity(tx: Tx, sessionId: number, capacity: number) {
 
 /** Seats a waitlisted player right away – one more spot when the session is full – and e-mails them as when a spot opens up. */
 export async function adminConfirmWaitlistedAction(registrationId: number) {
-  const me = await requireAdmin();
+  const me = await requireAccess("botc", "edit");
   const result = await db.transaction(async (tx) => {
     const reg = await tx.query.registrations.findFirst({ where: eq(registrations.id, registrationId) });
     if (!reg) return null;
@@ -360,7 +360,7 @@ export async function adminQuickRegisterAction(
   _prev: QuickRegisterResult,
   formData: FormData,
 ): Promise<QuickRegisterResult> {
-  const me = await requireAdmin();
+  const me = await requireAccess("botc", "edit");
   const { locale, t } = await getDict();
   const e = t.admin.errors;
   const parsed = quickRegistrationSchema(t.errors).safeParse(Object.fromEntries(formData.entries()));
@@ -442,7 +442,7 @@ export async function adminUpdateRegistrationAction(
   _prev: EditPlayerResult,
   formData: FormData,
 ): Promise<EditPlayerResult> {
-  const me = await requireAdmin();
+  const me = await requireAccess("botc", "edit");
   const { t } = await getDict();
   const e = t.admin.errors;
   const current = await db.query.registrations.findFirst({
@@ -532,7 +532,7 @@ export async function adminUpdateRegistrationAction(
 
 /** Marks attendance: true = came, false = no-show, null = not marked. */
 export async function setAttendanceAction(registrationId: number, attended: boolean | null) {
-  const me = await requireAdmin();
+  const me = await requireAccess("botc", "edit");
   const [row] = await db
     .update(registrations)
     .set({ attended, updatedAt: new Date() })
@@ -545,7 +545,7 @@ export async function setAttendanceAction(registrationId: number, attended: bool
 
 /** E-mails a player the link to their registration again (also marks a failed confirmation as sent). */
 export async function adminResendLinkAction(registrationId: number): Promise<SimpleResult> {
-  const me = await requireAdmin();
+  const me = await requireAccess("botc", "edit");
   const { t } = await getDict();
   const reg = await db.query.registrations.findFirst({
     where: eq(registrations.id, registrationId),
@@ -575,7 +575,7 @@ export async function broadcastEmailAction(
   _prev: BroadcastResult,
   formData: FormData,
 ): Promise<BroadcastResult> {
-  const me = await requireAdmin();
+  const me = await requireAccess("botc", "edit");
   const { t } = await getDict();
   const parsed = broadcastSchema(t.admin.errors).safeParse(Object.fromEntries(formData.entries()));
   if (!parsed.success) {
@@ -613,7 +613,7 @@ export async function broadcastEmailAction(
 
 /** The signed-in organiser's own choice whether this session's e-mails (a late cancellation) come to them. */
 export async function setSessionEmailsAction(sessionId: number, enabled: boolean): Promise<SimpleResult> {
-  const me = await requireAdmin();
+  const me = await requireAccess("botc", "edit");
   const { t } = await getDict();
   if (typeof enabled !== "boolean" || !(await sessionRef(sessionId))) return { message: t.admin.errors.noSession };
   await setSessionEmails(me.id, sessionId, enabled);
@@ -624,7 +624,7 @@ export async function setSessionEmailsAction(sessionId: number, enabled: boolean
 
 /** New secret link to the signed-in organiser's calendar feed; calendars subscribed to the old one stop updating. */
 export async function rotateFeedKeyAction(): Promise<SimpleResult> {
-  const me = await requireAdmin();
+  const me = await requireAccess("botc");
   const { t } = await getDict();
   await rotateFeedKey(me.id);
   await logAction(me, "account.feedKey", {});
@@ -633,7 +633,7 @@ export async function rotateFeedKeyAction(): Promise<SimpleResult> {
 }
 
 export async function addGameAction(sessionId: number, _prev: FormState, formData: FormData): Promise<FormState> {
-  const me = await requireAdmin();
+  const me = await requireAccess("botc", "edit");
   const { t } = await getDict();
   const parsed = gameSchema(t.admin.errors).safeParse(Object.fromEntries(formData.entries()));
   const roster = parseRoster(formData);
@@ -655,7 +655,7 @@ export async function addGameAction(sessionId: number, _prev: FormState, formDat
 }
 
 export async function updateGameAction(gameId: number, _prev: FormState, formData: FormData): Promise<FormState> {
-  const me = await requireAdmin();
+  const me = await requireAccess("botc", "edit");
   const { t } = await getDict();
   const parsed = gameSchema(t.admin.errors).safeParse(Object.fromEntries(formData.entries()));
   const roster = parseRoster(formData);
@@ -682,7 +682,7 @@ export async function updateGameAction(gameId: number, _prev: FormState, formDat
 }
 
 export async function deleteGameAction(gameId: number) {
-  const me = await requireAdmin();
+  const me = await requireAccess("botc", "edit");
   const [row] = await db.delete(games).where(eq(games.id, gameId)).returning({ sessionId: games.sessionId });
   if (row) {
     await logSessionAction(me, "session.gameDelete", row.sessionId, { gameId });
@@ -692,7 +692,7 @@ export async function deleteGameAction(gameId: number) {
 }
 
 export async function sendRemindersNowAction(sessionId: number): Promise<SimpleResult> {
-  const me = await requireAdmin();
+  const me = await requireAccess("botc", "edit");
   const { t } = await getDict();
   const r = await sendDueReminders({ sessionId, ignoreWindow: true });
   await logSessionAction(me, "session.reminders", sessionId, { sent: r.sent, failed: r.failed });
@@ -702,7 +702,7 @@ export async function sendRemindersNowAction(sessionId: number): Promise<SimpleR
 }
 
 export async function announceDiscordAction(sessionId: number): Promise<SimpleResult> {
-  const me = await requireAdmin();
+  const me = await requireAccess("botc", "edit");
   const { t } = await getDict();
   const session = await db.query.sessions.findFirst({ where: eq(sessions.id, sessionId) });
   if (!session) return { message: t.admin.errors.noSession };

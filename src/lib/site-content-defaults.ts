@@ -1,4 +1,5 @@
 import type { Locale } from "@/i18n/dictionaries";
+import type { AdminArea } from "@/db/schema";
 
 /**
  * Texts of the public pages that organisers edit in the admin (Texty webu). The texts here are the defaults:
@@ -249,6 +250,11 @@ export type PageTextKey<S extends SitePageSlug> = Extract<SitePage, { slug: S }>
 
 /** Longest text a block takes; far above anything the pages need, it only stops pasting in a whole book. */
 export const MAX_TEXT_LENGTH: Record<TextKind, number> = { line: 300, markdown: 20_000 };
+
+/** The part of the admin whose organisers edit a page's texts: the Krvavka pages Krvavka, the others the club. */
+export function pageArea(page: SitePage): AdminArea {
+  return page.path.startsWith("/botc") ? "botc" : "club";
+}
 
 export function sitePage(slug: string): SitePage | undefined {
   return SITE_PAGES.find((p) => p.slug === slug);

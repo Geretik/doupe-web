@@ -36,17 +36,21 @@ export async function resetDb() {
   await sql("delete from game_barcodes");
 }
 
-/** Inserts an organiser account straight into the database (no invitation needed). */
+type Access = "none" | "view" | "edit";
+
+/** Inserts an organiser account straight into the database (no invitation needed); Krvavka and the club editable unless said. */
 export async function createAdminUser(
-  overrides: Partial<{ email: string; password: string; nickname: string; role: "admin" | "organizer" }> = {},
+  overrides: Partial<{ email: string; password: string; nickname: string; role: "admin" | "organizer"; botc: Access; club: Access }> = {},
 ) {
   const rows = await sql<{ id: number }>(
-    "insert into admin_users (nickname, email, password_hash, role) values ($1,$2,$3,$4) returning id",
+    "insert into admin_users (nickname, email, password_hash, role, botc_access, club_access) values ($1,$2,$3,$4,$5,$6) returning id",
     [
       overrides.nickname ?? "Správce",
       overrides.email ?? E2E.adminEmail,
       await hashPassword(overrides.password ?? E2E.adminUserPassword),
       overrides.role ?? "admin",
+      overrides.botc ?? "edit",
+      overrides.club ?? "edit",
     ],
   );
   return rows[0].id;

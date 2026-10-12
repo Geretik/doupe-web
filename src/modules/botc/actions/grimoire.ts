@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getDict } from "@/i18n/server";
-import { requireAdmin } from "@/lib/admin-auth";
+import { requireAccess, requireAdmin } from "@/lib/admin-auth";
 import { logAction, sessionRef } from "@/lib/admin-log";
 import { grimoireStateSchema } from "@/modules/botc/lib/grimoire/schema";
 import { createGrimoire, deleteGrimoire, getGrimoire, saveGrimoire, type SaveResult } from "@/modules/botc/lib/grimoire/service";
@@ -20,7 +20,7 @@ function optionalId(v: FormDataEntryValue | null) {
 
 /** New grimoire – empty, from a session, or the next game of another one – then straight to it. */
 export async function createGrimoireAction(formData: FormData) {
-  const me = await requireAdmin();
+  const me = await requireAccess("botc", "edit");
   const { locale, t } = await getDict();
   const g = t.grimoire;
   const name = String(formData.get("name") ?? "").trim().slice(0, 100) || null;
@@ -37,7 +37,8 @@ export async function createGrimoireAction(formData: FormData) {
 
 /** Autosave of the grimoire page; see saveGrimoire. */
 export async function saveGrimoireAction(id: number, baseVersion: number, state: unknown, force: boolean): Promise<SaveResult | { invalid: true }> {
-  const me = await requireAdmin();
+  // saveGrimoire checks canEditGrimoire
+  const me = await requireAccess("botc");
   // bound in a client component, so it comes from the browser like any other value
   if (parseId(id) === null || !Number.isInteger(baseVersion)) return { notFound: true };
   const parsed = grimoireStateSchema.safeParse(state);
@@ -74,7 +75,7 @@ export type ReadScriptResult =
 
 /** A script pasted or picked as a file in the grimoire: its name, the characters this site knows, its Fabled and Loric and its homebrew; nothing is saved. */
 export async function readGrimoireScriptAction(text: string): Promise<ReadScriptResult> {
-  await requireAdmin();
+  await requireAccess("botc");
   const { locale, t } = await getDict();
   const errors = t.scripts.errors;
   if (typeof text !== "string" || !text.trim()) return { error: errors.noFile };

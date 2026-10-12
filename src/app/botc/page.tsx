@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { EditPencil } from "@/components/edit-pencil";
 import { SessionCard } from "@/modules/botc/components/session-card";
 import { getDict } from "@/i18n/server";
-import { isAdmin } from "@/lib/admin-auth";
+import { canEditArea } from "@/lib/admin-auth";
 import { feedIcsUrl } from "@/modules/botc/lib/ics";
 import { listUpcomingSessions } from "@/modules/botc/lib/queries";
 import { getPageTexts } from "@/lib/site-content";
@@ -17,7 +17,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function SessionsPage() {
   const [sessions, admin, { locale, t }] = await Promise.all([
     listUpcomingSessions(),
-    isAdmin(),
+    canEditArea("botc"),
     getDict(),
   ]);
   const texts = await getPageTexts("krvavka", locale);

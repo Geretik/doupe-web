@@ -3,7 +3,7 @@ import Link from "next/link";
 import { EditPencil } from "@/components/edit-pencil";
 import { Markdown } from "@/components/markdown";
 import { getDict } from "@/i18n/server";
-import { isAdmin } from "@/lib/admin-auth";
+import { canEditArea } from "@/lib/admin-auth";
 import { getPageTexts } from "@/lib/site-content";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -13,7 +13,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function AboutPage() {
-  const [{ locale, t }, admin] = await Promise.all([getDict(), isAdmin()]);
+  const [{ locale, t }, admin] = await Promise.all([getDict(), canEditArea("botc")]);
   const texts = await getPageTexts("o-hre", locale);
   return (
     <article className="max-w-2xl">

@@ -13,6 +13,7 @@ import {
   type DraftInviteStatus,
   type DraftSession,
 } from "@/db/schema";
+import { canAccess } from "@/lib/admin-auth";
 
 /*
  * Reads for the draft pages. Who may see what is decided here and in modules/botc/lib/draft/state (sessionAccess):
@@ -104,15 +105,21 @@ export async function countDraftAttention(userId: number) {
   return row ?? { turns: 0, invites: 0 };
 }
 
-/** Accounts that can be invited to a draft (everybody who is not in it yet, or declined); nicknames only – organisers do not see each other's e-mails. */
+/**
+ * Accounts that can be invited to a draft: everybody who sees Krvavka and is not in it yet, or declined; nicknames
+ * only – organisers do not see each other's e-mails.
+ */
 export async function listInvitableAccounts(sessionId: number) {
   const inSession = db
     .select({ id: draftSessionMembers.userId })
     .from(draftSessionMembers)
     .where(and(eq(draftSessionMembers.sessionId, sessionId), ne(draftSessionMembers.status, "declined")));
   const taken = new Set((await inSession).map((r) => r.id));
-  const all = await db.select({ id: adminUsers.id, nickname: adminUsers.nickname }).from(adminUsers).orderBy(asc(adminUsers.nickname));
-  return all.filter((a) => !taken.has(a.id));
+  const all = await db
+    .select({ id: adminUsers.id, nickname: adminUsers.nickname, role: adminUsers.role, botcAccess: adminUsers.botcAccess, clubAccess: adminUsers.clubAccess })
+    .from(adminUsers)
+    .orderBy(asc(adminUsers.nickname));
+  return all.filter((a) => !taken.has(a.id) && canAccess(a, "botc")).map(({ id, nickname }) => ({ id, nickname }));
 }
 
 export async function listScriptsOfSession(sessionId: number) {

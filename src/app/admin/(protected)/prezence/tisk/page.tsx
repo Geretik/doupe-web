@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { PrintButton } from "@/components/admin/print-button";
 import { getDict } from "@/i18n/server";
-import { requireAdmin } from "@/lib/admin-auth";
+import { requireAccess } from "@/lib/admin-auth";
 import { attendanceUrl } from "@/lib/attendance";
 import { siteName } from "@/lib/site";
 
@@ -11,7 +11,7 @@ const buttonClass = "rounded-md border border-border bg-card px-3 py-2 text-sm h
 
 /** Printable card for the club's table with the attendance sheet's QR code; Czech with an English line for guests. */
 export default async function AttendanceCardPage() {
-  await requireAdmin();
+  await requireAccess("club");
   const { t } = await getDict();
   const c = t.admin.attendance.card;
   const url = attendanceUrl();
