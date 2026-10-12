@@ -112,6 +112,8 @@ export function Grimoire({
   const [focusStep, setFocusStep] = useState<string | null>(null);
   const [recorded, setRecorded] = useState(initiallyRecorded);
   const [fullscreen, setFullscreen] = useState(false);
+  // opened, the grimoire points at the full screen first, until it is entered once (or the setup opened without it)
+  const [fullscreenSeen, setFullscreenSeen] = useState(false);
   // a card shown to a player over the whole screen; not saved
   const [showing, setShowing] = useState<ShowCard | null>(null);
 
@@ -176,6 +178,7 @@ export function Grimoire({
   const toggleFullscreen = () => {
     if (!fullscreen) document.documentElement.requestFullscreen?.().catch(() => {});
     setFullscreen(!fullscreen);
+    setFullscreenSeen(true);
   };
 
   // before the game, once characters are handed out, the first night to prepare the information characters' tokens
@@ -264,10 +267,13 @@ export function Grimoire({
     setSelected(null);
     setTab("seat");
   };
-  const setupHint = canEdit && !setupSeen && state.phase === "setup" && state.bag.length === 0 && !state.seats.some((s) => s.role);
+  const fullscreenHint = canEdit && !fullscreen && !fullscreenSeen && state.phase !== "ended";
+  // the setup comes after the full screen
+  const setupHint = canEdit && !setupSeen && !fullscreenHint && state.phase === "setup" && state.bag.length === 0 && !state.seats.some((s) => s.role);
   const openSetup = () => {
     setSetupOpen(true);
     setSetupSeen(true);
+    setFullscreenSeen(true);
   };
   // on a phone the button is under the town, below the fold: brought into view
   useEffect(() => {
@@ -321,21 +327,35 @@ export function Grimoire({
                 {canEdit && nextLabel && !hidden && <NextButton label={nextLabel} onClick={advance} />}
                 <ScaleButton scale={scale} onChange={setScale} />
                 {canEdit && <HideButton />}
-                <button
-                  type="button"
-                  onClick={toggleFullscreen}
-                  className="min-h-11 rounded-lg border border-border bg-card px-3 text-sm"
-                  aria-label={fullscreen ? t.exitFullscreen : t.fullscreen}
-                  title={fullscreen ? t.exitFullscreen : t.fullscreen}
-                >
-                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
-                    {fullscreen ? (
-                      <path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" />
-                    ) : (
-                      <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />
-                    )}
-                  </svg>
-                </button>
+                <span className="relative">
+                  <button
+                    type="button"
+                    onClick={toggleFullscreen}
+                    className={`min-h-11 rounded-lg border px-3 text-sm ${
+                      fullscreenHint ? "border-accent bg-accent text-accent-foreground ring-4 ring-accent/40 motion-safe:animate-pulse" : "border-border bg-card"
+                    }`}
+                    aria-label={fullscreen ? t.exitFullscreen : t.fullscreen}
+                    title={fullscreen ? t.exitFullscreen : t.fullscreen}
+                  >
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+                      {fullscreen ? (
+                        <path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" />
+                      ) : (
+                        <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />
+                      )}
+                    </svg>
+                  </button>
+                  {/* under the button, over the town or the panel; taps go through it */}
+                  {fullscreenHint && (
+                    <span
+                      className="pointer-events-none absolute top-full right-0 z-30 mt-1 flex w-max flex-col items-end motion-safe:animate-bounce"
+                      data-testid="fullscreen-hint"
+                    >
+                      <span className="mr-3.5 border-x-8 border-b-8 border-x-transparent border-b-accent" aria-hidden />
+                      <span className="rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-accent-foreground shadow-md">{t.fullscreenHint}</span>
+                    </span>
+                  )}
+                </span>
               </span>
             </div>
 

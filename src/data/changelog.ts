@@ -31,6 +31,11 @@ export const changelog: ChangelogEntry[] = [
         text: "Drafty (Personal Pool): při zakládání draftu zaškrtneš strop na podivíny, přisluhovače a démony a nastavíš jeho výšku (výchozí 4). Kdo má z hlídaného týmu tolik postav, další si vezme, až jich tolik budou mít všichni – pokud k nim ještě můžou. Na tabuli tahů jsou takové postavy zašedlé a po najetí myší je vidět proč.",
         href: "/admin/botc/drafty",
       },
+      {
+        for: "organizers",
+        text: "Otevřený grimoár nejdřív ukáže na tlačítko Celá obrazovka a teprve potom na Přípravu – na tabletu tak hra běží bez lišt webu hned od začátku.",
+        href: "/admin/botc/grimoary",
+      },
     ],
   },
   {

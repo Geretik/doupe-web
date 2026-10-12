@@ -1960,13 +1960,21 @@ test("grimoire: after the deal each player is shown their character in turn; at 
   await expect(card).toContainText("JsiMnich");
 });
 
-test("grimoire: a new one points at the setup; night 2: the Demon's attack, the Monk and the Soldier, the Imp passing to the Scarlet Woman", async ({ page }) => {
+test("grimoire: a new one points at the full screen, then at the setup; night 2: the Demon's attack, the Monk and the Soldier, the Imp passing to the Scarlet Woman", async ({ page }) => {
   await page.setViewportSize({ width: 1180, height: 820 });
   const sessionId = await sessionWithPlayers(["Ada", "Bára", "Cyril", "Dan", "Eva", "Filip", "Gita"]);
   await adminLogin(page);
   await page.goto(`/admin/botc/termin/${sessionId}`);
   await page.getByRole("button", { name: "Nový grimoár z tohoto termínu" }).click();
+  await expect(page.getByTestId("fullscreen-hint")).toHaveText("Nejdřív celá obrazovka");
+  await expect(page.getByTestId("setup-hint")).toHaveCount(0);
+  await page.getByRole("button", { name: "Celá obrazovka" }).click();
+  await expect(page.getByTestId("fullscreen-hint")).toHaveCount(0);
   await expect(page.getByTestId("setup-hint")).toHaveText("Začni tady: hráči, script a postavy");
+  // out of the full screen again: it does not point there any more
+  await page.getByRole("button", { name: "Zrušit celou obrazovku" }).click();
+  await expect(page.locator("[data-admin-nav]")).toBeVisible();
+  await expect(page.getByTestId("fullscreen-hint")).toHaveCount(0);
   await openSetup(page);
   const tokens = await openTokens(page);
   for (const name of ["Mnich", "Voják", "Kuchař", "Empat", "Zabiják", "Šarlatová žena", "Čert"]) {
