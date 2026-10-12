@@ -108,7 +108,7 @@ index fc04f1c..2eb1829 100644
                          {isInScript && (
 diff --git a/apps/botc/src/doupe/RoleSidebar.tsx b/apps/botc/src/doupe/RoleSidebar.tsx
 new file mode 100644
-index 0000000..c8f9780
+index 0000000..dcc6c56
 --- /dev/null
 +++ b/apps/botc/src/doupe/RoleSidebar.tsx
 @@ -0,0 +1,473 @@
@@ -389,7 +389,7 @@ index 0000000..c8f9780
 +                <Select.Trigger id="doupe-sidebar-team" style={{ flex: 1 }} />
 +                <Select.Content position="popper">
 +                  <Select.Item value={ALL_TEAMS}>
-+                    {text('All teams')}
++                    {text('All categories')}
 +                  </Select.Item>
 +                  <Select.Separator />
 +                  {teamOptions.map((option) => (
@@ -1065,7 +1065,7 @@ index 0000000..21c2dc1
 +}
 diff --git a/apps/botc/src/doupe/text.ts b/apps/botc/src/doupe/text.ts
 new file mode 100644
-index 0000000..f6001ab
+index 0000000..368d29f
 --- /dev/null
 +++ b/apps/botc/src/doupe/text.ts
 @@ -0,0 +1,42 @@
@@ -1094,7 +1094,7 @@ index 0000000..f6001ab
 +  // RoleSidebar
 +  'Characters': 'Postavy',
 +  'Show': 'Zobrazit',
-+  'All teams': 'Všechny týmy',
++  'All categories': 'Všechny kategorie',
 +  'Travellers': 'Pocestní',
 +  'Search… (Enter adds the first)': 'Hledat… (Enter přidá první)',
 +  'Click a character to add it to the script, click it again to take it out.':

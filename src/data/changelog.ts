@@ -18,7 +18,7 @@ export const changelog: ChangelogEntry[] = [
     items: [
       {
         for: "organizers",
-        text: "Klubový script tool má vlevo lištu s postavami jako ten oficiální: kliknutím postavu přidáš do scriptu, dalším ji odebereš – bez + a okna u každého týmu. Nahoře vybereš sadu (stejnou jako v okně Přidat postavu) a tým, hledáš česky i anglicky, klidně bez diakritiky, a Enter přidá první nalezenou. Šipka u postavy ukáže její schopnost. Na počítači lištu schováš šipkami «, na telefonu ji otevře tlačítko Postavy vlevo dole.",
+        text: "Klubový script tool má vlevo lištu s postavami jako ten oficiální: kliknutím postavu přidáš do scriptu, dalším ji odebereš – bez + a okna u každého týmu. Nahoře vybereš sadu (stejnou jako v okně Přidat postavu) a kategorii, hledáš česky i anglicky, klidně bez diakritiky, a Enter přidá první nalezenou. Šipka u postavy ukáže její schopnost. Na počítači lištu schováš šipkami «, na telefonu ji otevře tlačítko Postavy vlevo dole.",
         href: "https://skript.doupeol.cz",
       },
       {
