@@ -290,8 +290,11 @@ export function Town({
   );
 }
 
-/** In the town's corner: the seating locked, and the circle or the grid; in the grimoire and in the setup's town alike. */
-export function SeatingButtons() {
+/**
+ * In the town's corner: the seating locked, and the circle or the grid; in the grimoire and in the setup's town alike.
+ * `hint`: the lock stands out, the seating of a new grimoire is to be finished with it.
+ */
+export function SeatingButtons({ hint = false }: { hint?: boolean }) {
   const { state, update, readOnly, t } = useGrimoire();
   if (readOnly || state.seats.length < 2) return null;
   const grid = state.layout === "grid";
@@ -301,7 +304,9 @@ export function SeatingButtons() {
       <button
         type="button"
         onClick={() => update((s) => ({ ...s, seatsLocked: !s.seatsLocked }))}
-        className={`flex size-11 items-center justify-center rounded-full border bg-card text-lg shadow-sm ${state.seatsLocked ? "border-accent" : "border-border"}`}
+        className={`flex size-11 items-center justify-center rounded-full border bg-card text-lg shadow-sm ${state.seatsLocked || hint ? "border-accent" : "border-border"} ${
+          hint ? "ring-4 ring-accent/40 motion-safe:animate-pulse" : ""
+        }`}
         aria-pressed={!!state.seatsLocked}
         aria-label={state.seatsLocked ? t.unlockSeats : t.lockSeats}
         title={state.seatsLocked ? t.unlockSeats : t.lockSeats}

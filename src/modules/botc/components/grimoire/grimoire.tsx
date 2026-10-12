@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "r
 import { createPortal } from "react-dom";
 import type { Locale } from "@/i18n/dictionaries";
 import { withScriptNames, type GrimoireCharacter } from "@/modules/botc/lib/grimoire/characters";
-import { canStart, fiddleSeats, isPlayer, nextPhase, nightSteps, putToken, withoutRole, type GrimoireSeat, type GrimoireState } from "@/modules/botc/lib/grimoire/state";
+import { canStart, fiddleSeats, isPlayer, nextPhase, nightSteps, players, putToken, withoutRole, type GrimoireSeat, type GrimoireState } from "@/modules/botc/lib/grimoire/state";
 import { useAsk } from "./ask";
 import { useAutosave, type SaveStatus } from "./autosave";
 import { ChroniclePanel } from "./chronicle";
@@ -18,7 +18,7 @@ import { SCALE, useHidden, useTownScale } from "./device";
 import { useOfflineCopy } from "./offline";
 import { NightPanel, type Placing } from "./night-panel";
 import { SeatPanel } from "./seat-panel";
-import { SetupScreen, type ScriptChoice } from "./setup-panel";
+import { SeatingSetup, SetupScreen, type ScriptChoice } from "./setup-panel";
 import { ShowScreen } from "./show";
 import type { ShowCard } from "@/modules/botc/lib/grimoire/show";
 import { SeatingButtons, Town, TownCenter } from "./town";
@@ -95,7 +95,7 @@ export function Grimoire({
   const state = history.present;
   const [tab, setTab] = useState<Tab>(initial.state.phase === "night" ? "night" : "seat");
   const [setupOpen, setSetupOpen] = useState(false);
-  // a new grimoire points at the setup until it is opened once
+  // a new grimoire is seated in the grimoire itself, then it points at the setup until it is opened once
   const [setupSeen, setSetupSeen] = useState(false);
   const setupButton = useRef<HTMLButtonElement>(null);
   const [placing, setPlacing] = useState<Placing | null>(null);
@@ -267,9 +267,12 @@ export function Grimoire({
     setSelected(null);
     setTab("seat");
   };
-  const fullscreenHint = canEdit && !fullscreen && !fullscreenSeen && state.phase !== "ended";
-  // the setup comes after the full screen
-  const setupHint = canEdit && !setupSeen && !fullscreenHint && state.phase === "setup" && state.bag.length === 0 && !state.seats.some((s) => s.role);
+  const fullscreenHint = canEdit && !fullscreenSeen && !fullscreen && state.phase !== "ended";
+  // a new grimoire step by step: the full screen, the players seated in the grimoire and the seating locked, the setup
+  const seating = canEdit && !setupSeen && state.phase === "setup" && state.bag.length === 0 && !state.seats.some((s) => s.role);
+  // a game needs five players
+  const lockHint = seating && !fullscreenHint && !state.seatsLocked && players(state).length >= 5;
+  const setupHint = seating && !fullscreenHint && !!state.seatsLocked;
   const openSetup = () => {
     setSetupOpen(true);
     setSetupSeen(true);
@@ -405,7 +408,7 @@ export function Grimoire({
                     </button>
                   </div>
                 )}
-                {!setupOpen && <SeatingButtons />}
+                {!setupOpen && <SeatingButtons hint={lockHint} />}
               </div>
               <aside className="flex min-h-0 flex-1 flex-col rounded-xl border border-border bg-card lg:w-[25rem] lg:flex-none">
                 <div className={`border-b border-border ${tabs.length > 1 ? "flex" : "hidden"}`} role="tablist">
@@ -434,6 +437,9 @@ export function Grimoire({
                       />
                     ) : fabledShown ? (
                       <FabledPanel key={fabledShown} roleId={fabledShown} placing={placing} onPlace={setPlacing} onClose={() => setFabledOpen(null)} />
+                    ) : state.phase === "setup" && !context.readOnly && !state.seats.some((s) => s.id === selected) ? (
+                      // before the game, nobody tapped: the seating (the setup over the screen has its own)
+                      !setupOpen && <SeatingSetup guide={seating} onSelect={selectSeat} />
                     ) : (
                       <SeatPanel key={selected} seatId={selected} onRemoved={() => setSelected(null)} onSelect={setSelected} onClose={() => setSelected(null)} />
                     ))}

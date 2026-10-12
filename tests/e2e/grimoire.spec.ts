@@ -1395,6 +1395,46 @@ test("grimoire: the players seated in the setup's own town – named one after a
   await expect(page.getByTestId("phase")).toHaveText("1. noc");
 });
 
+test("grimoire: the players seated in the grimoire itself before the setup – added, a door, named one after another", async ({ page }) => {
+  await page.setViewportSize({ width: 1180, height: 820 });
+  await adminLogin(page);
+  await page.goto("/admin/botc/grimoary");
+  await page.fill("#name", "Rozesazení v grimoáru");
+  await page.getByRole("button", { name: "Založit grimoár" }).click();
+  const seating = page.getByTestId("seating");
+  const town = page.getByTestId("town");
+  const names = (st: { seats: { name: string }[] }) => st.seats.map((x) => x.name);
+  await expect(town).toContainText("Přidej hráče tlačítkem + nebo jménem v panelu.");
+  await expect(page.getByTestId("seating-guide")).toBeVisible();
+
+  // one by name, two empty places, a door
+  await seating.getByRole("textbox", { name: "Jméno hráče" }).fill("Jana");
+  await seating.getByRole("button", { name: "Přidat", exact: true }).click();
+  for (let i = 0; i < 2; i++) await seating.getByRole("button", { name: "Přidat místo" }).click();
+  await seating.getByRole("button", { name: "🚪 Dveře" }).click();
+  await expect(town.getByTestId("seat")).toHaveCount(3);
+  await expect(town.getByTestId("gap")).toHaveCount(1);
+  await expect(seating).toContainText("Hráči (3)");
+
+  // the names one after another in the player's panel: Enter goes on, after the last the seating is back
+  await seating.getByRole("button", { name: "Napsat jména hráčů →" }).click();
+  for (const name of ["Petr", "Olga"]) {
+    await expect(page.getByTestId("seat-panel").getByRole("textbox", { name: "Jméno hráče" })).toBeFocused();
+    await page.keyboard.type(name);
+    await page.keyboard.press("Enter");
+  }
+  await expect(page.getByTestId("seat-panel")).toHaveCount(0);
+  await stored(names, ["Jana", "Petr", "Olga", ""]);
+  await expect(seating.getByRole("button", { name: "Napsat jména hráčů →" })).toHaveCount(0);
+
+  // the setup has the same circle; opened once, the grimoire guides no more, the seating stays in the panel
+  const setup = await openSetup(page);
+  await expect(setup.getByTestId("setup-town").getByTestId("seat")).toHaveCount(3);
+  await closeSetup(page);
+  await expect(page.getByTestId("seating-guide")).toHaveCount(0);
+  await expect(seating).toBeVisible();
+});
+
 test("grimoire: the town on a grid – a player put where they sit goes between the two nearest; locked without the grid; the circle keeps it", async ({ page }) => {
   await adminLogin(page);
   await page.goto("/admin/botc/grimoary");
@@ -1960,17 +2000,23 @@ test("grimoire: after the deal each player is shown their character in turn; at 
   await expect(card).toContainText("JsiMnich");
 });
 
-test("grimoire: a new one points at the full screen, then at the setup; night 2: the Demon's attack, the Monk and the Soldier, the Imp passing to the Scarlet Woman", async ({ page }) => {
+test("grimoire: a new one points at the full screen, the seating and its lock, then at the setup; night 2: the Demon's attack, the Monk and the Soldier, the Imp passing to the Scarlet Woman", async ({ page }) => {
   await page.setViewportSize({ width: 1180, height: 820 });
   const sessionId = await sessionWithPlayers(["Ada", "Bára", "Cyril", "Dan", "Eva", "Filip", "Gita"]);
   await adminLogin(page);
   await page.goto(`/admin/botc/termin/${sessionId}`);
   await page.getByRole("button", { name: "Nový grimoár z tohoto termínu" }).click();
   await expect(page.getByTestId("fullscreen-hint")).toHaveText("Nejdřív celá obrazovka");
-  await expect(page.getByTestId("setup-hint")).toHaveCount(0);
+  await expect(page.getByTestId("seats-lock")).not.toHaveClass(/ring-4/);
   await page.getByRole("button", { name: "Celá obrazovka" }).click();
   await expect(page.getByTestId("fullscreen-hint")).toHaveCount(0);
-  await expect(page.getByTestId("setup-hint")).toHaveText("Začni tady: hráči, script a postavy");
+  // the seating in the grimoire's panel, the lock to finish it; the setup only after that
+  await expect(page.getByTestId("seating-guide")).toContainText("Rozesaď hráče a doplň dveře, vypravěče nebo překážky.");
+  await expect(page.getByTestId("seats-lock")).toHaveClass(/ring-4/);
+  await expect(page.getByTestId("setup-hint")).toHaveCount(0);
+  await page.getByTestId("seats-lock").click();
+  await expect(page.getByTestId("seats-lock")).not.toHaveClass(/ring-4/);
+  await expect(page.getByTestId("setup-hint")).toHaveText("Teď Příprava: script a postavy");
   // out of the full screen again: it does not point there any more
   await page.getByRole("button", { name: "Zrušit celou obrazovku" }).click();
   await expect(page.locator("[data-admin-nav]")).toBeVisible();

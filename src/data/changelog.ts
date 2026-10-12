@@ -33,7 +33,7 @@ export const changelog: ChangelogEntry[] = [
       },
       {
         for: "organizers",
-        text: "Otevřený grimoár nejdřív ukáže na tlačítko Celá obrazovka a teprve potom na Přípravu – na tabletu tak hra běží bez lišt webu hned od začátku.",
+        text: "Nový grimoár tě provede krok za krokem: nejdřív ukáže na tlačítko Celá obrazovka, pak hráče rozesadíš přímo v grimoáru – v panelu vedle kruhu je přidáš jménem nebo tlačítkem +, doplníš dveře, vypravěče nebo překážky a ťuknutím na místo napíšeš jméno (Enter skočí na dalšího bez jména). Hotové rozesazení zamkneš zámkem v rohu kruhu a teprve pak ukáže na Přípravu se scriptem a postavami.",
         href: "/admin/botc/grimoary",
       },
     ],

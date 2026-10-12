@@ -165,22 +165,13 @@ function StartBlocked({ onSelectSeat }: { onSelectSeat: (seatId: string) => void
 
 /** Before the game (and for changes during it): script, Fabled and Loric, players, the setup counts, the bag, the Demon's bluffs. */
 export function SetupPanel({ scripts, onSelectSeat, wide = false }: { scripts: ScriptChoice[]; onSelectSeat: (seatId: string) => void; wide?: boolean }) {
-  const { state, update, readOnly, hidden, t } = useGrimoire();
-  const [newName, setNewName] = useState("");
+  const { state, hidden, t } = useGrimoire();
   const players = playerSeats(state).length;
-  const inCircle = state.seats.filter(isPlayer);
   // hidden: the rulebook's numbers, not the ones the characters in play change
   const expected = expectedSetup(players, hidden ? [] : setupRoles(state));
   const bagExpected = expectedSetup(players, setupRoles(state), true);
   const assigned = teamCounts(state.seats.map((s) => s.role));
   const inBag = teamCounts(state.bag);
-
-  const addPlayer = () => {
-    const name = newName.trim().slice(0, 60);
-    if (!name || state.seats.length >= MAX_SEATS) return;
-    update((s) => ({ ...s, seats: [...s.seats, newSeat(name)] }));
-    setNewName("");
-  };
 
   return (
     <div className="flex flex-col gap-5" data-testid="setup-panel">
@@ -188,61 +179,9 @@ export function SetupPanel({ scripts, onSelectSeat, wide = false }: { scripts: S
       <FabledSetup wide={wide} />
 
       <section className="flex flex-col gap-1.5">
-        <div className="flex flex-wrap items-center gap-2">
-          <h3 className={heading}>{fill(t.players, { n: inCircle.length })}</h3>
-          {!readOnly && (
-            <>
-              <PlayerCountButtons />
-              <button
-                type="button"
-                className={`${plain} ml-auto`}
-                onClick={() => update((s) => ({ ...s, seats: s.seats.map((x) => (isPlayer(x) ? { ...x, name: "", registrationId: null } : x)) }))}
-                disabled={!inCircle.some((x) => x.name || x.registrationId)}
-              >
-                {t.clearNames}
-              </button>
-            </>
-          )}
-        </div>
+        <PlayersHeading />
         <SetupTown onOpen={onSelectSeat} />
-        {!readOnly && state.seats.length < MAX_SEATS && (
-          <form
-            className="flex gap-2"
-            onSubmit={(e) => {
-              e.preventDefault();
-              addPlayer();
-            }}
-          >
-            <input
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              placeholder={t.addPlayerPlaceholder}
-              aria-label={t.addPlayerPlaceholder}
-              maxLength={60}
-              className="min-h-11 min-w-0 flex-1 rounded-lg border border-border bg-card px-3 text-base"
-            />
-            <button type="submit" className={plain}>
-              {t.addPlayer}
-            </button>
-          </form>
-        )}
-        {!readOnly && state.seats.length < MAX_SEATS && <AddTraveller />}
-        {!readOnly && state.seats.length < MAX_SEATS && (
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs text-muted">{t.addGap}:</span>
-            {gapKinds.map((gap) => (
-              <button
-                key={gap}
-                type="button"
-                className={plain}
-                onClick={() => update((s) => ({ ...s, seats: [...s.seats, newGap(gap)] }))}
-                disabled={gap === "storyteller" && state.seats.some((s) => s.gap === "storyteller")}
-              >
-                {gapIcon[gap]} {t.gaps[gap]}
-              </button>
-            ))}
-          </div>
-        )}
+        <AddToCircle />
         <p className="text-xs text-muted">{t.seatOrderHint}</p>
       </section>
 
@@ -288,6 +227,109 @@ export function SetupPanel({ scripts, onSelectSeat, wide = false }: { scripts: S
         <SetupSecrets wide={wide} />
       )}
     </div>
+  );
+}
+
+/**
+ * The seating in the grimoire's panel before the game, nobody tapped: players, travellers and gaps into the circle
+ * of the grimoire itself, their names one after another. `guide`: a new grimoire's steps, the setup after the seating.
+ */
+export function SeatingSetup({ guide, onSelect }: { guide: boolean; onSelect: (seatId: string) => void }) {
+  const { state, t } = useGrimoire();
+  const first = nextUnnamed(state, -1);
+  return (
+    <div className="flex flex-col gap-3" data-testid="seating">
+      {guide && (
+        <ol className="list-inside list-decimal rounded-lg border border-accent/50 bg-accent/10 px-3 py-2 text-sm" data-testid="seating-guide">
+          {t.seatingGuide.map((step) => (
+            <li key={step}>{step}</li>
+          ))}
+        </ol>
+      )}
+      <PlayersHeading />
+      {first && (
+        <button type="button" className={`${plain} self-start`} onClick={() => onSelect(first.id)}>
+          {t.seatNameThem}
+        </button>
+      )}
+      <AddToCircle />
+      <p className="text-xs text-muted">{t.seatOrderHint}</p>
+    </div>
+  );
+}
+
+/** How many players are in the circle, − and + for empty places, and the names cleared for a new seating. */
+function PlayersHeading() {
+  const { state, update, readOnly, t } = useGrimoire();
+  const inCircle = state.seats.filter(isPlayer);
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <h3 className={heading}>{fill(t.players, { n: inCircle.length })}</h3>
+      {!readOnly && (
+        <>
+          <PlayerCountButtons />
+          <button
+            type="button"
+            className={`${plain} ml-auto`}
+            onClick={() => update((s) => ({ ...s, seats: s.seats.map((x) => (isPlayer(x) ? { ...x, name: "", registrationId: null } : x)) }))}
+            disabled={!inCircle.some((x) => x.name || x.registrationId)}
+          >
+            {t.clearNames}
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
+/** Into the circle: a player by name, a traveller, a door, the Storyteller or an obstacle. */
+function AddToCircle() {
+  const { state, update, readOnly, t } = useGrimoire();
+  const [newName, setNewName] = useState("");
+  if (readOnly || state.seats.length >= MAX_SEATS) return null;
+  const addPlayer = () => {
+    const name = newName.trim().slice(0, 60);
+    if (!name) return;
+    update((s) => (s.seats.length >= MAX_SEATS ? s : { ...s, seats: [...s.seats, newSeat(name)] }));
+    setNewName("");
+  };
+  return (
+    <>
+      <form
+        className="flex gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          addPlayer();
+        }}
+      >
+        <input
+          value={newName}
+          onChange={(e) => setNewName(e.target.value)}
+          placeholder={t.addPlayerPlaceholder}
+          aria-label={t.addPlayerPlaceholder}
+          maxLength={60}
+          className="min-h-11 min-w-0 flex-1 rounded-lg border border-border bg-card px-3 text-base"
+        />
+        <button type="submit" className={plain}>
+          {t.addPlayer}
+        </button>
+      </form>
+      <AddTraveller />
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs text-muted">{t.addGap}:</span>
+        {gapKinds.map((gap) => (
+          <button
+            key={gap}
+            type="button"
+            className={plain}
+            onClick={() => update((s) => ({ ...s, seats: [...s.seats, newGap(gap)] }))}
+            disabled={gap === "storyteller" && state.seats.some((s) => s.gap === "storyteller")}
+          >
+            {gapIcon[gap]} {t.gaps[gap]}
+          </button>
+        ))}
+      </div>
+    </>
   );
 }
 

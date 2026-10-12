@@ -100,12 +100,25 @@ export function SeatPanel({
     const next = nextUnnamed(state, index);
     if (next) onSelect(next.id);
   };
+  // before the game the circle is named one after another: Enter goes on to the next place without a name
+  const naming = state.phase === "setup" && !readOnly;
+  const nameNext = () => {
+    const next = nextUnnamed(state, index);
+    if (next) onSelect(next.id);
+    else onClose();
+  };
 
   return (
     <div className="flex flex-col gap-4" data-testid="seat-panel">
       <div className="flex items-start gap-2">
         <div className="flex min-w-0 flex-1 flex-col">
-          <SeatName key={`${seat.id}-${seat.name}`} name={seat.name} onSave={setName} />
+          <SeatName
+            key={`${seat.id}-${seat.name}`}
+            name={seat.name}
+            onSave={setName}
+            onEnter={naming ? nameNext : undefined}
+            autoFocus={naming && !seat.name}
+          />
         </div>
         <CloseButton onClose={onClose} />
       </div>
@@ -471,7 +484,8 @@ function PlaceControls({ seat, index, onRemoved }: { seat: GrimoireSeat; index: 
   );
 }
 
-function SeatName({ name, onSave }: { name: string; onSave: (name: string) => void }) {
+/** A player's name, saved when the field is left; Enter saves it, then `onEnter` (on to the next place) if given. */
+function SeatName({ name, onSave, onEnter, autoFocus = false }: { name: string; onSave: (name: string) => void; onEnter?: () => void; autoFocus?: boolean }) {
   const { readOnly, t } = useGrimoire();
   const [value, setValue] = useState(name);
   const save = () => {
@@ -485,7 +499,14 @@ function SeatName({ name, onSave }: { name: string; onSave: (name: string) => vo
       value={value}
       onChange={(e) => setValue(e.target.value)}
       onBlur={save}
-      onKeyDown={(e) => e.key === "Enter" && (e.currentTarget as HTMLInputElement).blur()}
+      onKeyDown={(e) => {
+        if (e.key !== "Enter") return;
+        e.preventDefault();
+        (e.currentTarget as HTMLInputElement).blur();
+        onEnter?.();
+      }}
+      autoFocus={autoFocus}
+      enterKeyHint={onEnter ? "next" : undefined}
       aria-label={t.seatName}
       placeholder={t.seatName}
       maxLength={60}
