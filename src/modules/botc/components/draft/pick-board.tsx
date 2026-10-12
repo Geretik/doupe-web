@@ -7,7 +7,8 @@ import { Alert, Button } from "@/components/ui";
 import { OptionChips } from "./role-chips";
 import { TeamSection, type GroupKey } from "./team-section";
 
-export type BoardOption = { id: number; roleIds: string[]; label: string; fits: boolean };
+/** `fits`: the drafter may take it now; else `why` not, when it is not just their full pool (the cap) */
+export type BoardOption = { id: number; roleIds: string[]; label: string; fits: boolean; why?: string };
 export type BoardGroup = { group: GroupKey; label: string; options: BoardOption[] };
 
 /**
@@ -79,7 +80,8 @@ export function PickBoard({
                   ) : (
                     <span
                       className={`inline-flex items-center gap-1 p-0.5 ${onTurn ? "opacity-40" : ""}`}
-                      title={onTurn ? t.doesNotFit : undefined}
+                      title={o.why ?? (onTurn ? t.doesNotFit : undefined)}
+                      data-blocked={o.why ? "cap" : undefined}
                       data-option={o.roleIds.join("+")}
                     >
                       <OptionChips roleIds={o.roleIds} locale={locale} />

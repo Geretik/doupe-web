@@ -1,7 +1,7 @@
 import { gunzipSync } from "node:zlib";
 import { type Browser, type Page, expect, test } from "@playwright/test";
 import { afterPick, nextTurn, snakeOrder } from "../../src/modules/botc/lib/draft/engine";
-import { draftModes, fits, type PoolState } from "../../src/modules/botc/lib/draft/modes";
+import { draftModes, fits, teamCapBlock, type PoolState } from "../../src/modules/botc/lib/draft/modes";
 import { buildOptions, matchRoleId, parseBundles, roleIdsFromScriptJson } from "../../src/modules/botc/lib/draft/roles";
 import { adminLogin, createAdminUser, resetDb, sql } from "./helpers";
 
@@ -46,28 +46,61 @@ test("bundles: one pick for all their characters, never split, data not code", (
 });
 
 test("pool limits: a two-character bundle does not fit 14 / 15; modes decide the end", () => {
-  const pool: PoolState = { id: 1, memberId: 1, target: 15, count: 14 };
+  const pool: PoolState = { id: 1, memberId: 1, target: 15, count: 14, roleIds: [] };
   expect(fits(pool, 2)).toBe(false);
   expect(fits(pool, 1)).toBe(true);
   const personal = draftModes.personal;
   // Alice is full, Bob has 14/15 and only a bundle is left: nobody can pick → over
   const pools: PoolState[] = [
-    { id: 1, memberId: 1, target: 15, count: 15 },
-    { id: 2, memberId: 2, target: 15, count: 14 },
+    { id: 1, memberId: 1, target: 15, count: 15, roleIds: [] },
+    { id: 2, memberId: 2, target: 15, count: 14, roleIds: [] },
   ];
-  expect(afterPick(personal, { seat: 0, direction: 1 }, [1, 2], pools, [{ id: 9, roleIds: ["choirboy", "king"] }])).toEqual({
+  expect(afterPick(personal, {}, { seat: 0, direction: 1 }, [1, 2], pools, [{ id: 9, roleIds: ["choirboy", "king"] }])).toEqual({
     kind: "completed",
     exhausted: true,
   });
   // with a single left, Bob goes on
-  expect(afterPick(personal, { seat: 0, direction: 1 }, [1, 2], pools, [{ id: 8, roleIds: ["imp"] }])).toEqual({
+  expect(afterPick(personal, {}, { seat: 0, direction: 1 }, [1, 2], pools, [{ id: 8, roleIds: ["imp"] }])).toEqual({
     kind: "next",
     turn: { seat: 1, direction: 1 },
     memberId: 2,
   });
   // shared: over once the one pool has its target
-  expect(draftModes.shared.isComplete([{ id: 1, memberId: null, target: 30, count: 30 }])).toBe(true);
-  expect(draftModes.shared.isComplete([{ id: 1, memberId: null, target: 30, count: 29 }])).toBe(false);
+  expect(draftModes.shared.isComplete([{ id: 1, memberId: null, target: 30, count: 30, roleIds: [] }])).toBe(true);
+  expect(draftModes.shared.isComplete([{ id: 1, memberId: null, target: 30, count: 29, roleIds: [] }])).toBe(false);
+});
+
+test("cap: more Outsiders, Minions or Demons than the cap only once everybody has as many – or cannot get them any more", () => {
+  const config = { teamCap: 1, capOutsider: 1, capMinion: 1, capDemon: 0 };
+  const pool = (memberId: number, roleIds: string[], target = 4): PoolState => ({ id: memberId, memberId, target, count: roleIds.length, roleIds });
+  const recluse = { id: 1, roleIds: ["recluse"] };
+  const saint = { id: 2, roleIds: ["saint"] };
+  const po = { id: 3, roleIds: ["po"] };
+  const chef = { id: 4, roleIds: ["chef"] };
+  // Alice has her Outsider; Bob has none, has room and there are Outsiders left: no second one for Alice yet
+  const pools = [pool(1, ["drunk", "imp"]), pool(2, ["chef"])];
+  expect(teamCapBlock(config, 1, recluse, pools, [recluse, saint, po])).toEqual({ kind: "teamCap", team: "outsider", cap: 1 });
+  // …but anything else, and the Demons are not ticked
+  expect(teamCapBlock(config, 1, chef, pools, [recluse, chef])).toBeNull();
+  expect(teamCapBlock(config, 1, po, pools, [recluse, po])).toBeNull();
+  // Bob takes his: the team is free
+  expect(teamCapBlock(config, 1, recluse, [pool(1, ["drunk"]), pool(2, ["saint"])], [recluse])).toBeNull();
+  // Bob cannot get one any more: his pool is full, or none would be left for him
+  expect(teamCapBlock(config, 1, recluse, [pool(1, ["drunk"]), pool(2, ["chef", "empath"], 2)], [recluse])).toBeNull();
+  expect(teamCapBlock({ ...config, teamCap: 2 }, 1, recluse, [pool(1, ["drunk", "saint"]), pool(2, [])], [recluse])).toBeNull();
+  // a bundle counts with all its characters; no cap when it is not set (sessions started before it)
+  expect(teamCapBlock(config, 2, { id: 5, roleIds: ["huntsman", "damsel"] }, [pool(1, []), pool(2, ["saint"])], [recluse])).toEqual({
+    kind: "teamCap",
+    team: "outsider",
+    cap: 1,
+  });
+  expect(teamCapBlock({}, 1, recluse, pools, [recluse, saint])).toBeNull();
+  // the turn skips a drafter whom the cap keeps from everything left
+  expect(afterPick(draftModes.personal, config, { seat: 1, direction: -1 }, [1, 2], pools, [recluse, saint])).toEqual({
+    kind: "next",
+    turn: { seat: 1, direction: 1 },
+    memberId: 2,
+  });
 });
 
 test("characters from names, old ids and script JSON", () => {
@@ -438,4 +471,81 @@ test("draft: two drafts are independent – own members, picks, snapshot – set
     { session_id: personal.sessionId, c: 1 },
   ]);
   await bob.context().close();
+});
+
+test("draft: the cap ticked in the form – a second Outsider only once everybody has one, the Demons left free", async ({ page, browser }) => {
+  await account("Alice", "alice@example.com");
+  await account("Bob", "bob@example.com");
+  await adminLogin(page, { email: "alice@example.com", password: PASSWORD });
+
+  await page.goto("/admin/botc/drafty/novy");
+  await page.fill("#name", "Draft se stropem");
+  await page.fill("[id='personal.rolesPerParticipant']", "4");
+  // ticked for all three by default, at 4
+  await expect(page.locator("[id='personal.teamCap']")).toHaveValue("4");
+  for (const team of ["podivíny", "přisluhovače", "démony"]) await expect(page.getByLabel(`Strop na ${team}`)).toBeChecked();
+  await page.fill("[id='personal.teamCap']", "1");
+  await page.getByLabel("Strop na démony").uncheck();
+  await page.check("text=Ruční výběr");
+  await page.click("summary:has-text('Načíst postavy ze scriptu')");
+  const roles = [{ id: "_meta", name: "Strop" }, "washerwoman", "librarian", "chef", "empath", "drunk", "recluse", "saint", "butler", "poisoner", "imp", "po"];
+  await page.fill("textarea[aria-label='Načíst postavy ze scriptu']", JSON.stringify(roles));
+  await page.click("button:has-text('Načíst')");
+  await page.click("button:has-text('Vytvořit draft')");
+  const { draftId, sessionId } = await draftFromUrl(page);
+  await expect(page.locator("main")).toContainText("Personal Pool · 4 role na hráče · strop 1: podivíni, přisluhovači");
+  expect(await sql("select mode_config from draft_sessions where id=$1", [sessionId])).toEqual([
+    { mode_config: { rolesPerParticipant: 4, teamCap: 1, capOutsider: 1, capMinion: 1, capDemon: 0 } },
+  ]);
+
+  await invite(page, "Bob");
+  const bob = await loginAs(browser, "bob@example.com");
+  await bob.goto(`/admin/botc/drafty/${draftId}`);
+  await bob.click("#invitation button:has-text('Přijmout')");
+  await expect(bob.getByTestId("member-Bob")).toContainText("přijal/a");
+  await page.reload();
+  page.once("dialog", (d) => d.accept());
+  await page.click("button:has-text('Spustit draft')");
+  await expect(page.getByTestId("cap-rule")).toContainText("Strop 1 na podivíny, přisluhovače");
+
+  // snake: Alice, Bob, Bob, Alice, Alice, Bob, Bob, Alice
+  // each pick is waited for before the other page loads: the test database takes one query at a time
+  await pick(page, "drunk");
+  await expect(page.locator("#turn")).toContainText("Čeká se na Bob");
+  await bob.goto(`/admin/botc/drafty/${draftId}`);
+  await pick(bob, "washerwoman");
+  await expect(bob.locator("#turn")).toContainText("Pick č. 3");
+  await pick(bob, "librarian");
+  await expect(bob.locator("#turn")).toContainText("Čeká se na Alice");
+  // Bob has no Outsider yet, has room and some are left: no second one for Alice – the Demons are free
+  await page.goto(`/admin/botc/drafty/${draftId}`);
+  const recluse = page.locator('[data-testid=pick-board] [data-option="recluse"]');
+  await expect(recluse).toHaveAttribute("data-blocked", "cap");
+  await expect(recluse).toHaveAttribute("title", "Strop: další podivíny si vezmeš, až jich budou mít 1 všichni.");
+  await expect(page.locator('[data-testid=pick-board] button[data-option="recluse"]')).toHaveCount(0);
+  await pick(page, "imp");
+  await expect(page.locator("#turn")).toContainText("Pick č. 5");
+  await pick(page, "po");
+  await expect(page.locator("#turn")).toContainText("Čeká se na Bob");
+  // Bob takes his Outsider; then nobody is owed one and the next is free for both
+  await bob.goto(`/admin/botc/drafty/${draftId}`);
+  await pick(bob, "saint");
+  await expect(bob.locator("#turn")).toContainText("Pick č. 7");
+  await pick(bob, "butler");
+  await expect(bob.locator("#turn")).toContainText("Čeká se na Alice");
+  await page.goto(`/admin/botc/drafty/${draftId}`);
+  await pick(page, "recluse");
+  await expect(page.locator("h1")).toContainText("Dokončeno");
+  expect(
+    await sql("select m.nickname, p.role_ids from draft_picks p join draft_session_members m on m.id = p.member_id where p.session_id=$1 order by p.pick_number", [sessionId]),
+  ).toEqual([
+    { nickname: "Alice", role_ids: ["drunk"] },
+    { nickname: "Bob", role_ids: ["washerwoman"] },
+    { nickname: "Bob", role_ids: ["librarian"] },
+    { nickname: "Alice", role_ids: ["imp"] },
+    { nickname: "Alice", role_ids: ["po"] },
+    { nickname: "Bob", role_ids: ["saint"] },
+    { nickname: "Bob", role_ids: ["butler"] },
+    { nickname: "Alice", role_ids: ["recluse"] },
+  ]);
 });

@@ -15,14 +15,18 @@ export function modeInfos(t: Dict): ModeInfo[] {
       id: m.id,
       name: labels.name,
       description: labels.description,
-      fields: m.fields.map((f) => ({ ...f, label: labels.fields[f.key] ?? f.key })),
+      fields: m.fields.map((f) => ({ ...f, label: labels.fields[f.key] ?? f.key, hint: labels.hints[f.key] })),
     };
   });
 }
 
-/** "Personal Pool · 15 roles per player" */
-export function modeSummary(t: Dict, session: Pick<DraftSession, "mode" | "modeConfig">) {
-  return `${t.draft.modes[session.mode].name} · ${t.draft.modeSummary[session.mode](session.modeConfig)}`;
+/**
+ * "Personal Pool · 15 roles per player · cap 4: …". Before the start with every setting, also one the mode got after the
+ * draft was saved (startSession saves them so); a running or finished draft as it was started.
+ */
+export function modeSummary(t: Dict, session: Pick<DraftSession, "mode" | "modeConfig" | "status">) {
+  const config = session.status === "preparing" ? normalizeModeConfig(draftModes[session.mode], session.modeConfig) : session.modeConfig;
+  return `${t.draft.modes[session.mode].name} · ${t.draft.modeSummary[session.mode](config)}`;
 }
 
 /** Every character for the manual pick of the draft form, by team and by the name shown. */

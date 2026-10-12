@@ -17,7 +17,8 @@ export type ModeInfo = {
   id: DraftModeId;
   name: string;
   description: string;
-  fields: { key: string; label: string; min: number; max: number; default: number }[];
+  /** numbers, and checkboxes (`kind: "check"`, 1 / 0) shown together after them */
+  fields: { key: string; label: string; hint?: string; min: number; max: number; default: number; kind?: "number" | "check" }[];
 };
 
 export type DraftFormLabels = {
@@ -143,10 +144,10 @@ export function DraftForm({
             ))}
           </select>
         </Field>
-        {mode?.fields.map((f) => {
+        {mode?.fields.filter((f) => f.kind !== "check").map((f) => {
           const name = `${mode.id}.${f.key}`;
           return (
-            <Field key={name} label={f.label} name={name} errors={errors[name]}>
+            <Field key={name} label={f.label} name={name} hint={f.hint} errors={errors[name]}>
               <input
                 id={name}
                 name={name}
@@ -160,6 +161,26 @@ export function DraftForm({
             </Field>
           );
         })}
+        {mode?.fields.some((f) => f.kind === "check") && (
+          <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm sm:col-span-2">
+            {mode.fields
+              .filter((f) => f.kind === "check")
+              .map((f) => {
+                const name = `${mode.id}.${f.key}`;
+                return (
+                  <label key={name} className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      name={name}
+                      defaultChecked={(modeId === initial.mode ? (initial.config[f.key] ?? f.default) : f.default) === 1}
+                      className="accent-accent"
+                    />
+                    {f.label}
+                  </label>
+                );
+              })}
+          </div>
+        )}
       </div>
 
       <fieldset className="flex flex-col gap-3">

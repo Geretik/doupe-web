@@ -21,9 +21,9 @@ import {
 import type { Locale } from "@/i18n/dictionaries";
 import { canAccess } from "@/lib/admin-auth";
 import { canEditScript, scriptNameTaken, scriptText } from "../scripts";
-import { afterPick, drafterCanPick, firstTurn, type Turn } from "./engine";
+import { afterPick, drafterCanPick, firstTurn, pickCheck, type Turn } from "./engine";
 import { TURN_REMINDER_HOURS } from "./events";
-import { draftModes, fits, type ModeConfig } from "./modes";
+import { draftModes, normalizeModeConfig, type ModeConfig } from "./modes";
 import { sortRoleIds } from "./roles";
 import { scriptJson } from "./script";
 import { drafters, isDraftManager, runtime, sessionAccess, startReview, type SessionAccess, type SessionRows } from "./state";
@@ -49,6 +49,8 @@ export type DraftError =
   | "notYourTurn"
   | "taken"
   | "doesNotFit"
+  /** the personal mode's cap on Outsiders, Minions or Demons: somebody else has fewer and can still get them */
+  | "capped"
   | "notReady"
   | "ownerFixed"
   /** the script was saved elsewhere since the page was opened */
@@ -341,19 +343,21 @@ export async function startSession(user: AdminUser, sessionId: number): Promise<
       .values(review.offer.options.map((o, position) => ({ sessionId, position, roleIds: o.roleIds })))
       .returning();
     const mode = draftModes[rows.session.mode];
+    // every setting there, also one the mode got after the draft was saved (the form showed its default)
+    const config = normalizeModeConfig(mode, rows.session.modeConfig);
     const poolRows = await tx
       .insert(draftPools)
-      .values(mode.createPools(rows.session.modeConfig, order.map((m) => m.id)).map((p) => ({ sessionId, ...p })))
+      .values(mode.createPools(config, order.map((m) => m.id)).map((p) => ({ sessionId, ...p })))
       .returning();
-    const pools = poolRows.map((p) => ({ id: p.id, memberId: p.memberId, target: p.target, count: 0 }));
+    const pools = poolRows.map((p) => ({ id: p.id, memberId: p.memberId, target: p.target, count: 0, roleIds: [] }));
     const available = optionRows.map((o) => ({ id: o.id, roleIds: o.roleIds }));
-    const turn = firstTurn(order.length, (seat) => drafterCanPick(mode, order[seat].id, pools, available));
+    const turn = firstTurn(order.length, (seat) => drafterCanPick(mode, config, order[seat].id, pools, available));
     if (!turn) return fail("notReady");
     const now = new Date();
     const first = order[turn.seat].id;
     await tx
       .update(draftSessions)
-      .set({ status: "active", startedAt: now, updatedAt: now, pickNumber: 1, seat: turn.seat, direction: turn.direction, currentMemberId: first })
+      .set({ status: "active", modeConfig: config, startedAt: now, updatedAt: now, pickNumber: 1, seat: turn.seat, direction: turn.direction, currentMemberId: first })
       .where(eq(draftSessions.id, sessionId));
     await addTurnEvent(tx, sessionId, first, 1, now);
     return { ok: true };
@@ -368,7 +372,7 @@ export type PickResult = Result<{ roleIds: string[]; completed: boolean }>;
  * One pick, all or nothing. Under the session's lock it checks again that the session runs, that the account
  * drafts in it and is on turn, that the page showed the current pick number (a second tab or a double click
  * cannot pick twice, not even at the end of a row where the same drafter goes again), that the option is
- * still free and fits the pool. Then it saves the pick and the next turn. The unique indexes of draft_picks
+ * still free, fits the pool and the cap lets them take it. Then it saves the pick and the next turn. The unique indexes of draft_picks
  * would stop a second pick even if all that were bypassed.
  */
 export async function makePick(user: AdminUser, sessionId: number, optionId: number, expectedPick: number): Promise<PickResult> {
@@ -383,8 +387,9 @@ export async function makePick(user: AdminUser, sessionId: number, optionId: num
     const option = rt.available.find((o) => o.id === optionId);
     if (!option) return fail("taken");
     const mode = draftModes[session.mode];
-    const pool = mode.poolOf(me.id, rt.pools);
-    if (!pool || !fits(pool, option.roleIds.length)) return fail("doesNotFit");
+    const check = pickCheck(mode, session.modeConfig, me.id, option, rt.pools, rt.available);
+    if (check !== "ok") return fail(check === "doesNotFit" ? "doesNotFit" : "capped");
+    const pool = mode.poolOf(me.id, rt.pools)!;
 
     await tx.insert(draftPicks).values({
       sessionId,
@@ -395,10 +400,10 @@ export async function makePick(user: AdminUser, sessionId: number, optionId: num
       roleIds: option.roleIds,
     });
 
-    const pools = rt.pools.map((p) => (p.id === pool.id ? { ...p, count: p.count + option.roleIds.length } : p));
+    const pools = rt.pools.map((p) => (p.id === pool.id ? { ...p, count: p.count + option.roleIds.length, roleIds: [...p.roleIds, ...option.roleIds] } : p));
     const available = rt.available.filter((o) => o.id !== option.id);
     const turn: Turn = { seat: session.seat ?? 0, direction: session.direction === -1 ? -1 : 1 };
-    const next = afterPick(mode, turn, rt.order.map((m) => m.id), pools, available);
+    const next = afterPick(mode, session.modeConfig, turn, rt.order.map((m) => m.id), pools, available);
     const now = new Date();
     const pickNumber = session.pickNumber + 1;
     if (next.kind === "completed") {

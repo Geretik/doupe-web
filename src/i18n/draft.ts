@@ -5,6 +5,14 @@
 
 const cz = (n: number, one: string, few: string, many: string) => (n === 1 ? one : n >= 2 && n <= 4 ? few : many);
 
+type CappedTeam = "outsider" | "minion" | "demon";
+/** The teams ticked for the personal mode's cap (modules/botc/lib/draft/modes capKeys) */
+const capped = (c: Record<string, number>) =>
+  (["outsider", "minion", "demon"] as const).filter((team) => c[{ outsider: "capOutsider", minion: "capMinion", demon: "capDemon" }[team]] === 1);
+const teamPlural: Record<CappedTeam, string> = { outsider: "podivíni", minion: "přisluhovači", demon: "démoni" };
+const teamAccusative: Record<CappedTeam, string> = { outsider: "podivíny", minion: "přisluhovače", demon: "démony" };
+const teamPluralEn: Record<CappedTeam, string> = { outsider: "Outsiders", minion: "Minions", demon: "Demons" };
+
 export const draftCs = {
   title: "Drafty",
   intro:
@@ -26,16 +34,28 @@ export const draftCs = {
     personal: {
       name: "Personal Pool",
       description: "Každý draftuje do vlastního poolu; co si někdo vybere, ostatním zmizí. Konec, až má každý svůj počet rolí.",
-      fields: { rolesPerParticipant: "Rolí na hráče" } as Record<string, string>,
+      fields: {
+        rolesPerParticipant: "Rolí na hráče",
+        capOutsider: "Strop na podivíny",
+        capMinion: "Strop na přisluhovače",
+        capDemon: "Strop na démony",
+        teamCap: "Strop",
+      } as Record<string, string>,
+      hints: {
+        teamCap: "U zaškrtnutých týmů: kdo z týmu má tolik postav, další si vezme, až jich tolik budou mít všichni (kdo k nim ještě můžou – mají místo v poolu a dost jich zbývá). Pak se bere volně.",
+      } as Record<string, string>,
     },
     shared: {
       name: "Shared Pool",
       description: "Všichni draftují do jednoho společného poolu. Konec, až má pool cílový počet rolí.",
       fields: { targetRoles: "Velikost společného poolu (rolí)" } as Record<string, string>,
+      hints: {} as Record<string, string>,
     },
   },
   modeSummary: {
-    personal: (c: Record<string, number>) => `${c.rolesPerParticipant} ${cz(c.rolesPerParticipant, "role", "role", "rolí")} na hráče`,
+    personal: (c: Record<string, number>) =>
+      `${c.rolesPerParticipant} ${cz(c.rolesPerParticipant, "role", "role", "rolí")} na hráče` +
+      (c.teamCap && capped(c).length ? ` · strop ${c.teamCap}: ${capped(c).map((team) => teamPlural[team]).join(", ")}` : ""),
     shared: (c: Record<string, number>) => `pool ${c.targetRoles} ${cz(c.targetRoles, "role", "rolí", "rolí")}`,
   },
 
@@ -131,6 +151,11 @@ export const draftCs = {
   comeBackLater: "Na stránce nemusíš čekat – až budeš na tahu, uvidíš to v menu u Draftů. Když pak den nezahraješ, připomeneme ti to e-mailem.",
   orderTitle: "Pořadí",
   availableTitle: "Na výběr",
+  /** Above the pick board of a draft with the cap */
+  capRule: (cap: number, teams: CappedTeam[]) =>
+    `Strop ${cap} na ${teams.map((team) => teamAccusative[team]).join(", ")}: kdo z týmu má ${cap}, další si vezme, až jich budou mít ${cap} všichni (kdo k nim ještě můžou).`,
+  /** On a character the cap keeps the drafter from */
+  capped: (team: CappedTeam, cap: number) => `Strop: další ${teamAccusative[team]} si vezmeš, až jich budou mít ${cap} všichni.`,
   availableNone: "Nic už nezbývá.",
   /** Plain strings only – passed to the pick board (client). */
   pickBoard: {
@@ -195,6 +220,7 @@ export const draftCs = {
     notYourTurn: "Teď nejsi na tahu.",
     taken: "Tohle si mezitím už někdo vybral.",
     doesNotFit: "Tohle se ti do poolu už nevejde.",
+    capped: "Tohle teď vzít nemůžeš: strop – další postavy z tohoto týmu si vezmeš, až jich budou mít ostatní stejně.",
     notReady: "Draft ještě není připravený ke startu – podívej se na seznam „Před startem“.",
     ownerFixed: "Vlastníka draftu nejde odebrat ani mu změnit roli.",
     conflict: "Script mezitím někdo uložil jinde – načti stránku znovu.",
@@ -249,15 +275,30 @@ export const draftEn: DraftDict = {
     personal: {
       name: "Personal Pool",
       description: "Everybody drafts into a pool of their own; what one picks is gone for the others. Over when everybody has their number of roles.",
-      fields: { rolesPerParticipant: "Roles per player" },
+      fields: {
+        rolesPerParticipant: "Roles per player",
+        capOutsider: "Cap on Outsiders",
+        capMinion: "Cap on Minions",
+        capDemon: "Cap on Demons",
+        teamCap: "Cap",
+      },
+      hints: {
+        teamCap: "For the teams ticked: whoever has this many of the team takes more once everybody has this many (those who still can – with room in their pool and enough of them left). Then it is free.",
+      },
     },
     shared: {
       name: "Shared Pool",
       description: "Everybody drafts into one shared pool. Over when the pool has the target number of roles.",
       fields: { targetRoles: "Shared pool size (roles)" },
+      hints: {},
     },
   },
-  modeSummary: { personal: (c) => `${c.rolesPerParticipant} roles per player`, shared: (c) => `pool of ${c.targetRoles} roles` },
+  modeSummary: {
+    personal: (c) =>
+      `${c.rolesPerParticipant} roles per player` +
+      (c.teamCap && capped(c).length ? ` · cap ${c.teamCap}: ${capped(c).map((team) => teamPluralEn[team]).join(", ")}` : ""),
+    shared: (c) => `pool of ${c.targetRoles} roles`,
+  },
   form: {
     name: "Name",
     note: "Note",
@@ -344,6 +385,9 @@ export const draftEn: DraftDict = {
   comeBackLater: "No need to wait on this page – when it is your turn, the Drafts menu shows it. If you have not picked a day later, we remind you by e-mail.",
   orderTitle: "Order",
   availableTitle: "To pick",
+  capRule: (cap, teams) =>
+    `Cap of ${cap} on ${teams.map((team) => teamPluralEn[team]).join(", ")}: whoever has ${cap} of the team takes more once everybody has ${cap} (those who still can).`,
+  capped: (team, cap) => `Cap: you take more ${teamPluralEn[team]} once everybody has ${cap}.`,
   availableNone: "Nothing left.",
   pickBoard: {
     choose: "Pick",
@@ -403,6 +447,7 @@ export const draftEn: DraftDict = {
     notYourTurn: "It is not your turn.",
     taken: "Somebody has picked this in the meantime.",
     doesNotFit: "This no longer fits your pool.",
+    capped: "You cannot take this now: the cap – you take more of this team once the others have as many.",
     notReady: "The draft is not ready to start yet – see the list “Before the start”.",
     ownerFixed: "The draft's owner cannot be removed or given another role.",
     conflict: "The script was saved elsewhere in the meantime – reload the page.",

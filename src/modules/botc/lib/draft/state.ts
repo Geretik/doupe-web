@@ -32,7 +32,7 @@ export function drafters(members: DraftSessionMember[]) {
     .sort((a, b) => (a.seat ?? Infinity) - (b.seat ?? Infinity) || a.id - b.id);
 }
 
-export type PoolView = PoolState & { roleIds: string[] };
+export type PoolView = PoolState;
 
 export type Runtime = {
   /** Drafters in their order (fixed once the session has started) */
@@ -73,9 +73,9 @@ export function runtime(rows: SessionRows): Runtime {
   };
 }
 
-/** Whether the member could pick something now, if it were their turn (pool not full, something fits). */
+/** Whether the member could pick something now, if it were their turn (pool not full, something fits, the cap lets them). */
 export function memberCanPick(rows: SessionRows, rt: Runtime, memberId: number) {
-  return drafterCanPick(draftModes[rows.session.mode], memberId, rt.pools, rt.available);
+  return drafterCanPick(draftModes[rows.session.mode], rows.session.modeConfig, memberId, rt.pools, rt.available);
 }
 
 /** One thing checked before a session may start. */

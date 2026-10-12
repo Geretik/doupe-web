@@ -1,4 +1,4 @@
-import { fits, type DraftMode, type PoolState } from "./modes";
+import { fits, type DraftMode, type ModeConfig, type OptionState, type PickBlock, type PoolState } from "./modes";
 
 /*
  * The snake turn order, common to all modes. Pure functions: the server runs them inside the transaction
@@ -47,12 +47,25 @@ export function firstTurn(seats: number, canPick: (seat: number) => boolean): Tu
   return null;
 }
 
-export type OptionState = { id: number; roleIds: string[] };
+export type { OptionState };
 
-/** Whether the drafter has anything left that fits their pool. */
-export function drafterCanPick(mode: DraftMode, memberId: number, pools: PoolState[], available: OptionState[]) {
+/** Whether the drafter may take the option now: "ok", it does not fit their pool, or a rule of the mode keeps them from it. */
+export function pickCheck(
+  mode: DraftMode,
+  config: ModeConfig,
+  memberId: number,
+  option: OptionState,
+  pools: PoolState[],
+  available: OptionState[],
+): "ok" | "doesNotFit" | PickBlock {
   const pool = mode.poolOf(memberId, pools);
-  return Boolean(pool) && available.some((o) => fits(pool!, o.roleIds.length));
+  if (!pool || !fits(pool, option.roleIds.length)) return "doesNotFit";
+  return mode.blocked?.(config, memberId, option, pools, available) ?? "ok";
+}
+
+/** Whether the drafter has anything left they may take. */
+export function drafterCanPick(mode: DraftMode, config: ModeConfig, memberId: number, pools: PoolState[], available: OptionState[]) {
+  return available.some((o) => pickCheck(mode, config, memberId, o, pools, available) === "ok");
 }
 
 export type AfterPick =
@@ -62,17 +75,19 @@ export type AfterPick =
 
 /**
  * What follows a pick: the pools and options are those after it. The draft ends when the mode says so, or when
- * nothing left fits anybody (e.g. only bundles remain and every pool has one place left).
+ * nothing left fits anybody (e.g. only bundles remain and every pool has one place left). A drafter whom the mode's
+ * rules keep from everything left (the cap) is skipped like one whose pool is full.
  */
 export function afterPick(
   mode: DraftMode,
+  config: ModeConfig,
   turn: Turn,
   drafterIds: number[],
   pools: PoolState[],
   available: OptionState[],
 ): AfterPick {
   if (mode.isComplete(pools)) return { kind: "completed", exhausted: false };
-  const next = nextTurn(turn, drafterIds.length, (seat) => drafterCanPick(mode, drafterIds[seat], pools, available));
+  const next = nextTurn(turn, drafterIds.length, (seat) => drafterCanPick(mode, config, drafterIds[seat], pools, available));
   if (!next) return { kind: "completed", exhausted: true };
   return { kind: "next", turn: next, memberId: drafterIds[next.seat] };
 }

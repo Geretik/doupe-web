@@ -21,6 +21,11 @@ export const changelog: ChangelogEntry[] = [
         text: "Správce v Účtech u každého účtu změní roli (správce / organizátor) a nastaví, jestli organizátor Krvavku a Klub nevidí, jen čte, nebo upravuje; totéž zvolí už v pozvánce. Kdo část jen čte, vidí ji bez tlačítek a formulářů, které něco mění. Texty stránek Krvavky patří ke Krvavce, úvodní stránka klubu ke Klubu; e-maily k termínům chodí jen těm, kdo Krvavku upravují. Dosavadní účty můžou dál všechno.",
         href: "/admin/ucty",
       },
+      {
+        for: "organizers",
+        text: "Drafty (Personal Pool): při zakládání draftu zaškrtneš strop na podivíny, přisluhovače a démony a nastavíš jeho výšku (výchozí 4). Kdo má z hlídaného týmu tolik postav, další si vezme, až jich tolik budou mít všichni – pokud k nim ještě můžou. Na tabuli tahů jsou takové postavy zašedlé a po najetí myší je vidět proč.",
+        href: "/admin/botc/drafty",
+      },
     ],
   },
   {

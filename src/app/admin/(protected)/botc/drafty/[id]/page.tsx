@@ -32,7 +32,8 @@ import type { Dict, Locale } from "@/i18n/dictionaries";
 import { plural } from "@/i18n/plural";
 import { getDict } from "@/i18n/server";
 import { requireAccess } from "@/lib/admin-auth";
-import { draftModes, fits } from "@/modules/botc/lib/draft/modes";
+import { pickCheck } from "@/modules/botc/lib/draft/engine";
+import { capKeys, cappedTeams, draftModes } from "@/modules/botc/lib/draft/modes";
 import { listInvitableAccounts, listScriptsOfSession, sessionIdOfDraft } from "@/modules/botc/lib/draft/queries";
 import { sortRoleIds, totalRoles } from "@/modules/botc/lib/draft/roles";
 import { scriptToolLink } from "@/modules/botc/lib/draft/script";
@@ -124,12 +125,19 @@ export default async function DraftPage({ params }: { params: Promise<{ id: stri
   const order = status === "preparing" ? drafters(members) : rt.order;
   const others = members.filter((m) => !order.includes(m));
 
+  /** What the drafter may take: not what does not fit their pool, nor what the cap keeps from them (with why) */
+  const boardCheck = (o: (typeof rt.available)[number]) => {
+    if (!myPool || !mine) return { fits: false };
+    const check = pickCheck(mode, session.modeConfig, mine.id, o, rt.pools, rt.available);
+    return check === "ok" ? { fits: true } : { fits: false, why: check === "doesNotFit" ? undefined : d.capped(check.team, check.cap) };
+  };
+  const cappedNow = session.mode === "personal" && session.modeConfig.teamCap ? cappedTeams.filter((team) => session.modeConfig[capKeys[team]] === 1) : [];
   const boardGroups: BoardGroup[] = groupOptions(
     rt.available.map((o) => ({
       id: o.id,
       roleIds: o.roleIds,
       label: optionLabel(o.roleIds, locale),
-      fits: Boolean(myPool && fits(myPool, o.roleIds.length)),
+      ...boardCheck(o),
     })),
     t,
     locale,
@@ -372,6 +380,11 @@ export default async function DraftPage({ params }: { params: Promise<{ id: stri
       {status === "active" && (
         <section className="flex scroll-mt-4 flex-col gap-3" id="pick">
           <h2 className="text-lg font-semibold">{d.availableTitle}</h2>
+          {cappedNow.length > 0 && (
+            <p className="text-sm text-muted" data-testid="cap-rule">
+              {d.capRule(session.modeConfig.teamCap, cappedNow)}
+            </p>
+          )}
           {rt.available.length === 0 ? (
             <p className="text-muted">{d.availableNone}</p>
           ) : (
