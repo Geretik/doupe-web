@@ -154,7 +154,14 @@ test("admin: login, create/edit session with scripts, manage registrations, dele
   await page.fill("#password", "wrong");
   await page.click("main button[type=submit]");
   await expect(page.locator("main")).toContainText("Nesprávný e-mail nebo heslo");
+  await expect(page.locator("header nav")).not.toContainText("Admin");
   await adminLogin(page);
+  // signed in, the main menu has the admin after the modules
+  await page.goto("/");
+  await expect(page.locator("header nav a")).toHaveText(["Klub", "Krvavka", "Admin"]);
+  await page.click("header nav a:has-text('Admin')");
+  await expect(page).toHaveURL(/\/admin$/);
+  await expect(page.locator("header nav a[aria-current=page]")).toHaveText("Admin");
 
   await page.goto("/admin/botc/novy");
   await page.fill("#title", "Herní večer #2");

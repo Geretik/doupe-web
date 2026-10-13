@@ -17,6 +17,11 @@ export const changelog: ChangelogEntry[] = [
     title: "Grimoár vede krok za krokem, příslušnost hráče, pocestný si vybere sám",
     items: [
       {
+        for: "organizers",
+        text: "Přihlášení mají v hlavním menu webu za Krvavkou odkaz Admin.",
+        href: "/",
+      },
+      {
         for: "players",
         text: "V patičce webu je odkaz na script tool klubu (skript.doupeol.cz).",
         href: "https://skript.doupeol.cz",

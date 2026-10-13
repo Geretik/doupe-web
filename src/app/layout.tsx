@@ -4,6 +4,7 @@ import Link from "next/link";
 import { LanguageSwitch } from "@/components/language-switch";
 import { NavLink } from "@/components/nav-link";
 import { getDict } from "@/i18n/server";
+import { isAdmin } from "@/lib/admin-auth";
 import { scriptToolUrl, siteUrl } from "@/lib/site";
 import "./globals.css";
 
@@ -40,7 +41,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const { locale, t } = await getDict();
+  const [{ locale, t }, admin] = await Promise.all([getDict(), isAdmin()]);
   return (
     <html lang={locale} className={`${geistSans.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
@@ -50,7 +51,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               🎲 {t.meta.title}
             </Link>
             <LanguageSwitch locale={locale} t={t} className="order-2 sm:order-3" />
-            {/* the club (with its subpages, e.g. the games list) and its modules; each module (so far only BotC) has its own menu below */}
+            {/* the club (with its subpages, e.g. the games list) and its modules; each module (so far only BotC) has its own menu below; signed in, the admin too */}
             <nav
               className="order-3 sm:order-2 -mx-2 flex basis-full sm:basis-auto sm:mx-0 items-center gap-1 sm:gap-4 overflow-x-auto whitespace-nowrap text-sm"
             >
@@ -58,6 +59,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <NavLink href="/botc" prefixes={["/botc"]} className="rounded-md px-2 py-1.5 hover:underline">
                 {t.nav.botc}
               </NavLink>
+              {admin && (
+                <NavLink href="/admin" prefixes={["/admin"]} className="rounded-md px-2 py-1.5 hover:underline">
+                  {t.nav.admin}
+                </NavLink>
+              )}
             </nav>
           </div>
         </header>
