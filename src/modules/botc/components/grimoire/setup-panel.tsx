@@ -134,9 +134,9 @@ function bluffsMissing(state: GrimoireState) {
   return bagReady(state) && state.bluffs.filter(Boolean).length < BLUFF_COUNT && bluffCandidates(state).some((id) => !state.bluffs.includes(id));
 }
 
-/** The bag and the bluffs are ready and nobody has a character yet: handing them out is next. */
+/** The bag is full and nobody has a character yet: handing them out is next (the bluffs may wait for the first night). */
 function dealDue(state: GrimoireState) {
-  return state.phase === "setup" && bagReady(state) && !bluffsMissing(state) && !playerSeats(state).some((s) => s.role);
+  return state.phase === "setup" && bagReady(state) && !playerSeats(state).some((s) => s.role);
 }
 
 /**
@@ -160,7 +160,7 @@ export function SetupScreen({
   const ready = canStart(state);
   const closeTokens = () => {
     setTokensOpen(false);
-    // the bag and the bluffs ready: on to the dealing at the bottom, which lights up
+    // the bag full: on to the dealing at the bottom, which lights up
     if (dealDue(state)) document.getElementById("grimoire-deal")?.scrollIntoView({ behavior: "smooth", block: "center" });
   };
   return (
@@ -1075,7 +1075,8 @@ function BagScreen({ onClose }: { onClose: () => void }) {
   const inBag = teamCounts(state.bag);
   const setupChanges = setupChangesOf(state, characters, t);
   const bluffsDue = bluffsMissing(state);
-  const done = dealDue(state);
+  // the bag and the bluffs in: back to the setup to hand the characters out
+  const done = dealDue(state) && !bluffsDue;
   useEffect(() => {
     const key = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     document.addEventListener("keydown", key);

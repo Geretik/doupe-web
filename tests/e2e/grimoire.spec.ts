@@ -1771,7 +1771,11 @@ test("grimoire: the bag counts each team against the setup for the players, also
   await expect(screen.getByTestId("bag-summary-by")).toHaveCount(0);
   await closeTokens(page);
   await expect(count(page.getByTestId("bag-contents"), "demon")).toHaveText("1 / 1");
+  // the bag full, nobody with a character: the players' draw lights up, the bluffs can wait
+  await expect(page.getByTestId("setup-screen").getByRole("button", { name: "Losování hráči" })).toHaveClass(/animate-pulse/);
+  await expect(page.getByTestId("setup-screen").getByRole("button", { name: "Rozdat náhodně" })).not.toHaveClass(/bg-accent/);
   await dealAtRandom(page);
+  await expect(page.getByTestId("setup-screen").getByRole("button", { name: "Losování hráči" })).not.toHaveClass(/animate-pulse/);
   await expect(page.getByTestId("town")).not.toContainText("bez postavy");
 });
 
