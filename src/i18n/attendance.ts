@@ -168,10 +168,10 @@ export const attendanceAdminCs = {
     back: "← Zpět na prezenčku",
     print: "🖨️ Vytisknout",
     hint: "Kartička se vytiskne bez hlavičky webu. QR kód vede pořád na stejnou adresu, takže kartička platí napořád.",
+    /** Printed lines: the card always shows the Czech ones with the English ones under them */
     title: "Prezenčka",
     when: "Každé úterý a čtvrtek",
     scan: "Načti QR kód telefonem a zapiš se",
-    scanEn: "Attendance: scan the QR code and sign in",
   },
 };
 
@@ -232,9 +232,8 @@ export const attendanceAdminEn: AttendanceAdminDict = {
     back: "← Back to the attendance sheet",
     print: "🖨️ Print",
     hint: "The card prints without the site's header. The QR code always leads to the same address, so the card stays valid.",
-    title: "Prezenčka",
-    when: "Každé úterý a čtvrtek",
-    scan: "Načti QR kód telefonem a zapiš se",
-    scanEn: "Attendance: scan the QR code and sign in",
+    title: "Attendance",
+    when: "Every Tuesday and Thursday",
+    scan: "Scan the QR code with your phone and sign in",
   },
 };

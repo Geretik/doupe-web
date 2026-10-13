@@ -174,6 +174,7 @@ test("attendance admin: tonight's list, adding and deleting by hand, numbers of 
   // the card for the table
   await page.goto("/admin/prezence/tisk");
   await expect(page.locator("article")).toContainText("Načti QR kód telefonem a zapiš se");
+  await expect(page.locator("article")).toContainText("Scan the QR code with your phone and sign in");
   const qr = await page.request.get("/prezence/qr.svg");
   expect(qr.headers()["content-type"]).toContain("image/svg+xml");
 });

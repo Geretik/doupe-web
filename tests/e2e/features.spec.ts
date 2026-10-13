@@ -550,6 +550,7 @@ test("privacy page: linked from the footer and the sign-up form, in both languag
   await expect(main).not.toContainText("Discord Inc.");
 
   await page.goto("/");
+  await expect(page.locator("footer").getByRole("link", { name: "Script tool" })).toHaveAttribute("href", "https://skript.doupeol.cz");
   await page.click("footer a:has-text('Ochrana údajů')");
   await expect(page).toHaveURL(/\/ochrana-udaju$/);
   await page.click("header button:has-text('English')");

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { LanguageSwitch } from "@/components/language-switch";
 import { NavLink } from "@/components/nav-link";
 import { getDict } from "@/i18n/server";
-import { siteUrl } from "@/lib/site";
+import { scriptToolUrl, siteUrl } from "@/lib/site";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -69,6 +69,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <span>{t.nav.footer}</span>
             <span className="flex flex-wrap gap-x-4 gap-y-1">
               <Link href="/botc/moje-hry" className="hover:underline">{t.nav.myGames}</Link>
+              <a href={scriptToolUrl()} className="hover:underline">{t.nav.scriptTool}</a>
               <a href="/kalendar.ics" className="hover:underline">{t.nav.calendarFeed}</a>
               <Link href="/ochrana-udaju" className="hover:underline">{t.nav.privacy}</Link>
               <Link href="/admin" className="hover:underline">

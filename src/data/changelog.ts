@@ -17,6 +17,16 @@ export const changelog: ChangelogEntry[] = [
     title: "Grimoár vede krok za krokem, příslušnost hráče, pocestný si vybere sám",
     items: [
       {
+        for: "players",
+        text: "V patičce webu je odkaz na script tool klubu (skript.doupeol.cz).",
+        href: "https://skript.doupeol.cz",
+      },
+      {
+        for: "organizers",
+        text: "Kartička prezenčky na stůl je celá dvojjazyčná: pod každým českým řádkem je anglický (Attendance, Every Tuesday and Thursday, Scan the QR code…).",
+        href: "/admin/prezence/tisk",
+      },
+      {
         for: "organizers",
         text: "Script tool: tlačítka Načíst z Doupěte a Uložit do Doupěte mluví jazykem nástroje – v angličtině (i v ostatních jazycích kromě češtiny) jsou anglicky a po přepnutí jazyka se hned změní.",
         href: "https://skript.doupeol.cz",

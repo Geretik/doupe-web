@@ -23,7 +23,7 @@ export const cs = {
     title: SITE_NAME,
     description: "Klub deskových her v Olomouci – kdy a kde hrajeme a registrace na herní večery Blood on the Clocktower",
   },
-  nav: { sessions: "Termíny", about: "O hře", archive: "Archiv", club: "Klub", botc: "Krvavka", admin: "Admin", myGames: "Moje hry", footer: "Herní večery v Olomouci", calendarFeed: "Kalendář (iCal)", privacy: "Ochrana údajů" },
+  nav: { sessions: "Termíny", about: "O hře", archive: "Archiv", club: "Klub", botc: "Krvavka", admin: "Admin", myGames: "Moje hry", scriptTool: "Script tool", footer: "Herní večery v Olomouci", calendarFeed: "Kalendář (iCal)", privacy: "Ochrana údajů" },
   lang: { switchTo: "English", label: "Jazyk" },
   home: {
     title: "Nadcházející termíny",
@@ -1311,7 +1311,7 @@ export const en: Dict = {
     title: SITE_NAME,
     description: "A board game club in Olomouc – when and where we play, and sign-ups for Blood on the Clocktower game nights",
   },
-  nav: { sessions: "Sessions", about: "About the game", archive: "Archive", club: "The club", botc: "Blood on the Clocktower", admin: "Admin", myGames: "My games", footer: "Game nights in Olomouc", calendarFeed: "Calendar (iCal)", privacy: "Privacy" },
+  nav: { sessions: "Sessions", about: "About the game", archive: "Archive", club: "The club", botc: "Blood on the Clocktower", admin: "Admin", myGames: "My games", scriptTool: "Script tool", footer: "Game nights in Olomouc", calendarFeed: "Calendar (iCal)", privacy: "Privacy" },
   lang: { switchTo: "Česky", label: "Language" },
   home: {
     title: "Upcoming sessions",
