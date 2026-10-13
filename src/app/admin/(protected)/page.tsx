@@ -19,7 +19,8 @@ const link = "text-sm font-medium text-accent hover:underline";
 
 /**
  * The admin's home: the club at a glance, each module a section. Krvavka: the next sessions, drafts waiting for
- * this account, its grimoires in play; the club: the latest news and the club's pages. Only the parts the account sees.
+ * this account, its grimoires in play; the club: its pages; the admin itself: the latest news, accounts and history.
+ * Only the parts the account sees.
  */
 export default async function AdminOverviewPage() {
   const me = await requireAdmin();
@@ -104,42 +105,52 @@ export default async function AdminOverviewPage() {
           </Card>
         )}
 
-        <Card className="flex flex-col gap-5" id="klub">
-          <h2 className="text-xl font-bold">🎲 {n.club}</h2>
-          {latest && (
-            <section className="flex flex-col gap-1">
-              <h3 className="flex items-center gap-2 font-semibold">
-                {n.news}
-                {newsUnread && <span className="inline-block size-2 rounded-full bg-accent" title={n.newsUnread} aria-label={n.newsUnread} />}
-              </h3>
-              <p className="text-sm">
-                <span className="text-muted">{formatShortDate(new Date(`${latest.date}T12:00:00Z`), locale)} –</span> {latest.title}
-              </p>
-              <Link href="/admin/novinky" className={link}>
-                {t.admin.news.open}
-              </Link>
-            </section>
-          )}
-          <div className="flex flex-col gap-1 border-t border-border pt-3">
-            {club && (
-              <Link href="/admin/prezence" className={link} data-testid="overview-attendance">
-                {n.attendance}
-                {tonight !== null && <span className="ml-2 font-normal text-muted">{o.attendanceTonight(tonight)}</span>}
-              </Link>
+        {/* the club and the admin itself share the side column next to Krvavka */}
+        <div className="flex flex-col gap-6">
+          <Card className="flex flex-col gap-3" id="klub">
+            <h2 className="text-xl font-bold">🎲 {n.club}</h2>
+            <div className="flex flex-col gap-1">
+              {club && (
+                <Link href="/admin/prezence" className={link} data-testid="overview-attendance">
+                  {n.attendance}
+                  {tonight !== null && <span className="ml-2 font-normal text-muted">{o.attendanceTonight(tonight)}</span>}
+                </Link>
+              )}
+              {club && (
+                <Link href="/admin/pujcovna" className={link} data-testid="overview-loans">
+                  {n.loans}
+                  {lent > 0 && <span className="ml-2 font-normal text-muted">{o.loansOut(lent)}</span>}
+                </Link>
+              )}
+              {(club || botc) && <Link href="/admin/web" className={link}>{n.web}</Link>}
+              <Link href="/" className={link}>{o.clubPage}</Link>
+              <Link href="/hry" className={link}>{o.games}</Link>
+            </div>
+          </Card>
+
+          <Card className="flex flex-col gap-5" id="administrace">
+            <h2 className="text-xl font-bold">⚙️ {n.administration}</h2>
+            {latest && (
+              <section className="flex flex-col gap-1">
+                <h3 className="flex items-center gap-2 font-semibold">
+                  {n.news}
+                  {newsUnread && <span className="inline-block size-2 rounded-full bg-accent" title={n.newsUnread} aria-label={n.newsUnread} />}
+                </h3>
+                <p className="text-sm">
+                  <span className="text-muted">{formatShortDate(new Date(`${latest.date}T12:00:00Z`), locale)} –</span> {latest.title}
+                </p>
+                <Link href="/admin/novinky" className={link}>
+                  {t.admin.news.open}
+                </Link>
+              </section>
             )}
-            {club && (
-              <Link href="/admin/pujcovna" className={link} data-testid="overview-loans">
-                {n.loans}
-                {lent > 0 && <span className="ml-2 font-normal text-muted">{o.loansOut(lent)}</span>}
-              </Link>
-            )}
-            {(club || botc) && <Link href="/admin/web" className={link}>{n.web}</Link>}
-            {hasRole(me, "admin") && <Link href="/admin/ucty" className={link}>{n.accounts}</Link>}
-            <Link href="/admin/profil" className={link}>{n.profile}</Link>
-            <Link href="/" className={link}>{o.clubPage}</Link>
-            <Link href="/hry" className={link}>{o.games}</Link>
-          </div>
-        </Card>
+            <div className="flex flex-col gap-1 border-t border-border pt-3">
+              {hasRole(me, "admin") && <Link href="/admin/ucty" className={link}>{n.accounts}</Link>}
+              {hasRole(me, "admin") && <Link href="/admin/historie" className={link}>{n.log}</Link>}
+              <Link href="/admin/profil" className={link}>{n.profile}</Link>
+            </div>
+          </Card>
+        </div>
       </div>
     </div>
   );

@@ -467,6 +467,7 @@ export const cs = {
       draftsAttention: (turns: number, invites: number) =>
         [turns && `na tahu: ${turns}`, invites && `pozvánky: ${invites}`].filter(Boolean).join(", "),
       club: "Klub",
+      administration: "Administrace",
       web: "Texty webu",
       attendance: "Prezenčka",
       loans: "Půjčovna",
@@ -1750,6 +1751,7 @@ export const en: Dict = {
       scripts: "Scripts",
       draftsAttention: (turns, invites) => [turns && `your turn: ${turns}`, invites && `invitations: ${invites}`].filter(Boolean).join(", "),
       club: "Club",
+      administration: "Administration",
       web: "Site texts",
       attendance: "Attendance sheet",
       loans: "Game lending",

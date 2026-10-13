@@ -20,7 +20,7 @@ const groupClass = "px-2 text-xs font-medium uppercase tracking-wide text-muted"
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const me = await getAdmin();
   if (!me) redirect("/admin/login");
-  // the parts of the admin this account sees; the club's group stays for the news
+  // the parts of the admin this account sees
   const botc = canAccess(me, "botc");
   const club = canAccess(me, "club");
   const [{ t }, attention, jar] = await Promise.all([getDict(), botc ? countDraftAttention(me.id) : { turns: 0, invites: 0 }, cookies()]);
@@ -62,12 +62,18 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               <NavLink href="/admin/botc/grimoary" prefixes={["/admin/botc/grimoary"]} className={linkClass}>{n.grimoires}</NavLink>
             </div>
           )}
+          {(club || botc) && (
+            <div className="flex flex-wrap items-center gap-1 whitespace-nowrap sm:border-l sm:border-border sm:pl-2">
+              <span className={groupClass}>{n.club}</span>
+              {club && <NavLink href="/admin/prezence" prefixes={["/admin/prezence"]} className={linkClass}>{n.attendance}</NavLink>}
+              {club && <NavLink href="/admin/pujcovna" className={linkClass}>{n.loans}</NavLink>}
+              {/* the texts of the Krvavka pages belong to Krvavka (pageArea) */}
+              <NavLink href="/admin/web" prefixes={["/admin/web"]} className={linkClass}>{n.web}</NavLink>
+            </div>
+          )}
+          {/* the admin itself, across modules; the group stays for the news */}
           <div className="flex flex-wrap items-center gap-1 whitespace-nowrap sm:border-l sm:border-border sm:pl-2">
-            <span className={groupClass}>{n.club}</span>
-            {club && <NavLink href="/admin/prezence" prefixes={["/admin/prezence"]} className={linkClass}>{n.attendance}</NavLink>}
-            {club && <NavLink href="/admin/pujcovna" className={linkClass}>{n.loans}</NavLink>}
-            {/* the texts of the Krvavka pages belong to Krvavka (pageArea) */}
-            {(club || botc) && <NavLink href="/admin/web" prefixes={["/admin/web"]} className={linkClass}>{n.web}</NavLink>}
+            <span className={groupClass}>{n.administration}</span>
             {hasRole(me, "admin") && <NavLink href="/admin/ucty" className={linkClass}>{n.accounts}</NavLink>}
             {hasRole(me, "admin") && <NavLink href="/admin/historie" className={linkClass}>{n.log}</NavLink>}
             <NavLink href="/admin/novinky" className={linkClass}>

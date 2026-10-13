@@ -2040,6 +2040,17 @@ test("news: the changelog in the admin, a dot in the menu until it is read on th
   await expect(dot).toHaveCount(0);
 });
 
+test("admin: accounts, history and news are a group of their own, not the club's", async ({ page }) => {
+  await adminLogin(page);
+  // the group labels are upper-cased by CSS
+  const group = (name: string) => page.locator("[data-admin-nav] span", { hasText: new RegExp(`^${name}$`, "i") }).locator("xpath=..");
+  await expect(group("Administrace").locator("a")).toHaveText(["Účty", "Historie", "Novinky"]);
+  await expect(group("Klub").locator("a")).toHaveText(["Prezenčka", "Půjčovna", "Texty webu"]);
+  await expect(page.locator("#administrace")).toContainText("Novinky");
+  await expect(page.locator("#administrace a[href='/admin/historie']")).toBeVisible();
+  await expect(page.locator("#klub a[href='/admin/ucty']")).toHaveCount(0);
+});
+
 test("site texts: an organiser edits the club page in the admin, with history, conflicts and the original text", async ({ page, browser }) => {
   await createAdminUser({ email: "org@example.com", password: "org-password-123", nickname: "Organizátorka", role: "organizer" });
   await adminLogin(page, { email: "org@example.com", password: "org-password-123" });

@@ -13,6 +13,17 @@ export type ChangelogEntry = { /** YYYY-MM-DD */ date: string; title: string; it
 
 export const changelog: ChangelogEntry[] = [
   {
+    date: "2026-10-14",
+    title: "Administrace zvlášť od Klubu",
+    items: [
+      {
+        for: "organizers",
+        text: "Účty, Historie a Novinky mají v adminu vlastní skupinu Administrace, v menu i na přehledu; pod Klubem zůstala prezenčka, půjčovna a texty webu.",
+        href: "/admin",
+      },
+    ],
+  },
+  {
     date: "2026-10-13",
     title: "Grimoár vede krok za krokem, příslušnost hráče, pocestný si vybere sám",
     items: [
