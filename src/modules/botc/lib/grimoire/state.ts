@@ -36,7 +36,10 @@ export type GrimoireSeat = {
   reminders: GrimoireReminder[];
   /** Where the place was put in the town laid out on a grid (lib/grimoire/layout); kept while the town is a circle */
   pos?: TownPoint;
-  /** A traveller's alignment, which the Storyteller chooses; absent = not chosen yet (or no traveller) */
+  /**
+   * A traveller's alignment, which the Storyteller chooses (absent = not chosen yet); anyone else's when the
+   * Storyteller changed it (the Wizard's wish…), absent = as their character and the town say
+   */
   side?: Side;
 };
 
@@ -1545,13 +1548,15 @@ export function setDead(state: GrimoireState, seatId: string, dead: boolean, cha
 
 /**
  * Good, evil or neither (no character, a traveller whose side is not chosen yet) – the colour of a seat; with the
- * characters, a player the Mezepheles turned is evil; with the town, the Ogre is on their friend's side.
+ * characters, a player the Mezepheles turned is evil; with the town, the Ogre is on their friend's side. A side
+ * the Storyteller gave a player with a character goes before all of it.
  */
 export function seatSide(
   seat: Pick<GrimoireSeat, "id" | "role" | "reminders" | "side">,
   characters?: Record<string, GrimoireCharacter>,
   state?: Pick<GrimoireState, "seats">,
 ): Side | null {
+  if (seat.side && seat.role && !isTraveller(seat.role)) return seat.side;
   // a good player who said the Mezepheles's word
   if (characters && seat.reminders.some((r) => r.roleId && characters[r.roleId]?.tokenKinds[r.text] === "turnsEvil")) return "evil";
   // the Ogre is on the side of the player they chose

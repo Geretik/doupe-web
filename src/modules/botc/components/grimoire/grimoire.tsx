@@ -273,6 +273,10 @@ export function Grimoire({
   // a game needs five players
   const lockHint = seating && !fullscreenHint && !state.seatsLocked && players(state).length >= 5;
   const setupHint = seating && !fullscreenHint && !!state.seatsLocked;
+  // past the seating, before the game: the setup lights up while something is missing there, then the start
+  const before = canEdit && !hidden && !fullscreenHint && !seating && state.phase === "setup";
+  const setupNext = setupHint || (before && !canStart(state));
+  const startNext = before && canStart(state);
   const openSetup = () => {
     setSetupOpen(true);
     setSetupSeen(true);
@@ -327,7 +331,7 @@ export function Grimoire({
                     ↶ {t.undo}
                   </button>
                 )}
-                {canEdit && nextLabel && !hidden && <NextButton label={nextLabel} onClick={advance} />}
+                {canEdit && nextLabel && !hidden && <NextButton label={nextLabel} onClick={advance} point={startNext} />}
                 <ScaleButton scale={scale} onChange={setScale} />
                 {canEdit && <HideButton />}
                 <span className="relative">
@@ -467,7 +471,7 @@ export function Grimoire({
                     onClick={openSetup}
                     className={`min-h-11 rounded-lg border px-3 text-sm font-semibold ${
                       state.phase === "setup" && canEdit ? "border-accent bg-accent text-accent-foreground" : "border-border bg-card hover:border-accent/50"
-                    } ${setupHint ? "ring-4 ring-accent/40 motion-safe:animate-pulse" : ""}`}
+                    } ${setupNext ? "ring-4 ring-accent/40 motion-safe:animate-pulse" : ""}`}
                     data-testid="setup-button"
                   >
                     ⚙️ {t.tabs.setup}
@@ -514,7 +518,7 @@ export function Grimoire({
  * On to the next phase; before the game only once every player has a character, and beside it what is missing
  * (a disabled button tells nothing on a tablet).
  */
-function NextButton({ label, onClick }: { label: string; onClick: () => void }) {
+function NextButton({ label, onClick, point = false }: { label: string; onClick: () => void; /** It is next: it lights up */ point?: boolean }) {
   const { state, t } = useGrimoire();
   const blocked = state.phase === "setup" && !canStart(state);
   const missing = withoutRole(state);
@@ -531,7 +535,7 @@ function NextButton({ label, onClick }: { label: string; onClick: () => void }) 
         onClick={onClick}
         disabled={blocked}
         title={blocked ? why : undefined}
-        className="min-h-11 rounded-lg bg-accent px-3 text-sm font-semibold text-accent-foreground disabled:opacity-40"
+        className={`min-h-11 rounded-lg bg-accent px-3 text-sm font-semibold text-accent-foreground disabled:opacity-40 ${point ? "ring-4 ring-accent/40 motion-safe:animate-pulse" : ""}`}
       >
         {label}
       </button>

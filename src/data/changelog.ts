@@ -14,11 +14,36 @@ export type ChangelogEntry = { /** YYYY-MM-DD */ date: string; title: string; it
 export const changelog: ChangelogEntry[] = [
   {
     date: "2026-10-13",
-    title: "Příprava grimoáru zase se seznamem hráčů, nápověda k pytlíku a losování",
+    title: "Grimoár vede krok za krokem, příslušnost hráče, pocestný si vybere sám",
     items: [
       {
         for: "organizers",
-        text: "Grimoár radí i v Přípravě: s prázdným pytlíkem bliká 🎒 Výběr žetonů (nahoře je na něj i odkaz) a v něm bublina ukáže na 🎲 Naplnit náhodně. Jakmile je pytlík plný, rozbliká se výběr blafů Démona; blafy jsou teď výrazné v Přípravě, ve Výběru žetonů i uprostřed kruhu. Losování hráči začne návodem pro vypravěče, jak losování vést, a až je pytlík prázdný, bliká Konec losování.",
+        text: "Grimoár rozsvítí vždy další krok: po rozesazení Přípravu, v ní 🎒 Výběr žetonů, tam 🎲 Naplnit náhodně, pak blafy a Hotovo. Po návratu do Přípravy se posune k Rozdání, kde svítí Losování hráči (teď hlavní tlačítko, Rozdat náhodně je vedlejší), a jakmile má postavu každý, svítí Začít hru. Dokud chybí postavy, svítí v grimoáru tlačítko Příprava.",
+        href: "/admin/botc/grimoary",
+      },
+      {
+        for: "organizers",
+        text: "Blafy už nejsou uprostřed kruhu. V noci u kroku Info pro Démona jsou zvlášť tlačítka Ukázat Přisluhovače a Ukázat blafy – blafy se hráči ukážou i s nápisem „Tyto postavy nejsou ve hře“. Kdo se v noci stal Démonem (dědic Čerta, Šarlatová žena…), tomu u kroku jedním tlačítkem ukážeš kartu „Jsi …“.",
+        href: "/admin/botc/grimoary",
+      },
+      {
+        for: "organizers",
+        text: "Karta „Jsi“ umí Postava i tým, Jen postava, nebo Jen tým – tým je velký a v barvě. Na karty jdou nově i nadpisy „Hlasoval/a jsi dnes?“ a „Nominoval/a jsi dnes?“.",
+        href: "/admin/botc/grimoary",
+      },
+      {
+        for: "organizers",
+        text: "U hráče změníš příslušnost (třeba přání Čaroděje): žeton i ikonka postavy se přebarví a pravidla grimoáru s ní počítají (Empat, Kuchař…). Ťuknutím na druhou stranu ji vrátíš.",
+        href: "/admin/botc/grimoary",
+      },
+      {
+        for: "organizers",
+        text: "Pocestného si může hráč vybrat sám přes celou obrazovku: vidí postavy s popisem schopnosti, ale ne tým, který mu dáš. Nabídku vyfiltruješ: ze scriptu, jednotlivé edice, všechny oficiální, homebrew (všechny nebo jedna kolekce) nebo vše – homebrew pocestní z klubových kolekcí jsou nově na výběr i v panelu.",
+        href: "/admin/botc/grimoary",
+      },
+      {
+        for: "organizers",
+        text: "Grimoár radí i v Přípravě: s prázdným pytlíkem bliká 🎒 Výběr žetonů (nahoře je na něj i odkaz) a v něm bublina ukáže na 🎲 Naplnit náhodně. Jakmile je pytlík plný, rozbliká se výběr blafů Démona; blafy jsou teď výrazné v Přípravě i ve Výběru žetonů. Losování hráči začne návodem pro vypravěče, jak losování vést, a až je pytlík prázdný, bliká Konec losování.",
         href: "/admin/botc/grimoary",
       },
       {

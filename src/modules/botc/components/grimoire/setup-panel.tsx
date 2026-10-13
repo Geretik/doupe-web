@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { readGrimoireScriptAction } from "@/modules/botc/actions/grimoire";
-import { BLUFF_COUNT, botcRoles, findRole, isHomebrew, linkedRoleOf, type RoleTeam } from "@/modules/botc/lib/botc-roles";
+import { BLUFF_COUNT, botcRoles, findRole, homebrewCollections, homebrewRoles, linkedRoleOf, type RoleEdition, type RoleTeam } from "@/modules/botc/lib/botc-roles";
 import {
   bagTokens,
   bluffCandidates,
@@ -88,7 +88,31 @@ function bagSize(state: GrimoireState) {
 }
 
 const allCharacterIds = botcRoles.filter((r) => r.team !== "traveller").map((r) => r.id);
-const allTravellers = botcRoles.filter((r) => r.team === "traveller").map((r) => r.id);
+const officialTravellers = botcRoles.filter((r) => r.team === "traveller");
+const homebrewTravellers = homebrewRoles.filter((r) => r.team === "traveller");
+const travellerEditions: RoleEdition[] = ["tb", "bmr", "snv", "carousel"];
+/** The club's homebrew collections that have travellers */
+const travellerCollections = homebrewCollections.filter((c) => homebrewTravellers.some((r) => r.collection === c.key));
+
+/** Which travellers to offer: the script's, an edition's, all the official ones, the homebrew ones, one collection's, all. */
+type TravellerSet = "script" | "official" | RoleEdition | "homebrew" | `c:${string}` | "all";
+
+function travellersOf(set: TravellerSet, script: GrimoireState["script"]) {
+  const all = [...officialTravellers, ...homebrewTravellers];
+  const roles =
+    set === "script"
+      ? all.filter((r) => script.roleIds.includes(r.id))
+      : set === "official"
+        ? officialTravellers
+        : set === "homebrew"
+          ? homebrewTravellers
+          : set === "all"
+            ? all
+            : set.startsWith("c:")
+              ? homebrewTravellers.filter((r) => `c:${r.collection}` === set)
+              : officialTravellers.filter((r) => r.edition === set);
+  return roles.map((r) => r.id);
+}
 const button = "min-h-11 rounded-lg border px-3 py-2 text-sm font-medium disabled:opacity-40";
 const plain = `${button} border-border bg-card hover:border-accent/50`;
 const heading = "text-xs font-semibold tracking-wide text-muted uppercase";
@@ -98,6 +122,21 @@ const pointed = `${button} border-accent bg-accent text-accent-foreground ring-4
 /** The bag is empty and 🎲 Naplnit náhodně can fill it: what the setup points at first. */
 function fillFirst(state: GrimoireState) {
   return state.bag.length === 0 && playerSeats(state).length >= 5;
+}
+
+/** The bag holds a token for each player: it can be handed out. */
+function bagReady(state: GrimoireState) {
+  return state.bag.length > 0 && bagTokens(state.bag).length === playerSeats(state).length;
+}
+
+/** The bag is full but the Demon's bluffs are not all picked (while the script has more to pick): they are next. */
+function bluffsMissing(state: GrimoireState) {
+  return bagReady(state) && state.bluffs.filter(Boolean).length < BLUFF_COUNT && bluffCandidates(state).some((id) => !state.bluffs.includes(id));
+}
+
+/** The bag and the bluffs are ready and nobody has a character yet: handing them out is next. */
+function dealDue(state: GrimoireState) {
+  return state.phase === "setup" && bagReady(state) && !bluffsMissing(state) && !playerSeats(state).some((s) => s.role);
 }
 
 /**
@@ -119,6 +158,11 @@ export function SetupScreen({
   const { state, readOnly, t } = useGrimoire();
   const [tokensOpen, setTokensOpen] = useState(false);
   const ready = canStart(state);
+  const closeTokens = () => {
+    setTokensOpen(false);
+    // the bag and the bluffs ready: on to the dealing at the bottom, which lights up
+    if (dealDue(state)) document.getElementById("grimoire-deal")?.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
   return (
     <div className="fixed inset-0 z-40 overflow-y-auto overscroll-contain bg-background" role="dialog" aria-modal="true" aria-label={t.tabs.setup} data-testid="setup-screen">
       <div className="sticky top-0 z-10 border-b border-border bg-background">
@@ -127,7 +171,7 @@ export function SetupScreen({
           <span className="ml-auto flex flex-wrap gap-2">
             {!readOnly && <HideButton />}
             {onStart && (
-              <button type="button" className={`${button} border-accent bg-accent text-accent-foreground`} onClick={onStart} disabled={!ready}>
+              <button type="button" className={ready ? pointed : `${button} border-accent bg-accent text-accent-foreground`} onClick={onStart} disabled={!ready}>
                 {t.startGame}
               </button>
             )}
@@ -143,7 +187,7 @@ export function SetupScreen({
       </div>
       {tokensOpen &&
         // over the whole screen, outside the grimoire's transformed column
-        createPortal(<BagScreen onClose={() => setTokensOpen(false)} />, document.body)}
+        createPortal(<BagScreen onClose={closeTokens} />, document.body)}
     </div>
   );
 }
@@ -468,7 +512,7 @@ function SetupSecrets({ wide, onTokens }: { wide: boolean; onTokens: () => void 
         <div className="flex flex-wrap items-center gap-2">
           <h3 className={heading}>{fill(t.bag, { n: state.bag.length, m: bagSize(state) })}</h3>
           {!readOnly && (
-            <button type="button" className={`ml-auto ${fillFirst(state) ? pointed : `${button} border-accent text-accent`}`} onClick={onTokens}>
+            <button type="button" className={`ml-auto ${fillFirst(state) || bluffsDue ? pointed : `${button} border-accent text-accent`}`} onClick={onTokens}>
               🎒 {t.tokenPick}
             </button>
           )}
@@ -498,7 +542,7 @@ function SetupSecrets({ wide, onTokens }: { wide: boolean; onTokens: () => void 
       </section>
 
       {!readOnly && (
-        <section className="flex flex-col gap-2 border-t border-border pt-4">
+        <section id="grimoire-deal" className="flex flex-col gap-2 border-t border-border pt-4">
           <h3 className={heading}>{t.dealTitle}</h3>
           <p className="text-xs text-muted">{t.bagHint}</p>
           <DealActions />
@@ -512,15 +556,18 @@ function SetupSecrets({ wide, onTokens }: { wide: boolean; onTokens: () => void 
 
 /**
  * A traveller joins: their name, good or evil (hidden, the Storyteller chooses it later in the player's panel), then
- * the character, the script's travellers marked; they sit down at the end of the circle.
+ * the character, the script's travellers marked; they sit down at the end of the circle. The traveller can also
+ * choose the character themselves over the whole screen, without seeing the side.
  */
 function AddTraveller() {
   const { state, update, hidden, t } = useGrimoire();
   const [open, setOpen] = useState(false);
+  const [choosing, setChoosing] = useState(false);
   const [name, setName] = useState("");
   const [side, setSide] = useState<Side | undefined>();
-  // the official travellers and the script's homebrew ones
-  const travellers = [...allTravellers, ...state.script.roleIds.filter((id) => isHomebrew(id) && findRole(id)?.team === "traveller")];
+  // the script's travellers when it has some, else the official ones
+  const [set, setSet] = useState<TravellerSet>(() => (travellersOf("script", state.script).length ? "script" : "official"));
+  const travellers = travellersOf(set, state.script);
   const inScript = new Map(state.script.roleIds.filter((id) => travellers.includes(id)).map((id) => [id, t.travellerInScript]));
   const add = (role: string) => {
     const traveller = { ...newSeat(name.trim().slice(0, 60)), role, ...(side && !hidden ? { side } : {}) };
@@ -528,6 +575,7 @@ function AddTraveller() {
     setName("");
     setSide(undefined);
     setOpen(false);
+    setChoosing(false);
   };
   return (
     <>
@@ -545,6 +593,16 @@ function AddTraveller() {
             className="min-h-11 min-w-0 rounded-lg border border-border bg-card px-3 text-base"
           />
           {!hidden && <SidePicker value={side} onChange={setSide} />}
+          <TravellerSetSelect value={set} onChange={setSet} />
+          <button type="button" className={`${plain} self-start`} onClick={() => setChoosing(true)}>
+            📱 {t.travellerScreen.open}
+          </button>
+          {choosing &&
+            // over the whole screen, outside the grimoire's transformed column
+            createPortal(
+              <TravellerScreen travellers={travellers} set={set} onSet={setSet} onPick={add} onClose={() => setChoosing(false)} />,
+              document.body,
+            )}
           {/* the side first, so the town shows it from the start; hidden, the Storyteller chooses it later */}
           {hidden || side ? (
             <>
@@ -560,12 +618,114 @@ function AddTraveller() {
   );
 }
 
-const chip = "flex items-center gap-1.5 rounded-full border border-border bg-card py-0.5 pr-2.5 pl-1 text-sm";
-
-/** The bag is full but the Demon's bluffs are not all picked: they are next. */
-function bluffsMissing(state: GrimoireState) {
-  return state.bag.length > 0 && state.bag.length >= bagSize(state) && state.bluffs.filter(Boolean).length < BLUFF_COUNT;
+/**
+ * The traveller chooses their character over the whole screen: the set's travellers nobody plays yet with their
+ * abilities, no side anywhere; picked, then confirmed at the bottom. The Storyteller can change the set at the top.
+ */
+function TravellerScreen({
+  travellers,
+  set,
+  onSet,
+  onPick,
+  onClose,
+}: {
+  travellers: string[];
+  set: TravellerSet;
+  onSet: (set: TravellerSet) => void;
+  onPick: (roleId: string) => void;
+  onClose: () => void;
+}) {
+  const { state, characters, locale, t, scriptNames } = useGrimoire();
+  const collator = new Intl.Collator(locale);
+  const shown = travellers
+    .filter((id) => !state.seats.some((s) => s.role === id))
+    .sort((a, b) => collator.compare(nameOf(a, locale, scriptNames), nameOf(b, locale, scriptNames)));
+  const [picked, setPicked] = useState<string | null>(null);
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col bg-background" role="dialog" aria-modal="true" aria-label={t.travellerScreen.title} data-testid="traveller-screen">
+      <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-3 sm:px-8">
+        <h2 className="text-xl font-bold">{t.travellerScreen.title}</h2>
+        <span className="ml-auto">
+          <TravellerSetSelect value={set} onChange={onSet} />
+        </span>
+        <button type="button" className={plain} onClick={onClose}>
+          {t.travellerScreen.back}
+        </button>
+      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-8">
+        <div className="mx-auto flex max-w-5xl flex-col gap-3">
+          <p className="text-muted">{t.travellerScreen.hint}</p>
+          {!shown.length && <p className="text-sm text-muted">{t.travellerScreen.none}</p>}
+          <ul className="grid gap-2 md:grid-cols-2">
+            {shown.map((id) => (
+              <li key={id} className="flex">
+                <button
+                  type="button"
+                  aria-pressed={picked === id}
+                  onClick={() => setPicked(id)}
+                  className={`flex w-full items-start gap-3 rounded-xl border p-3 text-left ${
+                    picked === id ? "border-accent bg-accent/10 ring-2 ring-accent/40" : "border-border bg-card hover:border-accent/50"
+                  }`}
+                >
+                  <RoleIcon roleId={id} size={64} />
+                  <span className="flex min-w-0 flex-col gap-1">
+                    <span className="text-lg font-bold">{nameOf(id, locale, scriptNames)}</span>
+                    {characters[id] && <span className="text-sm leading-snug">{characters[id].ability}</span>}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+      <div className="border-t border-border px-4 py-3 sm:px-8">
+        <button
+          type="button"
+          disabled={!picked}
+          onClick={() => picked && onPick(picked)}
+          className="min-h-14 w-full rounded-xl bg-accent px-6 text-lg font-semibold text-accent-foreground disabled:opacity-40"
+        >
+          {picked ? fill(t.travellerScreen.confirm, { role: nameOf(picked, locale, scriptNames) }) : t.travellerScreen.pickOne}
+        </button>
+      </div>
+    </div>
+  );
 }
+
+/** The set of travellers to offer, each with how many it has: the script's, an edition, the official, the homebrew ones, one collection, all. */
+function TravellerSetSelect({ value, onChange }: { value: TravellerSet; onChange: (set: TravellerSet) => void }) {
+  const { state, t } = useGrimoire();
+  const option = (set: TravellerSet, label: string) => {
+    const n = travellersOf(set, state.script).length;
+    // the script's travellers only when it has some
+    if (set === "script" && !n) return null;
+    return (
+      <option key={set} value={set}>
+        {label} ({n})
+      </option>
+    );
+  };
+  return (
+    <label className="flex flex-wrap items-center gap-2 text-sm">
+      {t.travellerSets.label}
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value as TravellerSet)}
+        className="min-h-11 min-w-0 rounded-lg border border-border bg-card px-2 text-base"
+        data-testid="traveller-set"
+      >
+        {option("script", t.travellerSets.script)}
+        {option("official", t.travellerSets.official)}
+        {travellerEditions.map((e) => option(e, t.travellerSets[e]))}
+        {option("homebrew", t.travellerSets.homebrew)}
+        {travellerCollections.map((c) => option(`c:${c.key}`, `– ${c.name}`))}
+        {option("all", t.travellerSets.all)}
+      </select>
+    </label>
+  );
+}
+
+const chip = "flex items-center gap-1.5 rounded-full border border-border bg-card py-0.5 pr-2.5 pl-1 text-sm";
 
 /** The tokens in the bag by team, each with how many are in it and how many the rules want; nothing to tap. */
 function BagContents({ wide }: { wide: boolean }) {
@@ -616,9 +776,10 @@ function BagContents({ wide }: { wide: boolean }) {
 function DealActions() {
   const { state, update, ask, characters, t } = useGrimoire();
   const first = playerSeats(state).find((s) => s.role);
-  const players = playerSeats(state).length;
   const blocked = undrawable(state.bag);
-  const ready = state.bag.length > 0 && bagTokens(state.bag).length === players;
+  const ready = bagReady(state);
+  // the dealing is next: the players' draw lights up, or the random deal when they cannot draw
+  const due = dealDue(state);
   const deal = async () => {
     if (!(await ask(state.seats.some((s) => s.role) ? t.dealConfirm : t.dealRandomConfirm, t.deal))) return;
     update((s) => dealBag(s) ?? s);
@@ -630,11 +791,16 @@ function DealActions() {
   return (
     <div className="flex flex-wrap items-center gap-2">
       {state.phase === "setup" && (
-        <button type="button" className={`${button} border-accent text-accent`} onClick={startDraw} disabled={!ready || blocked.length > 0}>
+        <button
+          type="button"
+          className={due && !blocked.length ? pointed : `${button} border-accent bg-accent text-accent-foreground`}
+          onClick={startDraw}
+          disabled={!ready || blocked.length > 0}
+        >
           {t.draw}
         </button>
       )}
-      <button type="button" className={`${button} border-accent bg-accent text-accent-foreground`} onClick={deal} disabled={!ready}>
+      <button type="button" className={due && blocked.length ? pointed : `${button} border-accent text-accent`} onClick={deal} disabled={!ready}>
         {t.deal}
       </button>
       {/* dealt: each player shown their character in turn, "Next" round the table */}
@@ -659,19 +825,23 @@ function PickActions() {
         <button type="button" className={point ? pointed : plain} onClick={fillAtRandom} disabled={playerSeats(state).length < 5}>
           🎲 {t.randomBag}
         </button>
-        {/* under the button, over the counts; taps go through it */}
-        {point && (
-          <span className="pointer-events-none absolute top-full right-0 z-10 mt-1 flex w-max flex-col items-end motion-safe:animate-bounce" data-testid="fill-hint">
-            <span className="mr-6 border-x-8 border-b-8 border-x-transparent border-b-accent" aria-hidden />
-            <span className="rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-accent-foreground shadow-md">{t.randomBagHint}</span>
-          </span>
-        )}
+        {point && <PointBubble text={t.randomBagHint} testId="fill-hint" />}
       </span>
       <button type="button" className={plain} onClick={() => update((s) => ({ ...s, bag: [] }))} disabled={!state.bag.length}>
         {t.emptyBag}
       </button>
       {failed && <span className="text-sm text-accent">{t.randomBagFailed}</span>}
     </>
+  );
+}
+
+/** A bubble under the button next to it in the token selection, over the counts; taps go through it. */
+function PointBubble({ text, testId }: { text: string; testId: string }) {
+  return (
+    <span className="pointer-events-none absolute top-full right-0 z-10 mt-1 flex w-max flex-col items-end motion-safe:animate-bounce" data-testid={testId}>
+      <span className="mr-6 border-x-8 border-b-8 border-x-transparent border-b-accent" aria-hidden />
+      <span className="rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-accent-foreground shadow-md">{text}</span>
+    </span>
   );
 }
 
@@ -905,6 +1075,7 @@ function BagScreen({ onClose }: { onClose: () => void }) {
   const inBag = teamCounts(state.bag);
   const setupChanges = setupChangesOf(state, characters, t);
   const bluffsDue = bluffsMissing(state);
+  const done = dealDue(state);
   useEffect(() => {
     const key = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     document.addEventListener("keydown", key);
@@ -926,9 +1097,12 @@ function BagScreen({ onClose }: { onClose: () => void }) {
         </span>
         <div className="ml-auto flex flex-wrap items-center gap-2">
           <PickActions />
-          <button type="button" className={plain} onClick={onClose}>
-            {t.bagDone}
-          </button>
+          <span className="relative">
+            <button type="button" className={done ? pointed : plain} onClick={onClose}>
+              {t.bagDone}
+            </button>
+            {done && <PointBubble text={t.bagDoneHint} testId="done-hint" />}
+          </span>
         </div>
       </div>
       {/* in the bag against the rules, big: what the Storyteller checks while filling it */}

@@ -49,7 +49,7 @@ import type { GrimoireCharacter } from "@/modules/botc/lib/grimoire/characters";
 import { fill } from "@/modules/botc/lib/grimoire/text";
 import { nameOf, RoleIcon, useGrimoire, type GrimoireTexts } from "./context";
 import { ShowButton } from "./show";
-import { stepCards } from "@/modules/botc/lib/grimoire/show";
+import { stepCards, youAreCard } from "@/modules/botc/lib/grimoire/show";
 import type { Locale } from "@/i18n/dictionaries";
 
 const specialIcon: Record<SpecialStep, string> = { dusk: "🌙", minionInfo: "🗡️", demonInfo: "😈", dawn: "☀️" };
@@ -291,18 +291,49 @@ function StepHelp({
   );
 }
 
-/** "Show the player" for a step: one button, or one for each player when each learns their own (two Empaths). */
+/**
+ * "Show the player" for a step: one button, or one for each player when each learns their own (two Empaths), the
+ * Demon's Minions and bluffs each on their own; and "You are" for whoever became a Demon and learns it here.
+ */
 function StepShow({ step }: { step: NightStep }) {
-  const { state, characters, t } = useGrimoire();
+  const { state, characters, locale, t, scriptNames } = useGrimoire();
   const cards = stepCards(state, step, characters);
-  if (!cards.length) return null;
+  const became = step.roleId
+    ? [...new Set(becameHere(state, step.roleId).map((e) => e.seatId))].flatMap((id) => state.seats.filter((s) => s.id === id && s.role))
+    : [];
+  if (!cards.length && !became.length) return null;
   const name = (seatIds: string[]) => state.seats.find((s) => s.id === seatIds[0])?.name || "?";
   return (
     <div className="flex flex-wrap gap-1.5 px-3 pb-2">
-      {cards.map(({ seatIds, card }) => (
-        <ShowButton key={seatIds.join()} card={card} label={cards.length > 1 ? fill(t.show.buttonFor, { name: name(seatIds) }) : undefined} />
+      {cards.map(({ seatIds, card, label }, i) => (
+        <ShowButton
+          key={`${seatIds.join()}-${i}`}
+          card={card}
+          label={label ? t.show[label] : cards.length > 1 ? fill(t.show.buttonFor, { name: name(seatIds) }) : undefined}
+        />
+      ))}
+      {became.map((s) => (
+        <ShowButton
+          key={`became-${s.id}`}
+          card={youAreCard(state, s, characters)}
+          label={fill(t.show.becameFor, { name: s.name || "?", role: nameOf(s.role, locale, scriptNames) })}
+        />
       ))}
     </div>
+  );
+}
+
+/**
+ * Who became a Demon and learns it at this step: by day (the Scarlet Woman) at their old character's step the
+ * next night, tonight (the Imp's heir, the Fang Gu's Outsider) at the new Demon's step.
+ */
+function becameHere(state: GrimoireState, roleId: string) {
+  if (state.phase !== "night") return [];
+  return (state.log ?? []).filter(
+    (e) =>
+      e.kind === "became" &&
+      !!e.by &&
+      (e.day ? e.round === state.round - 1 && e.role === roleId : e.round === state.round && e.by === roleId && findRole(roleId)?.team === "demon"),
   );
 }
 
@@ -414,8 +445,8 @@ function stepInfo(
   const log = state.log ?? [];
   const names = (events: GrimoireEvent[]) => events.map((e) => e.name || "?").join(", ");
   // who became the Demon by day (the Scarlet Woman) learns it at her step
-  log
-    .filter((e) => night && e.kind === "became" && e.day && e.round === state.round - 1 && e.role === roleId && e.by)
+  becameHere(state, roleId)
+    .filter((e) => e.day)
     .forEach((e) => info.push(fill(t.newDemon, { role: nameOf(e.by!, locale, scriptNames), name: e.name || "?" })));
 
   if (roleId === "godfather" && night && state.round > 1) {
@@ -505,8 +536,8 @@ function stepInfo(
   if (remindersOf(state, "princess").some(({ reminder }) => reminder.round === state.round - 1)) info.push(t.princess);
   if (lately.some((e) => e.by === "lycanthrope" && !e.day && e.round === state.round)) info.push(t.lycanthropeNoKill);
   // who became this Demon tonight: the Imp's heir, the Fang Gu's Outsider
-  log
-    .filter((e) => e.kind === "became" && !e.day && e.round === state.round && e.by === roleId)
+  becameHere(state, roleId)
+    .filter((e) => !e.day)
     .forEach((e) => info.push(fill(t.newDemon, { role: nameOf(roleId, locale, scriptNames), name: `${e.name || "?"} (${nameOf(e.role, locale, scriptNames)})` })));
 
   if (roleId === "zombuul") {

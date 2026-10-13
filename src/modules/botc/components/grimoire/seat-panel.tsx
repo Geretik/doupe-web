@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { botcRoles, findRole, linkedRoleOf } from "@/modules/botc/lib/botc-roles";
+import { botcRoles, findRole, linkedRoleOf, roleSide } from "@/modules/botc/lib/botc-roles";
 import {
   changeRole,
   charactersInPlay,
@@ -13,6 +13,7 @@ import {
   moveSeat,
   newGap,
   registersDead,
+  seatSide,
   setDead,
   sides,
   stormcaught,
@@ -29,7 +30,7 @@ import { fill } from "@/modules/botc/lib/grimoire/text";
 import { nameOf, RoleIcon, useGrimoire } from "./context";
 import { RoleGrid } from "./role-grid";
 import { ShowButton } from "./show";
-import { gapIcon } from "./town";
+import { gapIcon, otherColour } from "./town";
 import { youAreCard } from "@/modules/botc/lib/grimoire/show";
 
 const travellers = botcRoles.filter((r) => r.team === "traveller").map((r) => r.id);
@@ -172,7 +173,11 @@ function SeatSecrets({ seat }: { seat: GrimoireSeat }) {
       <section className="flex flex-col gap-2">
         <h3 className="text-xs font-semibold tracking-wide text-muted uppercase">{t.role}</h3>
         <div className="flex items-center gap-3">
-          {seat.role ? <RoleIcon roleId={seat.role} size={48} /> : <span className="flex h-12 w-12 items-center justify-center rounded-full border border-dashed border-border text-muted">?</span>}
+          {seat.role ? (
+            <RoleIcon roleId={seat.role} size={48} className={otherColour(seat.role, seatSide(seat, characters, state))} />
+          ) : (
+            <span className="flex h-12 w-12 items-center justify-center rounded-full border border-dashed border-border text-muted">?</span>
+          )}
           <span className="flex-1 text-lg font-semibold">{seat.role ? nameOf(seat.role, locale, scriptNames) : t.noRole}</span>
           {!readOnly && (
             <button type="button" className={plain} onClick={() => setPicking(picking === "role" ? null : "role")} aria-expanded={picking === "role"}>
@@ -181,6 +186,7 @@ function SeatSecrets({ seat }: { seat: GrimoireSeat }) {
           )}
         </div>
         {seat.role && characters[seat.role] && <p className="text-sm leading-snug text-muted">{characters[seat.role].ability}</p>}
+        {seat.role && !isTraveller(seat.role) && <Alignment seat={seat} />}
         {seat.role && !readOnly && <ShowButton card={youAreCard(state, seat, characters)} />}
         {usedText && !readOnly && (
           <button
@@ -326,6 +332,47 @@ function SeatSecrets({ seat }: { seat: GrimoireSeat }) {
         )}
       </section>
     </>
+  );
+}
+
+/**
+ * Good or evil for a player with a character: as the character and the town say, or the other one the Storyteller
+ * chooses (the Wizard's wish…); it colours their token and icon and counts in the rules. Back to the character's
+ * side, the choice goes away.
+ */
+function Alignment({ seat }: { seat: GrimoireSeat }) {
+  const { state, update, readOnly, characters, t } = useGrimoire();
+  const team = findRole(seat.role)?.team;
+  if (!team || !roleSide(team)) return null;
+  const now = seatSide(seat, characters, state);
+  const base = seatSide({ ...seat, side: undefined }, characters, state);
+  const set = (side: Side) =>
+    update((s) =>
+      changeSeat(s, seat.id, (x) => {
+        const next: GrimoireSeat = { ...x, side };
+        if (side === base) delete next.side;
+        return next;
+      }),
+    );
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="flex flex-wrap items-center gap-2" data-testid="alignment">
+        <span className="text-sm">{t.alignment}:</span>
+        {sides.map((side) => (
+          <button
+            key={side}
+            type="button"
+            disabled={readOnly}
+            aria-pressed={now === side}
+            onClick={() => set(side)}
+            className={`${big} ${now === side ? (side === "good" ? "border-good bg-good/10 font-semibold" : "border-accent bg-accent/10 font-semibold") : "border-border bg-card hover:border-accent/50"}`}
+          >
+            {t.travellerSides[side]}
+          </button>
+        ))}
+      </div>
+      {now !== base && base && <p className="text-xs text-muted">{fill(t.alignmentChanged, { side: t.sideOf[base] })}</p>}
+    </div>
   );
 }
 

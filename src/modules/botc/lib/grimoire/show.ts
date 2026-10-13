@@ -34,6 +34,8 @@ export const showTitles = [
   "thisPlayerIs",
   "selectedYou",
   "useAbility",
+  "votedToday",
+  "nominatedToday",
   "choosePlayer",
   "chooseCharacter",
 ] as const;
@@ -92,7 +94,8 @@ export function nextPlayer(state: Pick<GrimoireState, "seats">, seatId: string) 
 
 /**
  * What a night step shows its players, as far as the town tells: the Minions their Demon and each other, the
- * Demon its Minions and bluffs (a working Magician among both, a working Poppy Grower keeps them apart), the
+ * Demon its Minions and then its bluffs, two cards as the official tokens go (a working Magician among both, a
+ * working Poppy Grower keeps them apart: only the bluffs), the
  * Washerwoman's, Librarian's and Investigator's character and two players, the Chef's and Empath's numbers, the
  * Storm Catcher's player to the evil players, the Duchess's number to each visitor… One card for each player
  * when each learns their own. Left empty what the Storyteller must choose (a Spy's
@@ -102,7 +105,7 @@ export function stepCards(
   state: GrimoireState,
   step: NightStep,
   characters: Record<string, GrimoireCharacter>,
-): { seatIds: string[]; card: ShowCard }[] {
+): { seatIds: string[]; card: ShowCard; /** What the card is, for its button: the Demon's two */ label?: "minions" | "bluffs" }[] {
   const woken = step.seatIds.flatMap((id) => state.seats.filter((s) => s.id === id));
   const one = (lines: ShowLine[], seatIds = step.seatIds) => [{ seatIds, card: { forSeatIds: seatIds, lines } }];
   const each = (lines: (seat: GrimoireSeat) => ShowLine[]) => woken.map((s) => ({ seatIds: [s.id], card: { forSeatIds: [s.id], lines: lines(s) } }));
@@ -116,8 +119,9 @@ export function stepCards(
     const demons = inSeatOrder(state, [...ofTeam("demon"), ...(magician ? [magician] : [])]);
     const minions = inSeatOrder(state, [...ofTeam("minion"), ...(magician ? [magician] : [])]);
     if (step.special === "minionInfo") return apart ? [] : one([line("thisIsDemon", { seatIds: demons }), line("yourMinions", { seatIds: minions })]);
-    const bluffs = line("notInPlay", { roles: state.bluffs.filter((id): id is string => !!id) });
-    return one(apart ? [bluffs] : [line("yourMinions", { seatIds: minions }), bluffs]);
+    const labelled = (label: "minions" | "bluffs", l: ShowLine) => ({ ...one([l])[0], label });
+    const bluffs = labelled("bluffs", line("notInPlay", { roles: state.bluffs.filter((id): id is string => !!id) }));
+    return apart ? [bluffs] : [labelled("minions", line("yourMinions", { seatIds: minions })), bluffs];
   }
   const roleId = step.roleId;
   const c = roleId ? characters[roleId] : undefined;

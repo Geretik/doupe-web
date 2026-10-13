@@ -18,10 +18,11 @@ import {
   type GapKind,
   type GrimoireSeat,
   type GrimoireState,
+  type Side,
   type TownPoint,
 } from "@/modules/botc/lib/grimoire/state";
 import { circlePoint, GRID, gridPoints, insertNearest, nearestCirclePlace, putPlace, snap } from "@/modules/botc/lib/grimoire/layout";
-import { findRole } from "@/modules/botc/lib/botc-roles";
+import { findRole, roleSide } from "@/modules/botc/lib/botc-roles";
 import type { GrimoireCharacter } from "@/modules/botc/lib/grimoire/characters";
 import { fill } from "@/modules/botc/lib/grimoire/text";
 import { nameOf, RoleIcon, useGrimoire, type GrimoireTexts } from "./context";
@@ -448,7 +449,7 @@ function SeatToken({
       >
         {seat.role ? (
           <>
-            <RoleIcon roleId={seat.role} size={size * 0.56} className={seat.dead ? "grayscale" : ""} />
+            <RoleIcon roleId={seat.role} size={size * 0.56} className={`${seat.dead ? "grayscale" : ""} ${otherColour(seat.role, side)}`} />
             <span className="max-w-[88%] truncate leading-tight font-semibold" style={{ fontSize: clamp(size * 0.12, 9 * scale, 13 * scale) }}>
               {nameOf(seat.role, locale, scriptNames)}
             </span>
@@ -544,7 +545,6 @@ export function TownCenter({ phaseLabel }: { phaseLabel: string }) {
   const { state, characters, hidden, t } = useGrimoire();
   const { alive, votes, toExecute } = voteMath(state);
   const count = players(state).length;
-  const bluffs = hidden ? [] : state.bluffs.filter((b): b is string => b !== null);
   return (
     <>
       <span className="text-xl font-bold tracking-tight sm:text-2xl">{phaseLabel}</span>
@@ -561,14 +561,17 @@ export function TownCenter({ phaseLabel }: { phaseLabel: string }) {
             {rule}
           </span>
         ))}
-      {bluffs.length > 0 && (
-        <span className="mt-1 flex items-center gap-1 rounded-full border border-accent/50 bg-accent/10 py-0.5 pr-1 pl-2 text-xs font-semibold text-accent" data-testid="town-bluffs">
-          {t.bluffs}:{" "}
-          {bluffs.map((b) => (
-            <RoleIcon key={b} roleId={b} size={26} />
-          ))}
-        </span>
-      )}
     </>
   );
+}
+
+/**
+ * A character's icon in the other team's colour, blue to red or back, when the player is not on the character's
+ * side (the Wizard's wish, the Mezepheles's word…).
+ */
+export function otherColour(roleId: string | null, side: Side | null) {
+  const team = findRole(roleId)?.team;
+  const own = team ? roleSide(team) : null;
+  if (!own || !side || own === side) return "";
+  return own === "good" ? "hue-rotate-[150deg]" : "-hue-rotate-[150deg]";
 }

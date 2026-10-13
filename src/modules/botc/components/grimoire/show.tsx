@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { createPortal } from "react-dom";
-import { findRole } from "@/modules/botc/lib/botc-roles";
+import { findRole, roleSide } from "@/modules/botc/lib/botc-roles";
 import { players } from "@/modules/botc/lib/grimoire/state";
 import { nextPlayer, showTitles, youAreCard, type ShowCard, type ShowLine, type ShowTitle } from "@/modules/botc/lib/grimoire/show";
 import { fill } from "@/modules/botc/lib/grimoire/text";
@@ -38,6 +38,9 @@ export function ShowScreen({ card, onChange, onClose }: { card: ShowCard; onChan
   const [shown, setShown] = useState(false);
   const names = (seatIds: string[]) => seatIds.map((id) => state.seats.find((s) => s.id === id)?.name || "?");
   const next = card.youAre ? nextPlayer(state, card.youAre) : null;
+  // "You are" as the player's own card has it: what comes back when only the character or only the team was shown
+  const youAreSeat = card.youAre ? state.seats.find((s) => s.id === card.youAre) : undefined;
+  const youAre = youAreSeat ? youAreCard(state, youAreSeat, characters).lines[0] : undefined;
   const setLine = (i: number, change: (line: ShowLine) => ShowLine) => onChange({ ...card, lines: card.lines.map((l, k) => (k === i ? change(l) : l)) });
 
   return createPortal(
@@ -71,6 +74,7 @@ export function ShowScreen({ card, onChange, onClose }: { card: ShowCard; onChan
               <LineEditor
                 key={i}
                 line={line}
+                youAre={youAre}
                 onChange={(change) => setLine(i, change)}
                 onRemove={card.lines.length > 1 ? () => onChange({ ...card, lines: card.lines.filter((_, k) => k !== i) }) : undefined}
               />
@@ -129,14 +133,35 @@ function CardLine({ line, names }: { line: ShowLine; names: string[] }) {
       )}
       {"number" in line && <p className="text-9xl font-bold tabular-nums">{line.number ?? "?"}</p>}
       {"answer" in line && <p className="text-8xl font-bold">{line.answer ? t.show[line.answer] : "?"}</p>}
-      {line.side && <p className={`text-4xl font-bold ${line.side === "good" ? "text-good" : "text-accent"}`}>{t.show.sides[line.side]}</p>}
+      {line.side && (
+        // in the team's colour, big enough to tell across a dark room
+        <p
+          className={`rounded-2xl border-4 px-8 py-4 text-5xl font-bold ${line.side === "good" ? "border-good bg-good/15 text-good" : "border-accent bg-accent/15 text-accent"}`}
+          data-testid="show-side"
+        >
+          {t.show.sides[line.side]}
+        </p>
+      )}
       {line.text && <p className="max-w-2xl text-4xl font-semibold">{line.text}</p>}
     </div>
   );
 }
 
-/** A line of the card for the Storyteller: each part with its way to change or remove it, the missing parts to add. */
-function LineEditor({ line, onChange, onRemove }: { line: ShowLine; onChange: (change: (line: ShowLine) => ShowLine) => void; onRemove?: () => void }) {
+/**
+ * A line of the card for the Storyteller: each part with its way to change or remove it, the missing parts to add.
+ * "You are" shows the character and the team, only the character or only the team; `youAre` is the player's own.
+ */
+function LineEditor({
+  line,
+  youAre,
+  onChange,
+  onRemove,
+}: {
+  line: ShowLine;
+  youAre?: ShowLine;
+  onChange: (change: (line: ShowLine) => ShowLine) => void;
+  onRemove?: () => void;
+}) {
   const { state, locale, t, scriptNames } = useGrimoire();
   const [picking, setPicking] = useState<"roles" | "players" | null>(null);
   const without = <K extends keyof ShowLine>(key: K) => onChange((l) => Object.fromEntries(Object.entries(l).filter(([k]) => k !== key)) as ShowLine);
@@ -168,6 +193,8 @@ function LineEditor({ line, onChange, onRemove }: { line: ShowLine; onChange: (c
           </button>
         )}
       </div>
+
+      {line.title === "youAre" && <YouAreParts line={line} youAre={youAre} onChange={onChange} />}
 
       {(line.seatIds.length > 0 || line.roles.length > 0) && (
         <div className="flex flex-wrap gap-1.5">
@@ -298,5 +325,37 @@ function LineEditor({ line, onChange, onRemove }: { line: ShowLine; onChange: (c
         <RoleGrid roleIds={[...new Set([...state.script.roleIds, ...line.roles])]} marked={new Set(line.roles)} label={t.role} onPick={toggleRole} />
       )}
     </section>
+  );
+}
+
+type YouArePart = "both" | "role" | "side";
+
+/** "You are": the character and the team, only the character or only the team, what is missing taken from the player's own card. */
+function YouAreParts({ line, youAre, onChange }: { line: ShowLine; youAre?: ShowLine; onChange: (change: (line: ShowLine) => ShowLine) => void }) {
+  const { t } = useGrimoire();
+  const current: YouArePart | null = line.roles.length && line.side ? "both" : line.roles.length ? "role" : line.side ? "side" : null;
+  const set = (part: YouArePart) =>
+    onChange((l) => {
+      const roles = l.roles.length ? l.roles : (youAre?.roles ?? []);
+      const team = findRole(roles[0])?.team;
+      const side = l.side ?? youAre?.side ?? (team && roleSide(team)) ?? "good";
+      const next: ShowLine = { ...l, roles: part === "side" ? [] : roles, side };
+      if (part === "role") delete next.side;
+      return next;
+    });
+  return (
+    <div className="flex flex-wrap gap-1.5" role="group" aria-label={t.show.youAreParts.label}>
+      {(["both", "role", "side"] as const).map((part) => (
+        <button
+          key={part}
+          type="button"
+          aria-pressed={current === part}
+          onClick={() => set(part)}
+          className={`${chip} font-semibold ${current === part ? "border-accent bg-accent text-accent-foreground" : "border-border"}`}
+        >
+          {t.show.youAreParts[part]}
+        </button>
+      ))}
+    </div>
   );
 }

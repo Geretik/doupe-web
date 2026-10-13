@@ -5,6 +5,7 @@ import { getDict } from "@/i18n/server";
 import { requireAccess } from "@/lib/admin-auth";
 import { grimoireCharacters } from "@/modules/botc/lib/grimoire/characters";
 import { homebrewGrimoireCharacters } from "@/modules/botc/lib/homebrew";
+import { homebrewRoles } from "@/modules/botc/lib/botc-roles";
 import { canDeleteGrimoire, canEditGrimoire, canViewGrimoire, getGrimoire, grimoireScripts, sessionPlayers } from "@/modules/botc/lib/grimoire/service";
 import { parseId } from "@/lib/validation";
 
@@ -23,9 +24,10 @@ export default async function GrimoirePage({ params }: { params: Promise<{ id: s
   const g = row.grimoire;
   const { locale, t } = await getDict();
   const [scripts, players] = await Promise.all([grimoireScripts(), g.sessionId ? sessionPlayers(g.sessionId, locale) : []]);
-  // the homebrew characters the game has or may get: its own and those of the scripts it can switch to
+  // the homebrew characters the game has or may get: its own, those of the scripts it can switch to, every traveller
   const s = g.state;
   const homebrew = homebrewGrimoireCharacters([
+    ...homebrewRoles.filter((r) => r.team === "traveller").map((r) => r.id),
     ...[s.script, ...scripts].flatMap((x) => [...x.roleIds, ...(x.fabled ?? [])]),
     ...(s.fabled ?? []),
     ...s.seats.flatMap((seat) => [seat.role, seat.believedRole, ...seat.reminders.map((r) => r.roleId)]),

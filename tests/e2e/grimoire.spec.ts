@@ -665,12 +665,12 @@ test("show the player: the Minions their Demon and each other, the Demon its Min
       { title: "yourMinions", roles: [], seatIds: [id("poisoner"), id("spy"), id("magician")] },
     ],
   ]);
+  // the Demon: the Minions, then the bluffs, each on their own card with its own button
   expect(cards("demonInfo")).toEqual([
-    [
-      { title: "yourMinions", roles: [], seatIds: [id("poisoner"), id("spy"), id("magician")] },
-      { title: "notInPlay", roles: ["monk", "soldier", "mayor"], seatIds: [] },
-    ],
+    [{ title: "yourMinions", roles: [], seatIds: [id("poisoner"), id("spy"), id("magician")] }],
+    [{ title: "notInPlay", roles: ["monk", "soldier", "mayor"], seatIds: [] }],
   ]);
+  expect(stepCards(state, nightSteps(state, characters, true).find((x) => x.id === "demonInfo")!, characters).map((x) => x.label)).toEqual(["minions", "bluffs"]);
   // the Drunk is shown the Townsfolk they think they are, and wakes as the Empath: nobody evil next to them
   expect(youAreCard(state, at(state, "drunk"), characters).lines).toEqual([{ title: "youAre", roles: ["empath"], seatIds: [], side: "good" }]);
   expect(cards("empath")).toEqual([[{ title: null, roles: [], seatIds: [], number: 0 }]]);
@@ -832,8 +832,11 @@ test("travellers: on the side the Storyteller gave them – grey until then; the
   expect(evilLivingNeighbours(evil, at(evil, "empath").id, characters).n).toBe(1);
   expect(evilPairs(evil, characters).n).toBe(1);
   expect(grimoireStateSchema.parse(evil).seats[1].side).toBe("evil");
-  // a side means nothing to anybody but a traveller
-  expect(seatSide({ ...at(evil, "empath"), side: "evil" })).toBe("good");
+  // anyone else's side is the Storyteller's change of their alignment (the Wizard's wish…): it counts for the Chef too
+  const turned = { ...state, seats: state.seats.map((s) => (s.role === "chef" ? { ...s, side: "evil" as const } : s)) };
+  expect(seatSide(at(turned, "chef"))).toBe("evil");
+  expect(evilPairs(turned, characters).n).toBe(1);
+  expect(seatSide({ ...at(state, "imp"), side: "good" })).toBe("good");
   // a traveller with a night ability wakes in the night order, the first night and the others
   for (const first of [true, false]) {
     expect(nightSteps(state, characters, first).find((step) => step.roleId === "thief")?.seatIds).toEqual([at(state, "thief").id]);
@@ -1524,6 +1527,33 @@ test("grimoire: a traveller from the setup – the side first, then the characte
   await side.getByRole("button", { name: "😇 Dobro" }).click();
   await stored((st) => travellers(st)[2], ["Karel", "thief", "good"]);
   await expect(seat(page, "Karel").locator("span").first()).toHaveClass(/border-good/);
+
+  // another one chooses the character themselves over the whole screen: abilities, no side, the Thief taken
+  const setup2 = await openSetup(page);
+  await setup2.getByRole("button", { name: "🧳 Přidat pocestného" }).click();
+  const box2 = setup2.getByTestId("add-traveller");
+  await box2.getByRole("textbox", { name: "Jméno pocestného" }).fill("Lída");
+  await box2.getByRole("button", { name: "😇 Dobro" }).click();
+  await box2.getByRole("button", { name: "📱 Nechat vybrat pocestného (celá obrazovka)" }).click();
+  const choice = page.getByTestId("traveller-screen");
+  await expect(choice).toContainText("Vyber si postavu pocestného");
+  await expect(choice).not.toContainText("😇");
+  await expect(choice).not.toContainText("Zloděj");
+  await expect(choice.getByRole("button", { name: /^Žebrák/ })).toContainText("hlasovací žeton");
+  // the Storyteller filters by set: an edition, the homebrew collections (with their abilities too)
+  const set = choice.getByTestId("traveller-set");
+  await expect(set).toHaveValue("official");
+  await expect(choice.getByRole("button", { name: /^Biskup/ })).toBeVisible();
+  await set.selectOption("homebrew");
+  await expect(choice.locator("li button")).toHaveCount(50);
+  for (const text of await choice.locator("li button").allInnerTexts()) expect(text.split("\n").filter(Boolean).length).toBeGreaterThan(1);
+  await set.selectOption("tb");
+  await expect(choice.getByRole("button", { name: /^Biskup/ })).toHaveCount(0);
+  await expect(choice.getByRole("button", { name: "Ťukni na postavu" })).toBeDisabled();
+  await choice.getByRole("button", { name: /^Žebrák/ }).click();
+  await choice.getByRole("button", { name: "Chci hrát: Žebrák" }).click();
+  await expect(choice).toHaveCount(0);
+  await stored((st) => travellers(st)[3], ["Lída", "beggar", "good"]);
 });
 
 test("grimoire hidden: someone else holds it without seeing characters, reminders, the bag or the bluffs; undo takes back only their changes", async ({ page }) => {
@@ -1544,7 +1574,8 @@ test("grimoire hidden: someone else holds it without seeing characters, reminder
   await sql("update grimoires set state = $1 where id = $2", [JSON.stringify(game), row.id]);
   await page.reload();
   const town = page.getByTestId("town");
-  await expect(town.locator("img")).toHaveCount(3 + 1 + 3);
+  // the characters and the reminder; the bluffs are not in the town's centre
+  await expect(town.locator("img")).toHaveCount(3 + 1);
   await expect(page.getByTestId("reminder")).toHaveCount(1);
   await expect(page.getByRole("tab")).toHaveCount(2);
   // a change of the Storyteller's before handing it over
@@ -1607,7 +1638,7 @@ test("grimoire hidden: someone else holds it without seeing characters, reminder
   await answer(page, true);
   await expect(page.getByTestId("hide-button")).toHaveAttribute("aria-pressed", "false");
   await expect(page.locator("[data-admin-nav]")).toBeHidden();
-  await expect(town.locator("img")).toHaveCount(7);
+  await expect(town.locator("img")).toHaveCount(4);
   await expect(page.getByTestId("reminder")).toHaveCount(1);
 });
 
@@ -1798,12 +1829,16 @@ test("grimoire: the bag filled at random by the rules, the number of players and
   await bluffs.getByRole("button", { name: "🎲 Náhodně" }).click();
   await expect.poll(async () => (await stored()).bluffs.filter(Boolean).length).toBe(3);
   for (const b of (await stored()).bluffs) expect(bag).not.toContain(b);
+  // the bag and the bluffs in: Hotovo lights up, then the players' draw in the setup
+  await expect(screen.getByTestId("done-hint")).toHaveText("Hotovo – teď rozdej postavy");
 
   // the bag full: the setup says where the characters are handed out
   await closeTokens(page);
   await expect(page.getByTestId("start-fill")).toHaveCount(0);
   await expect(page.getByTestId("setup-screen")).toContainText("Hru začneš, až budou mít postavu všichni hráči – rozdej je dole v části Rozdání.");
   await expect(page.getByTestId("bluffs-view").getByRole("listitem")).toHaveCount(3);
+  await expect(page.getByTestId("setup-screen").getByRole("button", { name: "Losování hráči" })).toHaveClass(/animate-pulse/);
+  await expect(page.getByTestId("setup-screen").getByRole("button", { name: "Rozdat náhodně" })).not.toHaveClass(/bg-accent/);
 });
 
 test("grimoire: the Drunk brings an extra Townsfolk into the bag, whoever gets it is the Drunk, handed out or drawn", async ({ page }) => {
@@ -1982,22 +2017,27 @@ test("grimoire: after the deal each player is shown their character in turn; at 
   await expect(screen).toBeHidden();
   await expect(page.getByTestId("setup-screen")).toBeVisible();
 
-  // the first night: the Demon's card has its Minion and the bluff; a line changed before it is shown
+  // the first night: the Demon's Minion, a line changed before it is shown; then the bluffs on a card of their own
   await page.getByTestId("setup-screen").getByRole("button", { name: "Začít hru → 1. noc" }).click();
   const night = page.getByTestId("night-panel");
   await night.locator("[data-step=demonInfo] button").nth(1).click();
-  await night.locator("[data-step=demonInfo]").getByTestId("show-button").click();
+  await night.locator("[data-step=demonInfo]").getByRole("button", { name: "👁️ Ukázat Přisluhovače" }).click();
   await expect(screen).toContainText(`pro: ${who("imp")}`);
   await expect(screen.getByRole("button", { name: `Odebrat: ${who("poisoner")}` })).toBeVisible();
   await screen.getByRole("button", { name: "+ Další řádek" }).click();
   await screen.getByTestId("show-line-editor").last().getByRole("button", { name: "+ Text" }).click();
   await screen.getByPlaceholder("Text pro hráče").fill("Hodně štěstí");
   await screen.getByRole("button", { name: "Ukázat", exact: false }).click();
-  await expect(card.getByTestId("show-line")).toHaveText([`Tito jsou tví Přisluhovači${who("poisoner")}`, "Tyto postavy nejsou ve hřeVědma", "Hodně štěstí"]);
+  await expect(card.getByTestId("show-line")).toHaveText([`Tito jsou tví Přisluhovači${who("poisoner")}`, "Hodně štěstí"]);
   expect(await covered()).toBe(true);
   await card.click();
   await screen.getByRole("button", { name: "Hotovo" }).click();
   await expect(screen).toBeHidden();
+  await night.locator("[data-step=demonInfo]").getByRole("button", { name: "👁️ Ukázat blafy" }).click();
+  await screen.getByRole("button", { name: "Ukázat", exact: false }).click();
+  await expect(card.getByTestId("show-line")).toHaveText(["Tyto postavy nejsou ve hřeVědma"]);
+  await card.click();
+  await screen.getByRole("button", { name: "Hotovo" }).click();
 
   // the Chef's number on the card; at a player, "You are"
   await night.locator("[data-step=chef] button").nth(1).click();
@@ -2010,6 +2050,45 @@ test("grimoire: after the deal each player is shown their character in turn; at 
   await page.getByTestId("seat-panel").getByTestId("show-button").click();
   await screen.getByRole("button", { name: "Ukázat", exact: false }).click();
   await expect(card).toContainText("JsiMnich");
+  await expect(card.getByTestId("show-side")).toHaveText("Dobrý tým");
+  // only the team, in its colour; only the character; both again
+  await card.click();
+  const parts = screen.getByRole("group", { name: "Co ukázat" });
+  await expect(parts.getByRole("button", { name: "Postava i tým" })).toHaveAttribute("aria-pressed", "true");
+  await parts.getByRole("button", { name: "Jen tým" }).click();
+  await screen.getByRole("button", { name: "Ukázat", exact: false }).click();
+  await expect(card.getByTestId("show-line")).toHaveText(["JsiDobrý tým"]);
+  await expect(card.getByTestId("show-side")).toHaveClass(/text-good/);
+  await card.click();
+  await parts.getByRole("button", { name: "Jen postava" }).click();
+  await screen.getByRole("button", { name: "Ukázat", exact: false }).click();
+  await expect(card).toContainText("JsiMnich");
+  await expect(card.getByTestId("show-side")).toHaveCount(0);
+  await card.click();
+  await parts.getByRole("button", { name: "Postava i tým" }).click();
+  await screen.getByRole("button", { name: "Ukázat", exact: false }).click();
+  await expect(card.getByTestId("show-side")).toHaveText("Dobrý tým");
+  await card.click();
+  await screen.getByRole("button", { name: "Hotovo" }).click();
+
+  // the Monk turned evil (the Wizard's wish): red token, the icon recoloured, "You are" evil; back to good, as the character
+  const alignment = page.getByTestId("seat-panel").getByTestId("alignment");
+  await expect(alignment.getByRole("button", { name: "😇 Dobro" })).toHaveAttribute("aria-pressed", "true");
+  await alignment.getByRole("button", { name: "😈 Zlo" }).click();
+  await expect(alignment.getByRole("button", { name: "😈 Zlo" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByTestId("seat-panel")).toContainText("podle postavy by patřil/a do dobra");
+  const monk = () => sql<{ state: { seats: { role: string; side?: string }[] } }>("select state from grimoires order by id desc limit 1").then(([r]) => r.state.seats.find((x) => x.role === "monk")?.side ?? null);
+  await expect.poll(monk).toBe("evil");
+  await expect(seat(page, who("monk")).locator("span").first()).toHaveClass(/border-accent/);
+  await expect(seat(page, who("monk")).locator("img").first()).toHaveClass(/hue-rotate/);
+  await page.getByTestId("seat-panel").getByTestId("show-button").click();
+  await screen.getByRole("button", { name: "Ukázat", exact: false }).click();
+  await expect(card.getByTestId("show-side")).toHaveText("Zlý tým");
+  await card.click();
+  await screen.getByRole("button", { name: "Hotovo" }).click();
+  await alignment.getByRole("button", { name: "😇 Dobro" }).click();
+  await expect.poll(monk).toBe(null);
+  await expect(seat(page, who("monk")).locator("img").first()).not.toHaveClass(/hue-rotate/);
 });
 
 test("grimoire: a new one points at the full screen, the seating and its lock, then at the setup; night 2: the Demon's attack, the Monk and the Soldier, the Imp passing to the Scarlet Woman", async ({ page }) => {
@@ -2026,22 +2105,41 @@ test("grimoire: a new one points at the full screen, the seating and its lock, t
   await expect(page.getByTestId("seating-guide")).toContainText("Rozesaď hráče a doplň dveře, vypravěče nebo překážky.");
   await expect(page.getByTestId("seats-lock")).toHaveClass(/ring-4/);
   await expect(page.getByTestId("setup-hint")).toHaveCount(0);
+  await expect(page.getByTestId("setup-button")).not.toHaveClass(/animate-pulse/);
   await page.getByTestId("seats-lock").click();
   await expect(page.getByTestId("seats-lock")).not.toHaveClass(/ring-4/);
   await expect(page.getByTestId("setup-hint")).toHaveText("Teď Příprava: script a postavy");
+  await expect(page.getByTestId("setup-button")).toHaveClass(/animate-pulse/);
   // out of the full screen again: it does not point there any more
   await page.getByRole("button", { name: "Zrušit celou obrazovku" }).click();
   await expect(page.locator("[data-admin-nav]")).toBeVisible();
   await expect(page.getByTestId("fullscreen-hint")).toHaveCount(0);
-  await openSetup(page);
+  // one step after another lights up: the bag, the bluffs, done, the dealing, the start
+  const setup = await openSetup(page);
+  await expect(setup.getByRole("button", { name: "🎒 Výběr žetonů" })).toHaveClass(/animate-pulse/);
   const tokens = await openTokens(page);
+  await expect(tokens.getByTestId("fill-hint")).toBeVisible();
   for (const name of ["Mnich", "Voják", "Kuchař", "Empat", "Zabiják", "Šarlatová žena", "Čert"]) {
     await tokens.getByRole("button", { name: `Do pytlíku: ${name}` }).click();
   }
+  await expect(tokens.getByTestId("fill-hint")).toHaveCount(0);
+  const dice = tokens.getByTestId("bag-bluffs").getByRole("button", { name: "🎲 Náhodně" });
+  await expect(dice).toHaveClass(/animate-pulse/);
+  await expect(tokens.getByTestId("done-hint")).toHaveCount(0);
+  await dice.click();
+  await expect(dice).not.toHaveClass(/animate-pulse/);
+  await expect(tokens.getByTestId("done-hint")).toBeVisible();
   await closeTokens(page);
+  await expect(setup.getByRole("button", { name: "🎒 Výběr žetonů" })).not.toHaveClass(/animate-pulse/);
+  await expect(setup.getByRole("button", { name: "Losování hráči" })).toHaveClass(/animate-pulse/);
+  await expect(setup.getByRole("button", { name: "Začít hru → 1. noc" })).not.toHaveClass(/animate-pulse/);
   await dealAtRandom(page);
+  await expect(setup.getByRole("button", { name: "Losování hráči" })).not.toHaveClass(/animate-pulse/);
+  await expect(setup.getByRole("button", { name: "Začít hru → 1. noc" })).toHaveClass(/animate-pulse/);
   await closeSetup(page);
   await expect(page.getByTestId("setup-hint")).toHaveCount(0);
+  await expect(page.getByTestId("setup-button")).not.toHaveClass(/animate-pulse/);
+  await expect(page.getByRole("button", { name: "Začít hru → 1. noc" })).toHaveClass(/animate-pulse/);
 
   const seats = async () => {
     const [row] = await sql<{ state: { seats: { name: string; role: string; dead: boolean; reminders: { text: string }[] }[] } }>(
@@ -2091,6 +2189,15 @@ test("grimoire: a new one points at the full screen, the seating and its lock, t
   await attack("imp");
   await expect(imp.getByTestId("step-info")).toHaveText(`👉 Nový Čert: ${who("scarletwoman")} (Šarlatová žena).`);
   await expect(page.getByTestId("town")).toContainText("Živí 5 z 7");
+  // the new Imp is shown who they are, right at the step
+  await imp.getByRole("button", { name: `👁️ Ukázat: ${who("scarletwoman")} je Čert` }).click();
+  const show = page.getByTestId("show-screen");
+  await expect(show).toContainText(`pro: ${who("scarletwoman")}`);
+  await show.getByRole("button", { name: "Ukázat", exact: false }).click();
+  await expect(page.getByTestId("show-card")).toContainText("JsiČert");
+  await expect(page.getByTestId("show-card").getByTestId("show-side")).toHaveText("Zlý tým");
+  await page.getByTestId("show-card").click();
+  await show.getByRole("button", { name: "Hotovo" }).click();
 
   // the chronicle: the Chef and the Soldier lived only through attacks the Imp took back
   await page.getByRole("tab", { name: "Kronika" }).click();
