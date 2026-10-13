@@ -51,11 +51,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               🎲 {t.meta.title}
             </Link>
             <LanguageSwitch locale={locale} t={t} className="order-2 sm:order-3" />
-            {/* the club (with its subpages, e.g. the games list) and its modules; each module (so far only BotC) has its own menu below; signed in, the admin too */}
+            {/* the club (with its subpages: the games list, the FAQ) and its modules; each module (so far only BotC) has its own menu below; signed in, the admin too */}
             <nav
               className="order-3 sm:order-2 -mx-2 flex basis-full sm:basis-auto sm:mx-0 items-center gap-1 sm:gap-4 overflow-x-auto whitespace-nowrap text-sm"
             >
-              <NavLink href="/" prefixes={["/hry"]} className="rounded-md px-2 py-1.5 hover:underline">{t.nav.club}</NavLink>
+              <NavLink href="/" prefixes={["/hry", "/faq"]} className="rounded-md px-2 py-1.5 hover:underline">{t.nav.club}</NavLink>
               <NavLink href="/botc" prefixes={["/botc"]} className="rounded-md px-2 py-1.5 hover:underline">
                 {t.nav.botc}
               </NavLink>

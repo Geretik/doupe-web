@@ -37,18 +37,20 @@ function DiscordBox({
 }
 
 /**
- * The club page under its heading; the texts are edited in the admin (Texty webu → Klub). The link to
- * the game collection and the message form are not part of them, so they stay whatever the texts say.
+ * The club page under its heading; the texts are edited in the admin (Texty webu → Klub). The links to
+ * the game collection and the FAQ and the message form are not part of them, so they stay whatever the texts say.
  */
 export function ClubContent({
   texts,
   discordButton,
   games,
+  faq,
   message,
 }: {
   texts: Record<PageTextKey<"klub">, string>;
   discordButton: string;
   games: { lead: string; link: string };
+  faq: { lead: string; link: string };
   message: Dict["club"]["message"];
 }) {
   return (
@@ -59,6 +61,11 @@ export function ClubContent({
           <span aria-hidden className="mr-1.5">🎲</span>
           {games.lead}
           <Link href="/hry" className="underline hover:text-accent">{games.link}</Link>
+        </p>
+        <p className="mt-2">
+          <span aria-hidden className="mr-1.5">❓</span>
+          {faq.lead}
+          <Link href="/faq" className="underline hover:text-accent">{faq.link}</Link>
         </p>
       </Card>
 

@@ -27,6 +27,7 @@ export default async function ClubPage() {
           texts={texts}
           discordButton={t.club.discordButton}
           games={{ lead: t.club.gamesLead, link: t.club.gamesLink }}
+          faq={{ lead: t.club.faqLead, link: t.club.faqLink }}
           message={t.club.message}
         />
       </div>

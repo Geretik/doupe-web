@@ -302,6 +302,8 @@ export const cs = {
     editPencil: "Upravit text stránky (admin)",
     gamesLead: "Co si u nás zahraješ: ",
     gamesLink: "sbírka her",
+    faqLead: "Jdeš k nám poprvé? Mrkni na ",
+    faqLink: "časté otázky",
     /** The message form at the end of the page; its heading and text are edited in the admin (Texty webu). */
     message: {
       name: "Jméno nebo přezdívka",
@@ -319,6 +321,14 @@ export const cs = {
       tooMany: "Z této sítě přišlo příliš mnoho vzkazů. Zkus to prosím za hodinu, nebo nám napiš na Discordu.",
       failed: "Vzkaz se nepodařilo odeslat. Zkus to prosím znovu, nebo nám napiš na Discordu.",
     },
+  },
+  /** The FAQ page (/faq); the questions themselves are edited in the admin (Texty webu). */
+  faq: {
+    title: "Časté otázky",
+    editPencil: "Upravit otázky (admin)",
+    more: "Nenašel/a jsi odpověď? Zeptej se na Discordu, nebo nám ",
+    moreLink: "nech vzkaz",
+    back: "← Zpět na klub",
   },
   scripts: {
     title: "Scripty",
@@ -810,7 +820,7 @@ export const cs = {
     areas: { botc: "Krvavka", club: "Klub" },
     areasHint: {
       botc: "Termíny a přihlášky, drafty, scripty, grimoáry, statistiky a texty stránek Krvavky.",
-      club: "Prezenčka, půjčovna her a text úvodní stránky klubu.",
+      club: "Prezenčka, půjčovna her a texty úvodní stránky klubu a častých otázek.",
     },
     access: { none: "nevidí", view: "jen čte", edit: "upravuje" },
     /** On a part of the admin the account may only look at */
@@ -821,6 +831,7 @@ export const cs = {
       intro: "Tady upravíš texty na veřejných stránkách. Na webu se změna ukáže hned po uložení. Každá verze zůstává v historii, takže se k ní jde kdykoli vrátit.",
       pages: {
         klub: { title: "Klub", description: "Úvodní stránka webu: kdy a kde hrajeme, Discord, jak to u nás chodí, vzkaz pro organizátory." },
+        faq: { title: "Klub – Časté otázky", description: "Otázky nováčků: cesta, parkování, jídlo, vstupné, půjčování her, angličtina…" },
         krvavka: { title: "Krvavka – termíny", description: "Úvodní věta nad seznamem termínů Krvavky." },
         "o-hre": { title: "Krvavka – O hře", description: "Představení hry Blood on the Clocktower a odkazy." },
       },
@@ -833,6 +844,11 @@ export const cs = {
         "klub.body": { label: "Hlavní text", hint: "Pod rámečkem s Discordem." },
         "klub.messageTitle": { label: "Vzkaz – nadpis", hint: "Na konci stránky." },
         "klub.messageText": { label: "Vzkaz – text", hint: "Pod textem je vždy formulář, který vzkaz pošle e-mailem organizátorům." },
+        "faq.intro": { label: "Podnadpis", hint: "Jedna věta pod nadpisem. Vyhledávače a náhledy odkazů ji ukazují jako popis stránky." },
+        "faq.body": {
+          label: "Otázky a odpovědi",
+          hint: "Každá otázka je nadpis (Nadpis 2), odpověď je text pod ním až po další otázku. Na webu se odpověď rozbalí ťuknutím na otázku.",
+        },
         "krvavka.intro": { label: "Úvod nad termíny", hint: "Jedna věta pod nadpisem „Nadcházející termíny“." },
         "o-hre.intro": { label: "Podnadpis", hint: "Jedna věta pod nadpisem. Vyhledávače a náhledy odkazů ji ukazují jako popis stránky." },
         "o-hre.body": { label: "Text stránky", hint: "Pod textem je vždy tlačítko „Přejít na termíny“." },
@@ -1576,6 +1592,8 @@ export const en: Dict = {
     editPencil: "Edit the page text (admin)",
     gamesLead: "What you can play: ",
     gamesLink: "our game collection",
+    faqLead: "Coming for the first time? Have a look at the ",
+    faqLink: "FAQ",
     message: {
       name: "Name or nickname",
       nameHint: "Optional.",
@@ -1592,6 +1610,13 @@ export const en: Dict = {
       tooMany: "Too many messages came from this network. Please try again in an hour, or write to us on Discord.",
       failed: "The message could not be sent. Please try again, or write to us on Discord.",
     },
+  },
+  faq: {
+    title: "Frequently asked questions",
+    editPencil: "Edit the questions (admin)",
+    more: "Didn't find your answer? Ask on Discord, or ",
+    moreLink: "leave us a message",
+    back: "← Back to the club",
   },
   scripts: {
     title: "Scripts",
@@ -2064,7 +2089,7 @@ export const en: Dict = {
     areas: { botc: "Krvavka", club: "Club" },
     areasHint: {
       botc: "Sessions and sign-ups, drafts, scripts, grimoires, statistics and the texts of the Krvavka pages.",
-      club: "Attendance sheet, game lending and the text of the club's home page.",
+      club: "Attendance sheet, game lending and the texts of the club's home page and the FAQ.",
     },
     access: { none: "hidden", view: "read only", edit: "edits" },
     readOnly: "You can only look at this part of the admin, not change anything in it. Permissions are set by an administrator.",
@@ -2073,6 +2098,7 @@ export const en: Dict = {
       intro: "Edit the texts of the public pages here. A change shows on the site as soon as you save it. Every version stays in the history, so you can always go back to it.",
       pages: {
         klub: { title: "The club", description: "The home page: when and where we play, Discord, how things work, a message to the organisers." },
+        faq: { title: "The club – FAQ", description: "Newcomers' questions: getting here, parking, food, entry, borrowing games, English…" },
         krvavka: { title: "Blood on the Clocktower – sessions", description: "The intro above the list of sessions." },
         "o-hre": { title: "Blood on the Clocktower – about the game", description: "Introduction to the game and links." },
       },
@@ -2085,6 +2111,11 @@ export const en: Dict = {
         "klub.body": { label: "Main text", hint: "Below the Discord box." },
         "klub.messageTitle": { label: "Message – heading", hint: "At the end of the page." },
         "klub.messageText": { label: "Message – text", hint: "The form that e-mails the message to the organisers always follows the text." },
+        "faq.intro": { label: "Subtitle", hint: "One sentence under the heading. Search engines and link previews show it as the page description." },
+        "faq.body": {
+          label: "Questions and answers",
+          hint: "Each question is a heading (Heading 2), its answer is the text below it up to the next question. On the site the answer opens when the question is tapped.",
+        },
         "krvavka.intro": { label: "Intro above the sessions", hint: "One sentence under the heading “Upcoming sessions”." },
         "o-hre.intro": { label: "Subtitle", hint: "One sentence under the heading. Search engines and link previews show it as the page description." },
         "o-hre.body": { label: "Page text", hint: "The “Go to sessions” button always follows the text." },

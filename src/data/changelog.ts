@@ -18,6 +18,16 @@ export const changelog: ChangelogEntry[] = [
     items: [
       {
         for: "players",
+        text: "Nová stránka Časté otázky pod Klubem: jak se k nám dostat, kde parkovat, co si vzít s sebou, kolik stojí vstup, půjčování her… Česky i anglicky (v angličtině i otázka, jak je to v klubu s angličtinou). Odpověď se rozbalí ťuknutím na otázku, odkaz je na úvodní stránce.",
+        href: "/faq",
+      },
+      {
+        for: "organizers",
+        text: "Časté otázky se upravují v Texty webu → Klub – Časté otázky: každá otázka je Nadpis 2, odpověď text pod ním, každý jazyk zvlášť.",
+        href: "/admin/web/faq",
+      },
+      {
+        for: "players",
         text: "Hry: opakované ťukání na Jen klubové hry a Bez rozšíření už neoznačuje jejich text.",
         href: "/hry",
       },

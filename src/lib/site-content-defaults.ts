@@ -151,6 +151,137 @@ We can arrange it in **#chat** or in the usual channel for a specific club game 
 - [bloodontheclocktower.com](https://bloodontheclocktower.com/)
 `;
 
+/** Each "##" heading is one question; on the site the questions open on a tap (components/markdown, `questions`). */
+const FAQ_BODY_CS = `## 🚂 Jak se k nám dostanete?
+
+**Adresa:**\\
+[Přírodovědecká fakulta Univerzity Palackého v Olomouci](https://maps.app.goo.gl/strUg6nAKamStgeB7)\\
+17. listopadu 1192/12, 779 00 Olomouc\\
+učebna **1.037**
+
+Z hlavního nádraží se dá pohodlně dojít i pěšky (15–20 minut). Nejblíže jsou zastávky **Envelopa** nebo **Žižkovo náměstí** (tramvaj), případně **17. listopadu** a **Envelopa** (autobus).
+
+## 🧑‍🏫 Co mám vědět před příchodem?
+
+Před naším začátkem probíhá v místnosti výuka, takže se může stát, že se dostaneme dovnitř až v **16:35**. V klidu tedy **vyčkej na chodbě**, dokud nebudou dveře otevřené.
+
+## 🎒 Jdu poprvé – co si mám vzít s sebou?
+
+Vezmi si s sebou **pití**, a pokud se plánuješ zdržet déle, zvaž i **jídlo**. V atriu budovy je k dispozici mikrovlnka a pítko s pitnou vodou, najdeš tam také bistro FreshUP (otevřeno do 17:00) a pár automatů. Hráči si často objednávají i něco z dovozu (Bolt Food, Wolt, Foodora, …).
+
+## 🎲 Plánujete dorazit poprvé jako skupinka a ještě nás neznáte?
+
+V pohodě, klidně se stavte! 🙂 Jen bude lepší, když nám dáte vědět dopředu, **aby se s vámi počítalo**. Ve čtyřech a více se těžko přidáváte k jiným skupinám, a pokud chcete, aby vám někdo hry ukázal a vysvětlil, je fajn to předem domluvit.
+
+Organizátoři sami hrají a často mívají delší hry naplánované dopředu, ale po domluvě se určitě najde někdo, kdo s vámi stráví čas a provede vás. Jen prosím počítejte s tím, že to děláme **dobrovolně** – nikdo z nás za to není placený. ❤️
+
+## 🚗 Kde parkovat?
+
+Obvykle se dá zaparkovat na **ulici 17. listopadu** přímo u fakulty. Případně i v bočních uličkách – jen pozor na **parkovací zóny**.
+
+## 💸 Kolik stojí vstup?
+
+**Nic.** Vstup na hraní je **zdarma**. Stačí se po příchodu **zapsat do prezenčky**.
+
+## 🕟 Přijdu později než v 16:30
+
+Žádný problém. Hrajeme od **16:30** zhruba do **22:00**. Přijít můžeš kdykoliv v průběhu. Partie se průběžně dohrávají a začínají další hry, takže se může stát, že po příchodu chvíli počkáš, než někdo dohraje.
+
+## 🤝 Nemám domluvenou žádnou hru – můžu přijít?
+
+**Ano.** Na každém hraní jsou lidé, kteří nemají nic domluvené a řeší hry až na místě. Máme členy, co takto fungují už roky.
+
+**Domluva her na Discordu** je jen záruka, že **daná skupina opravdu začne hrát ve smluvený čas**. Obvykle se takto domlouvají hlavně větší hry. Pokud se někdo zdrží, ostatní na něj většinou počkají. V případě potíží, zpoždění nebo i **zaspání** stačí dát vědět, aby ostatní věděli, jak na tom jsi, a případně vytáhli nějakou „čekačku“.
+
+## 🎓 Nejsem student UPOL, nebo student obecně
+
+Pro vstup do klubu nemusíš být student. Jsme přidružení k univerzitě a vykazujeme statistiku návštěvnosti pro PřF, takže v prezenčce jen u vztahu k Univerzitě Palackého vybereš **Ne**.
+
+## 📜 Neznám pravidla hry
+
+Pravidla každé hry někdo na začátku vysvětlí. Při domlouvání hry na Discordu není špatné neznalost pravidel zmínit.
+
+## 💶 Jak funguje půjčování her na doma?
+
+Hry si můžeš půjčit **proti vratné kauci 500 Kč**, kterou skládáš v hotovosti u organizátora na místě. Kauci dostaneš zpět, když hru v pořádku vrátíš.
+
+## 💥 Vytáhl jsem ze skříně hru a je poškozená
+
+Bohužel i tohle se může stát. Nahlas tuhle skutečnost **organizátorovi na místě**.
+
+## 🐲 Chci si zahrát D&D nebo jiné RPG
+
+Můžeš využít kanál **#👀-hledám-partu-lfg** na našem Discordu. V klubu přímo RPG nehrajeme, ale dost návštěvníků hrává nějakou formu RPG i LARPu mimo klub.
+`;
+
+const FAQ_BODY_EN = `## 🇬🇧 How is it with English at the club?
+
+Most of us know English to some degree, but if you want to make sure that somebody will explain a game to you in English, ask in advance (see also the question about groups below).
+
+We have games that are language independent (*jazykově nezávislá*) and some in English (*anglická verze*) – check out our [game collection](/hry).
+
+## 🚂 How do I get to the club?
+
+**Address:**\\
+[Přírodovědecká fakulta Univerzity Palackého v Olomouci](https://maps.app.goo.gl/strUg6nAKamStgeB7) (Faculty of Science, Palacký University)\\
+17. listopadu 1192/12, 779 00 Olomouc\\
+room **1.037**
+
+You can easily walk from the main train station (15–20 minutes). Nearest stops: **Envelopa** or **Žižkovo náměstí** (tram), **17. listopadu** and **Envelopa** (bus).
+
+## 🧑‍🏫 What should I know before coming to a meeting?
+
+There are classes in the room before our meetings start, so we may not get in until **16:35**. Simply **wait in the corridor** until the doors are open.
+
+## 🎒 What should I bring with me?
+
+Bring **something to drink** and, if you plan to stay longer, consider **something to eat**. In the atrium of the faculty there is a microwave and a water fountain, as well as the bistro FreshUP (open until 17:00) and some vending machines. Players often order take-out with delivery (Bolt Food, Wolt, Foodora, …).
+
+## 🎲 Are you newcomers and coming as a group?
+
+We're happy to welcome you! 🙂 However, we would appreciate it if you let us know beforehand, so we can **accommodate you**. As a group of four or more it's harder for you to join other players, and if you would like to have some of our games explained, it's better to communicate that in advance.
+
+The organisers are also playing themselves and often plan longer games in advance, but if you let us know, we can find somebody to spend time with you and show you around. Just keep in mind that we are **volunteers** and nobody is getting paid for this. ❤️
+
+## 🚗 Where to park?
+
+Usually you can park directly by the faculty on **17. listopadu street**. You can also try the surrounding smaller streets, but beware of **the parking zones**.
+
+## 💸 How much is the entry fee?
+
+**Nothing.** Entry to our meetings is **free**. Just **sign the attendance sheet** when you arrive.
+
+## 🕟 I'll come later than 16:30
+
+No problem. We're playing from **16:30** to approximately **22:00**. You can come anytime in between. Games are finished and new ones are started throughout the evening, so it may happen that you will need to wait a bit for other players to finish before you can join.
+
+## 🤝 I don't have any games planned – can I still come?
+
+**Yes.** At each meeting there are people who don't have anything planned in advance and just choose something on the spot. In fact, we have members who have been doing that for years.
+
+**Setting up a game on Discord** is mainly a guarantee that **this group will really start playing at the agreed time**. Usually it's done for longer games. If somebody is running late, the others will usually wait. In case of problems, delays or even **oversleeping**, just let the others know so they know what's going on and can pick up a filler game in the meantime.
+
+## 🎓 I'm not a UPOL student, or not a student at all
+
+You don't have to be a student to come to the club. We're associated with the university and provide attendance statistics for our faculty, so on the attendance sheet simply answer **No** to the question about your relation to Palacký University.
+
+## 📜 I don't know the rules of a game
+
+Usually somebody will explain the rules at the beginning of the game. If you're planning a game on Discord, it's a good idea to mention that you don't know the rules.
+
+## 💶 How does borrowing games for home work?
+
+You can borrow games against a refundable **500 CZK deposit**, paid in cash to one of the organisers present. You get the deposit back when you return the game in good condition.
+
+## 💥 A game I took out of the cabinet is damaged
+
+Unfortunately it can happen. Report the fact to **one of the organisers present**.
+
+## 🐲 I want to play D&D or another RPG
+
+You can use **#👀-hledám-partu-lfg** on our Discord to look for players. At club meetings we don't really play RPGs. However, many of our members play some form of RPG or LARP outside the club.
+`;
+
 /** The editable pages in the order the admin lists them; `path` is where the page is on the public site. */
 export const SITE_PAGES = [
   {
@@ -208,6 +339,21 @@ export const SITE_PAGES = [
           en: "Not on Discord, or want to tell us something outside it? Send us a message and we'll reply by e-mail.\n",
         },
       },
+    ],
+  },
+  {
+    slug: "faq",
+    path: "/faq",
+    blocks: [
+      {
+        key: "faq.intro",
+        kind: "line",
+        defaults: {
+          cs: "Jak se k nám dostat, co si vzít s sebou, kolik to stojí a jak to u nás chodí.",
+          en: "How to get to us, what to bring, what it costs and how things work at the club.",
+        },
+      },
+      { key: "faq.body", kind: "markdown", defaults: { cs: FAQ_BODY_CS, en: FAQ_BODY_EN } },
     ],
   },
   {

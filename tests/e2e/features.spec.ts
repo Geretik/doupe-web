@@ -2112,6 +2112,48 @@ test("site texts: an organiser edits the club page in the admin, with history, c
   await expect(page.locator("main a", { hasText: "Úvodní stránka webu" })).toContainText("Organizátorka");
 });
 
+test("FAQ: a subpage of the club, questions open on a tap, each language its own, edited in the admin", async ({ page }) => {
+  await page.goto("/");
+  await page.click("main a:has-text('časté otázky')");
+  await expect(page).toHaveURL(/\/faq$/);
+  await expect(page.locator("header nav a[aria-current=page]")).toHaveText("Klub");
+  await expect(page.locator("h1")).toHaveText("Časté otázky");
+
+  // each "##" heading is a closed question; a tap shows its answer
+  const question = page.locator("main details", { hasText: "Kde parkovat?" });
+  await expect(page.locator("main details")).toHaveCount(13);
+  await expect(question.getByText("ulici 17. listopadu")).toBeHidden();
+  await question.locator("summary").click();
+  await expect(question.getByText("ulici 17. listopadu")).toBeVisible();
+  await expect(page.locator("main details summary h2").first()).toHaveText("🚂 Jak se k nám dostanete?");
+  await expect(page.locator("main")).not.toContainText("English at the club");
+
+  // English has its own questions, the one about English first
+  await page.click("header button:has-text('English')");
+  await expect(page.locator("h1")).toHaveText("Frequently asked questions");
+  await expect(page.locator("main details summary h2").first()).toHaveText("🇬🇧 How is it with English at the club?");
+  await page.locator("main details summary").first().click();
+  await expect(page.locator("main details").first().getByRole("link", { name: "game collection" })).toHaveAttribute("href", "/hry");
+  await page.click("header button:has-text('Česky')");
+
+  // organisers of the club edit it among the site texts
+  await createAdminUser({ email: "org@example.com", password: "org-password-123", nickname: "Organizátorka", role: "organizer" });
+  await adminLogin(page, { email: "org@example.com", password: "org-password-123" });
+  await page.goto("/faq");
+  await page.getByTestId("edit-pencil").click();
+  await expect(page).toHaveURL(/\/admin\/web\/faq\?lang=cs$/);
+  await expect(page.locator("h1")).toContainText("Klub – Časté otázky");
+  await sql("insert into site_texts (key, locale, body) values ('faq.body', 'cs', $1)", [
+    "Úvod před otázkami.\n\n## Nová otázka?\n\nOdpověď.\n\n### Podnadpis v odpovědi\n\nDalší odstavec.",
+  ]);
+  await page.goto("/faq");
+  await expect(page.locator("main details")).toHaveCount(1);
+  await expect(page.locator("main")).toContainText("Úvod před otázkami.");
+  await page.click("main summary:has-text('Nová otázka?')");
+  await expect(page.locator("main details h3")).toHaveText("Podnadpis v odpovědi");
+  await expect(page.locator("main details")).toContainText("Další odstavec.");
+});
+
 test("site texts: HTML, scripts, images and javascript: links from the admin never reach the page", async ({ page }) => {
   await sql("insert into site_texts (key, locale, body) values ('o-hre.body', 'cs', $1)", [
     "## Nadpis z adminu\n\n<script>window.hacked = 1</script>\n\n<b onclick=\"x()\">tučně</b> [odkaz](javascript:alert(1)) ![obrázek](https://example.com/x.png)\n\n- 🎲 Hrajeme\n- 🍕 Jíme\n\n[Termíny](/botc) a [web](https://example.com)",
