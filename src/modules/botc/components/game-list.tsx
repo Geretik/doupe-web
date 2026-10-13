@@ -55,11 +55,11 @@ export function GameList({ games, t }: { games: ListedGame[]; t: Dict["games"]["
           </select>
         </label>
         <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm sm:basis-full">
-          <label className="flex items-center gap-2">
+          <label className="flex select-none items-center gap-2">
             <input type="checkbox" checked={clubOnly} onChange={(e) => setClubOnly(e.target.checked)} className="h-4 w-4 accent-accent" />
             {t.clubOnly}
           </label>
-          <label className="flex items-center gap-2">
+          <label className="flex select-none items-center gap-2">
             <input type="checkbox" checked={noExpansions} onChange={(e) => setNoExpansions(e.target.checked)} className="h-4 w-4 accent-accent" />
             {t.noExpansions}
           </label>

@@ -17,6 +17,11 @@ export const changelog: ChangelogEntry[] = [
     title: "Grimoár vede krok za krokem, příslušnost hráče, pocestný si vybere sám",
     items: [
       {
+        for: "players",
+        text: "Hry: opakované ťukání na Jen klubové hry a Bez rozšíření už neoznačuje jejich text.",
+        href: "/hry",
+      },
+      {
         for: "organizers",
         text: "Přihlášení mají v hlavním menu webu za Krvavkou odkaz Admin.",
         href: "/",
