@@ -7,7 +7,9 @@ function esc(s: string) {
     .replaceAll("\\", "\\\\")
     .replaceAll(";", "\\;")
     .replaceAll(",", "\\,")
-    .replaceAll(/\r?\n/g, "\\n");
+    // a lone CR is a line break to some calendar apps too: a nickname with one must not start a property of its own
+    .replaceAll(/\r\n|\r|\n/g, "\\n")
+    .replaceAll(/[\x00-\x08\x0b-\x1f\x7f]/g, "");
 }
 
 /** 20301205T170000Z */

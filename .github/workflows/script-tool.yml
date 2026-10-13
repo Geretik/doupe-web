@@ -34,7 +34,6 @@ jobs:
     runs-on: ubuntu-24.04
     env:
       UPSTREAM: stefanbackor/boardgames
-      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       # the project botc-skript; secrets.VERCEL_PROJECT_ID is the club web's own
       VERCEL_PROJECT_ID: prj_iLWALsPqryLj2iVMhBt7tP2m9nCF
@@ -43,6 +42,8 @@ jobs:
         id: upstream
         env:
           GH_TOKEN: ${{ github.token }}
+          # only the steps that need it get the token: it can change every Vercel project of the account
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           # the club's changes are new even when upstream's commit is live already
           FORCE: ${{ inputs.force || github.event_name == 'push' }}
         run: |
@@ -91,10 +92,15 @@ jobs:
           }
         env:
           SHA: ${{ steps.upstream.outputs.sha }}
+      # Installed from the club's checkout, not run with npx in upstream's: there upstream's .npmrc (registry) or a
+      # committed node_modules/.bin/vercel would decide what runs with the token. Same version as in ci.yml.
+      - name: Vercel CLI
+        if: steps.upstream.outputs.deploy == 'true'
+        run: npm install --global vercel@63.1.2
       - name: Deploy
         if: steps.upstream.outputs.deploy == 'true'
         # built on Vercel from the whole monorepo (yarn workspaces); the commit goes into the deployment's meta
-        working-directory: boardgames
-        run: npx --yes vercel deploy --prod --yes --token="$VERCEL_TOKEN" --meta upstreamSha="$SHA"
+        run: vercel deploy --cwd boardgames --prod --yes --token="$VERCEL_TOKEN" --meta upstreamSha="$SHA"
         env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           SHA: ${{ steps.upstream.outputs.sha }}

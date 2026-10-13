@@ -283,9 +283,14 @@ export async function updateMember(user: AdminUser, sessionId: number, memberId:
   return preparing(sessionId, user, async (tx, rows) => {
     const target = rows.members.find((m) => m.id === memberId);
     if (!target) return fail("notFound");
-    if (patch.role && target.role === "owner") return fail("ownerFixed");
-    await tx.update(draftSessionMembers).set(patch).where(eq(draftSessionMembers.id, memberId));
-    if (patch.drafts !== undefined) await compactSeats(tx, sessionId);
+    // only these two fields: the patch comes from the browser, and any other column (session, account, role owner…) is not the caller's to set
+    const set: MemberPatch = {};
+    if (patch?.role === "organizer" || patch?.role === "participant") set.role = patch.role;
+    if (typeof patch?.drafts === "boolean") set.drafts = patch.drafts;
+    if (!Object.keys(set).length) return fail("forbidden");
+    if (set.role && target.role === "owner") return fail("ownerFixed");
+    await tx.update(draftSessionMembers).set(set).where(and(eq(draftSessionMembers.id, memberId), eq(draftSessionMembers.sessionId, sessionId)));
+    if (set.drafts !== undefined) await compactSeats(tx, sessionId);
     return { ok: true };
   });
 }

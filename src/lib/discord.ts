@@ -84,6 +84,8 @@ export async function announceSessionOnDiscord(
         fields,
       },
     ],
+    // a title or note with @everyone or a role mention must not ping anyone either
+    allowed_mentions: { parse: [] },
   };
   try {
     const res = await fetch(url, {

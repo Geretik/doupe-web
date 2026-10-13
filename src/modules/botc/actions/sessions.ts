@@ -4,7 +4,7 @@ import { and, eq, inArray, ne, notLike, or, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/db";
-import { games, registrations, scriptVotes, sessions, type RegistrationState } from "@/db/schema";
+import { games, registrations, registrationStates, scriptVotes, sessions, type RegistrationState } from "@/db/schema";
 import { requireAccess } from "@/lib/admin-auth";
 import { fieldChanges, logAction, logSessionAction, sessionRef } from "@/lib/admin-log";
 import { saveRoster } from "@/modules/botc/lib/game-roster";
@@ -195,6 +195,7 @@ export async function adminCancelRegistrationAction(registrationId: number) {
 export async function setRegistrationStateAction(sessionId: number, state: RegistrationState): Promise<SimpleResult> {
   const me = await requireAccess("botc", "edit");
   const { t } = await getDict();
+  if (!registrationStates.includes(state)) return { message: t.errors.checkForm };
   // a manual switch replaces any scheduled opening
   await db.update(sessions).set({ registrationState: state, registrationOpensAt: null }).where(eq(sessions.id, sessionId));
   await logSessionAction(me, "session.registration", sessionId, { state });

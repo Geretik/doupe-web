@@ -549,3 +549,29 @@ test("draft: the cap ticked in the form – a second Outsider only once everybod
     { nickname: "Alice", role_ids: ["recluse"] },
   ]);
 });
+
+test("draft: a member change sets only the role and drafting – a forged call cannot move the row into another draft", async ({ page, browser }) => {
+  await account("Alice", "alice@example.com", "admin");
+  const bobId = await account("Bob", "bob@example.com");
+  await adminLogin(page, { email: "alice@example.com", password: PASSWORD });
+  const alices = await newDraft(page, "Alicin draft", "personal", "2");
+
+  const bob = await loginAs(browser, "bob@example.com");
+  const bobs = await newDraft(bob, "Bobův draft", "personal", "2");
+  // the call of the button "drafts / does not draft" by Bob's own row, as the browser sends it
+  const [call] = await Promise.all([
+    bob.waitForRequest((r) => r.method() === "POST" && !!r.headers()["next-action"]),
+    bob.click("button:has-text('Nebude draftovat')"),
+  ]);
+  await expect(bob.locator("button:has-text('Bude draftovat')")).toBeVisible();
+  const args = JSON.parse(call.postData()!);
+  expect(args.slice(0, 2)).toEqual([bobs.sessionId, expect.any(Number)]);
+  // the same call with the other draft's session slipped into the patch
+  args[2] = { drafts: false, sessionId: alices.sessionId, status: "accepted" };
+  const forged = await bob.request.post(call.url(), { headers: { ...call.headers(), "content-length": "" }, data: JSON.stringify(args) });
+  expect(forged.ok()).toBeTruthy();
+
+  expect(await sql("select session_id, role from draft_session_members where user_id=$1", [bobId])).toEqual([{ session_id: bobs.sessionId, role: "owner" }]);
+  expect((await bob.goto(`/admin/botc/drafty/${alices.draftId}`))?.status()).toBe(404);
+  await bob.context().close();
+});

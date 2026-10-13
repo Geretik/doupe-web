@@ -33,7 +33,9 @@ export async function send(to: string, subject: string, html: string, text: stri
   const apiKey = process.env.RESEND_API_KEY;
   const from = fromAddress();
   if (!apiKey || !from) {
-    console.log(`[email → ${to}] ${subject}\n${text}`);
+    // locally the log is the inbox; in production the text (login and reset links) must not end up in Vercel's logs
+    if (process.env.VERCEL_ENV === "production") console.error(`E-mail not sent (RESEND_API_KEY or EMAIL_FROM missing): ${subject}`);
+    else console.log(`[email → ${to}] ${subject}\n${text}`);
     return;
   }
   // Development without a verified Resend domain: deliver everything to one inbox,

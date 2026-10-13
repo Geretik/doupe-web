@@ -175,7 +175,8 @@ const scriptUrlSchema = z
   .trim()
   // "botcscripts.com/…" → "https://botcscripts.com/…"
   .transform((u) => (/^[a-z][a-z0-9+.-]*:\/\//i.test(u) ? u : `https://${u}`))
-  .pipe(z.string().url().max(2000));
+  // only web links: pages render them as <a href>
+  .pipe(z.string().max(2000).regex(/^https?:\/\//i).pipe(z.string().url()));
 
 const scriptLinkSchema = z.object({
   name: z.string().trim().min(1).max(200),
@@ -340,7 +341,9 @@ export function gameSchema(t: Dict["admin"]["errors"]) {
       .string()
       .max(2000)
       .optional()
-      .transform((v) => (v?.trim() ? v.trim() : null)),
+      .transform((v) => (v?.trim() ? v.trim() : null))
+      // only web links: the archive renders it as <a href>
+      .pipe(z.string().regex(/^https?:\/\//i).nullable()),
     winner: z
       .string()
       .transform((v) => (v === "" ? null : v))

@@ -24,6 +24,7 @@ const MOVED_PAGES = ["/archiv", "/o-hre", "/moje-hry"];
 const MOVED_TO_ADMIN_BOTC = ["/admin/termin", "/admin/novy", "/admin/drafty", "/admin/grimoary", "/admin/scripty", "/admin/statistiky"];
 
 const nextConfig: NextConfig = {
+  poweredByHeader: false,
   async headers() {
     return [
       {

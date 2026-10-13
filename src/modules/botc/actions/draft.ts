@@ -169,7 +169,7 @@ export async function updateMemberAction(sessionId: number, memberId: number, pa
   const member = await memberNickname(memberId);
   return sessionChange(
     (me) => service.updateMember(me, sessionId, memberId, patch),
-    (me) => logDraftAction(me, "draft.member", sessionId, { member, role: patch.role, drafts: patch.drafts }),
+    (me) => logDraftAction(me, "draft.member", sessionId, { member, role: patch?.role, drafts: patch?.drafts }),
   );
 }
 
