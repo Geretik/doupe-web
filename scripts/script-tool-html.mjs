@@ -8,6 +8,8 @@
 // - a "📚 Uložit do Doupěte" button: it opens the club's library of scripts with the script of the tool's address
 //   filled in (admin → Scripty, components/admin/library-script-form FROM_TOOL), to save it there;
 // - a "📂 Načíst z Doupěte" button: the library to pick a script from, which then opens back here (scripty?do-toolu).
+// Both speak the tool's language: Czech in Czech (and Slovak, which the tool reads as Czech), else English – as the
+// club's additions in scripts/script-tool.patch (src/doupe/text.ts).
 // Anything that does not go as expected fails: the deploy stops and the live copy stays.
 import { readFileSync, writeFileSync } from "node:fs";
 
@@ -23,10 +25,48 @@ const TAG = /\s*<script\b[^>]*\bsrc="https:\/\/www\.googletagmanager\.com\/[^"]*
 const SETUP = /\s*<script\b[^>]*>(?:(?!<\/script>)[\s\S])*?\bgtag\((?:(?!<\/script>)[\s\S])*?<\/script>/g;
 const COMMENT = /\s*<!--[^>]*Google tag[\s\S]*?-->/g;
 
-/** The tool keeps the script it shows in its address (`?script=…`); the save button sends that address */
+/** The buttons' texts in Czech and in English */
+const TEXTS = {
+  cs: {
+    load: "📂 Načíst z Doupěte",
+    loadTitle: "Vybrat script z knihovny Doupěte",
+    save: "📚 Uložit do Doupěte",
+    saveTitle: "Otevře knihovnu scriptů Doupěte s tímto scriptem",
+    noScript: "Nejdřív otevři nebo uprav script – do Doupěte se pošle ten, který je v adrese stránky.",
+  },
+  en: {
+    load: "📂 Load from Doupě",
+    loadTitle: "Pick a script from Doupě's library",
+    save: "📚 Save to Doupě",
+    saveTitle: "Opens Doupě's library of scripts with this script",
+    noScript: "Open or edit a script first – Doupě gets the one in the page's address.",
+  },
+};
+
+/**
+ * The tool keeps the script it shows in its address (`?script=…`); the save button sends that address. The tool's
+ * language is the one picked in it (localStorage "i18nextLng", apps/botc/src/i18n.ts), else the browser's; a
+ * language picked in the tool is saved at once, so the texts follow after any tap or key.
+ */
 const SAVE_BUTTON = `
     <script>
       (function () {
+        var TEXTS = ${JSON.stringify(TEXTS)};
+        function texts() {
+          var lang = null;
+          try { lang = localStorage.getItem("i18nextLng"); } catch (e) {}
+          lang = (lang || (navigator.languages && navigator.languages[0]) || navigator.language || "en").split("-")[0];
+          return TEXTS[lang === "cs" || lang === "sk" ? "cs" : "en"];
+        }
+        function set(el, text, title) {
+          if (el && el.textContent !== text) el.textContent = text;
+          if (el && el.title !== title) el.title = title;
+        }
+        function label() {
+          var t = texts();
+          set(document.getElementById("doupe-load"), t.load, t.loadTitle);
+          set(document.getElementById("doupe-save"), t.save, t.saveTitle);
+        }
         function add() {
           if (document.getElementById("doupe-bar")) return;
           var bar = document.createElement("div");
@@ -34,17 +74,13 @@ const SAVE_BUTTON = `
           var load = document.createElement("a");
           load.id = "doupe-load";
           load.href = ${JSON.stringify(PICK)};
-          load.textContent = "📂 Načíst z Doupěte";
-          load.title = "Vybrat script z knihovny Doupěte";
           var save = document.createElement("a");
           save.id = "doupe-save";
           save.href = "#";
-          save.textContent = "📚 Uložit do Doupěte";
-          save.title = "Otevře knihovnu scriptů Doupěte s tímto scriptem";
           save.addEventListener("click", function (e) {
             e.preventDefault();
             if (!/[?&]script=/.test(location.search)) {
-              alert("Nejdřív otevři nebo uprav script – do Doupěte se pošle ten, který je v adrese stránky.");
+              alert(texts().noScript);
               return;
             }
             window.open(${JSON.stringify(LIBRARY)} + encodeURIComponent(location.href), "_blank", "noopener");
@@ -52,9 +88,14 @@ const SAVE_BUTTON = `
           bar.appendChild(load);
           bar.appendChild(save);
           document.body.appendChild(bar);
+          label();
         }
         if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", add);
         else add();
+        ["click", "pointerup", "keyup"].forEach(function (type) {
+          document.addEventListener(type, function () { setTimeout(label, 0); }, true);
+        });
+        window.addEventListener("storage", label);
       })();
     </script>
     <style>

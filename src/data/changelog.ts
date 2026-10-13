@@ -18,6 +18,11 @@ export const changelog: ChangelogEntry[] = [
     items: [
       {
         for: "organizers",
+        text: "Script tool: tlačítka Načíst z Doupěte a Uložit do Doupěte mluví jazykem nástroje – v angličtině (i v ostatních jazycích kromě češtiny) jsou anglicky a po přepnutí jazyka se hned změní.",
+        href: "https://skript.doupeol.cz",
+      },
+      {
+        for: "organizers",
         text: "Grimoár rozsvítí vždy další krok: po rozesazení Přípravu, v ní 🎒 Výběr žetonů, tam 🎲 Naplnit náhodně, pak blafy a Hotovo. Po návratu do Přípravy se posune k Rozdání. Losování hráči je teď hlavní tlačítko (Rozdat náhodně vedlejší) a svítí, jakmile je pytlík plný a hráči ještě nemají postavy; jakmile má postavu každý, svítí Začít hru. Dokud chybí postavy, svítí v grimoáru tlačítko Příprava.",
         href: "/admin/botc/grimoary",
       },
