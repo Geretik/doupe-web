@@ -14,8 +14,13 @@ export type ChangelogEntry = { /** YYYY-MM-DD */ date: string; title: string; it
 export const changelog: ChangelogEntry[] = [
   {
     date: "2026-10-13",
-    title: "Příprava grimoáru zase se seznamem hráčů",
+    title: "Příprava grimoáru zase se seznamem hráčů, nápověda k pytlíku a losování",
     items: [
+      {
+        for: "organizers",
+        text: "Grimoár radí i v Přípravě: s prázdným pytlíkem bliká 🎒 Výběr žetonů (nahoře je na něj i odkaz) a v něm bublina ukáže na 🎲 Naplnit náhodně. Jakmile je pytlík plný, rozbliká se výběr blafů Démona; blafy jsou teď výrazné v Přípravě, ve Výběru žetonů i uprostřed kruhu. Losování hráči začne návodem pro vypravěče, jak losování vést, a až je pytlík prázdný, bliká Konec losování.",
+        href: "/admin/botc/grimoary",
+      },
       {
         for: "organizers",
         text: "Grimoár, Příprava: místo kruhu na rozesazení je tam zase jen seznam hráčů. Přidáš je jménem, tlačítkem + nebo jako pocestného, ✕ u hráče ho odebere (se jménem nebo postavou až po potvrzení) a ťuknutím na hráče ho otevřeš v grimoáru. Kdo kde sedí, přetáhneš v kruhu grimoáru.",

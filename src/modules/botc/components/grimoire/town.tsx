@@ -562,7 +562,7 @@ export function TownCenter({ phaseLabel }: { phaseLabel: string }) {
           </span>
         ))}
       {bluffs.length > 0 && (
-        <span className="mt-1 flex items-center gap-1 text-xs text-muted">
+        <span className="mt-1 flex items-center gap-1 rounded-full border border-accent/50 bg-accent/10 py-0.5 pr-1 pl-2 text-xs font-semibold text-accent" data-testid="town-bluffs">
           {t.bluffs}:{" "}
           {bluffs.map((b) => (
             <RoleIcon key={b} roleId={b} size={26} />

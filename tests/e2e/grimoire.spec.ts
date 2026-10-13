@@ -1236,6 +1236,11 @@ test("grimoire: the door and the Storyteller's spot, a pasted script, players dr
   await page.getByTestId("setup-screen").getByRole("button", { name: "Losování hráči" }).click();
   await expect(page.locator("h1")).toHaveText("Losování postav");
   await expect(page.getByTestId("draw-left")).toHaveText("V pytlíku zbývá 5");
+  // first the Storyteller reads how it goes, then the tablet goes round
+  await expect(page.getByTestId("draw-guide")).toContainText("Losování – pro vypravěče");
+  await expect(page.getByTestId("seat")).toHaveCount(0);
+  await page.getByRole("button", { name: "Rozumím – tablet jde hráčům" }).click();
+  await expect(page.getByTestId("draw-guide")).toHaveCount(0);
   const dialog = page.getByTestId("draw-dialog");
   for (let i = 0; i < 5; i++) {
     await page.locator("[data-testid=seat][data-drawn=no]").first().click();
@@ -1244,6 +1249,7 @@ test("grimoire: the door and the Storyteller's spot, a pasted script, players dr
     await dialog.getByRole("button", { name: "Mám to – skrýt" }).click();
   }
   await expect(page.getByTestId("draw-left")).toHaveText("V pytlíku zbývá 0");
+  await expect(page.getByTestId("grimoire")).toContainText("Všichni mají postavu – vraťte tablet vypravěči.");
   await expect(page.getByTestId("town")).not.toContainText("Pradlena");
   // a place that has drawn shows nothing to the next player
   await page.locator("[data-testid=seat][data-drawn=yes]").first().click();
@@ -1339,9 +1345,9 @@ test("grimoire: the setup lists the players – added, removed, opened in the gr
   await expect(setup).toContainText("Hráči (6)");
   // no map to seat them in: that is the grimoire's circle
   await expect(setup.getByTestId("town")).toHaveCount(0);
-  // no character yet: the game cannot start, the setup says where they are handed out
+  // no character yet: the game cannot start, the setup says to fill the bag first
   await expect(setup.getByRole("button", { name: "Začít hru → 1. noc" })).toBeDisabled();
-  await expect(setup).toContainText("Hru začneš, až budou mít postavu všichni hráči – rozdej je dole v části Rozdání.");
+  await expect(setup.getByTestId("start-fill")).toHaveText("Hru začneš, až budou mít postavu všichni hráči. Nejdřív naplň pytlík: ve Výběru žetonů ťukni na 🎲 Naplnit náhodně.");
 
   // ✕: an empty place goes without asking, a player with a name after a yes
   await list.getByRole("button", { name: "Odebrat: ?" }).last().click();
@@ -1748,8 +1754,13 @@ test("grimoire: the bag filled at random by the rules, the number of players and
   // the grimoire takes the whole width of the window, not the admin's column
   expect((await page.getByTestId("grimoire").boundingBox())!.width).toBeGreaterThan(1500);
 
+  // an empty bag: the setup points at the token selection and its 🎲 Naplnit náhodně
   await openSetup(page);
-  const screen = await openTokens(page);
+  await expect(page.getByTestId("start-fill")).toContainText("Nejdřív naplň pytlík");
+  await expect(page.getByTestId("bag-fill-hint")).toBeVisible();
+  await page.getByTestId("start-fill").getByRole("button", { name: "Výběru žetonů" }).click();
+  const screen = page.getByTestId("bag-screen");
+  await expect(screen.getByTestId("fill-hint")).toBeVisible();
   // one more player and back
   await screen.getByRole("button", { name: "Přidat místo" }).click();
   await expect(screen).toContainText("Rozložení pro 8 hráčů");
@@ -1767,6 +1778,7 @@ test("grimoire: the bag filled at random by the rules, the number of players and
     await expect(screen.locator("h2")).toHaveText(/^Výběr žetonů: (\d+) z \1$/);
     await expect(screen.locator("[data-testid=bag-summary-count].text-accent")).toHaveCount(0);
   }
+  await expect(screen.getByTestId("fill-hint")).toHaveCount(0);
   await expect.poll(async () => (await stored()).bag.length).toBeGreaterThanOrEqual(7);
 
   // a bluff picked on the full screen, from the good characters that are not in the bag
@@ -1786,6 +1798,12 @@ test("grimoire: the bag filled at random by the rules, the number of players and
   await bluffs.getByRole("button", { name: "🎲 Náhodně" }).click();
   await expect.poll(async () => (await stored()).bluffs.filter(Boolean).length).toBe(3);
   for (const b of (await stored()).bluffs) expect(bag).not.toContain(b);
+
+  // the bag full: the setup says where the characters are handed out
+  await closeTokens(page);
+  await expect(page.getByTestId("start-fill")).toHaveCount(0);
+  await expect(page.getByTestId("setup-screen")).toContainText("Hru začneš, až budou mít postavu všichni hráči – rozdej je dole v části Rozdání.");
+  await expect(page.getByTestId("bluffs-view").getByRole("listitem")).toHaveCount(3);
 });
 
 test("grimoire: the Drunk brings an extra Townsfolk into the bag, whoever gets it is the Drunk, handed out or drawn", async ({ page }) => {
@@ -1827,6 +1845,7 @@ test("grimoire: the Drunk brings an extra Townsfolk into the bag, whoever gets i
   await page.getByRole("button", { name: "Losování hráči" }).click();
   await answer(page, true);
   await expect(page.getByTestId("draw-left")).toHaveText("V pytlíku zbývá 6");
+  await page.getByRole("button", { name: "Rozumím – tablet jde hráčům" }).click();
   const dialog = page.getByTestId("draw-dialog");
   for (let i = 0; i < 6; i++) {
     await page.locator("[data-testid=seat][data-drawn=no]").first().click();

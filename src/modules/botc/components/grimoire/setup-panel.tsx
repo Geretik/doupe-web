@@ -92,6 +92,13 @@ const allTravellers = botcRoles.filter((r) => r.team === "traveller").map((r) =>
 const button = "min-h-11 rounded-lg border px-3 py-2 text-sm font-medium disabled:opacity-40";
 const plain = `${button} border-border bg-card hover:border-accent/50`;
 const heading = "text-xs font-semibold tracking-wide text-muted uppercase";
+/** The button the setup points at next */
+const pointed = `${button} border-accent bg-accent text-accent-foreground ring-4 ring-accent/40 motion-safe:animate-pulse`;
+
+/** The bag is empty and 🎲 Naplnit náhodně can fill it: what the setup points at first. */
+function fillFirst(state: GrimoireState) {
+  return state.bag.length === 0 && playerSeats(state).length >= 5;
+}
 
 /**
  * The setup over the whole screen, opened from the grimoire's panel: needed before the game, hardly after.
@@ -110,6 +117,7 @@ export function SetupScreen({
   onClose: () => void;
 }) {
   const { state, readOnly, t } = useGrimoire();
+  const [tokensOpen, setTokensOpen] = useState(false);
   const ready = canStart(state);
   return (
     <div className="fixed inset-0 z-40 overflow-y-auto overscroll-contain bg-background" role="dialog" aria-modal="true" aria-label={t.tabs.setup} data-testid="setup-screen">
@@ -127,22 +135,40 @@ export function SetupScreen({
               {t.bagDone}
             </button>
           </span>
-          {onStart && !ready && <StartBlocked onSelectSeat={onSelectSeat} />}
+          {onStart && !ready && <StartBlocked onSelectSeat={onSelectSeat} onTokens={() => setTokensOpen(true)} />}
         </div>
       </div>
       <div className="mx-auto max-w-5xl px-4 py-4 sm:px-8">
-        <SetupPanel scripts={scripts} onSelectSeat={onSelectSeat} wide />
+        <SetupPanel scripts={scripts} onSelectSeat={onSelectSeat} onTokens={() => setTokensOpen(true)} wide />
       </div>
+      {tokensOpen &&
+        // over the whole screen, outside the grimoire's transformed column
+        createPortal(<BagScreen onClose={() => setTokensOpen(false)} />, document.body)}
     </div>
   );
 }
 
-/** Why the game cannot start yet: no players, or players without a character – a few of them to tap and give one. */
-function StartBlocked({ onSelectSeat }: { onSelectSeat: (seatId: string) => void }) {
+/**
+ * Why the game cannot start yet: no players, or players without a character – a few of them to tap and give one;
+ * an empty bag first, with the way into the token selection.
+ */
+function StartBlocked({ onSelectSeat, onTokens }: { onSelectSeat: (seatId: string) => void; onTokens: () => void }) {
   const { state, t } = useGrimoire();
   const missing = withoutRole(state);
   const text = "w-full text-sm font-medium text-accent";
   if (!missing.length) return <p className={text}>{t.startNoPlayers}</p>;
+  if (missing.length === playersOf(state).length && fillFirst(state)) {
+    const [before, after] = t.startFillFirst.split("{tokens}");
+    return (
+      <p className={text} data-testid="start-fill">
+        {before}
+        <button type="button" className="underline" onClick={onTokens}>
+          {t.startFillTokens}
+        </button>
+        {after}
+      </p>
+    );
+  }
   // nobody has one yet: they are dealt below, not one by one
   if (missing.length === playersOf(state).length) return <p className={text}>{t.startDealFirst}</p>;
   const [before, after] = t.startMissing.split("{names}");
@@ -163,7 +189,18 @@ function StartBlocked({ onSelectSeat }: { onSelectSeat: (seatId: string) => void
 }
 
 /** Before the game (and for changes during it): script, Fabled and Loric, players, the setup counts, the bag, the Demon's bluffs. */
-export function SetupPanel({ scripts, onSelectSeat, wide = false }: { scripts: ScriptChoice[]; onSelectSeat: (seatId: string) => void; wide?: boolean }) {
+export function SetupPanel({
+  scripts,
+  onSelectSeat,
+  onTokens,
+  wide = false,
+}: {
+  scripts: ScriptChoice[];
+  onSelectSeat: (seatId: string) => void;
+  /** Opens the token selection over the whole screen */
+  onTokens: () => void;
+  wide?: boolean;
+}) {
   const { state, hidden, t } = useGrimoire();
   const players = playerSeats(state).length;
   // hidden: the rulebook's numbers, not the ones the characters in play change
@@ -223,7 +260,7 @@ export function SetupPanel({ scripts, onSelectSeat, wide = false }: { scripts: S
           {t.hiddenSetup}
         </p>
       ) : (
-        <SetupSecrets wide={wide} />
+        <SetupSecrets wide={wide} onTokens={onTokens} />
       )}
     </div>
   );
@@ -421,9 +458,9 @@ function PlayerList({ onOpen }: { onOpen: (seatId: string) => void }) {
 }
 
 /** The bag, the Demon's bluffs and handing the characters out. */
-function SetupSecrets({ wide }: { wide: boolean }) {
+function SetupSecrets({ wide, onTokens }: { wide: boolean; onTokens: () => void }) {
   const { state, readOnly, locale, t, scriptNames } = useGrimoire();
-  const [bagOpen, setBagOpen] = useState(false);
+  const bluffsDue = !readOnly && bluffsMissing(state);
   return (
     <>
       {/* the tokens and bluffs only to look at: they are chosen in the token selection over the whole screen */}
@@ -431,26 +468,24 @@ function SetupSecrets({ wide }: { wide: boolean }) {
         <div className="flex flex-wrap items-center gap-2">
           <h3 className={heading}>{fill(t.bag, { n: state.bag.length, m: bagSize(state) })}</h3>
           {!readOnly && (
-            <button type="button" className={`${button} ml-auto border-accent text-accent`} onClick={() => setBagOpen(true)}>
+            <button type="button" className={`ml-auto ${fillFirst(state) ? pointed : `${button} border-accent text-accent`}`} onClick={onTokens}>
               🎒 {t.tokenPick}
             </button>
           )}
         </div>
         <BagContents wide={wide} />
       </section>
-      {bagOpen &&
-        // over the whole screen, outside the grimoire's transformed column
-        createPortal(<BagScreen onClose={() => setBagOpen(false)} />, document.body)}
 
-      <section className="flex flex-col gap-2">
-        <h3 className={heading}>{t.bluffsTitle}</h3>
+      {/* the bluffs stand out: the Demon needs them on the first night */}
+      <section className={`flex flex-col gap-2 rounded-xl border border-accent bg-accent/5 p-3 ${bluffsDue ? "ring-4 ring-accent/30" : ""}`} data-testid="setup-bluffs">
+        <h3 className="text-xs font-semibold tracking-wide text-accent uppercase">{t.bluffsTitle}</h3>
         {state.bluffs.some(Boolean) ? (
           <ul className="flex flex-wrap gap-1.5" data-testid="bluffs-view">
             {state.bluffs.flatMap((b) =>
               b
                 ? [
-                    <li key={b} className={chip}>
-                      <RoleIcon roleId={b} size={26} />
+                    <li key={b} className="flex items-center gap-1.5 rounded-full border border-accent/50 bg-card py-0.5 pr-3 pl-1 text-sm font-semibold">
+                      <RoleIcon roleId={b} size={32} />
                       {nameOf(b, locale, scriptNames)}
                     </li>,
                   ]
@@ -458,7 +493,7 @@ function SetupSecrets({ wide }: { wide: boolean }) {
             )}
           </ul>
         ) : (
-          <p className="text-sm text-muted">{t.bluffsNone}</p>
+          <p className={`text-sm ${bluffsDue ? "font-medium text-accent" : "text-muted"}`}>{t.bluffsNone}</p>
         )}
       </section>
 
@@ -527,11 +562,23 @@ function AddTraveller() {
 
 const chip = "flex items-center gap-1.5 rounded-full border border-border bg-card py-0.5 pr-2.5 pl-1 text-sm";
 
+/** The bag is full but the Demon's bluffs are not all picked: they are next. */
+function bluffsMissing(state: GrimoireState) {
+  return state.bag.length > 0 && state.bag.length >= bagSize(state) && state.bluffs.filter(Boolean).length < BLUFF_COUNT;
+}
+
 /** The tokens in the bag by team, each with how many are in it and how many the rules want; nothing to tap. */
 function BagContents({ wide }: { wide: boolean }) {
-  const { state, locale, t, scriptNames } = useGrimoire();
+  const { state, readOnly, locale, t, scriptNames } = useGrimoire();
   const expected = expectedSetup(playerSeats(state).length, setupRoles(state), true);
   const inBag = teamCounts(state.bag);
+  if (!state.bag.length && !readOnly && fillFirst(state)) {
+    return (
+      <p className="rounded-lg border border-accent/50 bg-accent/10 px-3 py-2 text-sm" data-testid="bag-fill-hint">
+        {t.bagEmptyFill}
+      </p>
+    );
+  }
   if (!state.bag.length) return <p className="text-sm text-muted">{t.bagEmpty}</p>;
   return (
     <div className={`grid gap-2 ${wide ? "sm:grid-cols-2" : ""}`} data-testid="bag-contents">
@@ -605,11 +652,21 @@ function PickActions() {
     setFailed(!bag);
     if (bag) update((s) => ({ ...s, bag }));
   };
+  const point = fillFirst(state);
   return (
     <>
-      <button type="button" className={plain} onClick={fillAtRandom} disabled={playerSeats(state).length < 5}>
-        🎲 {t.randomBag}
-      </button>
+      <span className="relative">
+        <button type="button" className={point ? pointed : plain} onClick={fillAtRandom} disabled={playerSeats(state).length < 5}>
+          🎲 {t.randomBag}
+        </button>
+        {/* under the button, over the counts; taps go through it */}
+        {point && (
+          <span className="pointer-events-none absolute top-full right-0 z-10 mt-1 flex w-max flex-col items-end motion-safe:animate-bounce" data-testid="fill-hint">
+            <span className="mr-6 border-x-8 border-b-8 border-x-transparent border-b-accent" aria-hidden />
+            <span className="rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-accent-foreground shadow-md">{t.randomBagHint}</span>
+          </span>
+        )}
+      </span>
       <button type="button" className={plain} onClick={() => update((s) => ({ ...s, bag: [] }))} disabled={!state.bag.length}>
         {t.emptyBag}
       </button>
@@ -646,8 +703,18 @@ function PlayerCountButtons() {
   );
 }
 
-/** The Demon's bluffs as three places to tap; the `selected` one is being chosen. */
-function BluffSlots({ selected, onSelect, compact = false }: { selected: number | null; onSelect: (slot: number | null) => void; compact?: boolean }) {
+/** The Demon's bluffs as three places to tap; the `selected` one is being chosen, the empty ones stand out when `due`. */
+function BluffSlots({
+  selected,
+  onSelect,
+  compact = false,
+  due = false,
+}: {
+  selected: number | null;
+  onSelect: (slot: number | null) => void;
+  compact?: boolean;
+  due?: boolean;
+}) {
   const { state, readOnly, locale, t, scriptNames } = useGrimoire();
   return (
     <div className="grid grid-cols-3 gap-2">
@@ -661,11 +728,17 @@ function BluffSlots({ selected, onSelect, compact = false }: { selected: number 
             onClick={() => onSelect(selected === i ? null : i)}
             aria-expanded={selected === i}
             aria-label={`${t.bluffsTitle} ${i + 1}`}
-            className={`flex items-center rounded-lg border bg-card text-xs ${selected === i ? "border-accent ring-2 ring-accent/40" : "border-border"} ${
+            className={`flex items-center rounded-lg border bg-card text-xs ${
+              selected === i ? "border-accent ring-2 ring-accent/40" : due && !b ? "border-dashed border-accent text-accent" : "border-border"
+            } ${
               compact ? "min-h-11 min-w-0 gap-1 px-1 text-left" : "min-h-20 flex-col justify-center gap-1 p-1 text-center"
             }`}
           >
-            {b ? <RoleIcon roleId={b} size={compact ? 26 : 36} /> : <span className={`text-lg text-muted ${compact ? "w-full text-center" : ""}`}>+</span>}
+            {b ? (
+              <RoleIcon roleId={b} size={compact ? 26 : 36} />
+            ) : (
+              <span className={`text-lg ${due ? "font-bold" : "text-muted"} ${compact ? "w-full text-center" : ""}`}>+</span>
+            )}
             {(b || !compact) && <span className={`leading-tight ${compact ? "truncate" : ""}`}>{b ? nameOf(b, locale, scriptNames) : t.bluffEmpty}</span>}
           </button>
         );
@@ -674,13 +747,13 @@ function BluffSlots({ selected, onSelect, compact = false }: { selected: number 
   );
 }
 
-/** Three random bluffs of the good characters not in play and not in the bag; `compact` shows only the die. */
-function RandomBluffsButton({ onDone, compact = false }: { onDone: () => void; compact?: boolean }) {
+/** Three random bluffs of the good characters not in play and not in the bag; `compact` shows only the die, `due` makes it stand out. */
+function RandomBluffsButton({ onDone, compact = false, due = false }: { onDone: () => void; compact?: boolean; due?: boolean }) {
   const { state, update, t } = useGrimoire();
   return (
     <button
       type="button"
-      className={`${plain} ml-auto ${compact ? "min-h-9 w-11 px-0 py-1" : "min-h-9 py-1"}`}
+      className={`${due ? pointed : plain} ml-auto ${compact ? "min-h-9 w-11 px-0 py-1" : "min-h-9 py-1"}`}
       onClick={() => {
         update((s) => ({ ...s, bluffs: randomBluffs(s) }));
         onDone();
@@ -831,6 +904,7 @@ function BagScreen({ onClose }: { onClose: () => void }) {
   const expected = expectedSetup(players, setupRoles(state), true);
   const inBag = teamCounts(state.bag);
   const setupChanges = setupChangesOf(state, characters, t);
+  const bluffsDue = bluffsMissing(state);
   useEffect(() => {
     const key = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     document.addEventListener("keydown", key);
@@ -881,12 +955,16 @@ function BagScreen({ onClose }: { onClose: () => void }) {
             </div>
           );
         })}
-        <div className="col-span-2 flex flex-col gap-1.5 rounded-xl border border-border bg-card px-3 py-2 lg:col-span-1" data-testid="bag-bluffs">
+        {/* the bluffs stand out, and once the bag is full they are next */}
+        <div
+          className={`col-span-2 flex flex-col gap-1.5 rounded-xl border border-accent bg-accent/5 px-3 py-2 lg:col-span-1 ${bluffsDue ? "ring-4 ring-accent/30" : ""}`}
+          data-testid="bag-bluffs"
+        >
           <div className="flex items-center gap-2">
-            <span className="truncate text-sm font-semibold tracking-wide text-muted uppercase">{t.bluffsTitle}</span>
-            <RandomBluffsButton compact onDone={() => setBluffSlot(null)} />
+            <span className="truncate text-sm font-semibold tracking-wide text-accent uppercase">{t.bluffsTitle}</span>
+            <RandomBluffsButton compact due={bluffsDue} onDone={() => setBluffSlot(null)} />
           </div>
-          <BluffSlots compact selected={bluffSlot} onSelect={setBluffSlot} />
+          <BluffSlots compact due={bluffsDue} selected={bluffSlot} onSelect={setBluffSlot} />
         </div>
       </div>
       {setupChanges.length > 0 && (
