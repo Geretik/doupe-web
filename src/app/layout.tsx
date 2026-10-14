@@ -78,6 +78,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <a href={scriptToolUrl()} className="hover:underline">{t.nav.scriptTool}</a>
               <a href="/kalendar.ics" className="hover:underline">{t.nav.calendarFeed}</a>
               <Link href="/ochrana-udaju" className="hover:underline">{t.nav.privacy}</Link>
+              <Link href="/botc/zdroje" className="hover:underline">{t.nav.sources}</Link>
               <Link href="/admin" className="hover:underline">
                 {t.nav.admin}
               </Link>

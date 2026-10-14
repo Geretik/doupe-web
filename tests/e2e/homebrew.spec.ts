@@ -8,7 +8,7 @@ import { characterName, findRole, findStorytellerRole, homebrewRoles, matchHomeb
 import { resolveRoleSource, roleIdsFromScriptJson } from "../../src/modules/botc/lib/draft/roles";
 import { grimoireCharacters, withScriptNames } from "../../src/modules/botc/lib/grimoire/characters";
 import { grimoireStateSchema } from "../../src/modules/botc/lib/grimoire/schema";
-import { newGrimoireState, newSeat, nightSteps } from "../../src/modules/botc/lib/grimoire/state";
+import { expectedSetup, newGrimoireState, newSeat, nextPhase, nightSteps, putToken, type GrimoireState } from "../../src/modules/botc/lib/grimoire/state";
 import { homebrewGrimoireCharacters, withHomebrewInFull } from "../../src/modules/botc/lib/homebrew";
 import { adminLogin, createSession, resetDb, sql } from "./helpers";
 
@@ -112,6 +112,46 @@ test("homebrew: characters of the club's collections – a wiki script's entries
   expect(withHomebrewInFull([wikiEntry(COBBLER)], "en")[0]).toMatchObject({ id: COBBLER, name: "Cobbler", ability: data[COBBLER].ability });
   const unknown = { id: "hrdina_x", name: "Homebrew Hrdina", team: "townsfolk", ability: "Každou noc…" };
   expect(withHomebrewInFull([unknown, "washerwoman"])).toEqual([unknown, "washerwoman"]);
+});
+
+test("homebrew in the grimoire's rules: the setup counts a plain [+1 Outsider], a night's poison until dusk goes at dusk", () => {
+  // read from the English ability by npm run homebrew: "[-1 or +1 Outsider]", "[No Minions, any Outsiders]"
+  expect(expectedSetup(8, ["imp", "luis_mistress"])!.outsider).toEqual({ base: 1, values: [0, 2], by: ["luis_mistress"] });
+  const seaborn = expectedSetup(8, ["odyssey_theseaborn"])!;
+  expect(seaborn.minion).toMatchObject({ values: [0], by: ["odyssey_theseaborn"] });
+  expect(seaborn.outsider.values).toBeNull();
+  // a bracket that names a character changes no number: the Storyteller reads it in the grimoire
+  expect(expectedSetup(8, ["imp", "tirfar_farrier"])).toEqual(expectedSetup(8, ["imp"]));
+
+  // "Each night, choose a player: they die & poison 1 good neighbor until dusk." – gone at dusk like the Poisoner's;
+  // the Toxic Blast also poisons for longer ("If no-one is executed, all Townsfolk are poisoned."): its stay
+  const ids = ["tirfar_myrkkymato", "odyssey_toxblast"];
+  const characters = { ...grimoireCharacters("cs"), ...homebrewGrimoireCharacters(ids, "cs") };
+  const roles = [...ids, "chef", "empath", "monk"];
+  let state: GrimoireState = { ...newGrimoireState({ id: null, name: "Homebrew", roleIds: roles }, roles.map((r) => newSeat(r))), phase: "night", round: 1 };
+  state.seats = state.seats.map((s, i) => ({ ...s, role: roles[i] }));
+  const seat = (role: string) => state.seats.find((s) => s.role === role)!;
+  state = putToken(state, seat("chef").id, "tirfar_myrkkymato", czech.tirfar_myrkkymato.reminders[1], characters);
+  state = putToken(state, seat("empath").id, "odyssey_toxblast", czech.odyssey_toxblast.reminders[0], characters);
+  state = nextPhase(state, characters); // day 1
+  expect([seat("chef").reminders.length, seat("empath").reminders.length]).toEqual([1, 1]);
+  state = nextPhase(state, characters); // dusk, night 2
+  expect([seat("chef").reminders.length, seat("empath").reminders.length]).toEqual([0, 1]);
+});
+
+test("sources: from the footer – the official characters' owner and texts, every homebrew collection with its author", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("contentinfo").getByRole("link", { name: "Zdroje" }).click();
+  await expect(page).toHaveURL(/\/botc\/zdroje$/);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Zdroje");
+  const main = page.locator("article");
+  await expect(main).toContainText("© The Pandemonium Institute");
+  await expect(main.getByRole("link", { name: "BoardGames" })).toHaveAttribute("href", "https://github.com/stefanbackor/boardgames");
+  await expect(main.locator("li[data-collection]")).toHaveCount(homebrewList.collections.length);
+  const luis = homebrewList.collections.find((c) => c.key === "luis")!;
+  await expect(main.getByRole("link", { name: luis.name })).toHaveAttribute("href", luis.url);
+  const authored = homebrewList.collections.find((c) => c.author)!;
+  await expect(main.locator(`li[data-collection="${authored.key}"]`)).toContainText(`autor ${authored.author}`);
 });
 
 /** A session with players signed up and Luis's evening in the library and among its scripts */

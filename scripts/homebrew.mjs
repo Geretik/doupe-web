@@ -126,6 +126,71 @@ const plain = (text) =>
     .replace(/ ([.,:;!?])/g, "$1")
     .trim();
 
+const SETUP_TEAMS = { outsider: "outsider", outsiders: "outsider", minion: "minion", minions: "minion", demon: "demon", demons: "demon" };
+
+/**
+ * How a character's "[+1 Outsider]" changes the numbers of the setup, as grimoire/state's SETUP_EFFECTS has it for
+ * the official ones (`setup` in homebrew-roles.json). Only the plain parts of the bracket count: "+1 Outsider",
+ * "-1 or +1 Outsider", "-1 to +1 Outsiders", "+1 Minion", "No Outsiders", "Any number of Outsiders" or "-? to +?
+ * Outsiders", several of
+ * them ("-1 Minion, +1 Outsider"); the rest ("+the Pixie", "X Outsiders", "1 Townsfolk is evil") is left to the
+ * Storyteller, who sees the whole bracket in the grimoire.
+ */
+function setupEffect(ability) {
+  const bracket = ability.match(/\[([^\]]+)\]/)?.[1];
+  if (!bracket) return undefined;
+  let options = [{}];
+  const none = new Set();
+  const open = new Set();
+  for (const part of bracket.split(/[,.;]/).map((p) => p.trim())) {
+    let m;
+    if ((m = part.match(/^no (outsiders?|minions?|demons?)(?: in play)?$/i))) none.add(SETUP_TEAMS[m[1].toLowerCase()]);
+    else if ((m = part.match(/^(?:any (?:number of )?|[+-]?\? to [+-]?\? )(outsiders?|minions?|demons?)$/i))) open.add(SETUP_TEAMS[m[1].toLowerCase()]);
+    else if ((m = part.match(/^([+-]\d+)(?: (or|to) ([+-]?\d+))? (outsiders?|minions?|demons?)$/i))) {
+      const team = SETUP_TEAMS[m[4].toLowerCase()];
+      const a = Number(m[1]);
+      // "+1 to 2": the second number has the first one's sign
+      const b = m[3] === undefined ? a : Number(/^[+-]/.test(m[3]) ? m[3] : `${m[1][0]}${m[3]}`);
+      const values =
+        m[2]?.toLowerCase() === "to" ? Array.from({ length: Math.abs(b - a) + 1 }, (_, i) => Math.min(a, b) + i) : [...new Set([a, b])];
+      options = options.flatMap((o) => values.map((v) => ({ ...o, [team]: (o[team] ?? 0) + v })));
+    }
+  }
+  const effect = {
+    ...(options.some((o) => Object.values(o).some(Boolean)) ? { options } : {}),
+    ...(none.size ? { none: [...none] } : {}),
+    ...(open.size ? { open: [...open] } : {}),
+  };
+  return Object.keys(effect).length ? effect : undefined;
+}
+
+/**
+ * Whether the drunkenness or poison a character causes lasts until the next dusk, as the Poisoner's does
+ * (grimoire/state takes its tokens off at dusk; `dusk` in homebrew-roles.json): every sentence of its ability that
+ * makes someone drunk or poisoned does it "until dusk" at night – the sentence says so ("Each night, choose a
+ * player: they are poisoned until dusk."), or the one before it does and this one says nothing of a day ("Each
+ * night, choose 2 players. If neither are Townsfolk, one is drunk until dusk"). Not by day ("If you are executed,
+ * … poisoned until dusk" means the next day's), not "until dusk tomorrow", not when another sentence poisons for
+ * longer: those tokens the Storyteller takes off.
+ */
+function untilDusk(ability) {
+  const sentences = ability.split(/(?<=[.;])\s+/);
+  const atNight = (s) => /\b(?:night|tonight)\b/i.test(s ?? "");
+  const byDay = (s) => /\b(?:day|today|execut\w*|nominat\w*|vot\w*)\b/i.test(s);
+  const causing = sentences.flatMap((s, i) => (/\b(?:poison|poisons|poisoned|drunk)\b/i.test(s) ? [i] : []));
+  return (
+    causing.length > 0 &&
+    causing.every((i) => {
+      const s = sentences[i];
+      return (
+        /\b(?:poison|poisons|poisoned|drunk)\b[^.;]*\buntil dusk\b/i.test(s) &&
+        !/\buntil dusk tomorrow\b|\btomorrow dusk\b/i.test(s) &&
+        (atNight(s) || (atNight(sentences[i - 1]) && !byDay(s)))
+      );
+    })
+  );
+}
+
 const strings = (list) => (Array.isArray(list) ? list.map(plain).filter(Boolean) : []);
 const night = (n) => (typeof n === "number" && Number.isFinite(n) && n > 0 ? n : 0);
 const firstImage = (image) => (Array.isArray(image) ? image[0] : image) || null;
@@ -168,7 +233,17 @@ for (const c of COLLECTIONS) {
 
   for (const { item, id, team } of kept) {
     const ability = plain(item.ability);
-    roles.push({ id, team, en: plain(item.name), c: c.key, src: item.id, h: abilityHash(ability) });
+    const setup = item.setup ? setupEffect(ability) : undefined;
+    roles.push({
+      id,
+      team,
+      en: plain(item.name),
+      c: c.key,
+      src: item.id,
+      h: abilityHash(ability),
+      ...(setup ? { setup } : {}),
+      ...(untilDusk(ability) ? { dusk: true } : {}),
+    });
     const jinxes = (Array.isArray(item.jinxes) ? item.jinxes : [])
       .map((j) => ({ id: official.has(j?.id) ? j.id : ours.get(j?.id), reason: plain(j?.reason) }))
       .filter((j) => j.id && j.reason);

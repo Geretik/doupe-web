@@ -182,11 +182,26 @@ export const botcRoles: readonly BotcRole[] = [
  * id never has "_". Abilities and night order: grimoire/homebrew.ts, on the server only.
  */
 export type HomebrewCollection = { key: string; name: string; author: string | null; url: string };
-/** `cs`: its Czech name (src/data/homebrew-cs.json), `src`: the id on the wiki, `h`: abilityHash of its ability, `noIcon`: the wiki had no art for it */
-type HomebrewEntry = { id: string; team: string; en: string; cs?: string; c: string; src: string; h: string; noIcon?: boolean };
+/**
+ * How a character changes the rulebook's numbers of Outsiders, Minions and Demons ("[+2 Outsiders]"): the
+ * Storyteller picks one of `options`, `none` teams get no character in the bag, `open` ones any number
+ * (grimoire/state SETUP_EFFECTS for the official characters).
+ */
+export type SetupEffect = {
+  options?: Partial<Record<"outsider" | "minion" | "demon", number>>[];
+  none?: ("outsider" | "minion" | "demon")[];
+  open?: ("outsider" | "minion" | "demon")[];
+};
+/**
+ * `cs`: its Czech name (src/data/homebrew-cs.json), `src`: the id on the wiki, `h`: abilityHash of its ability,
+ * `noIcon`: the wiki had no art for it; read from its English ability by scripts/homebrew.mjs: `setup` what its
+ * "[+1 Outsider]" does to the numbers, `dusk` its drunk and poisoned tokens last until dusk
+ */
+type HomebrewEntry = { id: string; team: string; en: string; cs?: string; c: string; src: string; h: string; noIcon?: boolean; setup?: SetupEffect; dusk?: boolean };
 
 export const homebrewCollections: readonly HomebrewCollection[] = homebrew.collections;
-const homebrewEntries: readonly HomebrewEntry[] = homebrew.roles;
+// JSON gives the teams in `setup` as any string; scripts/homebrew.mjs writes only these three
+const homebrewEntries = homebrew.roles as readonly HomebrewEntry[];
 const homebrewById = new Map(homebrewEntries.map((e) => [e.id, e]));
 const collectionByKey = new Map(homebrewCollections.map((c) => [c.key, c]));
 
@@ -205,6 +220,16 @@ export function homebrewCollectionOf(id: string | null | undefined) {
 
 export function isHomebrew(id: string | null | undefined) {
   return Boolean(id && homebrewById.has(id));
+}
+
+/** What a homebrew character's "[+1 Outsider]" does to the setup's numbers; undefined when none or not homebrew */
+export function homebrewSetupEffect(id: string): SetupEffect | undefined {
+  return homebrewById.get(id)?.setup;
+}
+
+/** A homebrew character whose drunk and poisoned tokens last until dusk, as the Poisoner's */
+export function homebrewUntilDusk(id: string) {
+  return Boolean(homebrewById.get(id)?.dusk);
 }
 
 /** Letters and digits of a text, lower case, without diacritics – as scripts/homebrew.mjs compares them */

@@ -7618,7 +7618,7 @@
   "firstNight": 0,
   "otherNight": 0,
   "setup": false,
-  "ability": "Players' teams lose if they are nominated & executed by an opposing player. After day 4, evil wins.",
+  "ability": "If a player nominates & executes an opposing player, their team wins. After day 4, evil wins.",
   "firstNightReminder": "",
   "otherNightReminder": "",
   "reminders": [
@@ -21722,6 +21722,68 @@
   "remindersGlobal": [],
   "flavor": "Unfortunate, yes. It appears that I couldn't stop you in time from wrongly acquiring the Orb That Makes You Immortal®. Yeah, it sucks to be me, all right. And yes, I do suppose that this has gone in such a way where no one will ever believe that you made such an intricately evil scheme. Of course, of course, you win... anyway, we're being broadcast live. Say hello!",
   "image": "https://botchomebrew.wiki/assets/art/wirehide.png"
+ },
+ "coda_pollyanna": {
+  "firstNight": 16.752,
+  "otherNight": 0,
+  "setup": false,
+  "ability": "Minions don’t get Minion info. When you die (not by execution), 🙒 Minions become good. You are sober & healthy. [+🙒 Minions]",
+  "firstNightReminder": "Skip Minion info.",
+  "otherNightReminder": "",
+  "reminders": [
+   "1",
+   "2",
+   "3"
+  ],
+  "remindersGlobal": [],
+  "jinxes": [
+   {
+    "id": "magician",
+    "reason": "If the Pollyanna is in play, Minions do not learn that the Magician is the Demon."
+   },
+   {
+    "id": "poppygrower",
+    "reason": "If the Pollyanna is in play and the Poppygrower dies, Minions do not learn the Demon or each other."
+   },
+   {
+    "id": "pithag",
+    "reason": "Only 1 of the Pollyanna and Pit-Hag can be in play."
+   },
+   {
+    "id": "summoner",
+    "reason": "The Summoner learns the other Minions. The Summoner cannot be turned good."
+   },
+   {
+    "id": "spy",
+    "reason": "If the Pollyanna is in play, the Spy does not see the Grimoire. Each night, the Spy might learn some in-play characters."
+   },
+   {
+    "id": "widow",
+    "reason": "If the Pollyanna is in play, the Widow does not have the Widow ability. On the 1st night, they start knowing a poisoned player. Each night, the Widow might learn some in-play characters."
+   },
+   {
+    "id": "wraith",
+    "reason": "If the Pollyanna is in play, the Wraith does not have the Widow ability. Each night, they might wake with another player."
+   },
+   {
+    "id": "kazali",
+    "reason": "The Kazali chooses an additional 🙒 Minions."
+   },
+   {
+    "id": "lilmonsta",
+    "reason": "If the Pollyanna is in play, the Storyteller chooses which Minion babysits Lil' Monsta."
+   },
+   {
+    "id": "lordoftyphon",
+    "reason": "why am i writing jinxes for interactions that definitely are just script issues"
+   },
+   {
+    "id": "riot",
+    "reason": "Good Minions do not become Riot."
+   }
+  ],
+  "flavor": "I believe in roses kissed with dew! Why shouldn’t I believe the same in you?",
+  "image": "https://botchomebrew.wiki/assets/art/pollyanna.png"
  },
  "coda_girlnextdoor": {
   "firstNight": 50.1734,

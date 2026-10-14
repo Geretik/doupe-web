@@ -1,5 +1,16 @@
 import type { GameWinner } from "@/db/schema";
-import { BLUFF_COUNT, bluffTeams, findRole, linkedRoleOf, roleSide, type RoleTeam, type ScriptNames } from "@/modules/botc/lib/botc-roles";
+import {
+  BLUFF_COUNT,
+  bluffTeams,
+  findRole,
+  homebrewSetupEffect,
+  homebrewUntilDusk,
+  linkedRoleOf,
+  roleSide,
+  type RoleTeam,
+  type ScriptNames,
+  type SetupEffect,
+} from "@/modules/botc/lib/botc-roles";
 import type { GrimoireCharacter, TokenKind } from "./characters";
 
 /**
@@ -221,8 +232,9 @@ type CountTeam = (typeof countTeams)[number];
  * `none` teams get no character in the bag, `open` ones any number. Notes that change no count (the Atheist's
  * good team aside, the Marionette, the Village Idiot…) are only shown, not counted. Lil' Monsta is a Demon in
  * the bag that nobody gets (hiddenInBag); with Legion most players are Legion, as many as the Storyteller likes.
+ * A homebrew character's comes from its ability (homebrewSetupEffect), as far as scripts/homebrew.mjs can read it.
  */
-const SETUP_EFFECTS: Record<string, { options?: Partial<Record<CountTeam, number>>[]; none?: CountTeam[]; open?: CountTeam[] }> = {
+const SETUP_EFFECTS: Record<string, SetupEffect> = {
   baron: { options: [{ outsider: 2 }] },
   fanggu: { options: [{ outsider: 1 }] },
   vigormortis: { options: [{ outsider: -1 }] },
@@ -267,7 +279,10 @@ export function expectedSetup(players: number, roleIds: (string | null)[], bag =
   const base = distribution(players);
   if (!base) return null;
   const ids = [...new Set(roleIds)];
-  const effects = ids.flatMap((id) => (id && SETUP_EFFECTS[id] ? [{ id, ...SETUP_EFFECTS[id] }] : []));
+  const effects = ids.flatMap((id) => {
+    const effect = id ? (SETUP_EFFECTS[id] ?? homebrewSetupEffect(id)) : undefined;
+    return id && effect ? [{ id, ...effect }] : [];
+  });
   let combos: Record<CountTeam, number>[] = [{ outsider: 0, minion: 0, demon: 0 }];
   for (const { options } of effects) {
     if (options) combos = combos.flatMap((c) => options.map((o) => ({ outsider: c.outsider + (o.outsider ?? 0), minion: c.minion + (o.minion ?? 0), demon: c.demon + (o.demon ?? 0) })));
@@ -707,7 +722,8 @@ export function nightSteps(
 
 /**
  * Tokens that last until dusk: the Poisoner's poison (tonight and tomorrow day), the drunkenness of the Organ
- * Grinder, Sailor, Innkeeper and Goon, the Witch's curse.
+ * Grinder, Sailor, Innkeeper and Goon, the Witch's curse; the drunk and poisoned tokens of a homebrew character
+ * whose ability says they last until dusk (homebrewUntilDusk).
  */
 const UNTIL_DUSK: Record<string, TokenKind[]> = {
   poisoner: ["poisoned"],
@@ -717,6 +733,7 @@ const UNTIL_DUSK: Record<string, TokenKind[]> = {
   innkeeper: ["drunk"],
   witch: ["cursed"],
 };
+const HOMEBREW_UNTIL_DUSK: TokenKind[] = ["poisoned", "drunk"];
 
 /**
  * The phase after this one: setup → night 1 → day 1 → night 2 …; at dusk the Minstrel's token of yesterday goes
@@ -729,7 +746,10 @@ export function nextPhase(state: GrimoireState, characters: Record<string, Grimo
     state.seats.map((s) => (s.reminders.some(gone) ? { ...s, reminders: s.reminders.filter((r) => !gone(r)) } : s));
   if (state.phase === "setup" || state.phase === "day") {
     const dusk = state.phase === "day";
-    const untilDusk = (r: GrimoireReminder) => !!r.roleId && !!UNTIL_DUSK[r.roleId]?.some((kind) => characters[r.roleId!]?.tokenKinds[r.text] === kind);
+    const untilDusk = (r: GrimoireReminder) => {
+      const kinds = r.roleId ? (UNTIL_DUSK[r.roleId] ?? (homebrewUntilDusk(r.roleId) ? HOMEBREW_UNTIL_DUSK : undefined)) : undefined;
+      return !!kinds?.some((kind) => characters[r.roleId!]?.tokenKinds[r.text] === kind);
+    };
     // the Courtier's drunkenness lasts 3 nights and 3 days
     const courtier = (r: GrimoireReminder) => r.roleId === "courtier" && characters.courtier?.tokenKinds[r.text] === "drunk" && (r.round ?? 0) <= state.round - 2;
     const seats = without((r) => (r.roleId === MINSTREL && (r.round ?? 0) < state.round) || (dusk && (untilDusk(r) || courtier(r))));

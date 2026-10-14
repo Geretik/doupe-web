@@ -14,7 +14,7 @@ export type ChangelogEntry = { /** YYYY-MM-DD */ date: string; title: string; it
 export const changelog: ChangelogEntry[] = [
   {
     date: "2026-10-14",
-    title: "Administrace zvlášť od Klubu, prezenčka vysvětluje proč a zná jmenovce, Krycí jména na telefonu, všechny homebrew kolekce",
+    title: "Administrace zvlášť od Klubu, prezenčka vysvětluje proč a zná jmenovce, Krycí jména na telefonu, všechny homebrew kolekce, Zdroje",
     items: [
       {
         for: "organizers",
@@ -55,6 +55,16 @@ export const changelog: ChangelogEntry[] = [
         for: "organizers",
         text: "Homebrew postavy ze všech 48 kolekcí botchomebrew.wiki: přibylo 24 dalších (např. Trouble Homebrewing, Imppreposterous Syncretastrophy, The Garden Centre, FakeTier's Collection), dohromady 1852 postav, všechny přeložené do češtiny. Najdeš je v katalogu Homebrew postav, v sestavení scriptu, v draftu, v grimoáru i ve script toolu.",
         href: "/admin/botc/scripty/homebrew",
+      },
+      {
+        for: "organizers",
+        text: "Grimoár u homebrew postav počítá s úpravou přípravy z jejich schopnosti ([+1 Podivín], [-1 nebo +1 Podivín], [Žádní Přisluhovači]…) v počtech pytlíku i v náhodném pytlíku, jako u Barona. Žetony Otrávený a Opilý, které podle schopnosti platí v noci do soumraku, za soumraku sundá sám jako Travičovy.",
+        href: "/admin/botc/grimoary",
+      },
+      {
+        for: "players",
+        text: "Nová stránka Zdroje (odkaz dole v patičce): komu patří hra a oficiální postavy, odkud jsou jejich texty a české překlady a ze kterých kolekcí jsou homebrew postavy, i s jejich autory.",
+        href: "/botc/zdroje",
       },
     ],
   },
