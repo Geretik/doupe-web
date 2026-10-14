@@ -14,7 +14,7 @@ export type ChangelogEntry = { /** YYYY-MM-DD */ date: string; title: string; it
 export const changelog: ChangelogEntry[] = [
   {
     date: "2026-10-14",
-    title: "Administrace zvlášť od Klubu, prezenčka vysvětluje proč",
+    title: "Administrace zvlášť od Klubu, prezenčka vysvětluje proč a zná jmenovce",
     items: [
       {
         for: "organizers",
@@ -30,6 +30,16 @@ export const changelog: ChangelogEntry[] = [
         for: "players",
         text: "Vztah k UP v prezenčce znamená studium nebo práci na univerzitě, absolventi se už nepočítají.",
         href: "/prezence",
+      },
+      {
+        for: "players",
+        text: "Do prezenčky se zapíšou i dva lidé se stejným jménem: druhý dostane otázku, jestli je to jiný člověk, a tlačítkem se zapíše taky.",
+        href: "/prezence",
+      },
+      {
+        for: "organizers",
+        text: "Při ručním přidání do prezenčky jde přidat i člověka, jehož jméno už na listině je: tlačítko Přesto přidat – je to jiný člověk.",
+        href: "/admin/prezence",
       },
     ],
   },

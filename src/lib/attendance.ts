@@ -144,22 +144,35 @@ export function phoneEntry(day: string, key: string) {
   return db.query.attendance.findFirst({ where: and(eq(attendance.day, day), eq(attendance.deviceKeyHash, keyHash(key))) });
 }
 
-/** "recorded" = a new entry; "already" = the person was on the sheet of that night before; "corrected" = their entry was changed. */
-export type RecordOutcome = { status: "recorded" | "already" | "corrected"; entry: AttendanceEntry };
+/**
+ * "recorded" = a new entry; "already" = the person was on the sheet of that night before; "corrected" = their entry was
+ * changed; "sameName" = someone of the same name is on it from elsewhere and nothing was written: the same person again,
+ * or a namesake, who says so (`namesake`) and is put on too.
+ */
+export type RecordOutcome = { status: "recorded" | "already" | "corrected" | "sameName"; entry: AttendanceEntry };
 
 /**
  * Puts `person` on the sheet of the night `day`; `key` = the key of the phone that remembers them. Nobody is on one
- * night twice: when the phone's entry or an entry with the same name is there, that one is the answer, and an entry
- * without a key gets this one, so the phone can correct it later.
+ * night twice: the phone's own entry is the answer, and an entry of the same name without a key (added by an organiser,
+ * or not remembered) gets this key, so the phone can correct it later. Any other entry of the same name may be a
+ * namesake: nothing is written until `namesake` says it is someone else.
  */
-export async function recordAttendance(day: string, person: Person, key: string | null, addedBy: number | null = null): Promise<RecordOutcome> {
+export async function recordAttendance(
+  day: string,
+  person: Person,
+  key: string | null,
+  { addedBy = null, namesake = false }: { addedBy?: number | null; namesake?: boolean } = {},
+): Promise<RecordOutcome> {
   const own = key ? await phoneEntry(day, key) : undefined;
   if (own) return { status: "already", entry: own };
-  const named = await db.query.attendance.findFirst({ where: and(eq(attendance.day, day), sameName(person)) });
-  if (named) {
-    if (!key || named.deviceKeyHash) return { status: "already", entry: named };
-    const [linked] = await db.update(attendance).set({ deviceKeyHash: keyHash(key) }).where(eq(attendance.id, named.id)).returning();
-    return { status: "already", entry: linked ?? named };
+  if (!namesake) {
+    const named = await db.query.attendance.findMany({ where: and(eq(attendance.day, day), sameName(person)), orderBy: asc(attendance.id) });
+    const unclaimed = key ? named.find((e) => !e.deviceKeyHash) : undefined;
+    if (unclaimed) {
+      const [linked] = await db.update(attendance).set({ deviceKeyHash: keyHash(key!) }).where(eq(attendance.id, unclaimed.id)).returning();
+      return { status: "already", entry: linked ?? unclaimed };
+    }
+    if (named[0]) return { status: "sameName", entry: named[0] };
   }
   const [entry] = await db
     .insert(attendance)
@@ -172,13 +185,13 @@ export async function recordAttendance(day: string, person: Person, key: string 
 }
 
 /** Corrects the entry that this phone made on the night `day`, or makes one when there is none yet. */
-export async function correctAttendance(day: string, person: Person, key: string): Promise<RecordOutcome> {
+export async function correctAttendance(day: string, person: Person, key: string, namesake = false): Promise<RecordOutcome> {
   const [entry] = await db
     .update(attendance)
     .set(person)
     .where(and(eq(attendance.day, day), eq(attendance.deviceKeyHash, keyHash(key))))
     .returning();
-  return entry ? { status: "corrected", entry } : recordAttendance(day, person, key);
+  return entry ? { status: "corrected", entry } : recordAttendance(day, person, key, { namesake });
 }
 
 /** The entries of one night in the order they came, with who added them by hand. */

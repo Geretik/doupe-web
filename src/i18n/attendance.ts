@@ -18,6 +18,8 @@ export const attendanceCs = {
   recorded: (name: string) => `Zapsáno: ${name}. Vítej v klubu!`,
   recordedOther: (name: string) => `Zapsáno: ${name}.`,
   already: (name: string, time: string) => `${name} už na dnešní prezenčce je (od ${time}).`,
+  sameName: (name: string, time: string) =>
+    `${name} už na dnešní prezenčce je (od ${time}). Jestli je to jiný člověk se stejným jménem, použij tlačítko níž.`,
   corrected: "Opraveno.",
   closedNow: "Prezenčka se mezitím zavřela. Otevírá se v úterý a ve čtvrtek.",
   notRemembered: "Tento telefon si tě už nepamatuje, vyplň prosím údaje.",
@@ -58,6 +60,7 @@ export const attendanceCs = {
     correctHint: "Opraví se i dnešní zápis.",
     back: "Zpět",
     privacyLink: "Více o ochraně údajů",
+    namesake: "Je to jiný člověk – zapsat",
   },
 };
 
@@ -75,6 +78,7 @@ export const attendanceEn: AttendanceDict = {
   recorded: (name) => `Done: ${name}. Welcome to the club!`,
   recordedOther: (name) => `Done: ${name}.`,
   already: (name, time) => `${name} is already on tonight's sheet (since ${time}).`,
+  sameName: (name, time) => `${name} is already on tonight's sheet (since ${time}). If it's a different person with the same name, use the button below.`,
   corrected: "Corrected.",
   closedNow: "The attendance sheet has closed in the meantime. It opens on Tuesdays and Thursdays.",
   notRemembered: "This phone doesn't remember you any more, please fill in your details.",
@@ -112,6 +116,7 @@ export const attendanceEn: AttendanceDict = {
     correctHint: "Tonight's entry changes too.",
     back: "Back",
     privacyLink: "More about privacy",
+    namesake: "It's someone else – sign in",
   },
 };
 
@@ -145,6 +150,7 @@ export const attendanceAdminCs = {
     day: "Večer",
     submit: "Přidat",
     submitting: "Přidávám…",
+    namesake: "Přesto přidat – je to jiný člověk",
   },
   added: (name: string) => `${name} je na prezenčce.`,
   alreadyThere: (name: string, time: string) => `${name} už na prezenčce toho večera je (od ${time}).`,
@@ -209,6 +215,7 @@ export const attendanceAdminEn: AttendanceAdminDict = {
     day: "Night",
     submit: "Add",
     submitting: "Adding…",
+    namesake: "Add anyway – it's someone else",
   },
   added: (name) => `${name} is on the attendance sheet.`,
   alreadyThere: (name, time) => `${name} is already on that night's sheet (since ${time}).`,

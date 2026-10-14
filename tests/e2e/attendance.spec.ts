@@ -192,3 +192,62 @@ test("attendance: names are deleted after the retention period, the counts stay"
     ["Nová", "up", null],
   ]);
 });
+
+test("attendance: two people of the same name, each on their own phone, and an organiser adds a third", async ({ browser, page }) => {
+  await page.goto("/prezence");
+  await fillPerson(page, "Jan", "Novák", "Ano");
+  await page.click("button:has-text('Zapsat se')");
+  await expect(page.locator("main")).toContainText("Zapsáno: Jan Novák.");
+
+  // another Jan Novák on his own phone: asked first, nothing written, then on the sheet when he says so
+  const ctx = await browser.newContext({ locale: "cs-CZ" });
+  const other = await ctx.newPage();
+  await other.goto("/prezence");
+  await fillPerson(other, "Jan", "Novák", "Ne");
+  await other.click("button:has-text('Zapsat se')");
+  await expect(other.locator("main")).toContainText("Jan Novák už na dnešní prezenčce je");
+  await expect(other.locator("main")).toContainText("Jestli je to jiný člověk se stejným jménem");
+  expect(await rows()).toHaveLength(1);
+  expect((await ctx.cookies()).some((c) => c.name === "prezence")).toBe(false);
+  await other.getByTestId("attendance-namesake").click();
+  await expect(other.locator("main")).toContainText("Zapsáno: Jan Novák.");
+  await expect(other.getByTestId("attendance-recorded")).toBeVisible();
+  let saved = await rows();
+  expect(saved.map((r) => r.affiliation)).toEqual(["up", "none"]);
+  expect(saved[0].device_key_hash).not.toBeNull();
+  expect(saved[1].device_key_hash).not.toBeNull();
+  expect(saved[0].device_key_hash).not.toBe(saved[1].device_key_hash);
+
+  // the next night the one who comes second is asked again; one tap and one more for "someone else"
+  await sql("update attendance set day = day - 7");
+  await page.reload();
+  await page.getByTestId("attendance-checkin").click();
+  await expect(page.locator("main")).toContainText("Zapsáno: Jan Novák.");
+  await other.reload();
+  await other.getByTestId("attendance-checkin").click();
+  await expect(other.locator("main")).toContainText("Jan Novák už na dnešní prezenčce je");
+  expect(await rows()).toHaveLength(3);
+  await other.getByTestId("attendance-namesake").click();
+  await expect(other.getByTestId("attendance-recorded")).toBeVisible();
+  saved = await rows();
+  expect(saved.slice(2).map((r) => r.affiliation)).toEqual(["up", "none"]);
+  await ctx.close();
+
+  // by hand: refused first, added on "add anyway"
+  await adminLogin(page);
+  await page.goto("/admin/prezence");
+  await page.click("summary:has-text('Přidat ručně')");
+  const add = page.getByTestId("attendance-add");
+  await add.locator("#add-firstName").fill("Jan");
+  await add.locator("#add-lastName").fill("Novák");
+  await add.getByLabel("Ano", { exact: true }).check();
+  await add.getByRole("button", { name: "Přidat", exact: true }).click();
+  await expect(add).toContainText("Jan Novák už na prezenčce toho večera je");
+  expect(await rows()).toHaveLength(4);
+  await add.getByRole("button", { name: "Přesto přidat – je to jiný člověk" }).click();
+  await expect(add).toContainText("Jan Novák je na prezenčce.");
+  saved = await rows();
+  expect(saved).toHaveLength(5);
+  expect(saved[4]).toMatchObject({ first_name: "Jan", device_key_hash: null });
+  expect(saved[4].added_by).not.toBeNull();
+});

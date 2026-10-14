@@ -52,10 +52,16 @@ export function AttendanceAddForm({
           </p>
         ))}
       </fieldset>
-      <div>
+      <div className="flex flex-wrap gap-2">
         <Button type="submit" disabled={pending}>
           {pending ? t.submitting : t.submit}
         </Button>
+        {/* someone of this name is on that night's sheet: another person of the same name goes on too */}
+        {state.sameName && (
+          <Button type="submit" name="namesake" value="1" variant="secondary" disabled={pending}>
+            {t.namesake}
+          </Button>
+        )}
       </div>
     </form>
   );

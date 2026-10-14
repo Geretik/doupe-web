@@ -8,7 +8,8 @@ import { deleteEntry, parseDay, recordAttendance } from "@/lib/attendance";
 import { formatTime } from "@/lib/time";
 import { attendanceSchema, fieldErrorsOf, parseId, type FormState } from "@/lib/validation";
 
-export type AddAttendanceState = FormState & { message?: string };
+/** `sameName`: someone of this name is on that night's sheet, the form offers to add them anyway (a namesake). */
+export type AddAttendanceState = FormState & { message?: string; sameName?: boolean };
 
 /** Admin → Prezenčka: an organiser puts someone on the sheet of a night, e.g. who has no phone with them. */
 export async function addAttendanceAction(_prev: AddAttendanceState, formData: FormData): Promise<AddAttendanceState> {
@@ -25,8 +26,9 @@ export async function addAttendanceAction(_prev: AddAttendanceState, formData: F
   }
   const { firstName, lastName, affiliation } = parsed.data;
   const name = `${firstName} ${lastName}`;
-  const outcome = await recordAttendance(day, { firstName, lastName, affiliation }, null, me.id);
-  if (outcome.status !== "recorded") return { error: a.alreadyThere(name, formatTime(outcome.entry.createdAt, locale)) };
+  const namesake = formData.get("namesake") === "1";
+  const outcome = await recordAttendance(day, { firstName, lastName, affiliation }, null, { addedBy: me.id, namesake });
+  if (outcome.status !== "recorded") return { error: a.alreadyThere(name, formatTime(outcome.entry.createdAt, locale)), sameName: true };
   await logAction(me, "attendance.add", { day, affiliation });
   revalidatePath("/admin/prezence");
   return { ok: true, message: a.added(name) };

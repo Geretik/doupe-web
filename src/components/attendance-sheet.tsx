@@ -15,6 +15,9 @@ type FormTexts = Dict["attendance"]["form"] & { privacyNote: string };
 export type RememberedView = { firstName: string; lastName: string; affiliation: Affiliation };
 
 const linkButton = "text-sm font-medium text-accent underline-offset-2 hover:underline";
+/** "It's someone else": sends the form again for a namesake of whoever is on the sheet */
+const namesakeButton =
+  "w-full rounded-xl border border-accent px-6 py-3 font-semibold text-accent transition hover:bg-accent/10 disabled:cursor-not-allowed disabled:opacity-50";
 /** A big button for a thumb */
 const bigButton =
   "w-full rounded-xl bg-accent px-6 py-3.5 text-lg font-semibold text-accent-foreground transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50";
@@ -102,11 +105,13 @@ export function AttendanceSheet({
               ✓ {t.hereSince} {recordedAt}
             </p>
           ) : (
-            <form action={action} className="w-full">
+            <form action={action} className="flex w-full flex-col gap-3">
               <input type="hidden" name="intent" value="checkin" />
+              {fresh && state.sameName && <Alert kind="info">{state.sameName}</Alert>}
               <button type="submit" disabled={pending} className={bigButton} data-testid="attendance-checkin">
                 {pending ? t.submitting : t.checkIn}
               </button>
+              {fresh && state.sameName && <NamesakeButton t={t} pending={pending} />}
             </form>
           )}
         </Card>
@@ -146,6 +151,7 @@ function PersonForm({
         <p className="text-muted">{hint}</p>
       </div>
       {state.error && <Alert kind="error">{state.error}</Alert>}
+      {state.sameName && <Alert kind="info">{state.sameName}</Alert>}
       <Field label={t.firstName} name="firstName" errors={fe.firstName}>
         <input id="firstName" name="firstName" required maxLength={100} autoComplete={mode === "other" ? "off" : "given-name"} defaultValue={defaults?.firstName} className={inputClass} />
       </Field>
@@ -187,6 +193,7 @@ function PersonForm({
       <button type="submit" disabled={pending} className={bigButton}>
         {pending ? t.submitting : submit}
       </button>
+      {state.sameName && <NamesakeButton t={t} pending={pending} />}
       {onBack && (
         <button type="button" onClick={onBack} className={`${linkButton} self-center`}>
           {t.back}
@@ -194,6 +201,15 @@ function PersonForm({
       )}
       <PrivacyNote t={t} />
     </form>
+  );
+}
+
+/** A second submit of the same form: `namesake` puts this person on the sheet next to the one of the same name. */
+function NamesakeButton({ t, pending }: { t: FormTexts; pending: boolean }) {
+  return (
+    <button type="submit" name="namesake" value="1" disabled={pending} className={namesakeButton} data-testid="attendance-namesake">
+      {t.namesake}
+    </button>
   );
 }
 

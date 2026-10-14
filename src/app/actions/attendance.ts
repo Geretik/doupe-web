@@ -24,8 +24,11 @@ import { attendanceSchema, fieldErrorsOf, type FormState } from "@/lib/validatio
  */
 export type AttendanceIntent = "checkin" | "new" | "correct" | "other";
 
-/** `intent` of a failed submit: the form it came from stays open with its errors. */
-export type AttendanceState = FormState & { message?: string; intent?: AttendanceIntent };
+/**
+ * `intent` of a failed submit: the form it came from stays open with its errors. `sameName`: someone of this name is on
+ * the sheet already, the form offers a button that sends it again with `namesake` (another person of that name).
+ */
+export type AttendanceState = FormState & { message?: string; intent?: AttendanceIntent; sameName?: string };
 
 const intents: AttendanceIntent[] = ["checkin", "new", "correct", "other"];
 
@@ -57,20 +60,19 @@ export async function attendanceAction(_prev: AttendanceState, formData: FormDat
   }
   if (await throttleAttendance(fullName(person))) return { error: a.tooMany, intent };
 
-  let outcome: RecordOutcome;
-  if (intent === "checkin") {
-    outcome = await recordAttendance(night, person, me!.key);
-    await rememberPerson(me!);
-  } else if (intent === "correct") {
-    outcome = await correctAttendance(night, person, me!.key);
-    await rememberPerson({ ...person, key: me!.key });
-  } else if (intent === "other") {
-    outcome = await recordAttendance(night, person, null);
-  } else {
-    // a new key whenever someone new is remembered: the entries of whoever this phone remembered before stay theirs
-    const key = formData.get("remember") === "on" ? newDeviceKey() : null;
-    outcome = await recordAttendance(night, person, key);
-    if (key) await rememberPerson({ ...person, key });
+  const namesake = formData.get("namesake") === "1";
+  // a new key whenever someone new is remembered: the entries of whoever this phone remembered before stay theirs
+  const newKey = intent === "new" && formData.get("remember") === "on" ? newDeviceKey() : null;
+  const outcome =
+    intent === "correct"
+      ? await correctAttendance(night, person, me!.key, namesake)
+      : await recordAttendance(night, person, intent === "checkin" ? me!.key : newKey, { namesake });
+  // nothing was written and the phone stays as it was until they say it is someone else
+  if (outcome.status === "sameName") return { intent, sameName: a.sameName(fullName(outcome.entry), formatTime(outcome.entry.createdAt, locale)) };
+  if (intent === "checkin") await rememberPerson(me!);
+  else if (intent === "correct") await rememberPerson({ ...person, key: me!.key });
+  else if (intent === "new") {
+    if (newKey) await rememberPerson({ ...person, key: newKey });
     else if (me) await forgetPerson();
   }
   return { ok: true, message: outcomeMessage(outcome, intent, a, locale) };
