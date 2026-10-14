@@ -20,6 +20,9 @@ test("attendance: a phone remembers the person, the next night is one tap; corre
   await page.goto("/prezence");
   await expect(page.locator("h1")).toHaveText("Prezenčka");
   await expect(page.locator("main")).toContainText("Klubový večer");
+  // why, who sees it and for how long, before anything is filled in
+  await expect(page.locator("main")).toContainText("abychom to mohli doložit fakultě");
+  await expect(page.locator("main")).toContainText("Listinu vidí jen organizátoři klubu, jména smažeme po 2 letech.");
   await fillPerson(page, "Jana", "Nováková", "Ano");
   await expect(page.getByLabel("Zapamatovat si mě na tomto telefonu")).toBeChecked();
   await page.click("button:has-text('Zapsat se')");

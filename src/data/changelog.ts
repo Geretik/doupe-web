@@ -14,12 +14,17 @@ export type ChangelogEntry = { /** YYYY-MM-DD */ date: string; title: string; it
 export const changelog: ChangelogEntry[] = [
   {
     date: "2026-10-14",
-    title: "Administrace zvlášť od Klubu",
+    title: "Administrace zvlášť od Klubu, prezenčka vysvětluje proč",
     items: [
       {
         for: "organizers",
         text: "Účty, Historie a Novinky mají v adminu vlastní skupinu Administrace, v menu i na přehledu; pod Klubem zůstala prezenčka, půjčovna a texty webu.",
         href: "/admin",
+      },
+      {
+        for: "players",
+        text: "Prezenčka říká přímo pod formulářem, proč se zapisujeme (kvůli fakultě), kdo listinu vidí a že jména po 2 letech smažeme.",
+        href: "/prezence",
       },
     ],
   },

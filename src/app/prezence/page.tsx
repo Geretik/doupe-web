@@ -3,7 +3,7 @@ import { forgetAttendanceAction } from "@/app/actions/attendance";
 import { AttendanceSheet } from "@/components/attendance-sheet";
 import { Card } from "@/components/ui";
 import { getDict } from "@/i18n/server";
-import { attendanceDay, dayDate, nextClubDay, openNight, phoneEntry, rememberedPerson } from "@/lib/attendance";
+import { ATTENDANCE_RETENTION_YEARS, attendanceDay, dayDate, nextClubDay, openNight, phoneEntry, rememberedPerson } from "@/lib/attendance";
 import { formatDate, formatTime } from "@/lib/time";
 
 export const dynamic = "force-dynamic";
@@ -54,7 +54,7 @@ export default async function AttendancePage() {
         <p className="mt-1 text-muted">{a.night(formatDate(dayDate(night), locale))}</p>
       </div>
       <AttendanceSheet
-        t={a.form}
+        t={{ ...a.form, privacyNote: a.privacyNote(ATTENDANCE_RETENTION_YEARS) }}
         affiliations={a.affiliations}
         remembered={me && { firstName: me.firstName, lastName: me.lastName, affiliation: me.affiliation }}
         recordedAt={entry ? formatTime(entry.createdAt, locale) : null}

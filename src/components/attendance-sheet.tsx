@@ -9,6 +9,8 @@ import { Alert, Card, Field, inputClass } from "./ui";
 
 type FormMode = Exclude<AttendanceIntent, "checkin">;
 type Affiliation = keyof Dict["attendance"]["affiliations"];
+/** The form's texts, with the privacy note already worded for the retention period */
+type FormTexts = Dict["attendance"]["form"] & { privacyNote: string };
 /** Who this phone remembers; the key stays in the cookie, the page never gets it. */
 export type RememberedView = { firstName: string; lastName: string; affiliation: Affiliation };
 
@@ -27,7 +29,7 @@ export function AttendanceSheet({
   remembered,
   recordedAt,
 }: {
-  t: Dict["attendance"]["form"];
+  t: FormTexts;
   affiliations: Dict["attendance"]["affiliations"];
   remembered: RememberedView | null;
   /** "17:42": when tonight's entry from this phone was made */
@@ -125,7 +127,7 @@ function PersonForm({
   onBack,
 }: {
   mode: FormMode;
-  t: Dict["attendance"]["form"];
+  t: FormTexts;
   defaults: RememberedView | null;
   state: AttendanceState;
   action: (formData: FormData) => void;
@@ -195,7 +197,7 @@ function PersonForm({
   );
 }
 
-function PrivacyNote({ t }: { t: Dict["attendance"]["form"] }) {
+function PrivacyNote({ t }: { t: FormTexts }) {
   return (
     <p className="text-center text-xs text-muted">
       {t.privacyNote}{" "}

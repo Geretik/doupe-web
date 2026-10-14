@@ -28,7 +28,7 @@ export function clubWeekdays(): number[] {
 /** Until this hour of the morning an entry counts to the evening before: club nights may run past midnight. */
 export const NIGHT_ENDS_AT_HOUR = 5;
 
-/** The names are deleted this many years after the night; the privacy page and the admin say so. */
+/** The names are deleted this many years after the night; the sheet, the privacy page and the admin say so. */
 export const ATTENDANCE_RETENTION_YEARS = 2;
 
 /** "YYYY-MM-DD" of the club night an entry made at `at` belongs to, in Prague time. */

@@ -33,6 +33,9 @@ export const attendanceCs = {
     none: "Bez vztahu k UP",
   },
   /** Plain strings only – passed to the form (client). */
+  /** Under the form: why, who sees it, how long; the page passes it to the form as a plain string */
+  privacyNote: (years: number) =>
+    `Zapisujeme, kdo klub navštěvuje, abychom to mohli doložit fakultě, v jejíchž prostorách hrajeme. Listinu vidí jen organizátoři klubu, jména smažeme po ${years} ${cz(years, "roce", "letech", "letech")}.`,
   form: {
     intro: "Zapiš se, že jsi dnes v klubu.",
     firstName: "Jméno",
@@ -54,7 +57,6 @@ export const attendanceCs = {
     correctTitle: "Oprava údajů",
     correctHint: "Opraví se i dnešní zápis.",
     back: "Zpět",
-    privacyNote: "Prezenční listinu vidí jen organizátoři klubu.",
     privacyLink: "Více o ochraně údajů",
   },
 };
@@ -86,6 +88,8 @@ export const attendanceEn: AttendanceDict = {
     up: "Related to UP",
     none: "Not related to UP",
   },
+  privacyNote: (years) =>
+    `We keep track of who comes to the club so we can show the faculty whose rooms we play in. Only the club's organisers see the sheet; names are deleted after ${years} ${years === 1 ? "year" : "years"}.`,
   form: {
     intro: "Sign in to say you're at the club tonight.",
     firstName: "First name",
@@ -107,7 +111,6 @@ export const attendanceEn: AttendanceDict = {
     correctTitle: "Correct your details",
     correctHint: "Tonight's entry changes too.",
     back: "Back",
-    privacyNote: "Only the club's organisers see the attendance sheet.",
     privacyLink: "More about privacy",
   },
 };
