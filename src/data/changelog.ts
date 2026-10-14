@@ -26,6 +26,11 @@ export const changelog: ChangelogEntry[] = [
         text: "Prezenčka říká přímo pod formulářem, proč se zapisujeme (kvůli fakultě), kdo listinu vidí a že jména po 2 letech smažeme.",
         href: "/prezence",
       },
+      {
+        for: "players",
+        text: "Vztah k UP v prezenčce znamená studium nebo práci na univerzitě, absolventi se už nepočítají.",
+        href: "/prezence",
+      },
     ],
   },
   {
