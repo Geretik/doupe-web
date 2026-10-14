@@ -22,7 +22,7 @@ const TEAMS: TeamChoice[] = ["RANDOM", "RED", "BLUE"];
 /** The card's width in mm, as two to an A4 page in the print tool; on screen it only sets the proportions. */
 const CARD_WIDTH = 92;
 
-type Settings = { mode: ModeId; team: TeamChoice; showMines: boolean; showAxes: boolean; code: string; card: number };
+type Settings = { mode: ModeId; team: TeamChoice; showMines: boolean; minesOnAssassins: boolean; showAxes: boolean; code: string; card: number };
 
 // ---------------------------------------------------------------------------------------------
 // The settings, kept on this device: a reload (or a phone that slept) shows the same card again
@@ -64,7 +64,15 @@ function parse(raw: string | null): Settings | null {
     const s = JSON.parse(raw) as Partial<Settings>;
     if (!MODES.some((m) => m.id === s.mode) || !TEAMS.includes(s.team as TeamChoice) || typeof s.code !== "string") return null;
     const card = Number.isInteger(s.card) && s.card! >= 1 ? s.card! : 1;
-    return { mode: s.mode!, team: s.team!, showMines: s.showMines !== false, showAxes: s.showAxes !== false, code: s.code, card };
+    return {
+      mode: s.mode!,
+      team: s.team!,
+      showMines: s.showMines !== false,
+      minesOnAssassins: s.minesOnAssassins === true,
+      showAxes: s.showAxes !== false,
+      code: s.code,
+      card,
+    };
   } catch {
     return null;
   }
@@ -79,7 +87,7 @@ function newCode() {
 }
 
 function fresh(): Settings {
-  return { mode: "GOLD_BIG_MINES", team: "RANDOM", showMines: true, showAxes: true, code: newCode(), card: 1 };
+  return { mode: "GOLD_BIG_MINES", team: "RANDOM", showMines: true, minesOnAssassins: false, showAxes: true, code: newCode(), card: 1 };
 }
 
 /** The card's layout as rows of R, B, . (civilian) and X (assassin), for the tests. */
@@ -121,6 +129,7 @@ export function KeyCardTool({ t }: { t: Texts }) {
       board && settings
         ? renderKeyCardSvg(board, keyCardSize(board, CARD_WIDTH, 1000), {
             showMines: settings.showMines,
+            minesOnAssassins: settings.minesOnAssassins,
             showAxes: settings.showAxes,
             title: `${mode.name} · ${settings.card}`,
             note: board.seed,
@@ -225,6 +234,17 @@ export function KeyCardTool({ t }: { t: Texts }) {
           <label className="flex items-start gap-3">
             <input type="checkbox" name="showMines" checked={settings.showMines} onChange={(e) => update({ showMines: e.target.checked })} className="mt-0.5 h-4 w-4 accent-accent" />
             {t.showMines}
+          </label>
+          <label className={`ml-7 flex items-start gap-3 ${settings.showMines ? "" : "opacity-50"}`}>
+            <input
+              type="checkbox"
+              name="minesOnAssassins"
+              checked={settings.minesOnAssassins}
+              disabled={!settings.showMines}
+              onChange={(e) => update({ minesOnAssassins: e.target.checked })}
+              className="mt-0.5 h-4 w-4 accent-accent"
+            />
+            {t.minesOnAssassins}
           </label>
           <label className={`flex items-start gap-3 ${mode.profile.mirror ? "" : "opacity-50"}`}>
             <input

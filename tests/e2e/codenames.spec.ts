@@ -28,8 +28,11 @@ test("admin: Codenames key cards are the print tool's, full screen shows only th
   await expect(card).toHaveAttribute("data-seed", "test01/1");
   await expect(card.locator("svg")).toContainText("Big Mines · 1");
   await expect(card.locator("svg")).toContainText("Začínají červení");
-  // mine numbers on every cell but the three assassins', which end the game anyway
+  // mine numbers on every cell but the three assassins', which end the game anyway – unless asked for
   await expect(card.locator("svg text:has(tspan)")).toHaveCount(42 - 3);
+  await page.getByLabel("I u vrahů").check();
+  await expect(card.locator("svg text:has(tspan)")).toHaveCount(42);
+  await page.getByLabel("I u vrahů").uncheck();
   await page.getByRole("button", { name: "Další kartička" }).click();
   await expect(card).toHaveAttribute("data-board", MINES_RED[1]);
   await expect(page.getByTestId("codenames-card-number")).toHaveText("Kartička 2");

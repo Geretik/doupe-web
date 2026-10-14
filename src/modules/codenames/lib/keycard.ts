@@ -77,6 +77,8 @@ export function generateKeyCards(
 export interface KeyCardStyle {
   /** Do každého pole kromě vrahů vepsat počet sousedních červených | modrých agentů (Mines). */
   showMines: boolean;
+  /** Čísla min i u vrahů (výchozí ne: vrah hru ukončí, jeho čísla by k ničemu nebyla). */
+  minesOnAssassins?: boolean;
   /** Osy souměrnosti: ikony v hlavičce a čáry přes pole (jen u zrcadlových desek). */
   showAxes: boolean;
   /** Nadpis vlevo nahoře, např. název režimu a číslo kartičky. */
@@ -215,8 +217,7 @@ export function renderKeyCardSvg(board: GeneratedBoard, size: KeyCardSize, style
   for (const c of board.cards) {
     const cx = gx + c.x * cell;
     const cy = gy + c.y * cell;
-    // vrah hru rovnou ukončí, jeho čísla by k ničemu nebyla
-    if (style.showMines && c.type !== "ASSASSIN") {
+    if (style.showMines && (c.type !== "ASSASSIN" || style.minesOnAssassins)) {
       const bw = cell * 0.84;
       const bh = cell * 0.46;
       const mx = cx + cell / 2;
