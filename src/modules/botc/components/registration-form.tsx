@@ -8,6 +8,7 @@ import type { Dict } from "@/i18n/dictionaries";
 import { keepValues } from "@/components/keep-values";
 import { TimeSelect } from "./time-select";
 import { Alert, Button, Checkbox, Field, inputClass } from "@/components/ui";
+import { privacyHref } from "@/lib/site";
 
 export function RegistrationForm({
   sessionId,
@@ -115,7 +116,7 @@ export function RegistrationForm({
       </Button>
       <p className="text-xs text-muted">
         {t.privacyNote}{" "}
-        <Link href="/ochrana-udaju" className="underline hover:text-accent">{t.privacyLink}</Link>
+        <Link href={privacyHref("botc")} className="underline hover:text-accent">{t.privacyLink}</Link>
       </p>
     </form>
   );

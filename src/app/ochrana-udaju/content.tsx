@@ -1,9 +1,9 @@
 import type { Locale } from "@/i18n/dictionaries";
-import { H2, P, Ul } from "@/components/prose";
+import { H2, H3, P, Ul } from "@/components/prose";
 import { ATTENDANCE_RETENTION_YEARS } from "@/lib/attendance";
 import { LOAN_RETENTION_DAYS } from "@/lib/loans";
 import { RETENTION_DAYS } from "@/lib/retention";
-import { CLUB_DISCORD_URL } from "@/lib/site";
+import { CLUB_DISCORD_URL, PRIVACY_SECTIONS } from "@/lib/site";
 
 const linkClass = "underline hover:text-accent";
 
@@ -35,7 +35,9 @@ function Czech({ contact, discordAlerts }: Props) {
         S čímkoli ohledně svých údajů se na nás obrať: <Contact contact={contact} discord="napiš nám na Discordu" />.
       </P>
 
-      <H2>Jaké údaje a proč</H2>
+      <H2 id={PRIVACY_SECTIONS.botc}>Krvavka – přihlášky na hraní</H2>
+      <P>Když se tu přihlásíš na hraní Blood on the Clocktower.</P>
+      <H3>Jaké údaje a proč</H3>
       <Ul>
         <li>
           <strong>Přezdívka a e-mail</strong> (povinné) – abychom věděli, kdo přijde, a mohli ti poslat
@@ -53,22 +55,12 @@ function Czech({ contact, discordAlerts }: Props) {
           <strong>Docházka</strong> – po hraní organizátoři zaznamenají, kdo přišel, kvůli statistikám klubu.
         </li>
         <li>
+          <strong>Odehrané hry</strong> – organizátoři zapíšou, jakou postavu jsi v které hře hrál/a (nebo že jsi ji
+          vyprávěl/a) a která strana vyhrála, pro archiv a statistiky klubu.
+        </li>
+        <li>
           <strong>Hlas o scriptu</strong> – když u termínu hlasuješ, které scripty bys chtěl/a hrát, aby
           organizátoři věděli, co připravit.
-        </li>
-        <li>
-          <strong>Vzkaz</strong> – když nám napíšeš přes formulář na úvodní stránce: jméno nebo přezdívka
-          (nepovinné), e-mail a text vzkazu, abychom ti mohli odpovědět.
-        </li>
-        <li>
-          <strong>Prezenčka</strong> – když se na klubovém večeru zapíšeš přes QR kód na stole: jméno, příjmení, zda
-          máš vztah k Univerzitě Palackého (studuješ nebo pracuješ tam) a kdy ses zapsal/a.
-          Vedeme ji, abychom věděli, kdo klub navštěvuje, a mohli to doložit fakultě, v jejíchž prostorách hrajeme.
-        </li>
-        <li>
-          <strong>Půjčování her</strong> – když si od klubu půjčíš hru: tvoje jméno, kterou hru a kdy sis ji půjčil/a
-          a vrátil/a, případně poznámka organizátora (třeba co v krabici chybí), abychom věděli, kde naše hry jsou.
-          Organizátorům se při zapisování výpůjčky našeptávají jména z prezenčky.
         </li>
         <li>
           <strong>Otisk IP adresy</strong> (samotnou adresu neukládáme) – ochrana proti hromadným falešným registracím.
@@ -76,41 +68,26 @@ function Czech({ contact, discordAlerts }: Props) {
       </Ul>
       <P>
         Údaje zpracováváme, protože jsou potřeba k uspořádání hraní, na které se přihlašuješ
-        (čl. 6 odst. 1 písm. b GDPR). Statistiky klubu, prezenční listina, půjčování her, odpovědi na vzkazy
-        a ochrana proti zneužití jsou náš oprávněný zájem (čl. 6 odst. 1 písm. f GDPR).
+        (čl. 6 odst. 1 písm. b GDPR). Archiv a statistiky klubu a ochrana proti zneužití jsou náš oprávněný zájem
+        (čl. 6 odst. 1 písm. f GDPR).
       </P>
-
-      <H2>Kdo údaje uvidí</H2>
+      <H3>Kdo je uvidí</H3>
       <Ul>
-        <li>Přezdívka je veřejně vidět v seznamu přihlášených u termínu.</li>
+        <li>
+          Přezdívka je veřejně vidět v seznamu přihlášených u termínu, a když umíš vyprávět, je u ní 🎩.
+        </li>
+        <li>
+          Po hraní je přezdívka veřejně vidět v archivu u odehraných her, s postavou, kterou jsi hrál/a, a stranou,
+          která vyhrála.
+        </li>
         <li>U hlasování o scriptu je veřejně vidět jen počet hlasů, kdo jak hlasoval, vidí organizátoři.</li>
-        <li>Ostatní údaje vidí jen organizátoři klubu v administraci webu.</li>
-        <li>Vzkaz dostanou jen organizátoři klubu do své e-mailové schránky.</li>
-        <li>Nikomu je neprodáváme ani nepředáváme pro jiné účely.</li>
+        <li>Ostatní údaje vidí jen organizátoři Krvavky v administraci webu.</li>
       </Ul>
-
-      <H2>Jak dlouho údaje máme</H2>
+      <H3>Jak dlouho je máme</H3>
       <Ul>
         <li>
           <strong>Jméno, příjmení, e-mail, telefon a otisk IP adresy</strong> uchováváme od zadání do
           systému do uplynutí {RETENTION_DAYS} dní od konání hraní. Potom se automaticky smažou.
-        </li>
-        <li>
-          Když si necháš poslat odkaz na „Moje hry“ nebo nám pošleš vzkaz, uložíme na jeden den otisk
-          e-mailu a IP adresy (ne adresy samotné), abychom mohli omezit, kolik odkazů a vzkazů odchází.
-          U prezenčky stejně tak otisk jména a IP adresy.
-        </li>
-        <li>
-          <strong>Jméno a příjmení z prezenčky</strong> se automaticky smažou {ATTENDANCE_RETENTION_YEARS} roky po
-          večeru. Zůstane jen den a vztah k UP, kvůli počtům návštěv.
-        </li>
-        <li>
-          <strong>Jméno u půjčené hry</strong> (i s poznámkou) se automaticky smaže {LOAN_RETENTION_DAYS} dní
-          po vrácení hry.
-        </li>
-        <li>
-          <strong>Vzkaz</strong> web neukládá, jen ho přepošle e-mailem organizátorům. V jejich schránce
-          zůstane, dokud ho nesmažou.
         </li>
         <li>
           Místo e-mailu zůstane pseudonymní kód, díky kterému statistiky poznají stejného hráče a v „Mých
@@ -118,13 +95,90 @@ function Czech({ contact, discordAlerts }: Props) {
           vyjde stejný kód, takže jde pořád o osobní údaj.
         </li>
         <li>
-          <strong>Přezdívka, docházka, časy, poznámka, důvod odhlášení a hlas o scriptu</strong> zůstávají
+          Když si necháš poslat odkaz na „Moje hry“, uložíme na jeden den otisk e-mailu a IP adresy
+          (ne adresy samotné), abychom mohli omezit, kolik odkazů odchází.
+        </li>
+        <li>
+          <strong>Přezdívka, docházka, odehrané hry, časy, poznámka, důvod odhlášení a hlas o scriptu</strong> zůstávají
           v archivu a statistikách klubu, dokud nepožádáš o jejich smazání.
+        </li>
+      </Ul>
+      <P>Přihlášku si můžeš sám/sama upravit nebo zrušit přes odkaz z potvrzovacího e-mailu.</P>
+
+      <H2 id={PRIVACY_SECTIONS.attendance}>Prezenčka – klubové večery</H2>
+      <P>Když se na klubovém večeru zapíšeš přes QR kód na stole.</P>
+      <H3>Jaké údaje a proč</H3>
+      <Ul>
+        <li>
+          <strong>Jméno, příjmení, zda máš vztah k Univerzitě Palackého</strong> (studuješ nebo pracuješ tam)
+          <strong> a kdy ses zapsal/a</strong> – abychom věděli, kdo klub navštěvuje, a mohli to doložit fakultě,
+          v jejíchž prostorách hrajeme.
+        </li>
+        <li>
+          <strong>Otisk jména a IP adresy</strong> (ne jméno a adresa samotné) – abychom mohli omezit, kolik
+          zápisů přijde z jedné sítě.
+        </li>
+        <li>
+          <strong>Zapamatování na telefonu</strong> – když si to zaškrtneš, uloží se do cookie ve tvém prohlížeči
+          tvoje jméno, příjmení, vztah k UP a náhodný klíč, aby ti příště stačilo jedno ťuknutí.
+        </li>
+      </Ul>
+      <P>Prezenční listinu vedeme z oprávněného zájmu (čl. 6 odst. 1 písm. f GDPR).</P>
+      <H3>Kdo je uvidí</H3>
+      <Ul>
+        <li>Listinu vidí jen organizátoři klubu v administraci webu.</li>
+        <li>Při zapisování výpůjčky hry se jim z listiny našeptávají jména.</li>
+      </Ul>
+      <H3>Jak dlouho je máme</H3>
+      <Ul>
+        <li>
+          <strong>Jméno a příjmení</strong> se automaticky smažou {ATTENDANCE_RETENTION_YEARS} roky po večeru.
+          Zůstane jen den a vztah k UP, kvůli počtům návštěv.
+        </li>
+        <li>Otisk jména a IP adresy smažeme po jednom dni.</li>
+        <li>
+          Cookie zůstane jen v tvém prohlížeči 400 dní od posledního zápisu; smažeš ji na stránce prezenčky
+          tlačítkem „To nejsem já“ nebo „Zapomenout“.
+        </li>
+      </Ul>
+
+      <H2 id={PRIVACY_SECTIONS.loans}>Výpůjčky her</H2>
+      <P>Když si od klubu půjčíš hru.</P>
+      <Ul>
+        <li>
+          <strong>Tvoje jméno, kterou hru a kdy sis ji půjčil/a a vrátil/a</strong>, případně poznámka organizátora
+          (třeba co v krabici chybí) – abychom věděli, kde naše hry jsou. Je to náš oprávněný zájem
+          (čl. 6 odst. 1 písm. f GDPR).
+        </li>
+        <li>Výpůjčky vidí jen organizátoři klubu v administraci webu.</li>
+        <li>
+          <strong>Jméno u půjčené hry</strong> (i s poznámkou) se automaticky smaže {LOAN_RETENTION_DAYS} dní
+          po vrácení hry.
+        </li>
+      </Ul>
+
+      <H2 id={PRIVACY_SECTIONS.message}>Vzkaz</H2>
+      <P>Když nám napíšeš přes formulář na úvodní stránce.</P>
+      <Ul>
+        <li>
+          <strong>Jméno nebo přezdívka</strong> (nepovinné), <strong>e-mail a text vzkazu</strong> – abychom ti
+          mohli odpovědět. Je to náš oprávněný zájem (čl. 6 odst. 1 písm. f GDPR).
+        </li>
+        <li>
+          Vzkaz web neukládá, jen ho přepošle e-mailem organizátorům klubu. V jejich schránce zůstane, dokud
+          ho nesmažou.
+        </li>
+        <li>
+          Na jeden den uložíme otisk e-mailu a IP adresy (ne adresy samotné), abychom mohli omezit, kolik
+          vzkazů odchází.
         </li>
       </Ul>
 
       <H2>Komu údaje svěřujeme</H2>
-      <P>Web běží na službách těchto firem, které pro nás údaje technicky zpracovávají:</P>
+      <P>
+        Nikomu je neprodáváme ani nepředáváme pro jiné účely. Web běží na službách těchto firem, které pro nás
+        údaje technicky zpracovávají:
+      </P>
       <Ul>
         <li><strong>Vercel Inc.</strong> (USA) – provoz webu, server běží v USA.</li>
         <li><strong>Neon</strong> (součást Databricks, Inc., USA) – databáze, data jsou uložená v USA.</li>
@@ -142,29 +196,21 @@ function Czech({ contact, discordAlerts }: Props) {
       </P>
 
       <H2>Tvoje práva</H2>
-      <Ul>
-        <li>
-          Registraci si můžeš sám/sama upravit nebo zrušit přes odkaz z potvrzovacího e-mailu.
-        </li>
-        <li>
-          Můžeš nás požádat o přehled údajů, které o tobě máme, o jejich opravu nebo smazání, případně
-          vznést námitku. Na požádání smažeme všechno dřív, včetně přezdívky a poznámek.
-        </li>
-        <li>
-          Pokud si myslíš, že s údaji nakládáme špatně, můžeš podat stížnost u{" "}
-          <a href="https://uoou.gov.cz" target="_blank" rel="noreferrer" className={linkClass}>
-            Úřadu pro ochranu osobních údajů
-          </a>
-          .
-        </li>
-      </Ul>
+      <P>
+        Můžeš nás požádat o přehled údajů, které o tobě máme, o jejich opravu, smazání, omezení zpracování nebo
+        předání v běžném strojově čitelném formátu, případně vznést námitku. Na požádání smažeme všechno dřív,
+        včetně přezdívky a poznámek. Stížnost můžeš podat u{" "}
+        <a href="https://uoou.gov.cz" target="_blank" rel="noreferrer" className={linkClass}>
+          Úřadu pro ochranu osobních údajů
+        </a>
+        .
+      </P>
 
       <H2>Cookies</H2>
       <P>
         Web nepoužívá analytické ani reklamní cookies. Ukládá jen zvolený jazyk, přihlášení
-        organizátorů do administrace a – když si to u prezenčky zaškrtneš – tvoje jméno, příjmení, vztah k UP
-        a náhodný klíč, aby ti příště stačilo jedno ťuknutí. Tahle cookie zůstane jen v tvém prohlížeči 400 dní
-        od posledního zápisu; smažeš ji na stránce prezenčky tlačítkem „To nejsem já“ nebo „Zapomenout“.
+        organizátorů do administrace a – když si to zaškrtneš – zapamatování v{" "}
+        <a href={`#${PRIVACY_SECTIONS.attendance}`} className={linkClass}>prezenčce</a>.
       </P>
     </>
   );
@@ -183,7 +229,9 @@ function English({ contact, discordAlerts }: Props) {
         For anything about your data, contact us: <Contact contact={contact} discord="write to us on Discord" />.
       </P>
 
-      <H2>What we collect and why</H2>
+      <H2 id={PRIVACY_SECTIONS.botc}>Blood on the Clocktower – signing up for a game</H2>
+      <P>When you sign up here for a Blood on the Clocktower game night.</P>
+      <H3>What we collect and why</H3>
       <Ul>
         <li>
           <strong>Nickname and e-mail</strong> (required) – so we know who is coming and can send you
@@ -201,24 +249,12 @@ function English({ contact, discordAlerts }: Props) {
           <strong>Attendance</strong> – after the game the organisers note who came, for the club&apos;s stats.
         </li>
         <li>
+          <strong>Games played</strong> – the organisers record which character you played in which game (or that
+          you were its Storyteller) and which side won, for the club&apos;s archive and stats.
+        </li>
+        <li>
           <strong>Your script vote</strong> – when you vote on which scripts you&apos;d like to play, so the
           organisers know what to prepare.
-        </li>
-        <li>
-          <strong>Your message</strong> – when you write to us through the form on the home page: your name
-          or nickname (optional), e-mail and the message, so we can reply.
-        </li>
-        <li>
-          <strong>The attendance sheet</strong> – when you sign in at a club night through the QR code on the
-          table: your first and last name, whether you are related to Palacký University (you study or work there)
-          and when you signed in. We keep it to know who comes to the club and to show it to the faculty whose rooms
-          we play in.
-        </li>
-        <li>
-          <strong>Borrowing a game</strong> – when you borrow a game from the club: your name, which game, when you
-          took it and brought it back, and possibly the organiser&apos;s note (what&apos;s missing from the box, say),
-          so we know where our games are. When the organisers write down a loan, names from the attendance sheet
-          are suggested to them.
         </li>
         <li>
           <strong>A fingerprint of your IP address</strong> (not the address itself) – protection against
@@ -227,20 +263,22 @@ function English({ contact, discordAlerts }: Props) {
       </Ul>
       <P>
         We process the data because it is needed to run the game night you sign up for (Art. 6(1)(b)
-        GDPR). The club&apos;s stats, the attendance sheet, lending games, replying to messages and protection
-        against abuse are our legitimate interest (Art. 6(1)(f) GDPR).
+        GDPR). The club&apos;s archive and stats and protection against abuse are our legitimate interest (Art. 6(1)(f)
+        GDPR).
       </P>
-
-      <H2>Who can see it</H2>
+      <H3>Who can see it</H3>
       <Ul>
-        <li>Your nickname is shown publicly in the list of players of the session.</li>
+        <li>
+          Your nickname is shown publicly in the list of players of the session, with a 🎩 when you can storytell.
+        </li>
+        <li>
+          After the game your nickname is shown publicly in the archive with the games played, the character you
+          played and the side that won.
+        </li>
         <li>In a script vote only the number of votes is public; the organisers see who voted for what.</li>
-        <li>Everything else is visible only to the club&apos;s organisers in the site&apos;s admin.</li>
-        <li>Your message goes only to the club&apos;s organisers&apos; mailbox.</li>
-        <li>We don&apos;t sell or share your data for any other purpose.</li>
+        <li>Everything else is visible only to the Blood on the Clocktower organisers in the site&apos;s admin.</li>
       </Ul>
-
-      <H2>How long we keep it</H2>
+      <H3>How long we keep it</H3>
       <Ul>
         <li>
           <strong>First name, last name, e-mail, phone and the IP fingerprint</strong> are kept from the
@@ -248,36 +286,95 @@ function English({ contact, discordAlerts }: Props) {
           automatically.
         </li>
         <li>
-          When you ask for a &quot;My games&quot; link or send us a message, we keep a fingerprint of the
-          e-mail and of your IP address (not the addresses themselves) for one day, to limit how many
-          links and messages go out. The same goes for your name and IP address on the attendance sheet.
-        </li>
-        <li>
-          <strong>First and last names on the attendance sheet</strong> are deleted automatically{" "}
-          {ATTENDANCE_RETENTION_YEARS} years after the night. Only the day and the relation to UP stay, for the
-          number of visits.
-        </li>
-        <li>
-          <strong>Your name on a borrowed game</strong> (and the note with it) is deleted automatically{" "}
-          {LOAN_RETENTION_DAYS} days after the game comes back.
-        </li>
-        <li>
-          The site doesn&apos;t keep <strong>your message</strong>; it only e-mails it to the organisers.
-          It stays in their mailbox until they delete it.
-        </li>
-        <li>
           Your e-mail is replaced by a pseudonymous code so the stats can recognise the same player and
           &quot;My games&quot; still shows your older games. The e-mail cannot be read back from the code,
           but the same address always gives the same code, so it still counts as personal data.
         </li>
         <li>
-          <strong>Nickname, attendance, times, note, cancel reason and script vote</strong> stay in the
+          When you ask for a &quot;My games&quot; link, we keep a fingerprint of the e-mail and of your IP
+          address (not the addresses themselves) for one day, to limit how many links go out.
+        </li>
+        <li>
+          <strong>Nickname, attendance, games played, times, note, cancel reason and script vote</strong> stay in the
           club&apos;s archive and stats until you ask us to delete them.
+        </li>
+      </Ul>
+      <P>You can change or cancel your sign-up yourself through the link in the confirmation e-mail.</P>
+
+      <H2 id={PRIVACY_SECTIONS.attendance}>The attendance sheet – club nights</H2>
+      <P>When you sign in at a club night through the QR code on the table.</P>
+      <H3>What we collect and why</H3>
+      <Ul>
+        <li>
+          <strong>Your first and last name, whether you are related to Palacký University</strong> (you study or
+          work there) <strong>and when you signed in</strong> – to know who comes to the club and to show it to the
+          faculty whose rooms we play in.
+        </li>
+        <li>
+          <strong>A fingerprint of your name and IP address</strong> (not the name and address themselves) – to
+          limit how many entries come from one network.
+        </li>
+        <li>
+          <strong>Remembering you on your phone</strong> – when you tick it, a cookie in your browser stores your
+          name, relation to UP and a random key, so next time a single tap is enough.
+        </li>
+      </Ul>
+      <P>We keep the attendance sheet as our legitimate interest (Art. 6(1)(f) GDPR).</P>
+      <H3>Who can see it</H3>
+      <Ul>
+        <li>Only the club&apos;s organisers see the sheet, in the site&apos;s admin.</li>
+        <li>When they write down a game loan, names from the sheet are suggested to them.</li>
+      </Ul>
+      <H3>How long we keep it</H3>
+      <Ul>
+        <li>
+          <strong>First and last names</strong> are deleted automatically {ATTENDANCE_RETENTION_YEARS} years after
+          the night. Only the day and the relation to UP stay, for the number of visits.
+        </li>
+        <li>The fingerprint of your name and IP address is deleted after one day.</li>
+        <li>
+          The cookie stays only in your browser, for 400 days after your last sign-in; you delete it on the
+          attendance page with &quot;That&apos;s not me&quot; or &quot;Forget&quot;.
+        </li>
+      </Ul>
+
+      <H2 id={PRIVACY_SECTIONS.loans}>Borrowing games</H2>
+      <P>When you borrow a game from the club.</P>
+      <Ul>
+        <li>
+          <strong>Your name, which game, when you took it and brought it back</strong>, and possibly the
+          organiser&apos;s note (what&apos;s missing from the box, say) – so we know where our games are. This is our
+          legitimate interest (Art. 6(1)(f) GDPR).
+        </li>
+        <li>Only the club&apos;s organisers see the loans, in the site&apos;s admin.</li>
+        <li>
+          <strong>Your name on a borrowed game</strong> (and the note with it) is deleted automatically{" "}
+          {LOAN_RETENTION_DAYS} days after the game comes back.
+        </li>
+      </Ul>
+
+      <H2 id={PRIVACY_SECTIONS.message}>Your message</H2>
+      <P>When you write to us through the form on the home page.</P>
+      <Ul>
+        <li>
+          <strong>Your name or nickname</strong> (optional), <strong>e-mail and the message</strong> – so we can
+          reply. This is our legitimate interest (Art. 6(1)(f) GDPR).
+        </li>
+        <li>
+          The site doesn&apos;t keep your message; it only e-mails it to the club&apos;s organisers. It stays in
+          their mailbox until they delete it.
+        </li>
+        <li>
+          We keep a fingerprint of the e-mail and of your IP address (not the addresses themselves) for one day, to
+          limit how many messages go out.
         </li>
       </Ul>
 
       <H2>Who processes it for us</H2>
-      <P>The site runs on services of these companies, which process the data for us technically:</P>
+      <P>
+        We don&apos;t sell or share your data for any other purpose. The site runs on services of these companies,
+        which process the data for us technically:
+      </P>
       <Ul>
         <li><strong>Vercel Inc.</strong> (USA) – hosting, the server runs in the USA.</li>
         <li><strong>Neon</strong> (part of Databricks, Inc., USA) – the database, stored in the USA.</li>
@@ -295,28 +392,21 @@ function English({ contact, discordAlerts }: Props) {
       </P>
 
       <H2>Your rights</H2>
-      <Ul>
-        <li>You can change or cancel your sign-up yourself through the link in the confirmation e-mail.</li>
-        <li>
-          You can ask us what data we hold about you, to correct or delete it, or object to its use. On
-          request we delete everything sooner, including your nickname and notes.
-        </li>
-        <li>
-          If you think we handle your data wrongly, you can complain to the Czech{" "}
-          <a href="https://uoou.gov.cz/en" target="_blank" rel="noreferrer" className={linkClass}>
-            Office for Personal Data Protection
-          </a>
-          .
-        </li>
-      </Ul>
+      <P>
+        You can ask us what data we hold about you, to correct, delete or restrict it or to get it in a common
+        machine-readable format, or object to its use. On request we delete everything sooner, including your
+        nickname and notes. You can complain to the Czech{" "}
+        <a href="https://uoou.gov.cz/en" target="_blank" rel="noreferrer" className={linkClass}>
+          Office for Personal Data Protection
+        </a>
+        .
+      </P>
 
       <H2>Cookies</H2>
       <P>
         The site uses no analytics or advertising cookies. It only stores your chosen language, the
-        organisers&apos; admin login and – when you tick it on the attendance sheet – your name, relation to UP
-        and a random key, so next time a single tap is enough. That cookie stays only in your browser, for 400
-        days after your last sign-in; you delete it on the attendance page with &quot;That&apos;s not me&quot; or
-        &quot;Forget&quot;.
+        organisers&apos; admin login and – when you tick it – remembering you on the{" "}
+        <a href={`#${PRIVACY_SECTIONS.attendance}`} className={linkClass}>attendance sheet</a>.
       </P>
     </>
   );

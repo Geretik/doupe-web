@@ -539,11 +539,17 @@ test("privacy page: linked from the footer and the sign-up form, in both languag
   const id = await createSession({ title: "Soukromý večer" });
   await page.goto(`/botc/termin/${id}`);
   await page.click("main form a:has-text('Více o ochraně údajů')");
-  await expect(page).toHaveURL(/\/ochrana-udaju$/);
+  await expect(page).toHaveURL(/\/ochrana-udaju#krvavka$/);
   await expect(page.locator("h1")).toHaveText("Ochrana osobních údajů");
   const main = page.locator("main");
+  // one part each: Krvavka, the attendance sheet, game loans, messages
+  await expect(page.locator("#krvavka")).toHaveText("Krvavka – přihlášky na hraní");
+  await expect(page.locator("#prezencka")).toHaveText("Prezenčka – klubové večery");
+  await expect(page.locator("#vypujcky")).toHaveText("Výpůjčky her");
+  await expect(page.locator("#vzkaz")).toHaveText("Vzkaz");
   await expect(main).toContainText("Klubu deskových her DoUPě Olomouc");
   await expect(main).toContainText("do uplynutí 14 dní od konání hraní");
+  await expect(main).toContainText("Po hraní je přezdívka veřejně vidět v archivu");
   await expect(main).toContainText("Vercel Inc.");
   // no CONTACT_EMAIL in tests: contact falls back to Discord; no alerts webhook: Discord is not a processor
   await expect(page.getByRole("link", { name: "napiš nám na Discordu" })).toHaveAttribute("href", "https://discord.gg/vCg3WdHpZR");
@@ -556,6 +562,7 @@ test("privacy page: linked from the footer and the sign-up form, in both languag
   await page.click("header button:has-text('English')");
   await expect(page.locator("h1")).toHaveText("Privacy");
   await expect(main).toContainText("until 14 days after the game");
+  await expect(page.locator("#prezencka")).toHaveText("The attendance sheet – club nights");
 });
 
 test("admin: erasing a player on request deletes everything in all their sign-ups and frees upcoming spots", async ({ page }) => {

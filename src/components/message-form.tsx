@@ -7,6 +7,7 @@ import type { Dict } from "@/i18n/dictionaries";
 import type { FormState } from "@/lib/validation";
 import { keepValues } from "./keep-values";
 import { Alert, Button, Field, inputClass } from "./ui";
+import { privacyHref } from "@/lib/site";
 
 /** "Leave us a message" on the club page: the message is e-mailed to the organisers. */
 export function MessageForm({ t }: { t: Dict["club"]["message"] }) {
@@ -32,7 +33,7 @@ export function MessageForm({ t }: { t: Dict["club"]["message"] }) {
       <Button type="submit" disabled={pending}>{pending ? t.submitting : t.submit}</Button>
       <p className="text-xs text-muted">
         {t.privacyNote}{" "}
-        <Link href="/ochrana-udaju" className="underline hover:text-accent">{t.privacyLink}</Link>
+        <Link href={privacyHref("message")} className="underline hover:text-accent">{t.privacyLink}</Link>
       </p>
     </form>
   );

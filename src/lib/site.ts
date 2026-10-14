@@ -6,6 +6,13 @@ export function siteName() {
 /** Invite to the club's Discord server – the main channel for club news. */
 export const CLUB_DISCORD_URL = "https://discord.gg/vCg3WdHpZR";
 
+/** Parts of the privacy page; each form links straight to its own (registration, attendance sheet, message). */
+export const PRIVACY_SECTIONS = { botc: "krvavka", attendance: "prezencka", loans: "vypujcky", message: "vzkaz" } as const;
+
+export function privacyHref(section: keyof typeof PRIVACY_SECTIONS) {
+  return `/ochrana-udaju#${PRIVACY_SECTIONS[section]}`;
+}
+
 /** Where players can write to the organisers: Reply-To of all e-mails and the contact on the privacy page. */
 export function contactEmail() {
   return process.env.CONTACT_EMAIL?.trim() || null;

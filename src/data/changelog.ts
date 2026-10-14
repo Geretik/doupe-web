@@ -41,6 +41,11 @@ export const changelog: ChangelogEntry[] = [
         text: "Při ručním přidání do prezenčky jde přidat i člověka, jehož jméno už na listině je: tlačítko Přesto přidat – je to jiný člověk.",
         href: "/admin/prezence",
       },
+      {
+        for: "players",
+        text: "Ochrana údajů je rozdělená na Krvavku, prezenčku, výpůjčky her a vzkazy, u každé části je, co sbíráme, kdo to vidí a kdy to smažeme. Odkaz pod formulářem vede rovnou na tu svou část.",
+        href: "/ochrana-udaju",
+      },
     ],
   },
   {

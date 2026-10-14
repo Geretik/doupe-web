@@ -6,6 +6,7 @@ import { attendanceAction, forgetAttendanceAction, type AttendanceIntent, type A
 import type { Dict } from "@/i18n/dictionaries";
 import { keepValues } from "./keep-values";
 import { Alert, Card, Field, inputClass } from "./ui";
+import { privacyHref } from "@/lib/site";
 
 type FormMode = Exclude<AttendanceIntent, "checkin">;
 type Affiliation = keyof Dict["attendance"]["affiliations"];
@@ -217,7 +218,7 @@ function PrivacyNote({ t }: { t: FormTexts }) {
   return (
     <p className="text-center text-xs text-muted">
       {t.privacyNote}{" "}
-      <Link href="/ochrana-udaju" className="underline hover:text-accent">
+      <Link href={privacyHref("attendance")} className="underline hover:text-accent">
         {t.privacyLink}
       </Link>
     </p>
