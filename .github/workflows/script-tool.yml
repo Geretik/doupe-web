@@ -48,9 +48,10 @@ jobs:
           FORCE: ${{ inputs.force || github.event_name == 'push' }}
         run: |
           sha=$(gh api "repos/$UPSTREAM/commits/main" --jq .sha)
-          # upstream's tests, lint and e2e of the tool; Chromatic checks their other app
+          # upstream's tests, lint and e2e of the tool; Chromatic checks their other app, Dependabot's runs (its
+          # dependency updates, listed on the commit too) test nothing of the tool
           runs=$(gh api "repos/$UPSTREAM/commits/$sha/check-runs?per_page=100" \
-            --jq '[.check_runs[] | select(.name | test("chromatic"; "i") | not) | (.conclusion // .status)]')
+            --jq '[.check_runs[] | select(.name | test("chromatic|dependabot"; "i") | not) | (.conclusion // .status)]')
           # the upstream commit of each deployment is kept in its meta (see Deploy)
           live=$(curl -fsS -H "Authorization: Bearer $VERCEL_TOKEN" \
             "https://api.vercel.com/v6/deployments?teamId=$VERCEL_ORG_ID&projectId=$VERCEL_PROJECT_ID&target=production&state=READY&limit=1" \
