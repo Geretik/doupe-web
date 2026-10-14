@@ -19,7 +19,8 @@ const link = "text-sm font-medium text-accent hover:underline";
 
 /**
  * The admin's home: the club at a glance, each module a section. Krvavka: the next sessions, drafts waiting for
- * this account, its grimoires in play; the club: its pages; the admin itself: the latest news, accounts and history.
+ * this account, its grimoires in play; the club: its pages; Krycí jména: the key cards; the admin itself: the latest
+ * news, accounts and history.
  * Only the parts the account sees.
  */
 export default async function AdminOverviewPage() {
@@ -126,6 +127,14 @@ export default async function AdminOverviewPage() {
               <Link href="/" className={link}>{o.clubPage}</Link>
               <Link href="/hry" className={link}>{o.games}</Link>
             </div>
+          </Card>
+
+          <Card className="flex flex-col gap-3" id="kryci-jmena">
+            <h2 className="text-xl font-bold">🕵️ {n.codenames}</h2>
+            <Link href="/admin/kryci-jmena" className={link} data-testid="overview-codenames">
+              {n.keyCards}
+              <span className="ml-2 font-normal text-muted">{t.admin.codenames.overview}</span>
+            </Link>
           </Card>
 
           <Card className="flex flex-col gap-5" id="administrace">

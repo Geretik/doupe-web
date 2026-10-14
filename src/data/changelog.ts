@@ -14,7 +14,7 @@ export type ChangelogEntry = { /** YYYY-MM-DD */ date: string; title: string; it
 export const changelog: ChangelogEntry[] = [
   {
     date: "2026-10-14",
-    title: "Administrace zvlášť od Klubu, prezenčka vysvětluje proč a zná jmenovce",
+    title: "Administrace zvlášť od Klubu, prezenčka vysvětluje proč a zná jmenovce, Krycí jména na telefonu",
     items: [
       {
         for: "organizers",
@@ -40,6 +40,11 @@ export const changelog: ChangelogEntry[] = [
         for: "organizers",
         text: "Při ručním přidání do prezenčky jde přidat i člověka, jehož jméno už na listině je: tlačítko Přesto přidat – je to jiný člověk.",
         href: "/admin/prezence",
+      },
+      {
+        for: "organizers",
+        text: "Nová skupina Krycí jména v adminu: klíčová kartička pro vypravěče na telefonu v režimech Big Mines a Ultimate Mirrors. Na celé obrazovce je vidět jen kartička a displej nezhasne, šipkami se přepíná na další. Stejný kód sady dá stejné kartičky jako tiskový nástroj.",
+        href: "/admin/kryci-jmena",
       },
       {
         for: "players",

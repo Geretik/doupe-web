@@ -71,6 +71,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               <NavLink href="/admin/web" prefixes={["/admin/web"]} className={linkClass}>{n.web}</NavLink>
             </div>
           )}
+          {/* a tool without anyone's data: every account has it */}
+          <div className="flex flex-wrap items-center gap-1 whitespace-nowrap sm:border-l sm:border-border sm:pl-2">
+            <span className={groupClass}>{n.codenames}</span>
+            <NavLink href="/admin/kryci-jmena" className={linkClass}>{n.keyCards}</NavLink>
+          </div>
           {/* the admin itself, across modules; the group stays for the news */}
           <div className="flex flex-wrap items-center gap-1 whitespace-nowrap sm:border-l sm:border-border sm:pl-2">
             <span className={groupClass}>{n.administration}</span>
