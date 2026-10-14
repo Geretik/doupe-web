@@ -453,7 +453,7 @@ export const cs = {
   },
   privacy: {
     title: "Ochrana osobních údajů",
-    subtitle: "Jaké údaje sbíráme na Krvavce, v prezenčce, u výpůjček her a ve vzkazech, k čemu je potřebujeme, kdo k nim má přístup a kdy je smažeme.",
+    subtitle: "Jaké údaje sbíráme na Krvavce, v prezenčce, u výpůjček her, ve vzkazech a ve script toolu, k čemu je potřebujeme, kdo k nim má přístup a kdy je smažeme.",
   },
   attendance: attendanceCs,
   draft: draftCs,
@@ -1771,7 +1771,7 @@ export const en: Dict = {
   },
   privacy: {
     title: "Privacy",
-    subtitle: "What we collect for Blood on the Clocktower, on the attendance sheet, for game loans and in messages, what we need it for, who can see it and when we delete it.",
+    subtitle: "What we collect for Blood on the Clocktower, on the attendance sheet, for game loans, in messages and in the script tool, what we need it for, who can see it and when we delete it.",
   },
   attendance: attendanceEn,
   draft: draftEn,

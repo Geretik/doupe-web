@@ -542,11 +542,14 @@ test("privacy page: linked from the footer and the sign-up form, in both languag
   await expect(page).toHaveURL(/\/ochrana-udaju#krvavka$/);
   await expect(page.locator("h1")).toHaveText("Ochrana osobních údajů");
   const main = page.locator("main");
-  // one part each: Krvavka, the attendance sheet, game loans, messages
+  // one part each: Krvavka, the attendance sheet, game loans, messages, the script tool
   await expect(page.locator("#krvavka")).toHaveText("Krvavka – přihlášky na hraní");
   await expect(page.locator("#prezencka")).toHaveText("Prezenčka – klubové večery");
   await expect(page.locator("#vypujcky")).toHaveText("Výpůjčky her");
   await expect(page.locator("#vzkaz")).toHaveText("Vzkaz");
+  // the script tool's footer and its /privacy lead here: our copy, without the original's Google Analytics
+  await expect(page.locator("#script-tool")).toHaveText("Script tool");
+  await expect(main).toContainText("Google Analytics z originálu jsme z naší kopie odstranili");
   await expect(main).toContainText("Klubu deskových her DoUPě Olomouc");
   await expect(main).toContainText("do uplynutí 14 dní od konání hraní");
   await expect(main).toContainText("Po hraní je přezdívka veřejně vidět v archivu");
@@ -563,6 +566,7 @@ test("privacy page: linked from the footer and the sign-up form, in both languag
   await expect(page.locator("h1")).toHaveText("Privacy");
   await expect(main).toContainText("until 14 days after the game");
   await expect(page.locator("#prezencka")).toHaveText("The attendance sheet – club nights");
+  await expect(page.locator("#script-tool")).toHaveText("The script tool");
 });
 
 test("admin: erasing a player on request deletes everything in all their sign-ups and frees upcoming spots", async ({ page }) => {

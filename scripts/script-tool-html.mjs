@@ -9,7 +9,9 @@
 //   filled in (admin → Scripty, components/admin/library-script-form FROM_TOOL), to save it there;
 // - a "📂 Načíst z Doupěte" button: the library to pick a script from, which then opens back here (scripty?do-toolu).
 // Both speak the tool's language: Czech in Czech (and Slovak, which the tool reads as Czech), else English – as the
-// club's additions in scripts/script-tool.patch (src/doupe/text.ts).
+// club's additions in scripts/script-tool.patch (src/doupe/text.ts);
+// - the tool's own privacy page (/privacy) describes the original with its Google Analytics: its address opens the
+//   club's privacy page on the script tool instead (the footer links there too, script-tool.patch).
 // Anything that does not go as expected fails: the deploy stops and the live copy stays.
 import { readFileSync, writeFileSync } from "node:fs";
 
@@ -19,6 +21,8 @@ const CONSENT_KEY = "botc-cookie-consent";
 const LIBRARY = "https://www.doupeol.cz/admin/botc/scripty#ze-toolu=";
 /** The library to pick a script from: a script picked there opens in the tool through its short link */
 const PICK = "https://www.doupeol.cz/admin/botc/scripty?do-toolu";
+/** What applies to the club's copy (src/app/ochrana-udaju, PRIVACY_SECTIONS.scriptTool) */
+const PRIVACY = "https://www.doupeol.cz/ochrana-udaju#script-tool";
 
 const TAG = /\s*<script\b[^>]*\bsrc="https:\/\/www\.googletagmanager\.com\/[^"]*"[^>]*>\s*<\/script>/g;
 /** An inline script that calls gtag(…): the tag's set-up */
@@ -120,7 +124,8 @@ export function clubIndexHtml(html) {
     .replace(COMMENT, "")
     .replace(
       "</head>",
-      `  <script>try{localStorage.getItem("${CONSENT_KEY}")||localStorage.setItem("${CONSENT_KEY}","denied")}catch(e){}</script>${SAVE_BUTTON}\n  </head>`,
+      `  <script>try{localStorage.getItem("${CONSENT_KEY}")||localStorage.setItem("${CONSENT_KEY}","denied")}catch(e){}</script>` +
+        `\n    <script>if(/^\\/privacy\\/?$/.test(location.pathname))location.replace(${JSON.stringify(PRIVACY)})</script>${SAVE_BUTTON}\n  </head>`,
     );
   if (/googletagmanager|\bgtag\(/.test(out)) throw new Error("Google Analytics is still in index.html");
   return out;
@@ -130,7 +135,7 @@ const file = process.argv[2];
 if (file) {
   try {
     writeFileSync(file, clubIndexHtml(readFileSync(file, "utf8")));
-    console.log(`${file}: Google Analytics out, the buttons to load from and save into Doupě in`);
+    console.log(`${file}: Google Analytics out, the buttons to load from and save into Doupě in, /privacy to the club's`);
   } catch (e) {
     console.error(`::error::${file}: ${e.message} – the tool's index.html changed, scripts/script-tool-html.mjs needs a look`);
     process.exit(1);

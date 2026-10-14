@@ -20,6 +20,46 @@ index 1366391..97871ec 100644
                {fileButton}
                {urlButton}
                {pasteJsonButton}
+diff --git a/apps/botc/src/components/Footer.tsx b/apps/botc/src/components/Footer.tsx
+index 4d7ba15..599ac3a 100644
+--- a/apps/botc/src/components/Footer.tsx
++++ b/apps/botc/src/components/Footer.tsx
+@@ -1,10 +1,12 @@
+ import { useLanguage } from '@/hooks/useLanguage'
++import { DOUPE_URL } from '@/doupe/roleSets'
++import { useDoupeText } from '@/doupe/text'
+ import { Box, Flex, Link, Separator, Text } from '@radix-ui/themes'
+-import { Trans, useTranslation } from 'react-i18next'
++import { Trans } from 'react-i18next'
+ 
+ export function Footer() {
+   const { language } = useLanguage()
+-  const { t } = useTranslation()
++  const d = useDoupeText()
+ 
+   const LinkGitHub = () => (
+     <Link href="https://github.com/stefanbackor/boardgames" target="_blank">
+@@ -49,9 +51,18 @@ export function Footer() {
+         <Text size="1" color="gray">
+           <Trans i18nKey="This site is not affiliated with The Pandemonium Institute. All roles and characters are the property of Steven Medway and The Pandemonium Institute." />
+         </Text>
++        {/* the club's copy: its homebrew characters, its sources and its privacy page on the club's web */}
++        <Text size="1" color="gray">
++          {d(
++            'The homebrew characters come from the collections on botchomebrew.wiki and belong to their authors.',
++          )}
++        </Text>
+         <Flex gap="3" mt="2" align="center">
+-          <Link size="1" color="gray" href="/privacy">
+-            {t('Privacy & cookies')}
++          <Link size="1" color="gray" href={`${DOUPE_URL}/botc/zdroje`} target="_blank">
++            {d('Sources')}
++          </Link>
++          <Link size="1" color="gray" href={`${DOUPE_URL}/ochrana-udaju#script-tool`} target="_blank">
++            {d('Privacy & cookies')}
+           </Link>
+         </Flex>
+         <Flex mt="2">
 diff --git a/apps/botc/src/components/script/AddRoleModal.tsx b/apps/botc/src/components/script/AddRoleModal.tsx
 index fc04f1c..2eb1829 100644
 --- a/apps/botc/src/components/script/AddRoleModal.tsx
@@ -587,7 +627,7 @@ index 0000000..dcc6c56
 +})
 diff --git a/apps/botc/src/doupe/roleSets.tsx b/apps/botc/src/doupe/roleSets.tsx
 new file mode 100644
-index 0000000..45b8470
+index 0000000..d3e5822
 --- /dev/null
 +++ b/apps/botc/src/doupe/roleSets.tsx
 @@ -0,0 +1,402 @@
@@ -618,7 +658,7 @@ index 0000000..45b8470
 +import { useDoupeText } from './text'
 +
 +/** The club's web; VITE_DOUPE_URL points the tool at another copy of it (a local one) */
-+const DOUPE_URL = (
++export const DOUPE_URL = (
 +  import.meta.env.VITE_DOUPE_URL || 'https://www.doupeol.cz'
 +).replace(/\/$/, '')
 +
@@ -1224,10 +1264,10 @@ index 0000000..21c2dc1
 +}
 diff --git a/apps/botc/src/doupe/text.ts b/apps/botc/src/doupe/text.ts
 new file mode 100644
-index 0000000..74004a2
+index 0000000..98ed9d0
 --- /dev/null
 +++ b/apps/botc/src/doupe/text.ts
-@@ -0,0 +1,44 @@
+@@ -0,0 +1,49 @@
 +/**
 + * The texts of the club's additions (src/doupe) in Czech, the club's language; any other language of the tool gets
 + * the English ones. Kept here rather than in the tool's locales, which are upstream's.
@@ -1265,6 +1305,11 @@ index 0000000..74004a2
 +  'Hide the ability': 'Skrýt schopnost',
 +  'Hide the characters': 'Skrýt postavy',
 +  'No characters found': 'Žádná postava neodpovídá',
++  // Footer
++  'The homebrew characters come from the collections on botchomebrew.wiki and belong to their authors.':
++    'Homebrew postavy jsou z kolekcí na botchomebrew.wiki a patří jejich autorům.',
++  'Sources': 'Zdroje',
++  'Privacy & cookies': 'Ochrana soukromí a cookies',
 +}
 +
 +export function useDoupeText() {

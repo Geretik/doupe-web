@@ -14,7 +14,7 @@ export type ChangelogEntry = { /** YYYY-MM-DD */ date: string; title: string; it
 export const changelog: ChangelogEntry[] = [
   {
     date: "2026-10-14",
-    title: "Administrace zvlášť od Klubu, prezenčka vysvětluje proč a zná jmenovce, Krycí jména na telefonu, všechny homebrew kolekce, Zdroje",
+    title: "Administrace zvlášť od Klubu, prezenčka vysvětluje proč a zná jmenovce, Krycí jména na telefonu, všechny homebrew kolekce, Zdroje, soukromí ve script toolu",
     items: [
       {
         for: "organizers",
@@ -65,6 +65,11 @@ export const changelog: ChangelogEntry[] = [
         for: "players",
         text: "Nová stránka Zdroje (odkaz dole v patičce): komu patří hra a oficiální postavy, odkud jsou jejich texty a české překlady a ze kterých kolekcí jsou homebrew postavy, i s jejich autory.",
         href: "/botc/zdroje",
+      },
+      {
+        for: "players",
+        text: "Ochrana údajů má novou část Script tool: co platí pro naši kopii (scripty zůstávají v prohlížeči, žádný Google Analytics). Patička script toolu na ni vede místo původní stránky a nově odkazuje i na Zdroje a říká, že homebrew postavy patří autorům na botchomebrew.wiki.",
+        href: "/ochrana-udaju#script-tool",
       },
     ],
   },

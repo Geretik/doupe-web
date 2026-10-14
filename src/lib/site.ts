@@ -7,7 +7,7 @@ export function siteName() {
 export const CLUB_DISCORD_URL = "https://discord.gg/vCg3WdHpZR";
 
 /** Parts of the privacy page; each form links straight to its own (registration, attendance sheet, message). */
-export const PRIVACY_SECTIONS = { botc: "krvavka", attendance: "prezencka", loans: "vypujcky", message: "vzkaz" } as const;
+export const PRIVACY_SECTIONS = { botc: "krvavka", attendance: "prezencka", loans: "vypujcky", message: "vzkaz", scriptTool: "script-tool" } as const;
 
 export function privacyHref(section: keyof typeof PRIVACY_SECTIONS) {
   return `/ochrana-udaju#${PRIVACY_SECTIONS[section]}`;

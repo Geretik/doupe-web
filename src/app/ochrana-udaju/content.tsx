@@ -3,9 +3,10 @@ import { H2, H3, P, Ul } from "@/components/prose";
 import { ATTENDANCE_RETENTION_YEARS } from "@/lib/attendance";
 import { LOAN_RETENTION_DAYS } from "@/lib/loans";
 import { RETENTION_DAYS } from "@/lib/retention";
-import { CLUB_DISCORD_URL, PRIVACY_SECTIONS } from "@/lib/site";
+import { CLUB_DISCORD_URL, PRIVACY_SECTIONS, scriptToolUrl } from "@/lib/site";
 
 const linkClass = "underline hover:text-accent";
+const SCRIPT_TOOL = scriptToolUrl();
 
 type Props = {
   /** CONTACT_EMAIL; without it players are pointed to the club's Discord */
@@ -171,6 +172,36 @@ function Czech({ contact, discordAlerts }: Props) {
         <li>
           Na jeden den uložíme otisk e-mailu a IP adresy (ne adresy samotné), abychom mohli omezit, kolik
           vzkazů odchází.
+        </li>
+      </Ul>
+
+      <H2 id={PRIVACY_SECTIONS.scriptTool}>Script tool</H2>
+      <P>
+        Klubový script tool na <a href={SCRIPT_TOOL} className={linkClass}>skript.doupeol.cz</a> je naše kopie nástroje
+        BoardGames Štefana Bačkora. Jeho původní stránka „Privacy &amp; cookies“ popisuje originál, pro naši kopii platí
+        tohle:
+      </P>
+      <Ul>
+        <li>
+          <strong>Tvoje scripty, zvolený jazyk a rozdělané úpravy</strong> zůstávají jen v tvém prohlížeči (localStorage
+          a sessionStorage), k nám ani nikam jinam se neposílají. Smažeš je smazáním dat stránky v prohlížeči.
+        </li>
+        <li>
+          <strong>Žádná analytika.</strong> Google Analytics z originálu jsme z naší kopie odstranili, proto se ani
+          neptá na souhlas s cookies.
+        </li>
+        <li>
+          <strong>Sdílený script</strong> (i se jménem autora, pokud ho vyplníš) je celý zakódovaný v odkazu – uvidí ho
+          každý, komu odkaz pošleš.
+        </li>
+        <li>
+          Script tool běží na Vercelu jako zbytek webu a homebrew postavy si načítá z doupeol.cz. Obojí vede běžné
+          záznamy o přístupech (logy), které mohou obsahovat IP adresu.
+        </li>
+        <li>
+          Tlačítka <strong>Načíst z Doupěte</strong> a <strong>Uložit do Doupěte</strong> otevřou knihovnu scriptů
+          v administraci webu, kam mají přístup jen organizátoři. Do knihovny se script dostane, jen když ho tam
+          organizátor uloží.
         </li>
       </Ul>
 
@@ -367,6 +398,37 @@ function English({ contact, discordAlerts }: Props) {
         <li>
           We keep a fingerprint of the e-mail and of your IP address (not the addresses themselves) for one day, to
           limit how many messages go out.
+        </li>
+      </Ul>
+
+      <H2 id={PRIVACY_SECTIONS.scriptTool}>The script tool</H2>
+      <P>
+        The club&apos;s script tool at <a href={SCRIPT_TOOL} className={linkClass}>skript.doupeol.cz</a> is our copy of
+        Štefan Bačkor&apos;s BoardGames. Its own &ldquo;Privacy &amp; cookies&rdquo; page describes the original; for
+        our copy this is what applies:
+      </P>
+      <Ul>
+        <li>
+          <strong>Your scripts, your language and unfinished edits</strong> stay in your browser (localStorage and
+          sessionStorage) and are sent neither to us nor anywhere else. Clearing the site&apos;s data in your browser
+          deletes them.
+        </li>
+        <li>
+          <strong>No analytics.</strong> We removed the original&apos;s Google Analytics from our copy, so it does not
+          ask for cookie consent either.
+        </li>
+        <li>
+          <strong>A shared script</strong> (with the author&apos;s name, if you fill it in) is encoded in its link as a
+          whole – anyone you send the link to can see it.
+        </li>
+        <li>
+          The script tool runs on Vercel like the rest of the site and loads the homebrew characters from doupeol.cz.
+          Both keep standard access logs, which may include IP addresses.
+        </li>
+        <li>
+          The <strong>Load from Doupě</strong> and <strong>Save to Doupě</strong> buttons open the library of scripts in
+          the site&apos;s admin, which only organisers can use. A script gets into the library only when an organiser
+          saves it there.
         </li>
       </Ul>
 
