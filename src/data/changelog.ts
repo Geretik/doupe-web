@@ -14,7 +14,7 @@ export type ChangelogEntry = { /** YYYY-MM-DD */ date: string; title: string; it
 export const changelog: ChangelogEntry[] = [
   {
     date: "2026-10-14",
-    title: "Administrace zvlášť od Klubu, prezenčka vysvětluje proč a zná jmenovce, Krycí jména na telefonu",
+    title: "Administrace zvlášť od Klubu, prezenčka vysvětluje proč a zná jmenovce, Krycí jména na telefonu, všechny homebrew kolekce",
     items: [
       {
         for: "organizers",
@@ -50,6 +50,11 @@ export const changelog: ChangelogEntry[] = [
         for: "players",
         text: "Ochrana údajů je rozdělená na Krvavku, prezenčku, výpůjčky her a vzkazy, u každé části je, co sbíráme, kdo to vidí a kdy to smažeme. Odkaz pod formulářem vede rovnou na tu svou část.",
         href: "/ochrana-udaju",
+      },
+      {
+        for: "organizers",
+        text: "Homebrew postavy ze všech 48 kolekcí botchomebrew.wiki: přibylo 24 dalších (např. Trouble Homebrewing, Imppreposterous Syncretastrophy, The Garden Centre, FakeTier's Collection), dohromady 1852 postav, všechny přeložené do češtiny. Najdeš je v katalogu Homebrew postav, v sestavení scriptu, v draftu, v grimoáru i ve script toolu.",
+        href: "/admin/botc/scripty/homebrew",
       },
     ],
   },

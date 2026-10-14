@@ -8,7 +8,8 @@
 // The Czech translations are not read from the wiki: src/data/homebrew-cs.json is kept by hand (name, ability, the
 // Storyteller's texts, reminder tokens in the English order; `h` = abilityHash of the English ability translated).
 // This run copies the Czech names into homebrew-roles.json and says which characters have none or an outdated one
-// (the site shows those in English, see modules/botc/lib/homebrew.ts).
+// (the site shows those in English, see modules/botc/lib/homebrew.ts), and which ones the wiki changed otherwise since
+// the last run (night texts, tokens, punctuation), for their translation to be checked.
 // Run it on your own computer after editing COLLECTIONS: the wiki sits behind Cloudflare, which may turn away
 // requests from servers. The characters go live with the next deploy (commit and push).
 //
@@ -31,7 +32,8 @@ const MAX_ID = 40;
 /**
  * The collections, in the order the site lists them. `key`: the start of their characters' ids – letters only,
  * never changed once used. `slug`: the collection's address on the wiki. `name`: when the wiki's is decorated.
- * Chosen 2026-10-10: the club's three (Luis, Odyssey, The Menagerie) and the wiki's curated collections.
+ * Chosen 2026-10-10: the club's three (Luis, Odyssey, The Menagerie) and the wiki's curated collections;
+ * the rest of the wiki's collections added 2026-10-14 (from `cute` on, alphabetically).
  */
 const COLLECTIONS = [
   { key: "luis", slug: "homebrews-by-luis", name: "Homebrews by Luis" },
@@ -58,6 +60,30 @@ const COLLECTIONS = [
   { key: "arcanum", slug: "the-arcanum" },
   { key: "ravenswood", slug: "Ravenswood Chronicle" },
   { key: "contest", slug: "homebrew-contest-winners" },
+  { key: "cute", slug: "a-cute-collection-of-characters" },
+  { key: "kerfuffle", slug: "a-right-proper-kerfuffle" },
+  { key: "coda", slug: "coda-s-comprehension-collection" },
+  { key: "conduct", slug: "conduc-t", name: "conDUC!T" },
+  { key: "faketier", slug: "faketier-s-collection" },
+  { key: "forgetful", slug: "forgetful-brewing" },
+  { key: "trouble", slug: "imppreposterous" },
+  { key: "syncret", slug: "imppreposterous-syncretastrophy" },
+  { key: "casa", slug: "la-casa-de-proker10ias-proker10ias", name: "La Casa de Proker10ias" },
+  { key: "midsummer", slug: "midsummer-nights-dream" },
+  { key: "chamber", slug: "my-chamber" },
+  { key: "earth", slug: "out-of-this-earth" },
+  { key: "principia", slug: "principia-horologia" },
+  { key: "ratspath", slug: "rat-s-path-to-judgement-day" },
+  { key: "sleepless", slug: "sleepless-nights-sunless-daze" },
+  { key: "conference", slug: "the-conference" },
+  { key: "evergreen", slug: "the-evergreen-hollow" },
+  { key: "faewilds", slug: "the-faewilds" },
+  { key: "forge", slug: "the-forge-nerdguy708" },
+  { key: "garden", slug: "the-garden-centre-0rig0nal" },
+  { key: "genderbent", slug: "the-gender-bent" },
+  { key: "kinky", slug: "the-kinky-collection" },
+  { key: "mint", slug: "the-mint-collection" },
+  { key: "secondvisit", slug: "the-second-visit" },
 ];
 
 const TEAMS = ["townsfolk", "outsider", "minion", "demon", "traveller", "fabled", "loric"];
@@ -208,16 +234,25 @@ for (const r of roles) if (!existsSync(new URL(`${r.id}.webp`, ICONS))) r.noIcon
 
 const CZECH_FILE = new URL("../src/data/homebrew-cs.json", import.meta.url);
 const czech = existsSync(CZECH_FILE) ? JSON.parse(readFileSync(CZECH_FILE, "utf8")) : {};
+// the texts as the last run saved them: what the wiki changed since then without touching the ability's words
+const previous = existsSync(CHARACTERS_FILE) ? JSON.parse(readFileSync(CHARACTERS_FILE, "utf8")) : {};
+const TRANSLATED = ["ability", "firstNightReminder", "otherNightReminder", "reminders", "remindersGlobal"];
 const untranslated = [];
 const outdated = [];
+const changed = [];
 for (const r of roles) {
   const cs = czech[r.id];
+  const en = characters[r.id];
   if (!cs) untranslated.push(r.id);
-  else if (cs.h !== r.h) outdated.push(r.id);
+  // the site shows English for these (modules/botc/lib/homebrew.ts)
+  else if (cs.h !== r.h || cs.reminders.length !== en.reminders.length || cs.remindersGlobal.length !== en.remindersGlobal.length) outdated.push(r.id);
+  else if (previous[r.id] && TRANSLATED.some((f) => JSON.stringify(previous[r.id][f]) !== JSON.stringify(en[f]))) changed.push(r.id);
   if (cs?.name) r.cs = cs.name;
 }
 if (untranslated.length) console.warn(`Bez českého překladu (${untranslated.length}): ${untranslated.join(", ")}`);
-if (outdated.length) console.warn(`Schopnost se na wiki změnila, český překlad je zastaralý (${outdated.length}): ${outdated.join(", ")}`);
+if (outdated.length) console.warn(`Schopnost nebo počet žetonů se na wiki změnil, český překlad je zastaralý (${outdated.length}): ${outdated.join(", ")}`);
+// said only by this run: the next one compares with what this one saves
+if (changed.length) console.warn(`Texty pro vypravěče, žetony nebo interpunkce se na wiki změnily, zkontroluj český překlad (${changed.length}, git diff homebrew-characters.json): ${changed.join(", ")}`);
 // one character per line, so a new run shows in git as the lines that changed
 const lines = (list) => list.map((x) => JSON.stringify(x)).join(",\n");
 writeFileSync(ROLES_FILE, `{"collections":[\n${lines(collections)}\n],"roles":[\n${lines(roles)}\n]}\n`);

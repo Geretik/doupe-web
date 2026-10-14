@@ -44,7 +44,7 @@ import {
 } from "../../src/modules/botc/lib/grimoire/state";
 import { grimoireStateSchema } from "../../src/modules/botc/lib/grimoire/schema";
 import { circlePoint, GRID, gridPoints, insertNearest, putPlace, snap } from "../../src/modules/botc/lib/grimoire/layout";
-import { findRole, roleName, storytellerRoles } from "../../src/modules/botc/lib/botc-roles";
+import { findRole, homebrewRoles, roleName, storytellerRoles } from "../../src/modules/botc/lib/botc-roles";
 import { stepCards, youAreCard } from "../../src/modules/botc/lib/grimoire/show";
 import { adminLogin, createAdminUser, createSession, resetDb, sql } from "./helpers";
 
@@ -1545,7 +1545,7 @@ test("grimoire: a traveller from the setup – the side first, then the characte
   await expect(set).toHaveValue("official");
   await expect(choice.getByRole("button", { name: /^Biskup/ })).toBeVisible();
   await set.selectOption("homebrew");
-  await expect(choice.locator("li button")).toHaveCount(50);
+  await expect(choice.locator("li button")).toHaveCount(homebrewRoles.filter((r) => r.team === "traveller").length);
   for (const text of await choice.locator("li button").allInnerTexts()) expect(text.split("\n").filter(Boolean).length).toBeGreaterThan(1);
   await set.selectOption("tb");
   await expect(choice.getByRole("button", { name: /^Biskup/ })).toHaveCount(0);
