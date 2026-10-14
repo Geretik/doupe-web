@@ -28,6 +28,8 @@ test("admin: Codenames key cards are the print tool's, full screen shows only th
   await expect(card).toHaveAttribute("data-seed", "test01/1");
   await expect(card.locator("svg")).toContainText("Big Mines · 1");
   await expect(card.locator("svg")).toContainText("Začínají červení");
+  // mine numbers on every cell but the three assassins', which end the game anyway
+  await expect(card.locator("svg text:has(tspan)")).toHaveCount(42 - 3);
   await page.getByRole("button", { name: "Další kartička" }).click();
   await expect(card).toHaveAttribute("data-board", MINES_RED[1]);
   await expect(page.getByTestId("codenames-card-number")).toHaveText("Kartička 2");
@@ -38,6 +40,8 @@ test("admin: Codenames key cards are the print tool's, full screen shows only th
   await expect(card).toHaveAttribute("data-board", MIRRORS_RANDOM[0]);
   await expect(card).toHaveAttribute("data-starts", "BLUE");
   await expect(page.locator("input[name=showMines]")).not.toBeChecked();
+  // both teams' axis is vertical: two icons in the header, across the cells a white line under a red and a blue dashed one
+  await expect(card.locator("svg line")).toHaveCount(2 + 3);
 
   // full screen: only the card, the arrow keys step through the set, Esc closes it
   await page.getByRole("button", { name: "Na celou obrazovku" }).click();

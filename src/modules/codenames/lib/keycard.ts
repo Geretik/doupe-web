@@ -75,9 +75,9 @@ export function generateKeyCards(
 // SVG
 
 export interface KeyCardStyle {
-  /** Do každého pole vepsat počet sousedních červených | modrých agentů (Mines). */
+  /** Do každého pole kromě vrahů vepsat počet sousedních červených | modrých agentů (Mines). */
   showMines: boolean;
-  /** Ikony os souměrnosti v hlavičce (jen u zrcadlových desek). */
+  /** Osy souměrnosti: ikony v hlavičce a čáry přes pole (jen u zrcadlových desek). */
   showAxes: boolean;
   /** Nadpis vlevo nahoře, např. název režimu a číslo kartičky. */
   title: string;
@@ -141,6 +141,44 @@ function axisIcon(axis: MirrorAxis, x: number, y: number, size: number, color: s
   );
 }
 
+/**
+ * Osy souměrnosti přímo přes mřížku (gx, gy, šířka w, výška h): barva týmu na bílém podkladu, aby byla vidět
+ * i přes pole stejné barvy. Osa společná oběma týmům střídá úseky v barvách obou týmů.
+ */
+function gridAxisLines(board: GeneratedBoard, gx: number, gy: number, w: number, h: number, cell: number): string {
+  const axes = board.mirrorAxes!;
+  const ends = (axis: MirrorAxis): [number, number, number, number] =>
+    ({
+      VERTICAL: [gx + w / 2, gy, gx + w / 2, gy + h],
+      HORIZONTAL: [gx, gy + h / 2, gx + w, gy + h / 2],
+      DIAGONAL: [gx, gy, gx + w, gy + h],
+      ANTI_DIAGONAL: [gx, gy + h, gx + w, gy],
+    })[axis] as [number, number, number, number];
+  const line = (axis: MirrorAxis, color: string, width: number, extra = "") => {
+    const [x1, y1, x2, y2] = ends(axis);
+    return `<line x1="${n(x1)}" y1="${n(y1)}" x2="${n(x2)}" y2="${n(y2)}" stroke="${color}" stroke-width="${n(width)}"${extra}/>`;
+  };
+  const casing = cell * 0.16;
+  const stroke = cell * 0.08;
+  const dash = cell * 0.5;
+  const first = board.startingTeam;
+  const second: Team = first === "RED" ? "BLUE" : "RED";
+  if (axes[first] === axes[second]) {
+    const pattern = ` stroke-dasharray="${n(dash)} ${n(dash)}"`;
+    return (
+      line(axes[first], "#fff", casing) +
+      line(axes[first], KEY_CARD_COLORS[first], stroke, pattern) +
+      line(axes[first], KEY_CARD_COLORS[second], stroke, `${pattern} stroke-dashoffset="${n(dash)}"`)
+    );
+  }
+  return (
+    line(axes[first], "#fff", casing) +
+    line(axes[second], "#fff", casing) +
+    line(axes[first], KEY_CARD_COLORS[first], stroke) +
+    line(axes[second], KEY_CARD_COLORS[second], stroke)
+  );
+}
+
 /** Jedna kartička jako vnořený <svg> umístěný na (x, y). */
 export function renderKeyCardSvg(board: GeneratedBoard, size: KeyCardSize, style: KeyCardStyle, x = 0, y = 0): string {
   const { width: W, height: H, cell } = size;
@@ -168,12 +206,17 @@ export function renderKeyCardSvg(board: GeneratedBoard, size: KeyCardSize, style
   }
 
   for (const c of board.cards) {
+    parts.push(
+      `<rect x="${n(gx + c.x * cell)}" y="${n(gy + c.y * cell)}" width="${n(cell)}" height="${n(cell)}" fill="${cellFill(c.type)}" stroke="${KEY_CARD_COLORS.GRID}" stroke-width="0.25"/>`,
+    );
+  }
+  // osy přes pole, pod čísly min
+  if (style.showAxes && board.mirrorAxes) parts.push(gridAxisLines(board, gx, gy, gridW, cell * board.height, cell));
+  for (const c of board.cards) {
     const cx = gx + c.x * cell;
     const cy = gy + c.y * cell;
-    parts.push(
-      `<rect x="${n(cx)}" y="${n(cy)}" width="${n(cell)}" height="${n(cell)}" fill="${cellFill(c.type)}" stroke="${KEY_CARD_COLORS.GRID}" stroke-width="0.25"/>`,
-    );
-    if (style.showMines) {
+    // vrah hru rovnou ukončí, jeho čísla by k ničemu nebyla
+    if (style.showMines && c.type !== "ASSASSIN") {
       const bw = cell * 0.84;
       const bh = cell * 0.46;
       const mx = cx + cell / 2;

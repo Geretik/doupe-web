@@ -43,7 +43,7 @@ export const changelog: ChangelogEntry[] = [
       },
       {
         for: "organizers",
-        text: "Nová skupina Krycí jména v adminu: klíčová kartička pro vypravěče na telefonu v režimech Big Mines a Ultimate Mirrors. Na celé obrazovce je vidět jen kartička a displej nezhasne, šipkami se přepíná na další. Stejný kód sady dá stejné kartičky jako tiskový nástroj.",
+        text: "Nová skupina Krycí jména v adminu: klíčová kartička pro vypravěče na telefonu v režimech Big Mines (čísla min u všech polí kromě vrahů) a Ultimate Mirrors (osy souměrnosti týmů nakreslené přes pole). Na celé obrazovce je vidět jen kartička a displej nezhasne, šipkami se přepíná na další. Stejný kód sady dá stejné kartičky jako tiskový nástroj.",
         href: "/admin/kryci-jmena",
       },
       {
