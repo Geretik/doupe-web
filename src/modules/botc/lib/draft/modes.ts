@@ -96,8 +96,8 @@ const playersField = (fallback: number): ModeField => ({ key: "players", min: 0,
 const personal: DraftMode = {
   id: "personal",
   fields: [
-    playersField(5),
-    { key: "rolesPerParticipant", min: 1, max: 60, default: 15 },
+    playersField(4),
+    { key: "rolesPerParticipant", min: 1, max: 60, default: 30 },
     { key: "teamCap", min: 1, max: 60, default: 4 },
     ...cappedTeams.map((team) => ({ key: capKeys[team], min: 0, max: 1, default: 1, kind: "check" as const })),
   ],

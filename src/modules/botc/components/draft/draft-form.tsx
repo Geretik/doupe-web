@@ -28,6 +28,7 @@ export type DraftFormLabels = {
   roles: string;
   sourceFilter: string;
   sourceManual: string;
+  sourceJson: string;
   editions: string;
   homebrew: string;
   homebrewHint: string;
@@ -79,7 +80,8 @@ export function DraftForm({
 }) {
   const [state, formAction, pending] = useActionState(action, {});
   const src = initial.roleSource;
-  const [kind, setKind] = useState<DraftRoleSource["kind"]>(src.kind);
+  // "json": pasting a script, which ticks its characters in the manual pick
+  const [kind, setKind] = useState<DraftRoleSource["kind"] | "json">(src.kind);
   const [pickedEditions, setPickedEditions] = useState<Set<string>>(
     new Set(src.kind === "filter" ? src.editions : editions.map((e) => e.id)),
   );
@@ -96,7 +98,7 @@ export function DraftForm({
 
   const offeredCount = useMemo(
     () =>
-      kind === "manual"
+      kind !== "filter"
         ? manual.size
         : roles.filter((r) => pickedEditions.has(r.edition) && pickedTeams.has(r.team)).length +
           homebrewRoles.filter((r) => pickedCollections.has(r.collection!) && pickedTeams.has(r.team)).length,
@@ -118,12 +120,13 @@ export function DraftForm({
 
   const loadScript = () => {
     const ids = roleIdsFromScriptJson(importText);
-    if (!ids) {
+    if (!ids?.length) {
       setImportResult("failed");
       return;
     }
     setManual(new Set(ids));
     setImportResult("done");
+    setKind("manual");
   };
 
   return (
@@ -194,7 +197,42 @@ export function DraftForm({
             <input type="radio" name="sourceKind" value="manual" checked={kind === "manual"} onChange={() => setKind("manual")} className="accent-accent" />
             {t.sourceManual}
           </label>
+          {/* sends "manual": the characters of the script are the hand-picked ones */}
+          <label className="flex items-center gap-2">
+            <input
+              type="radio"
+              name="sourceKind"
+              value="manual"
+              checked={kind === "json"}
+              onChange={() => {
+                setKind("json");
+                setImportResult(null);
+              }}
+              className="accent-accent"
+            />
+            {t.sourceJson}
+          </label>
         </div>
+
+        {kind === "json" && (
+          <div className="flex flex-col gap-2 text-sm">
+            <p className="text-xs text-muted">{t.importHint}</p>
+            <textarea
+              aria-label={t.importTitle}
+              value={importText}
+              onChange={(e) => setImportText(e.target.value)}
+              rows={6}
+              autoFocus
+              className={`${inputClass} w-full font-mono text-xs`}
+            />
+            <div className="flex items-center gap-3">
+              <Button type="button" variant="secondary" onClick={loadScript}>{t.importButton}</Button>
+              {importResult === "failed" && <span className="text-xs text-accent">{t.importFailed}</span>}
+            </div>
+            {[...manual].map((id) => <input key={id} type="hidden" name="role" value={id} />)}
+            {errors.roles?.map((m) => <p key={m} className="text-xs text-accent">{m}</p>)}
+          </div>
+        )}
 
         {kind === "filter" && (
           <div className="grid gap-4 sm:grid-cols-2">
@@ -260,25 +298,7 @@ export function DraftForm({
 
         {kind === "manual" && (
           <div className="flex flex-col gap-3">
-            <details className="rounded-md border border-border p-3 text-sm">
-              <summary className="cursor-pointer font-medium">{t.importTitle}</summary>
-              <p className="mt-2 text-xs text-muted">{t.importHint}</p>
-              <textarea
-                aria-label={t.importTitle}
-                value={importText}
-                onChange={(e) => setImportText(e.target.value)}
-                rows={4}
-                className={`${inputClass} mt-2 w-full font-mono text-xs`}
-              />
-              <div className="mt-2 flex items-center gap-3">
-                <Button type="button" variant="secondary" onClick={loadScript}>{t.importButton}</Button>
-                {importResult && (
-                  <span className={`text-xs ${importResult === "done" ? "text-green-700 dark:text-green-400" : "text-accent"}`}>
-                    {importResult === "done" ? t.importDone : t.importFailed}
-                  </span>
-                )}
-              </div>
-            </details>
+            {importResult === "done" && <p className="text-sm text-green-700 dark:text-green-400" data-testid="import-done">{t.importDone}</p>}
             {teams.map((team) => {
               const ofTeam = roles.filter((r) => r.team === team.id);
               const count = ofTeam.filter((r) => manual.has(r.id)).length;

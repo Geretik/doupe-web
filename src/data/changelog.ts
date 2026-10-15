@@ -23,6 +23,11 @@ export const changelog: ChangelogEntry[] = [
       },
       {
         for: "organizers",
+        text: "Nový draft v Personal Pool má předvyplněné 4 hráče a 30 rolí na hráče. Nabízené postavy jdou vybrat i vložením JSONu scriptu (třetí volba vedle edic a ručního výběru) – postavy se zaškrtnou v ručním výběru a dají se upravit.",
+        href: "/admin/botc/drafty/novy",
+      },
+      {
+        for: "organizers",
         text: "Kartička Krycích jmen má pod mřížkou počty polí – Č červení, M modří, B bílí, 💀 vrazi; v angličtině je celá kartička anglicky (R, B, W).",
         href: "/admin/kryci-jmena",
       },

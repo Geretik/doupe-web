@@ -150,8 +150,7 @@ async function newDraft(page: Page, name: string, mode: "personal" | "shared", s
   await page.selectOption("#mode", mode);
   await page.fill(`[id='${mode}.players']`, "0");
   await page.fill(mode === "personal" ? "[id='personal.rolesPerParticipant']" : "[id='shared.targetRoles']", size);
-  await page.check("text=Ruční výběr");
-  await page.click("summary:has-text('Načíst postavy ze scriptu')");
+  await page.check("text=Ze scriptu (vložit JSON)");
   await page.fill("textarea[aria-label='Načíst postavy ze scriptu']", JSON.stringify(roles));
   await page.click("button:has-text('Načíst')");
   await page.click("button:has-text('Vytvořit draft')");
@@ -177,10 +176,13 @@ test("draft: invitations, snake turns over days, a race of two tabs, bundles, co
   await expect(page.locator("#mode")).toHaveValue("personal");
   await page.fill("[id='personal.players']", "2");
   await page.fill("[id='personal.rolesPerParticipant']", "3");
-  await page.check("text=Ruční výběr");
-  await page.click("summary:has-text('Načíst postavy ze scriptu')");
+  await page.check("text=Ze scriptu (vložit JSON)");
   await page.fill("textarea[aria-label='Načíst postavy ze scriptu']", JSON.stringify(SCRIPT));
   await page.click("button:has-text('Načíst')");
+  // loaded into the hand-picked list, to change there
+  await expect(page.getByTestId("import-done")).toBeVisible();
+  await expect(page.getByLabel("Ruční výběr")).toBeChecked();
+  await expect(page.locator("input[name=role][value=imp]")).toBeChecked();
   await expect(page.getByTestId("offered-count")).toHaveText("Nabízí se 12 postav.");
   await expect(page.locator("#bundles")).toHaveValue("Choirboy + King\nHuntsman + Damsel");
   await page.click("button:has-text('Vytvořit draft')");
@@ -489,8 +491,7 @@ test("draft: the cap ticked in the form – a second Outsider only once everybod
   for (const team of ["podivíny", "přisluhovače", "démony"]) await expect(page.getByLabel(`Strop na ${team}`)).toBeChecked();
   await page.fill("[id='personal.teamCap']", "1");
   await page.getByLabel("Strop na démony").uncheck();
-  await page.check("text=Ruční výběr");
-  await page.click("summary:has-text('Načíst postavy ze scriptu')");
+  await page.check("text=Ze scriptu (vložit JSON)");
   const roles = [{ id: "_meta", name: "Strop" }, "washerwoman", "librarian", "chef", "empath", "drunk", "recluse", "saint", "butler", "poisoner", "imp", "po"];
   await page.fill("textarea[aria-label='Načíst postavy ze scriptu']", JSON.stringify(roles));
   await page.click("button:has-text('Načíst')");
@@ -563,14 +564,14 @@ test("draft: the number of players – no more drafters invited, ready once full
   // 5 by default in the Personal Pool, any number (0) in the Shared Pool; a draft for one player is refused
   await page.goto("/admin/botc/drafty/novy");
   await page.fill("#name", "Draft pro tři");
-  await expect(page.locator("[id='personal.players']")).toHaveValue("5");
+  await expect(page.locator("[id='personal.players']")).toHaveValue("4");
+  await expect(page.locator("[id='personal.rolesPerParticipant']")).toHaveValue("30");
   await page.selectOption("#mode", "shared");
   await expect(page.locator("[id='shared.players']")).toHaveValue("0");
   await page.selectOption("#mode", "personal");
   await page.fill("[id='personal.players']", "1");
   await page.fill("[id='personal.rolesPerParticipant']", "2");
-  await page.check("text=Ruční výběr");
-  await page.click("summary:has-text('Načíst postavy ze scriptu')");
+  await page.check("text=Ze scriptu (vložit JSON)");
   await page.fill("textarea[aria-label='Načíst postavy ze scriptu']", JSON.stringify(SCRIPT));
   await page.click("button:has-text('Načíst')");
   await page.click("button:has-text('Vytvořit draft')");
