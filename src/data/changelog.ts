@@ -14,11 +14,16 @@ export type ChangelogEntry = { /** YYYY-MM-DD */ date: string; title: string; it
 export const changelog: ChangelogEntry[] = [
   {
     date: "2026-10-15",
-    title: "Krycí jména: počty polí na kartičce",
+    title: "Krycí jména: počty polí na kartičce, volby podle režimu",
     items: [
       {
         for: "organizers",
         text: "Kartička Krycích jmen má pod mřížkou počty polí – Č červení, M modří, B bílí, 💀 vrazi; v angličtině je celá kartička anglicky (R, B, W).",
+        href: "/admin/kryci-jmena",
+      },
+      {
+        for: "organizers",
+        text: "Krycí jména nabízí jen to, co k režimu patří: čísla min jen u Big Mines (při výběru režimu zapnutá, jdou vypnout), osy souměrnosti týmů jsou u Ultimate Mirrors na kartičce vždy, bez volby.",
         href: "/admin/kryci-jmena",
       },
     ],

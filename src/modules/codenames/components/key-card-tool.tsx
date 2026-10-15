@@ -11,10 +11,13 @@ import type { BoardProfile, GeneratedBoard, TeamChoice } from "@/modules/codenam
 type Texts = Dict["admin"]["codenames"];
 type ModeId = "GOLD_BIG_MINES" | "GOLD_ULTIMATE_MIRRORS";
 
-/** The modes on offer; names as in the print tool (mines-generator), whose card titles they are too. */
-const MODES: { id: ModeId; name: string; profile: BoardProfile; showMines: boolean; desc: "mines" | "mirrors" }[] = [
-  { id: "GOLD_BIG_MINES", name: "Big Mines", profile: GOLD_BIG_MINES, showMines: true, desc: "mines" },
-  { id: "GOLD_ULTIMATE_MIRRORS", name: "Ultimate Mirrors", profile: GOLD_ULTIMATE_MIRRORS, showMines: false, desc: "mirrors" },
+/**
+ * The modes on offer; names as in the print tool (mines-generator), whose card titles they are too. Mine numbers belong
+ * to Big Mines (and can be turned off), the teams' axes to Ultimate Mirrors (always drawn: the mirror board has them).
+ */
+const MODES: { id: ModeId; name: string; profile: BoardProfile; mines: boolean; desc: "mines" | "mirrors" }[] = [
+  { id: "GOLD_BIG_MINES", name: "Big Mines", profile: GOLD_BIG_MINES, mines: true, desc: "mines" },
+  { id: "GOLD_ULTIMATE_MIRRORS", name: "Ultimate Mirrors", profile: GOLD_ULTIMATE_MIRRORS, mines: false, desc: "mirrors" },
 ];
 
 const TEAMS: TeamChoice[] = ["RANDOM", "RED", "BLUE"];
@@ -22,7 +25,7 @@ const TEAMS: TeamChoice[] = ["RANDOM", "RED", "BLUE"];
 /** The card's width in mm, as two to an A4 page in the print tool; on screen it only sets the proportions. */
 const CARD_WIDTH = 92;
 
-type Settings = { mode: ModeId; team: TeamChoice; showMines: boolean; minesOnAssassins: boolean; showAxes: boolean; code: string; card: number };
+type Settings = { mode: ModeId; team: TeamChoice; showMines: boolean; minesOnAssassins: boolean; code: string; card: number };
 
 // ---------------------------------------------------------------------------------------------
 // The settings, kept on this device: a reload (or a phone that slept) shows the same card again
@@ -69,7 +72,6 @@ function parse(raw: string | null): Settings | null {
       team: s.team!,
       showMines: s.showMines !== false,
       minesOnAssassins: s.minesOnAssassins === true,
-      showAxes: s.showAxes !== false,
       code: s.code,
       card,
     };
@@ -87,7 +89,7 @@ function newCode() {
 }
 
 function fresh(): Settings {
-  return { mode: "GOLD_BIG_MINES", team: "RANDOM", showMines: true, minesOnAssassins: false, showAxes: true, code: newCode(), card: 1 };
+  return { mode: "GOLD_BIG_MINES", team: "RANDOM", showMines: true, minesOnAssassins: false, code: newCode(), card: 1 };
 }
 
 /** The card's layout as rows of R, B, . (civilian) and X (assassin), for the tests. */
@@ -129,9 +131,9 @@ export function KeyCardTool({ t, lang }: { t: Texts; lang: Locale }) {
     () =>
       board && settings
         ? renderKeyCardSvg(board, keyCardSize(board, CARD_WIDTH, 1000), {
-            showMines: settings.showMines,
+            showMines: mode.mines && settings.showMines,
             minesOnAssassins: settings.minesOnAssassins,
-            showAxes: settings.showAxes,
+            showAxes: true,
             title: `${mode.name} · ${settings.card}`,
             note: board.seed,
             lang,
@@ -210,7 +212,7 @@ export function KeyCardTool({ t, lang }: { t: Texts; lang: Locale }) {
                 name="mode"
                 value={m.id}
                 checked={settings.mode === m.id}
-                onChange={() => update({ mode: m.id, showMines: m.showMines, card: 1 })}
+                onChange={() => update({ mode: m.id, showMines: true, card: 1 })}
                 className="sr-only"
               />
               <span className="font-medium">{m.name}</span>
@@ -231,35 +233,27 @@ export function KeyCardTool({ t, lang }: { t: Texts; lang: Locale }) {
           </div>
         </fieldset>
 
-        <fieldset className="flex flex-col gap-2 text-sm">
-          <legend className="mb-2 font-semibold">{t.onCard}</legend>
-          <label className="flex items-start gap-3">
-            <input type="checkbox" name="showMines" checked={settings.showMines} onChange={(e) => update({ showMines: e.target.checked })} className="mt-0.5 h-4 w-4 accent-accent" />
-            {t.showMines}
-          </label>
-          <label className={`ml-7 flex items-start gap-3 ${settings.showMines ? "" : "opacity-50"}`}>
-            <input
-              type="checkbox"
-              name="minesOnAssassins"
-              checked={settings.minesOnAssassins}
-              disabled={!settings.showMines}
-              onChange={(e) => update({ minesOnAssassins: e.target.checked })}
-              className="mt-0.5 h-4 w-4 accent-accent"
-            />
-            {t.minesOnAssassins}
-          </label>
-          <label className={`flex items-start gap-3 ${mode.profile.mirror ? "" : "opacity-50"}`}>
-            <input
-              type="checkbox"
-              name="showAxes"
-              checked={settings.showAxes}
-              disabled={!mode.profile.mirror}
-              onChange={(e) => update({ showAxes: e.target.checked })}
-              className="mt-0.5 h-4 w-4 accent-accent"
-            />
-            {t.showAxes}
-          </label>
-        </fieldset>
+        {/* mine numbers only in Big Mines, on whenever the mode is picked */}
+        {mode.mines && (
+          <fieldset className="flex flex-col gap-2 text-sm">
+            <legend className="mb-2 font-semibold">{t.onCard}</legend>
+            <label className="flex items-start gap-3">
+              <input type="checkbox" name="showMines" checked={settings.showMines} onChange={(e) => update({ showMines: e.target.checked })} className="mt-0.5 h-4 w-4 accent-accent" />
+              {t.showMines}
+            </label>
+            <label className={`ml-7 flex items-start gap-3 ${settings.showMines ? "" : "opacity-50"}`}>
+              <input
+                type="checkbox"
+                name="minesOnAssassins"
+                checked={settings.minesOnAssassins}
+                disabled={!settings.showMines}
+                onChange={(e) => update({ minesOnAssassins: e.target.checked })}
+                className="mt-0.5 h-4 w-4 accent-accent"
+              />
+              {t.minesOnAssassins}
+            </label>
+          </fieldset>
+        )}
 
         <fieldset className="flex flex-col gap-2">
           <legend className="mb-2 text-sm font-semibold">{t.code}</legend>

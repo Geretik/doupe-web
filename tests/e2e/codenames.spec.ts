@@ -35,6 +35,10 @@ test("admin: Codenames key cards are the print tool's, full screen shows only th
   await page.getByLabel("I u vrahů").check();
   await expect(card.locator("svg text:has(tspan)")).toHaveCount(42);
   await page.getByLabel("I u vrahů").uncheck();
+  // they can be turned off; the axes are no option here (Big Mines has none)
+  await page.locator("input[name=showMines]").uncheck();
+  await expect(card.locator("svg text:has(tspan)")).toHaveCount(0);
+  await expect(page.locator("input[name=showAxes]")).toHaveCount(0);
   await page.getByRole("button", { name: "Další kartička" }).click();
   await expect(card).toHaveAttribute("data-board", MINES_RED[1]);
   await expect(page.getByTestId("codenames-card-number")).toHaveText("Kartička 2");
@@ -44,7 +48,10 @@ test("admin: Codenames key cards are the print tool's, full screen shows only th
   await page.getByText("Náhodně", { exact: true }).click();
   await expect(card).toHaveAttribute("data-board", MIRRORS_RANDOM[0]);
   await expect(card).toHaveAttribute("data-starts", "BLUE");
-  await expect(page.locator("input[name=showMines]")).not.toBeChecked();
+  // no mine numbers in this mode, not even as an option; the axes are always on the card, with no option either
+  await expect(page.locator("input[name=showMines]")).toHaveCount(0);
+  await expect(page.locator("input[name=showAxes]")).toHaveCount(0);
+  await expect(card.locator("svg text:has(tspan)")).toHaveCount(0);
   // both teams' axis is vertical: two icons in the header, across the cells a white line under a red and a blue dashed one
   await expect(card.locator("svg line")).toHaveCount(2 + 3);
 
@@ -71,4 +78,9 @@ test("admin: Codenames key cards are the print tool's, full screen shows only th
   await expect(card).toHaveAttribute("data-board", MIRRORS_RANDOM[1]);
   await expect(card).toHaveAttribute("data-starts", "BLUE");
   for (const text of ["Blue starts", "R: 16", "B: 18", "W: 14", "💀: 1"]) await expect(card.locator("svg")).toContainText(text);
+
+  // back in Big Mines the mine numbers are on again, though they were turned off there
+  await page.getByText("Big Mines", { exact: true }).click();
+  await expect(page.locator("input[name=showMines]")).toBeChecked();
+  await expect(card.locator("svg text:has(tspan)")).toHaveCount(42 - 3);
 });
