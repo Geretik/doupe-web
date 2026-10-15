@@ -78,8 +78,11 @@ function parseDraftForm(formData: FormData, t: DraftT): { values?: service.Draft
 
   const modeId = String(formData.get("mode") ?? "");
   if (!isDraftMode(modeId)) return { fieldErrors: { ...fieldErrors, mode: [e.checkForm] } };
-  const { config, invalid } = parseModeConfig(draftModes[modeId], formData);
+  const mode = draftModes[modeId];
+  const { config, invalid } = parseModeConfig(mode, formData);
   for (const f of invalid) fieldErrors[`${modeId}.${f.key}`] = [e.number(f.min, f.max)];
+  // a draft for one player could never start
+  if (config.players > 0 && config.players < mode.minDrafters) fieldErrors[`${modeId}.players`] = [e.players(mode.minDrafters)];
 
   if (Object.keys(fieldErrors).length) return { fieldErrors };
   return { values: { name, note, roleSource, bundles: bundles.map(sortRoleIds), mode: modeId, config } };

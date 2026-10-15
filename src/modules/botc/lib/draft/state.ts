@@ -8,7 +8,7 @@ import type {
   DraftSessionOption,
 } from "@/db/schema";
 import { drafterCanPick, type OptionState } from "./engine";
-import { draftModes, type ModeProblem, type PoolState } from "./modes";
+import { draftModes, playerLimit, type ModeProblem, type PoolState } from "./modes";
 import { buildOptions, resolveRoleSource, totalRoles, type OptionsResult } from "./roles";
 
 /*
@@ -80,7 +80,8 @@ export function memberCanPick(rows: SessionRows, rt: Runtime, memberId: number) 
 
 /** One thing checked before a session may start. */
 export type StartCheck =
-  | { kind: "drafters"; ok: boolean; count: number; min: number }
+  /** limit = the number of players (0 = any); short = fewer than that, which only the owner may start with */
+  | { kind: "drafters"; ok: boolean; short: boolean; count: number; min: number; limit: number }
   | { kind: "accepted"; ok: boolean; pending: string[] }
   | { kind: "roles"; ok: boolean; problem: ModeProblem | null; offered: number }
   | { kind: "bundles"; ok: true; incomplete: OptionsResult["incompleteBundles"] };
@@ -91,14 +92,17 @@ export type PrepState = "draft" | "waiting" | "ready";
 export type StartReview = {
   checks: StartCheck[];
   ready: boolean;
+  /** Only fewer drafters than the number of players keep it from starting – its owner may start it so */
+  short: boolean;
   prepState: PrepState;
   /** What the session would offer if it started now */
   offer: OptionsResult;
 };
 
 /**
- * The conditions for starting: enough drafters, all of them accepted, enough characters for the mode.
- * Incomplete bundles do not stop the start, they are only pointed out.
+ * The conditions for starting: as many drafters as the number of players (with none set at least the mode's
+ * minimum), all of them accepted, enough characters for the mode. Fewer drafters than the number, but at least the
+ * minimum, is a start only the owner may choose (`short`). Incomplete bundles do not stop the start, they are only pointed out.
  */
 export function startReview(rows: SessionRows): StartReview {
   const { session, draft, members } = rows;
@@ -108,15 +112,25 @@ export function startReview(rows: SessionRows): StartReview {
   const offered = totalRoles(offer.options);
   const pending = order.filter((m) => m.status === "invited");
   const problems = mode.startProblems(session.modeConfig, order.length, offered);
+  const count = order.length;
+  const min = mode.minDrafters;
+  const limit = playerLimit(mode, session.modeConfig);
+  const short = limit > 0 && count >= min && count < limit;
   const checks: StartCheck[] = [
-    { kind: "drafters", ok: order.length >= mode.minDrafters, count: order.length, min: mode.minDrafters },
+    { kind: "drafters", ok: count >= min && (limit === 0 || count === limit), short, count, min, limit },
     { kind: "accepted", ok: pending.length === 0, pending: pending.map((m) => m.nickname) },
     { kind: "roles", ok: problems.length === 0, problem: problems[0] ?? null, offered },
   ];
   if (offer.incompleteBundles.length) checks.push({ kind: "bundles", ok: true, incomplete: offer.incompleteBundles });
   const ready = checks.every((c) => c.ok);
   const prepState: PrepState = ready ? "ready" : members.some((m) => m.status === "invited") ? "waiting" : "draft";
-  return { checks, ready, prepState, offer };
+  return { checks, ready, short: short && checks.every((c) => c.ok || c.kind === "drafters"), prepState, offer };
+}
+
+/** Free places for drafters out of the number of players, or null when the draft takes any number. */
+export function seatsLeft(rows: SessionRows) {
+  const limit = playerLimit(draftModes[rows.session.mode], rows.session.modeConfig);
+  return limit ? { free: Math.max(0, limit - drafters(rows.members).length), limit } : null;
 }
 
 /** What the signed-in account may do with a session. */

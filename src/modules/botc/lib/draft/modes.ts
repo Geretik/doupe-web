@@ -86,10 +86,17 @@ export function teamCapBlock(config: ModeConfig, memberId: number, option: Optio
   return null;
 }
 
+/**
+ * The number of players, a setting of every mode: at most this many drafters (0 = any number). The draft is ready to
+ * start once there are this many; its owner may start it with fewer (modules/botc/lib/draft/state startReview).
+ */
+const playersField = (fallback: number): ModeField => ({ key: "players", min: 0, max: 30, default: fallback });
+
 /** Each drafter fills a pool of their own; their picks are gone for the others of the same session. */
 const personal: DraftMode = {
   id: "personal",
   fields: [
+    playersField(5),
     { key: "rolesPerParticipant", min: 1, max: 60, default: 15 },
     { key: "teamCap", min: 1, max: 60, default: 4 },
     ...cappedTeams.map((team) => ({ key: capKeys[team], min: 0, max: 1, default: 1, kind: "check" as const })),
@@ -116,7 +123,7 @@ const personal: DraftMode = {
 /** Everybody picks into one pool until it has the target number of characters. */
 const shared: DraftMode = {
   id: "shared",
-  fields: [{ key: "targetRoles", min: 1, max: 200, default: 30 }],
+  fields: [playersField(0), { key: "targetRoles", min: 1, max: 200, default: 30 }],
   minDrafters: 2,
   startProblems(config, _drafters, offeredRoles) {
     const needed = config.targetRoles;
@@ -147,6 +154,11 @@ export function normalizeModeConfig(mode: DraftMode, input: Partial<Record<strin
     config[f.key] = Number.isInteger(n) && n >= f.min && n <= f.max ? n : f.default;
   }
   return config;
+}
+
+/** The most drafters the session takes, 0 = any number; before the start with the default if it was saved without one. */
+export function playerLimit(mode: DraftMode, config: ModeConfig) {
+  return normalizeModeConfig(mode, config).players ?? 0;
 }
 
 /** Settings from a form: field "<mode>.<key>" (a checkbox ticked or not); the fields that are not whole numbers in range. */

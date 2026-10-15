@@ -14,8 +14,13 @@ export type ChangelogEntry = { /** YYYY-MM-DD */ date: string; title: string; it
 export const changelog: ChangelogEntry[] = [
   {
     date: "2026-10-15",
-    title: "Krycí jména: počty polí na kartičce, volby podle režimu; tlačítka bez označování textu",
+    title: "Krycí jména: počty polí na kartičce, volby podle režimu; tlačítka bez označování textu; počet hráčů draftu",
     items: [
+      {
+        for: "organizers",
+        text: "Draft má v nastavení počet hráčů (0 = bez omezení, hodí se spíš pro Shared Pool): víc draftujících nejde pozvat a připravený ke startu je, až jsou všichni; zakladatel ho může spustit i s méně hráči.",
+        href: "/admin/botc/drafty/novy",
+      },
       {
         for: "organizers",
         text: "Kartička Krycích jmen má pod mřížkou počty polí – Č červení, M modří, B bílí, 💀 vrazi; v angličtině je celá kartička anglicky (R, B, W).",

@@ -26,7 +26,7 @@ import { TURN_REMINDER_HOURS } from "./events";
 import { draftModes, normalizeModeConfig, type ModeConfig } from "./modes";
 import { sortRoleIds } from "./roles";
 import { scriptJson } from "./script";
-import { drafters, isDraftManager, runtime, sessionAccess, startReview, type SessionAccess, type SessionRows } from "./state";
+import { drafters, isDraftManager, runtime, seatsLeft, sessionAccess, startReview, type SessionAccess, type SessionRows } from "./state";
 
 /*
  * Everything that changes a draft. Each change of a session runs in one transaction that first locks the
@@ -52,6 +52,8 @@ export type DraftError =
   /** the personal mode's cap on Outsiders, Minions or Demons: somebody else has fewer and can still get them */
   | "capped"
   | "notReady"
+  /** more drafters than the draft's number of players */
+  | "full"
   | "ownerFixed"
   /** the script was saved elsewhere since the page was opened */
   | "conflict"
@@ -221,19 +223,24 @@ export type InviteInput = { userIds: number[]; role: "organizer" | "participant"
 
 /**
  * Invites accounts to this one session; each gets an e-mail. Somebody who declined can be invited again;
- * existing members are left as they are. Drafting newcomers join the end of the order.
+ * existing members are left as they are. Drafting newcomers join the end of the order – no more of them than
+ * there are free places for players, or nobody is invited.
  */
 export async function inviteMembers(user: AdminUser, sessionId: number, input: InviteInput, locale: Locale): Promise<Result<{ invited: string[] }>> {
   return preparing(sessionId, user, async (tx, rows) => {
-    // only those who see Krvavka, like listInvitableAccounts offers
+    // only those who see Krvavka, like listInvitableAccounts offers, and are not in the draft (or declined)
     const accounts = (
       input.userIds.length ? await tx.select().from(adminUsers).where(inArray(adminUsers.id, input.userIds)).orderBy(asc(adminUsers.id)) : []
-    ).filter((account) => canAccess(account, "botc"));
+    ).filter((account) => {
+      const existing = rows.members.find((m) => m.userId === account.id);
+      return canAccess(account, "botc") && (!existing || existing.status === "declined");
+    });
+    const seats = seatsLeft(rows);
+    if (input.drafts && seats && accounts.length > seats.free) return fail("full");
     const invited: string[] = [];
     const now = new Date();
     for (const account of accounts) {
       const existing = rows.members.find((m) => m.userId === account.id);
-      if (existing && existing.status !== "declined") continue;
       const values = {
         nickname: account.nickname,
         role: input.role,
@@ -289,6 +296,7 @@ export async function updateMember(user: AdminUser, sessionId: number, memberId:
     if (typeof patch?.drafts === "boolean") set.drafts = patch.drafts;
     if (!Object.keys(set).length) return fail("forbidden");
     if (set.role && target.role === "owner") return fail("ownerFixed");
+    if (set.drafts && !target.drafts && target.status !== "declined" && seatsLeft(rows)?.free === 0) return fail("full");
     await tx.update(draftSessionMembers).set(set).where(and(eq(draftSessionMembers.id, memberId), eq(draftSessionMembers.sessionId, sessionId)));
     if (set.drafts !== undefined) await compactSeats(tx, sessionId);
     return { ok: true };
@@ -333,14 +341,16 @@ export async function shuffleOrder(user: AdminUser, sessionId: number): Promise<
 }
 
 /**
- * Starts the draft once everything is ready (modules/botc/lib/draft/state startReview, checked again here under the lock).
+ * Starts the draft once everything is ready (modules/botc/lib/draft/state startReview, checked again here under the lock),
+ * or with fewer drafters than its number of players when its owner chooses so.
  * The session gets its own copy of what is offered and its pools, so later changes of the Draft cannot reach
  * it; from now on its members and their order are fixed.
  */
 export async function startSession(user: AdminUser, sessionId: number): Promise<Result> {
   return preparing(sessionId, user, async (tx, rows) => {
     const review = startReview(rows);
-    if (!review.ready) return fail("notReady");
+    const owner = rows.members.find((m) => m.userId === user.id)?.role === "owner";
+    if (!review.ready && !(review.short && owner)) return fail("notReady");
     const order = drafters(rows.members);
     await setSeats(tx, rows.members, order);
     const optionRows = await tx

@@ -143,11 +143,12 @@ async function draftFromUrl(page: Page) {
 
 const SCRIPT = [{ id: "_meta", name: "Test" }, "washerwoman", "librarian", "investigator", "chef", "empath", "choirboy", "king", "huntsman", "damsel", "imp", "poisoner", "drunk"];
 
-/** Sets up a draft through the form: hand-picked characters from a script's JSON, a mode and its size. */
+/** Sets up a draft through the form: hand-picked characters from a script's JSON, a mode and its size, any number of players. */
 async function newDraft(page: Page, name: string, mode: "personal" | "shared", size: string, roles: unknown[] = SCRIPT) {
   await page.goto("/admin/botc/drafty/novy");
   await page.fill("#name", name);
   await page.selectOption("#mode", mode);
+  await page.fill(`[id='${mode}.players']`, "0");
   await page.fill(mode === "personal" ? "[id='personal.rolesPerParticipant']" : "[id='shared.targetRoles']", size);
   await page.check("text=Ruční výběr");
   await page.click("summary:has-text('Načíst postavy ze scriptu')");
@@ -174,6 +175,7 @@ test("draft: invitations, snake turns over days, a race of two tabs, bundles, co
   await page.click("text=+ Nový draft");
   await page.fill("#name", "Podzimní draft");
   await expect(page.locator("#mode")).toHaveValue("personal");
+  await page.fill("[id='personal.players']", "2");
   await page.fill("[id='personal.rolesPerParticipant']", "3");
   await page.check("text=Ruční výběr");
   await page.click("summary:has-text('Načíst postavy ze scriptu')");
@@ -184,8 +186,8 @@ test("draft: invitations, snake turns over days, a race of two tabs, bundles, co
   await page.click("button:has-text('Vytvořit draft')");
   const { draftId, sessionId } = await draftFromUrl(page);
   await expect(page.locator("h1")).toContainText("Podzimní draft");
-  await expect(page.locator("main")).toContainText("Personal Pool · 3 role na hráče");
-  await expect(page.getByTestId("start-checks")).toContainText("Draftujících: 1 – potřeba aspoň 2");
+  await expect(page.locator("main")).toContainText("Personal Pool · max. 2 hráči · 3 role na hráče");
+  await expect(page.getByTestId("start-checks")).toContainText("Draftujících: 1 z 2 – potřeba aspoň 2");
   await expect(page.getByTestId("start-checks")).toContainText("✅Nabídka: 12 postav");
 
   // Bob is invited, Charlie is not
@@ -480,6 +482,7 @@ test("draft: the cap ticked in the form – a second Outsider only once everybod
 
   await page.goto("/admin/botc/drafty/novy");
   await page.fill("#name", "Draft se stropem");
+  await page.fill("[id='personal.players']", "2");
   await page.fill("[id='personal.rolesPerParticipant']", "4");
   // ticked for all three by default, at 4
   await expect(page.locator("[id='personal.teamCap']")).toHaveValue("4");
@@ -493,9 +496,9 @@ test("draft: the cap ticked in the form – a second Outsider only once everybod
   await page.click("button:has-text('Načíst')");
   await page.click("button:has-text('Vytvořit draft')");
   const { draftId, sessionId } = await draftFromUrl(page);
-  await expect(page.locator("main")).toContainText("Personal Pool · 4 role na hráče · strop 1: podivíni, přisluhovači");
+  await expect(page.locator("main")).toContainText("Personal Pool · max. 2 hráči · 4 role na hráče · strop 1: podivíni, přisluhovači");
   expect(await sql("select mode_config from draft_sessions where id=$1", [sessionId])).toEqual([
-    { mode_config: { rolesPerParticipant: 4, teamCap: 1, capOutsider: 1, capMinion: 1, capDemon: 0 } },
+    { mode_config: { players: 2, rolesPerParticipant: 4, teamCap: 1, capOutsider: 1, capMinion: 1, capDemon: 0 } },
   ]);
 
   await invite(page, "Bob");
@@ -548,6 +551,73 @@ test("draft: the cap ticked in the form – a second Outsider only once everybod
     { nickname: "Bob", role_ids: ["butler"] },
     { nickname: "Alice", role_ids: ["recluse"] },
   ]);
+});
+
+test("draft: the number of players – no more drafters invited, ready once full, its owner may start with fewer, 0 = any number", async ({ page, browser }) => {
+  await account("Alice", "alice@example.com");
+  await account("Bob", "bob@example.com");
+  await account("Charlie", "charlie@example.com");
+  await account("Dana", "dana@example.com");
+  await adminLogin(page, { email: "alice@example.com", password: PASSWORD });
+
+  // 5 by default in the Personal Pool, any number (0) in the Shared Pool; a draft for one player is refused
+  await page.goto("/admin/botc/drafty/novy");
+  await page.fill("#name", "Draft pro tři");
+  await expect(page.locator("[id='personal.players']")).toHaveValue("5");
+  await page.selectOption("#mode", "shared");
+  await expect(page.locator("[id='shared.players']")).toHaveValue("0");
+  await page.selectOption("#mode", "personal");
+  await page.fill("[id='personal.players']", "1");
+  await page.fill("[id='personal.rolesPerParticipant']", "2");
+  await page.check("text=Ruční výběr");
+  await page.click("summary:has-text('Načíst postavy ze scriptu')");
+  await page.fill("textarea[aria-label='Načíst postavy ze scriptu']", JSON.stringify(SCRIPT));
+  await page.click("button:has-text('Načíst')");
+  await page.click("button:has-text('Vytvořit draft')");
+  await expect(page.locator("main")).toContainText("Zadej 0 (bez omezení), nebo aspoň 2");
+  await page.fill("[id='personal.players']", "3");
+  await page.click("button:has-text('Vytvořit draft')");
+  const { draftId, sessionId } = await draftFromUrl(page);
+  await expect(page.locator("main")).toContainText("Personal Pool · max. 3 hráči · 2 role na hráče");
+  await expect(page.getByTestId("seats-left")).toHaveText("Volná místa pro hráče: 2 z 3.");
+
+  // three more drafters do not fit: nobody is invited
+  for (const name of ["Bob", "Charlie", "Dana"]) await page.check(`[data-testid=draft-invite] label:has-text('${name}') input`);
+  await page.click("[data-testid=draft-invite] button:has-text('Pozvat')");
+  await expect(page.getByTestId("draft-invite")).toContainText("Tolik hráčů se do draftu nevejde");
+  expect(await sql("select count(*)::int as c from draft_session_members where session_id=$1", [sessionId])).toEqual([{ c: 1 }]);
+  for (const name of ["Charlie", "Dana"]) await page.uncheck(`[data-testid=draft-invite] label:has-text('${name}') input`);
+  await invite(page, "Bob");
+  await expect(page.getByTestId("seats-left")).toHaveText("Volná místa pro hráče: 1 z 3.");
+  // an organiser who does not draft takes no place
+  await page.check("[data-testid=draft-invite] label:has-text('Charlie') input");
+  await page.selectOption("[data-testid=draft-invite] select[name=role]", "organizer");
+  await page.uncheck("[data-testid=draft-invite] label:has-text('Bude draftovat') input");
+  await page.click("[data-testid=draft-invite] button:has-text('Pozvat')");
+  await expect(page.locator("main")).toContainText("Pozváno: Charlie");
+  await expect(page.getByTestId("seats-left")).toHaveText("Volná místa pro hráče: 1 z 3.");
+  await sql("update draft_session_members set status='accepted' where session_id=$1", [sessionId]);
+
+  // 2 of 3 is not ready; the organiser cannot start it, only the owner
+  await page.reload();
+  await expect(page.getByTestId("start-checks")).toContainText("⏳Draftujících: 2 z 3 – s méně hráči může draft spustit zakladatel");
+  await expect(page.locator("h1")).not.toContainText("Připraveno ke startu");
+  const charlie = await loginAs(browser, "charlie@example.com");
+  await charlie.goto(`/admin/botc/drafty/${draftId}`);
+  await expect(charlie.locator("button:has-text('Spustit draft')")).toBeDisabled();
+  await expect(charlie.locator("button:has-text('Spustit s méně hráči')")).toHaveCount(0);
+  await charlie.context().close();
+
+  let question = "";
+  page.once("dialog", (d) => {
+    question = d.message();
+    void d.accept();
+  });
+  await page.click("button:has-text('Spustit s méně hráči')");
+  await expect(page.locator("#turn")).toContainText("JSI NA TAHU");
+  expect(question).toContain("hráčů jen 2 z 3");
+  await expect(page.getByTestId("order")).toHaveText(/1\. Alice.*2\. Bob/);
+  expect(await sql("select mode_config->>'players' as players from draft_sessions where id=$1", [sessionId])).toEqual([{ players: "3" }]);
 });
 
 test("draft: a member change sets only the role and drafting – a forged call cannot move the row into another draft", async ({ page, browser }) => {

@@ -12,6 +12,13 @@ const capped = (c: Record<string, number>) =>
 const teamPlural: Record<CappedTeam, string> = { outsider: "podivíni", minion: "přisluhovači", demon: "démoni" };
 const teamAccusative: Record<CappedTeam, string> = { outsider: "podivíny", minion: "přisluhovače", demon: "démony" };
 const teamPluralEn: Record<CappedTeam, string> = { outsider: "Outsiders", minion: "Minions", demon: "Demons" };
+/** The number of players, a field of every mode (modules/botc/lib/draft/modes playersField) */
+const playersLabel = "Počet hráčů";
+const playersHint = "Kolik lidí bude draftovat; 0 = bez omezení (hodí se spíš pro Shared Pool). Připravený je draft, až jich je tolik – zakladatel ho může spustit i s méně hráči.";
+const playersLabelEn = "Number of players";
+const playersHintEn = "How many people will draft; 0 = any number (better suited to the Shared Pool). The draft is ready once there are that many – its owner may start it with fewer players.";
+const playersCs = (c: Record<string, number>) => (c.players ? `max. ${c.players} ${cz(c.players, "hráč", "hráči", "hráčů")} · ` : "");
+const playersEn = (c: Record<string, number>) => (c.players ? `up to ${c.players} players · ` : "");
 
 export const draftCs = {
   title: "Drafty",
@@ -35,6 +42,7 @@ export const draftCs = {
       name: "Personal Pool",
       description: "Každý draftuje do vlastního poolu; co si někdo vybere, ostatním zmizí. Konec, až má každý svůj počet rolí.",
       fields: {
+        players: playersLabel,
         rolesPerParticipant: "Rolí na hráče",
         capOutsider: "Strop na podivíny",
         capMinion: "Strop na přisluhovače",
@@ -42,21 +50,23 @@ export const draftCs = {
         teamCap: "Strop",
       } as Record<string, string>,
       hints: {
+        players: playersHint,
         teamCap: "U zaškrtnutých týmů: kdo z týmu má tolik postav, další si vezme, až jich tolik budou mít všichni (kdo k nim ještě můžou – mají místo v poolu a dost jich zbývá). Pak se bere volně.",
       } as Record<string, string>,
     },
     shared: {
       name: "Shared Pool",
       description: "Všichni draftují do jednoho společného poolu. Konec, až má pool cílový počet rolí.",
-      fields: { targetRoles: "Velikost společného poolu (rolí)" } as Record<string, string>,
-      hints: {} as Record<string, string>,
+      fields: { players: playersLabel, targetRoles: "Velikost společného poolu (rolí)" } as Record<string, string>,
+      hints: { players: playersHint } as Record<string, string>,
     },
   },
   modeSummary: {
     personal: (c: Record<string, number>) =>
+      playersCs(c) +
       `${c.rolesPerParticipant} ${cz(c.rolesPerParticipant, "role", "role", "rolí")} na hráče` +
       (c.teamCap && capped(c).length ? ` · strop ${c.teamCap}: ${capped(c).map((team) => teamPlural[team]).join(", ")}` : ""),
-    shared: (c: Record<string, number>) => `pool ${c.targetRoles} ${cz(c.targetRoles, "role", "rolí", "rolí")}`,
+    shared: (c: Record<string, number>) => `${playersCs(c)}pool ${c.targetRoles} ${cz(c.targetRoles, "role", "rolí", "rolí")}`,
   },
 
   /** Plain strings only – passed to the draft form (client). */
@@ -127,7 +137,15 @@ export const draftCs = {
   inviteNobody: "Vyber, koho pozvat.",
   checksTitle: "Před startem",
   check: {
-    drafters: (count: number, min: number) => `Draftujících: ${count}${count < min ? ` – potřeba aspoň ${min}` : ""}`,
+    drafters: (count: number, min: number, limit: number) =>
+      `Draftujících: ${count}${limit ? ` z ${limit}` : ""}` +
+      (count < min
+        ? ` – potřeba aspoň ${min}`
+        : limit && count > limit
+          ? " – víc, než je míst: odeber někoho, nebo zvyš počet hráčů v nastavení"
+          : limit && count < limit
+            ? " – s méně hráči může draft spustit zakladatel"
+            : ""),
     acceptedOk: "Všichni draftující přijali pozvánku",
     acceptedPending: (names: string) => `Ještě neodpověděli: ${names}`,
     roles: (offered: number, needed: number | null) =>
@@ -139,6 +157,10 @@ export const draftCs = {
   bundles: "Balíčky",
   start: "Spustit draft",
   startConfirm: "Spustit draft? Pak už nejde měnit účastníky, pořadí ani nastavení.",
+  startShort: "Spustit s méně hráči",
+  startShortConfirm: (count: number, limit: number) =>
+    `Spustit draft, i když je hráčů jen ${count} z ${limit}? Pak už nejde měnit účastníky, pořadí ani nastavení.`,
+  seatsLeft: (free: number, limit: number) => `Volná místa pro hráče: ${free} z ${limit}.`,
   cancel: "Zrušit draft",
   cancelConfirm: "Zrušit draft? Skončí a nepůjde v něm pokračovat; picky a pooly zůstanou vidět.",
 
@@ -222,6 +244,7 @@ export const draftCs = {
     doesNotFit: "Tohle se ti do poolu už nevejde.",
     capped: "Tohle teď vzít nemůžeš: strop – další postavy z tohoto týmu si vezmeš, až jich budou mít ostatní stejně.",
     notReady: "Draft ještě není připravený ke startu – podívej se na seznam „Před startem“.",
+    full: "Tolik hráčů se do draftu nevejde – pozvi méně lidí (nebo jako nedraftující), nebo zvyš počet hráčů v nastavení.",
     ownerFixed: "Vlastníka draftu nejde odebrat ani mu změnit roli.",
     conflict: "Script mezitím někdo uložil jinde – načti stránku znovu.",
     outsidePool: "Script smí obsahovat jen postavy z poolu.",
@@ -232,6 +255,7 @@ export const draftCs = {
     noEditions: "Vyber aspoň jednu edici nebo homebrew kolekci",
     noTeams: "Vyber aspoň jeden tým",
     number: (min: number, max: number) => `Zadej celé číslo od ${min} do ${max}`,
+    players: (min: number) => `Zadej 0 (bez omezení), nebo aspoň ${min}`,
     bundleUnknown: (names: string) => `Neznámé postavy: ${names}`,
     bundleTooSmall: "Balíček musí mít aspoň dvě různé postavy",
     bundleOverlap: (name: string) => `${name} je ve dvou balíčcích`,
@@ -276,6 +300,7 @@ export const draftEn: DraftDict = {
       name: "Personal Pool",
       description: "Everybody drafts into a pool of their own; what one picks is gone for the others. Over when everybody has their number of roles.",
       fields: {
+        players: playersLabelEn,
         rolesPerParticipant: "Roles per player",
         capOutsider: "Cap on Outsiders",
         capMinion: "Cap on Minions",
@@ -283,21 +308,23 @@ export const draftEn: DraftDict = {
         teamCap: "Cap",
       },
       hints: {
+        players: playersHintEn,
         teamCap: "For the teams ticked: whoever has this many of the team takes more once everybody has this many (those who still can – with room in their pool and enough of them left). Then it is free.",
       },
     },
     shared: {
       name: "Shared Pool",
       description: "Everybody drafts into one shared pool. Over when the pool has the target number of roles.",
-      fields: { targetRoles: "Shared pool size (roles)" },
-      hints: {},
+      fields: { players: playersLabelEn, targetRoles: "Shared pool size (roles)" },
+      hints: { players: playersHintEn },
     },
   },
   modeSummary: {
     personal: (c) =>
+      playersEn(c) +
       `${c.rolesPerParticipant} roles per player` +
       (c.teamCap && capped(c).length ? ` · cap ${c.teamCap}: ${capped(c).map((team) => teamPluralEn[team]).join(", ")}` : ""),
-    shared: (c) => `pool of ${c.targetRoles} roles`,
+    shared: (c) => `${playersEn(c)}pool of ${c.targetRoles} roles`,
   },
   form: {
     name: "Name",
@@ -364,7 +391,15 @@ export const draftEn: DraftDict = {
   inviteNobody: "Choose whom to invite.",
   checksTitle: "Before the start",
   check: {
-    drafters: (count, min) => `Drafters: ${count}${count < min ? ` – at least ${min} needed` : ""}`,
+    drafters: (count, min, limit) =>
+      `Drafters: ${count}${limit ? ` of ${limit}` : ""}` +
+      (count < min
+        ? ` – at least ${min} needed`
+        : limit && count > limit
+          ? " – more than there are places: remove somebody or raise the number of players in the settings"
+          : limit && count < limit
+            ? " – the owner may start the draft with fewer players"
+            : ""),
     acceptedOk: "All drafters accepted the invitation",
     acceptedPending: (names) => `Not answered yet: ${names}`,
     roles: (offered, needed) => `Offer: ${offered} ${offered === 1 ? "character" : "characters"}${needed !== null ? ` – ${needed} needed` : ""}`,
@@ -375,6 +410,9 @@ export const draftEn: DraftDict = {
   bundles: "Bundles",
   start: "Start the draft",
   startConfirm: "Start the draft? Members, order and settings cannot be changed after that.",
+  startShort: "Start with fewer players",
+  startShortConfirm: (count, limit) => `Start the draft with only ${count} of ${limit} players? Members, order and settings cannot be changed after that.`,
+  seatsLeft: (free, limit) => `Free places for players: ${free} of ${limit}.`,
   cancel: "Cancel draft",
   cancelConfirm: "Cancel the draft? It ends and cannot be continued; picks and pools stay to be seen.",
   pickNumber: (n) => `Pick no. ${n}`,
@@ -449,6 +487,7 @@ export const draftEn: DraftDict = {
     doesNotFit: "This no longer fits your pool.",
     capped: "You cannot take this now: the cap – you take more of this team once the others have as many.",
     notReady: "The draft is not ready to start yet – see the list “Before the start”.",
+    full: "That many players do not fit into the draft – invite fewer people (or as not drafting), or raise the number of players in the settings.",
     ownerFixed: "The draft's owner cannot be removed or given another role.",
     conflict: "The script was saved elsewhere in the meantime – reload the page.",
     outsidePool: "A script may only contain characters of its pool.",
@@ -459,6 +498,7 @@ export const draftEn: DraftDict = {
     noEditions: "Choose at least one edition or homebrew collection",
     noTeams: "Choose at least one team",
     number: (min, max) => `Enter a whole number from ${min} to ${max}`,
+    players: (min) => `Enter 0 (any number) or at least ${min}`,
     bundleUnknown: (names) => `Unknown characters: ${names}`,
     bundleTooSmall: "A bundle needs at least two different characters",
     bundleOverlap: (name) => `${name} is in two bundles`,

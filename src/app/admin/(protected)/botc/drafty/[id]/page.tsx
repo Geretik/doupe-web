@@ -38,7 +38,7 @@ import { listInvitableAccounts, listScriptsOfSession, sessionIdOfDraft } from "@
 import { sortRoleIds, totalRoles } from "@/modules/botc/lib/draft/roles";
 import { scriptToolLink } from "@/modules/botc/lib/draft/script";
 import { canScriptPool, loadSessionRows } from "@/modules/botc/lib/draft/service";
-import { drafters, runtime, sessionAccess, startReview, type StartCheck } from "@/modules/botc/lib/draft/state";
+import { drafters, runtime, seatsLeft, sessionAccess, startReview, type StartCheck } from "@/modules/botc/lib/draft/state";
 import { formatStamp } from "@/lib/time";
 import { parseId } from "@/lib/validation";
 
@@ -71,15 +71,17 @@ function CheckLine({ check, t, locale }: { check: StartCheck; t: Dict; locale: L
   }
   const text =
     check.kind === "drafters"
-      ? c.drafters(check.count, check.min)
+      ? c.drafters(check.count, check.min, check.limit)
       : check.kind === "accepted"
         ? check.ok
           ? c.acceptedOk
           : c.acceptedPending(check.pending.join(", "))
         : c.roles(check.offered, check.problem?.kind === "notEnoughRoles" ? check.problem.needed : null);
+  // fewer drafters than the number of players: not wrong, the owner may start so
+  const short = check.kind === "drafters" && check.short;
   return (
-    <li className={`flex gap-2 ${check.ok ? "" : "text-accent"}`}>
-      <span aria-hidden>{check.ok ? "✅" : "❌"}</span>
+    <li className={`flex gap-2 ${check.ok || short ? "" : "text-accent"}`}>
+      <span aria-hidden>{check.ok ? "✅" : short ? "⏳" : "❌"}</span>
       {text}
     </li>
   );
@@ -109,6 +111,7 @@ export default async function DraftPage({ params }: { params: Promise<{ id: stri
   const mine = access.member;
   const onTurn = status === "active" && mine !== null && session.currentMemberId === mine.id;
   const review = status === "preparing" ? startReview(rows) : null;
+  const seats = status === "preparing" ? seatsLeft(rows) : null;
   const [scripts, invitable] = await Promise.all([
     status === "completed" ? listScriptsOfSession(id) : Promise.resolve([]),
     status === "preparing" && access.manage ? listInvitableAccounts(id) : Promise.resolve([]),
@@ -312,6 +315,7 @@ export default async function DraftPage({ params }: { params: Promise<{ id: stri
       {status === "preparing" && access.manage && (
         <Card>
           <h3 className="mb-3 font-semibold">{d.inviteTitle}</h3>
+          {seats && <p className="mb-2 text-sm" data-testid="seats-left">{d.seatsLeft(seats.free, seats.limit)}</p>}
           <DraftInviteForm
             action={inviteMembersAction.bind(null, id)}
             accounts={invitable}
@@ -338,6 +342,13 @@ export default async function DraftPage({ params }: { params: Promise<{ id: stri
             <span>
               {review.ready ? (
                 <ActionButton action={startDraftAction.bind(null, id)} label={d.start} confirmText={d.startConfirm} variant="primary" />
+              ) : review.short && mine?.role === "owner" ? (
+                <ActionButton
+                  action={startDraftAction.bind(null, id)}
+                  label={d.startShort}
+                  confirmText={d.startShortConfirm(order.length, seats?.limit ?? 0)}
+                  variant="primary"
+                />
               ) : (
                 <Button type="button" disabled>{d.start}</Button>
               )}
