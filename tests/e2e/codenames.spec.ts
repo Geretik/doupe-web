@@ -44,7 +44,7 @@ test("admin: Codenames key cards are the print tool's, full screen shows only th
   await expect(page.getByTestId("codenames-card-number")).toHaveText("Kartička 2");
 
   // another mode or team starts the set again
-  await page.getByText("Ultimate Mirrors", { exact: true }).click();
+  await page.locator("label").filter({ hasText: "Ultimate Mirrors" }).click();
   await page.getByText("Náhodně", { exact: true }).click();
   await expect(card).toHaveAttribute("data-board", MIRRORS_RANDOM[0]);
   await expect(card).toHaveAttribute("data-starts", "BLUE");
@@ -80,7 +80,48 @@ test("admin: Codenames key cards are the print tool's, full screen shows only th
   for (const text of ["Blue starts", "R: 16", "B: 18", "W: 14", "💀: 1"]) await expect(card.locator("svg")).toContainText(text);
 
   // back in Big Mines the mine numbers are on again, though they were turned off there
-  await page.getByText("Big Mines", { exact: true }).click();
+  await page.locator("label").filter({ hasText: "Big Mines" }).click();
   await expect(page.locator("input[name=showMines]")).toBeChecked();
   await expect(card.locator("svg text:has(tspan)")).toHaveCount(42 - 3);
+});
+
+test("admin: Codenames print – the set on A4 pages, the cards of the phone, alone in print; how the modes are played", async ({ page }) => {
+  await adminLogin(page);
+  await page.goto("/admin/kryci-jmena");
+  await page.getByText("Červení", { exact: true }).click();
+  await page.fill("input[name=code]", "test01");
+  const print = page.getByTestId("codenames-print");
+  const status = page.getByTestId("codenames-print-status");
+  // 12 cards, 6 to a page by default
+  await expect(status).toHaveText("12 kartiček · 2 strany A4");
+  await print.locator("input[name=count]").fill("5");
+  await print.locator("select[name=perPage]").selectOption("4");
+  await expect(status).toHaveText("5 kartiček · 2 strany A4");
+
+  // the set the phone shows: cards 1–4 on the first page, card 5 on the second, each with its title and code
+  const pages = page.locator("[data-codenames-pages] > div");
+  await expect(pages).toHaveCount(2);
+  for (const n of [1, 2, 3, 4]) {
+    await expect(pages.nth(0)).toContainText(`Big Mines · ${n}`);
+    await expect(pages.nth(0)).toContainText(`test01/${n}`);
+  }
+  await expect(pages.nth(1)).toContainText("test01/5");
+  await print.getByLabel("Kód kartičky (pro dotisk)").uncheck();
+  await expect(pages.nth(1)).not.toContainText("test01/5");
+
+  // not on screen; in print the pages are all there is
+  await expect(page.locator("[data-codenames-pages]")).toBeHidden();
+  await page.emulateMedia({ media: "print" });
+  await expect(page.locator("[data-codenames-pages]")).toBeVisible();
+  await expect(page.locator("main")).toBeHidden();
+  await page.emulateMedia({ media: "screen" });
+  await expect(page.locator("main")).toBeVisible();
+
+  // the preview shows the same pages
+  await print.locator("summary").click();
+  await expect(print.locator("figure")).toHaveCount(2);
+
+  // under the tool: how the game and both modes are played
+  const rules = page.getByTestId("codenames-rules");
+  for (const title of ["Jak se to hraje", "Krycí jména v kostce", "Big Mines", "Ultimate Mirrors"]) await expect(rules).toContainText(title);
 });

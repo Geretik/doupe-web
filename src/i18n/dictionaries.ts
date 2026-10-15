@@ -970,8 +970,8 @@ export const cs = {
     codenames: {
       title: "Krycí jména – kartičky",
       intro:
-        "Klíčová kartička pro vypravěče na telefonu: nový režim se dá vyzkoušet dřív, než se kartičky vytisknou. Stejný kód sady, režim a začínající tým dají stejné kartičky jako tiskový nástroj (karticky.html).",
-      overview: "Klíčová kartička pro vypravěče na telefonu",
+        "Klíčová kartička pro vypravěče na telefonu a tisk celé sady na A4: nový režim se dá vyzkoušet dřív, než se kartičky vytisknou. Stejný kód sady, režim a začínající tým dají stejné kartičky na telefonu, na papíře i v tiskovém nástroji (karticky.html). Pod nástrojem je, jak se režimy hrají.",
+      overview: "Klíčová kartička pro vypravěče na telefonu i k tisku",
       mode: "Režim",
       mines: "7×6 · agenti 15/13 · 3 vrazi · čísla min",
       mirrors: "7×7 · agenti 18/16 · 1 vrah · souměrní agenti",
@@ -991,6 +991,58 @@ export const cs = {
       fullscreen: "Na celou obrazovku",
       fullscreenHint: "Na celé obrazovce je vidět jen kartička a displej nezhasne. Šipky dole přepínají kartičky, ✕ (nebo Esc) celou obrazovku zavře.",
       close: "Zavřít",
+      print: {
+        title: "Tisk na A4",
+        hint: "Celá sada na papír, se stejným kódem, režimem a začínajícím týmem jako nahoře: kartička 5 na papíře je kartička 5 na telefonu.",
+        count: "Počet kartiček",
+        perPage: "Na stránku A4",
+        single: "1 velká",
+        showTitle: "Název režimu a pořadí",
+        showSeed: "Kód kartičky (pro dotisk)",
+        cards: { one: "{n} kartička", few: "{n} kartičky", other: "{n} kartiček" },
+        pages: { one: "{n} strana A4", few: "{n} strany A4", other: "{n} stran A4" },
+        noMore: "víc různých kartiček v tomto režimu není",
+        button: "Tisk / PDF",
+        tip: "V dialogu tisku nastav Měřítko 100 % (Skutečná velikost) a Okraje: žádné. Pro PDF zvol tiskárnu Uložit jako PDF.",
+        preview: "Náhled stránek",
+        page: "Strana",
+      },
+      rules: {
+        title: "Jak se to hraje",
+        sections: [
+          {
+            title: "Krycí jména v kostce",
+            items: [
+              "Na stole leží mřížka karet se slovy – v klasické hře 5×5, v Big Mines 7×6, v Ultimate Mirrors 7×7. Hrají dva týmy, červení a modří; každý má velitele, ostatní jsou agenti v terénu.",
+              "Velitelé vidí klíčovou kartičku: červená a modrá pole jsou agenti týmů, bílá civilisté, 💀 vrah. Kartičku (nebo telefon) položte natočenou stejně jako mřížku na stole.",
+              "Barva rámečku a text dole říkají, kdo začíná – začínající tým má o agenta víc. Pod mřížkou jsou počty: Č červení, M modří, B bílí, 💀 vrazi.",
+              "Velitel na tahu řekne jedno slovo a číslo: kolik slov na stole se k nápovědě vztahuje. Agenti v terénu se poradí a ukazují slova po jednom, velitel každé zakryje kartou podle kartičky.",
+              "Vlastní agent: hádá se dál. Civilista nebo agent soupeře: tah končí (a soupeř má o agenta míň). Vrah: tým okamžitě prohrává.",
+              "V klasické hře se smí hádat nejvýš o jedno slovo víc, než bylo číslo. Vyhrává tým, který první najde všechny své agenty.",
+            ],
+          },
+          {
+            title: "Big Mines",
+            items: [
+              "Zlatý režim aplikace Codenames. Mřížka 7×6, tedy 42 slov: začínající tým má 15 agentů, druhý 13, k tomu 11 civilistů a 3 vrazi.",
+              "Každé pole má na kartičce čísla min „červení | modří“ – kolik agentů každého týmu leží na sousedních polích (až 8 kolem dokola, i šikmo). Když agent v terénu odkryje kartu, velitel jeho týmu řekne číslo jejich týmu u toho pole, jako v Hledání min. Z čísel se dají dopočítat agenti, na které nápověda nestačila.",
+              "Počet tipů není omezený: tým hádá, dokud netrefí něco jiného než svého agenta, nebo dokud sám nepřestane.",
+              "Kterýkoli ze tří vrahů znamená prohru, proto na nich čísla min obvykle nejsou; volba I u vrahů je přidá.",
+              "V aplikaci smí tým jednou za hru vzít zpět jednu chybu – můžete to tak hrát taky.",
+            ],
+          },
+          {
+            title: "Ultimate Mirrors",
+            items: [
+              "Zlatý režim aplikace Codenames. Mřížka 7×7, tedy 49 slov: začínající tým má 18 agentů, druhý 16, k tomu 14 civilistů a 1 vrah.",
+              "Agenti každého týmu jsou rozmístění souměrně podle jedné osy – svislé, vodorovné nebo jedné z úhlopříček. Týmy můžou mít stejnou osu i každý jinou (většinou vyjde stejná). Civilisté a vrah souměrní nejsou.",
+              "Agenti v terénu vědí, že rozložení je souměrné, ale ne podle které osy – tu odhalují z odkrytých agentů. Jakmile ji znají, každý nalezený agent prozradí i svůj zrcadlový protějšek (pole na ose je protějškem sám sobě).",
+              "Velitel vidí osy na kartičce: ikony v záhlaví a přerušované čáry v barvě týmu přes mřížku.",
+              "Počet tipů není omezený, stejně jako u Big Mines.",
+            ],
+          },
+        ],
+      },
     },
     /** Setup problems shown on the admin home page */
     health: {
@@ -2231,8 +2283,8 @@ export const en: Dict = {
     codenames: {
       title: "Codenames – key cards",
       intro:
-        "The spymasters' key card on a phone, to try a new mode before the cards are printed. The same set code, mode and starting team give the same cards as the print tool (karticky.html).",
-      overview: "The spymasters' key card on a phone",
+        "The spymasters' key card on a phone and the whole set printed on A4: try a new mode before the cards are printed. The same set code, mode and starting team give the same cards on the phone, on paper and in the print tool (karticky.html). Below the tool: how the modes are played.",
+      overview: "The spymasters' key card on a phone and to print",
       mode: "Mode",
       mines: "7×6 · agents 15/13 · 3 assassins · mine numbers",
       mirrors: "7×7 · agents 18/16 · 1 assassin · symmetric agents",
@@ -2252,6 +2304,58 @@ export const en: Dict = {
       fullscreen: "Full screen",
       fullscreenHint: "In full screen only the card shows and the screen stays on. The arrows at the bottom switch cards, ✕ (or Esc) closes it.",
       close: "Close",
+      print: {
+        title: "Print on A4",
+        hint: "The whole set on paper, with the same code, mode and starting team as above: card 5 on paper is card 5 on the phone.",
+        count: "Number of cards",
+        perPage: "Per A4 page",
+        single: "1 large",
+        showTitle: "Mode name and number",
+        showSeed: "Card code (to reprint it)",
+        cards: { one: "{n} card", few: "{n} cards", other: "{n} cards" },
+        pages: { one: "{n} A4 page", few: "{n} A4 pages", other: "{n} A4 pages" },
+        noMore: "this mode has no more different cards",
+        button: "Print / PDF",
+        tip: "In the print dialog set Scale 100 % (Actual size) and Margins: none. For a PDF choose the printer Save as PDF.",
+        preview: "Page preview",
+        page: "Page",
+      },
+      rules: {
+        title: "How to play",
+        sections: [
+          {
+            title: "Codenames in short",
+            items: [
+              "A grid of word cards lies on the table – 5×5 in the classic game, 7×6 in Big Mines, 7×7 in Ultimate Mirrors. Two teams play, red and blue; each has a spymaster, the others are field operatives.",
+              "The spymasters see the key card: red and blue cells are the teams' agents, white ones bystanders, 💀 the assassin. Lay the card (or the phone) turned the same way as the grid on the table.",
+              "The colour of the frame and the text at the bottom tell who starts – the starting team has one agent more. Under the grid are the counts: R red, B blue, W white, 💀 assassins.",
+              "The spymaster on turn says one word and a number: how many words on the table the clue is about. The operatives talk it over and point at words one at a time; the spymaster covers each with a card as the key card says.",
+              "Own agent: keep guessing. A bystander or the other team's agent: the turn ends (and the other team has one agent less to find). The assassin: the team loses at once.",
+              "In the classic game the operatives may guess at most one word more than the number. The team that first finds all its agents wins.",
+            ],
+          },
+          {
+            title: "Big Mines",
+            items: [
+              "A gold mode of the Codenames app. A 7×6 grid, 42 words: the starting team has 15 agents, the other 13, plus 11 bystanders and 3 assassins.",
+              "Every cell of the key card has mine numbers “red | blue” – how many agents of each team are on the neighbouring cells (up to 8 around, diagonals too). When an operative reveals a card, their spymaster says their team's number for that cell, like in Minesweeper. The numbers lead to agents no clue could cover.",
+              "Guesses are unlimited: the team guesses until it hits something other than its own agent, or stops on its own.",
+              "Any of the three assassins loses the game, so they usually carry no mine numbers; the option On the assassins too adds them.",
+              "In the app a team may take back one mistake per game – you can play it that way too.",
+            ],
+          },
+          {
+            title: "Ultimate Mirrors",
+            items: [
+              "A gold mode of the Codenames app. A 7×7 grid, 49 words: the starting team has 18 agents, the other 16, plus 14 bystanders and 1 assassin.",
+              "Each team's agents are laid out symmetrically along one axis – vertical, horizontal or one of the diagonals. The teams may share the axis or each have another (mostly it is the same). Bystanders and the assassin follow no symmetry.",
+              "The operatives know the layout is symmetric, but not along which axis – they find it from the agents revealed. Once they know it, every agent found gives away its mirror image too (a cell on the axis is its own mirror image).",
+              "The spymaster sees the axes on the key card: icons in the header and dashed lines in the team's colour across the grid.",
+              "Guesses are unlimited, as in Big Mines.",
+            ],
+          },
+        ],
+      },
     },
     health: {
       title: "⚠️ The site setup needs attention",

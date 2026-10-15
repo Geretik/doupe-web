@@ -14,8 +14,18 @@ export type ChangelogEntry = { /** YYYY-MM-DD */ date: string; title: string; it
 export const changelog: ChangelogEntry[] = [
   {
     date: "2026-10-15",
-    title: "Krycí jména: počty polí na kartičce, volby podle režimu; tlačítka bez označování textu; počet hráčů draftu",
+    title: "Krycí jména: tisk na A4, pravidla režimů, počty polí na kartičce; tlačítka bez označování textu; počet hráčů draftu",
     items: [
+      {
+        for: "organizers",
+        text: "Krycí jména jdou tisknout přímo v adminu: celá sada na stránky A4 (počet kartiček, kolik na stránku, název a kód kartičky), s náhledem stránek – kartička 5 na papíře je kartička 5 na telefonu.",
+        href: "/admin/kryci-jmena",
+      },
+      {
+        for: "organizers",
+        text: "Pod nástrojem Krycích jmen je vysvětlené, jak se hra hraje a co dělají režimy Big Mines (čísla min) a Ultimate Mirrors (souměrní agenti).",
+        href: "/admin/kryci-jmena",
+      },
       {
         for: "organizers",
         text: "Draft má v nastavení počet hráčů (0 = bez omezení, hodí se spíš pro Shared Pool): víc draftujících nejde pozvat a připravený ke startu je, až jsou všichni; zakladatel ho může spustit i s méně hráči.",
