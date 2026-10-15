@@ -28,6 +28,8 @@ test("admin: Codenames key cards are the print tool's, full screen shows only th
   await expect(card).toHaveAttribute("data-seed", "test01/1");
   await expect(card.locator("svg")).toContainText("Big Mines · 1");
   await expect(card.locator("svg")).toContainText("Začínají červení");
+  // under the grid how many of each there are: red, blue, white (civilians), assassins
+  for (const count of ["Č: 15", "M: 13", "B: 11", "💀: 3"]) await expect(card.locator("svg")).toContainText(count);
   // mine numbers on every cell but the three assassins', which end the game anyway – unless asked for
   await expect(card.locator("svg text:has(tspan)")).toHaveCount(42 - 3);
   await page.getByLabel("I u vrahů").check();
@@ -62,4 +64,11 @@ test("admin: Codenames key cards are the print tool's, full screen shows only th
   await page.reload();
   await expect(card).toHaveAttribute("data-seed", "test01/2");
   await expect(card).toHaveAttribute("data-board", MIRRORS_RANDOM[1]);
+
+  // in English the card's texts too, the counts with R, B, W
+  await page.context().addCookies([{ name: "botc_lang", value: "en", url: new URL(page.url()).origin }]);
+  await page.reload();
+  await expect(card).toHaveAttribute("data-board", MIRRORS_RANDOM[1]);
+  await expect(card).toHaveAttribute("data-starts", "BLUE");
+  for (const text of ["Blue starts", "R: 16", "B: 18", "W: 14", "💀: 1"]) await expect(card.locator("svg")).toContainText(text);
 });

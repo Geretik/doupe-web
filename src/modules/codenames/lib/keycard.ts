@@ -15,7 +15,14 @@ export const KEY_CARD_COLORS = {
   MUTED: "#7A7A7A",
 } as const;
 
-const TEAM_NAME: Record<Team, string> = { RED: "Začínají červení", BLUE: "Začínají modří" };
+/** Jazyk textů na kartičce. */
+export type KeyCardLang = "cs" | "en";
+
+/** Texty na kartičce: začínající tým dole a písmena počtů pod mřížkou (červení, modří, bílí – civilisté). */
+const TEXTS: Record<KeyCardLang, { starts: Record<Team, string>; counts: [string, string, string] }> = {
+  cs: { starts: { RED: "Začínají červení", BLUE: "Začínají modří" }, counts: ["Č", "M", "B"] },
+  en: { starts: { RED: "Red starts", BLUE: "Blue starts" }, counts: ["R", "B", "W"] },
+};
 
 /** Abstraktní vzor (row-major): P = agent začínajícího týmu, S = druhého týmu, W = civilista, K = vrah. */
 export function patternOf(board: GeneratedBoard): string {
@@ -85,6 +92,8 @@ export interface KeyCardStyle {
   title: string;
   /** Drobný text vpravo dole, např. seed. */
   note: string;
+  /** Jazyk textů na kartičce (výchozí čeština). */
+  lang?: KeyCardLang;
 }
 
 /** Rozvržení kartičky v mm. */
@@ -97,15 +106,17 @@ export interface KeyCardSize {
 const BORDER = 2.2;
 const PAD = 5;
 const HEADER = 7;
+/** Řádek s počty polí pod mřížkou. */
+const COUNTS = 5;
 const FOOTER = 6;
 
 /** Kartička na šířku slotu, výška podle mřížky (nejvýš výška slotu). */
 export function keyCardSize(board: Pick<GeneratedBoard, "width" | "height">, slotWidth: number, slotHeight: number): KeyCardSize {
   const cell = Math.min(
     (slotWidth - 2 * PAD) / board.width,
-    (slotHeight - 2 * PAD - HEADER - FOOTER) / board.height,
+    (slotHeight - 2 * PAD - HEADER - COUNTS - FOOTER) / board.height,
   );
-  return { width: slotWidth, height: 2 * PAD + HEADER + FOOTER + cell * board.height, cell };
+  return { width: slotWidth, height: 2 * PAD + HEADER + COUNTS + FOOTER + cell * board.height, cell };
 }
 
 const n = (v: number) => +v.toFixed(2);
@@ -236,9 +247,25 @@ export function renderKeyCardSvg(board: GeneratedBoard, size: KeyCardSize, style
     `<rect x="${n(gx)}" y="${n(gy)}" width="${n(gridW)}" height="${n(cell * board.height)}" fill="none" stroke="${KEY_CARD_COLORS.GRID}" stroke-width="0.5"/>`,
   );
 
+  // počty polí pod mřížkou: červení, modří, bílí (civilisté) a vrazi, každý ve vlastním sloupci
+  const texts = TEXTS[style.lang ?? "cs"];
+  const count = (type: CardType) => board.cards.filter((c) => c.type === type).length;
+  const counts: [string, number, string][] = [
+    [texts.counts[0], count("RED_AGENT"), KEY_CARD_COLORS.RED],
+    [texts.counts[1], count("BLUE_AGENT"), KEY_CARD_COLORS.BLUE],
+    [texts.counts[2], count("CIVILIAN"), KEY_CARD_COLORS.TEXT],
+    ["💀", count("ASSASSIN"), KEY_CARD_COLORS.TEXT],
+  ];
+  const cy = gy + cell * board.height + COUNTS * 0.8;
+  counts.forEach(([label, value, fill], i) =>
+    parts.push(
+      `<text x="${n(gx + i * font * 4.6)}" y="${n(cy)}" font-size="${n(font)}" font-weight="700" fill="${fill}">${label}: ${value}</text>`,
+    ),
+  );
+
   const fy = H - PAD - FOOTER * 0.2;
   parts.push(
-    `<text x="${n(gx)}" y="${n(fy)}" font-size="${n(font)}" font-weight="700" fill="${team}">${TEAM_NAME[board.startingTeam]}</text>`,
+    `<text x="${n(gx)}" y="${n(fy)}" font-size="${n(font)}" font-weight="700" fill="${team}">${texts.starts[board.startingTeam]}</text>`,
   );
   if (style.note) {
     parts.push(

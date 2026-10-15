@@ -13,6 +13,17 @@ export type ChangelogEntry = { /** YYYY-MM-DD */ date: string; title: string; it
 
 export const changelog: ChangelogEntry[] = [
   {
+    date: "2026-10-15",
+    title: "Krycí jména: počty polí na kartičce",
+    items: [
+      {
+        for: "organizers",
+        text: "Kartička Krycích jmen má pod mřížkou počty polí – Č červení, M modří, B bílí, 💀 vrazi; v angličtině je celá kartička anglicky (R, B, W).",
+        href: "/admin/kryci-jmena",
+      },
+    ],
+  },
+  {
     date: "2026-10-14",
     title: "Administrace zvlášť od Klubu, prezenčka vysvětluje proč a zná jmenovce, Krycí jména na telefonu, všechny homebrew kolekce, Zdroje, soukromí ve script toolu",
     items: [

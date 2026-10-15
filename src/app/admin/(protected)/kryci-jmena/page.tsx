@@ -8,7 +8,7 @@ import { KeyCardTool } from "@/modules/codenames/components/key-card-tool";
  */
 export default async function CodenamesPage() {
   await requireAdmin();
-  const { t } = await getDict();
+  const { locale, t } = await getDict();
   const c = t.admin.codenames;
   return (
     <div className="flex flex-col gap-6">
@@ -16,7 +16,7 @@ export default async function CodenamesPage() {
         <h1 className="text-2xl font-bold">{c.title}</h1>
         <p className="max-w-3xl text-sm text-muted">{c.intro}</p>
       </div>
-      <KeyCardTool t={c} />
+      <KeyCardTool t={c} lang={locale} />
     </div>
   );
 }

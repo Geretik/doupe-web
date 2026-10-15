@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { inputClass } from "@/components/ui";
-import type { Dict } from "@/i18n/dictionaries";
+import type { Dict, Locale } from "@/i18n/dictionaries";
 import { generateKeyCards, keyCardSize, renderKeyCardSvg } from "@/modules/codenames/lib/keycard";
 import { GOLD_BIG_MINES, GOLD_ULTIMATE_MIRRORS } from "@/modules/codenames/lib/profiles";
 import type { BoardProfile, GeneratedBoard, TeamChoice } from "@/modules/codenames/lib/types";
@@ -105,9 +105,10 @@ function rowsOf(board: GeneratedBoard) {
 /**
  * Admin → Krycí jména: the spymasters' key card on a phone, from the print tool's generator (modules/codenames/lib):
  * card `n` of a set is the print tool's card `n` of the same code, mode and starting team. Full screen shows only the
- * card, keeps the screen on and steps through the set.
+ * card, keeps the screen on and steps through the set. The card's own texts (starting team, counts) follow the page's
+ * language; the print tool's are Czech.
  */
-export function KeyCardTool({ t }: { t: Texts }) {
+export function KeyCardTool({ t, lang }: { t: Texts; lang: Locale }) {
   const raw = useSyncExternalStore(subscribe, read, () => null);
   const settings = useMemo(() => parse(raw), [raw]);
   const [fullscreen, setFullscreen] = useState(false);
@@ -133,9 +134,10 @@ export function KeyCardTool({ t }: { t: Texts }) {
             showAxes: settings.showAxes,
             title: `${mode.name} · ${settings.card}`,
             note: board.seed,
+            lang,
           })
         : null,
-    [board, settings, mode],
+    [board, settings, mode, lang],
   );
 
   const update = (change: Partial<Settings>) => settings && save({ ...settings, ...change });
