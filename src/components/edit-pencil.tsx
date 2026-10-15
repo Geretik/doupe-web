@@ -16,7 +16,7 @@ export function EditPencil({
       title={title}
       aria-label={title}
       data-testid="edit-pencil"
-      className={`inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-card text-muted hover:border-accent hover:text-accent ${className}`}
+      className={`select-none inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-card text-muted hover:border-accent hover:text-accent ${className}`}
     >
       <PencilIcon />
     </Link>

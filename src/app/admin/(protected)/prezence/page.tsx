@@ -24,8 +24,8 @@ import { formatDate, formatShortDate, formatTime } from "@/lib/time";
 
 type Params = { den?: string; od?: string; do?: string };
 
-const buttonClass = "rounded-md border border-border bg-card px-3 py-2 text-sm hover:border-accent";
-const linkClass = "text-sm font-medium text-accent hover:underline";
+const buttonClass = "select-none rounded-md border border-border bg-card px-3 py-2 text-sm hover:border-accent";
+const linkClass = "select-none text-sm font-medium text-accent hover:underline";
 
 /** The last club night up to `day` (`day` itself when it is one). */
 function lastClubDay(day: string) {

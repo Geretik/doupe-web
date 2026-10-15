@@ -106,7 +106,7 @@ export function QrApprove({ token, t }: { token: string; t: Dict["admin"]["qrApp
       <Button type="button" disabled={pending} onClick={() => startTransition(async () => setResult((await approveQrLoginAction(token)).ok))}>
         {pending ? t.approving : t.approve}
       </Button>
-      <Link href="/admin/profil" className="inline-flex items-center rounded-md border border-border bg-card px-4 py-2 text-sm font-medium hover:bg-border/40">
+      <Link href="/admin/profil" className="select-none inline-flex items-center rounded-md border border-border bg-card px-4 py-2 text-sm font-medium hover:bg-border/40">
         {t.cancel}
       </Link>
     </div>

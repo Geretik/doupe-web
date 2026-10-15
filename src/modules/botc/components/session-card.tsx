@@ -87,7 +87,7 @@ export function SessionCard({
         </div>
         <Link
           href={`/botc/termin/${s.id}`}
-          className={`shrink-0 whitespace-nowrap rounded-md px-4 py-2 text-sm font-medium ${
+          className={`select-none shrink-0 whitespace-nowrap rounded-md px-4 py-2 text-sm font-medium ${
             full || closed
               ? "border border-border text-muted"
               : "bg-accent text-accent-foreground hover:opacity-90"

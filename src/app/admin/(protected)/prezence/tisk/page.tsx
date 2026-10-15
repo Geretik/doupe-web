@@ -8,7 +8,7 @@ import { siteName } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 
-const buttonClass = "rounded-md border border-border bg-card px-3 py-2 text-sm hover:border-accent";
+const buttonClass = "select-none rounded-md border border-border bg-card px-3 py-2 text-sm hover:border-accent";
 
 /** Printable card for the club's table with the attendance sheet's QR code; every line in Czech with English under it, whatever the admin's language. */
 export default async function AttendanceCardPage() {

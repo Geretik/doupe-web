@@ -31,7 +31,7 @@ export default async function AdminLoginPage() {
           <Card className="mt-6 flex flex-col gap-3">
             <Link
               href="/admin/odkaz"
-              className="inline-flex items-center justify-center rounded-md border border-border bg-card px-4 py-2 text-sm font-medium transition hover:bg-border/40"
+              className="select-none inline-flex items-center justify-center rounded-md border border-border bg-card px-4 py-2 text-sm font-medium transition hover:bg-border/40"
             >
               {t.admin.login.emailLink}
             </Link>

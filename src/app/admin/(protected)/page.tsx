@@ -15,7 +15,7 @@ import { listGrimoires } from "@/modules/botc/lib/grimoire/service";
 import { listAllSessions } from "@/modules/botc/lib/queries";
 
 const NEXT_SESSIONS = 3;
-const link = "text-sm font-medium text-accent hover:underline";
+const link = "select-none text-sm font-medium text-accent hover:underline";
 
 /**
  * The admin's home: the club at a glance, each module a section. Krvavka: the next sessions, drafts waiting for
@@ -58,7 +58,7 @@ export default async function AdminOverviewPage() {
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h3 className="font-semibold">{o.nextSessions}</h3>
                 {canAccess(me, "botc", "edit") && (
-                  <Link href="/admin/botc/novy" className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-accent-foreground hover:opacity-90">
+                  <Link href="/admin/botc/novy" className="select-none rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-accent-foreground hover:opacity-90">
                     {t.admin.list.createNew}
                   </Link>
                 )}
@@ -67,7 +67,7 @@ export default async function AdminOverviewPage() {
               <ul className="flex flex-col gap-1.5" data-testid="overview-sessions">
                 {next.map((s) => (
                   <li key={s.id}>
-                    <Link href={`/admin/botc/termin/${s.id}`} className="flex flex-wrap items-baseline justify-between gap-x-3 rounded-lg border border-border px-3 py-2 hover:border-accent/50">
+                    <Link href={`/admin/botc/termin/${s.id}`} className="select-none flex flex-wrap items-baseline justify-between gap-x-3 rounded-lg border border-border px-3 py-2 hover:border-accent/50">
                       <span className="font-medium">{s.title}</span>
                       <span className="text-sm text-muted">
                         {formatShortDate(s.startsAt, locale)} {formatTime(s.startsAt, locale)} · {s.confirmedCount} / {s.capacity}
@@ -82,7 +82,7 @@ export default async function AdminOverviewPage() {
             </section>
 
             {(attention.turns > 0 || attention.invites > 0) && (
-              <Link href="/admin/botc/drafty" className="rounded-lg border border-accent/50 bg-accent/10 px-3 py-2 text-sm font-medium" data-testid="overview-drafts">
+              <Link href="/admin/botc/drafty" className="select-none rounded-lg border border-accent/50 bg-accent/10 px-3 py-2 text-sm font-medium" data-testid="overview-drafts">
                 {[attention.turns > 0 && o.draftTurns(attention.turns), attention.invites > 0 && o.draftInvites(attention.invites)].filter(Boolean).join(" · ")} →
               </Link>
             )}

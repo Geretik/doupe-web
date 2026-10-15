@@ -138,7 +138,7 @@ export default async function AdminSessionPage({
   const full = confirmed.length >= session.capacity;
   const presence = presenceBySlot(session, confirmed);
   const listed = byArrivalOrder ? byArrival(session, confirmed) : confirmed;
-  const sortLink = (on: boolean) => `rounded-full border px-3 py-1 ${on ? "border-accent bg-accent/10 font-semibold" : "border-border bg-card hover:border-accent/50"}`;
+  const sortLink = (on: boolean) => `select-none rounded-full border px-3 py-1 ${on ? "border-accent bg-accent/10 font-semibold" : "border-border bg-card hover:border-accent/50"}`;
   const gameLabels: GameFormLabels = {
     gameScript: t.gameScript,
     gameScriptCustom: t.gameScriptCustom,
@@ -249,24 +249,24 @@ export default async function AdminSessionPage({
       </div>
 
       <div className="flex flex-wrap items-center gap-2 text-sm">
-        <Link href={`/botc/termin/${session.id}`} className="rounded-md border border-border bg-card px-3 py-2 hover:border-accent">
+        <Link href={`/botc/termin/${session.id}`} className="select-none rounded-md border border-border bg-card px-3 py-2 hover:border-accent">
           {t.publicPage}
         </Link>
         {edit && (
-          <Link href={`/admin/botc/novy?from=${session.id}`} className="rounded-md border border-border bg-card px-3 py-2 hover:border-accent">
+          <Link href={`/admin/botc/novy?from=${session.id}`} className="select-none rounded-md border border-border bg-card px-3 py-2 hover:border-accent">
             {t.duplicate}
           </Link>
         )}
-        <a href={`/admin/botc/termin/${session.id}/export.csv`} className="rounded-md border border-border bg-card px-3 py-2 hover:border-accent">
+        <a href={`/admin/botc/termin/${session.id}/export.csv`} className="select-none rounded-md border border-border bg-card px-3 py-2 hover:border-accent">
           {t.exportCsv}
         </a>
         {hasRole(me, "admin") && (
-          <Link href={`/admin/historie?termin=${session.id}`} className="rounded-md border border-border bg-card px-3 py-2 hover:border-accent">
+          <Link href={`/admin/historie?termin=${session.id}`} className="select-none rounded-md border border-border bg-card px-3 py-2 hover:border-accent">
             {dict.admin.log.sessionHistory}
           </Link>
         )}
         {!past && (
-          <Link href={`/admin/botc/termin/${session.id}/plakat`} className="rounded-md border border-border bg-card px-3 py-2 hover:border-accent">
+          <Link href={`/admin/botc/termin/${session.id}/plakat`} className="select-none rounded-md border border-border bg-card px-3 py-2 hover:border-accent">
             {t.poster}
           </Link>
         )}

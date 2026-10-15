@@ -18,7 +18,7 @@ import { homebrewAbility, homebrewCollectionScript } from "@/modules/botc/lib/ho
 
 export const dynamic = "force-dynamic";
 
-const pill = "rounded-md border border-border bg-card px-3 py-2 text-sm hover:border-accent";
+const pill = "select-none rounded-md border border-border bg-card px-3 py-2 text-sm hover:border-accent";
 /** Longer addresses are refused by hosts (Vercel answers 414 from about 14 kB): such a collection is a file to upload */
 const LONGEST_TOOL_LINK = 12_000;
 

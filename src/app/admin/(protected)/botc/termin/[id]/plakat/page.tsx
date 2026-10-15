@@ -11,7 +11,7 @@ import { parseId } from "@/lib/validation";
 
 export const dynamic = "force-dynamic";
 
-const buttonClass = "rounded-md border border-border bg-card px-3 py-2 text-sm hover:border-accent";
+const buttonClass = "select-none rounded-md border border-border bg-card px-3 py-2 text-sm hover:border-accent";
 
 /** Printable A4 poster with the session's details and a QR code to its sign-up page. */
 export default async function PosterPage({ params }: { params: Promise<{ id: string }> }) {

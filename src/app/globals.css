@@ -69,3 +69,21 @@ html.grimoire-focus main {
   --border: #3a302a;
   --good: #7fb3ec;
 }
+
+/* what is tapped, not read: a tap, a double tap or a long press on a phone does not select its text. Covers buttons,
+   checkbox and radio choices, the menus and the header and footer; links that look like buttons carry `select-none`
+   themselves. Links in running text stay selectable, so a paragraph copies whole. A label around a text field stays
+   too: on an iPhone a field inside an unselectable box cannot be typed in. */
+@layer base {
+  button,
+  select,
+  summary,
+  [role="button"],
+  label:has(input[type="checkbox"], input[type="radio"]),
+  nav a,
+  body > header a,
+  body > footer a {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+}

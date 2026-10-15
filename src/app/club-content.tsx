@@ -27,7 +27,7 @@ function DiscordBox({
         href={DISCORD_URL}
         target="_blank"
         rel="noreferrer"
-        className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:opacity-90"
+        className="select-none rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:opacity-90"
       >
         {button}
       </a>

@@ -13,7 +13,7 @@ import { parseId } from "@/lib/validation";
 
 export const dynamic = "force-dynamic";
 
-const pill = "rounded-md border border-border bg-card px-3 py-2 text-sm hover:border-accent";
+const pill = "select-none rounded-md border border-border bg-card px-3 py-2 text-sm hover:border-accent";
 
 /** One script of the library: its characters, the script tool and the file; the one who added it edits it. */
 export default async function LibraryScriptPage({ params }: { params: Promise<{ id: string }> }) {

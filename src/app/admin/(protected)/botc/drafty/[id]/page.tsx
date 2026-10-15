@@ -42,7 +42,7 @@ import { drafters, runtime, sessionAccess, startReview, type StartCheck } from "
 import { formatStamp } from "@/lib/time";
 import { parseId } from "@/lib/validation";
 
-const pill = "rounded-md border border-border bg-card px-3 py-2 text-sm hover:border-accent";
+const pill = "select-none rounded-md border border-border bg-card px-3 py-2 text-sm hover:border-accent";
 
 /** Options split into the bundles and the teams, by the names shown; for the offer and the pick board. */
 function groupOptions<T extends { roleIds: string[] }>(options: T[], t: Dict, locale: Locale): { group: GroupKey; label: string; options: T[] }[] {
@@ -237,7 +237,7 @@ export default async function DraftPage({ params }: { params: Promise<{ id: stri
             {rt.available.length > 0 && (
               <a
                 href="#pick"
-                className="mt-1 self-start rounded-md bg-accent-foreground px-4 py-2 text-sm font-semibold text-accent hover:opacity-90"
+                className="select-none mt-1 self-start rounded-md bg-accent-foreground px-4 py-2 text-sm font-semibold text-accent hover:opacity-90"
               >
                 {d.yourTurnJump}
               </a>

@@ -15,7 +15,7 @@ export default async function DraftsPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">{d.title}</h1>
         {canAccess(me, "botc", "edit") && (
-          <Link href="/admin/botc/drafty/novy" className="rounded-md border border-border bg-card px-3 py-2 text-sm hover:border-accent">
+          <Link href="/admin/botc/drafty/novy" className="select-none rounded-md border border-border bg-card px-3 py-2 text-sm hover:border-accent">
             {d.newDraft}
           </Link>
         )}

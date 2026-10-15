@@ -235,7 +235,7 @@ export function KeyCardTool({ t, lang }: { t: Texts; lang: Locale }) {
 
         {/* mine numbers only in Big Mines, on whenever the mode is picked */}
         {mode.mines && (
-          <fieldset className="flex flex-col gap-2 text-sm">
+          <fieldset className="flex select-none flex-col gap-2 text-sm">
             <legend className="mb-2 font-semibold">{t.onCard}</legend>
             <label className="flex items-start gap-3">
               <input type="checkbox" name="showMines" checked={settings.showMines} onChange={(e) => update({ showMines: e.target.checked })} className="mt-0.5 h-4 w-4 accent-accent" />

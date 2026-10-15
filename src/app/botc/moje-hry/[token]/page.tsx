@@ -86,7 +86,7 @@ export default async function MyGamesPage({ params }: { params: Promise<{ token:
               </p>
               <p className="text-sm">{r.status === "waitlisted" ? "⏳" : "✅"} {m.status[r.status]}</p>
             </div>
-            <a href={editUrl(r.editToken)} className="rounded-md border border-border bg-card px-3 py-2 text-sm hover:border-accent">
+            <a href={editUrl(r.editToken)} className="select-none rounded-md border border-border bg-card px-3 py-2 text-sm hover:border-accent">
               {m.edit}
             </a>
           </Card>

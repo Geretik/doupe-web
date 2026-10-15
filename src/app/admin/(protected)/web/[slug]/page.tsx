@@ -72,7 +72,7 @@ export default async function SiteTextsEditPage({
               key={l}
               href={`?lang=${l}`}
               aria-current={l === editLocale ? "page" : undefined}
-              className={`px-3 py-1.5 ${l === editLocale ? "bg-accent text-accent-foreground" : "bg-card hover:bg-border/40"}`}
+              className={`select-none px-3 py-1.5 ${l === editLocale ? "bg-accent text-accent-foreground" : "bg-card hover:bg-border/40"}`}
             >
               {w.languages[l]}
             </a>

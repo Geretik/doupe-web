@@ -16,7 +16,7 @@ import { loadSessionRows } from "@/modules/botc/lib/draft/service";
 import { runtime, sessionAccess } from "@/modules/botc/lib/draft/state";
 import { parseId } from "@/lib/validation";
 
-const pill = "rounded-md border border-border bg-card px-3 py-2 text-sm hover:border-accent";
+const pill = "select-none rounded-md border border-border bg-card px-3 py-2 text-sm hover:border-accent";
 
 /** A script made from a pool of a finished draft session: its author edits it, the session's members see it. */
 export default async function DraftScriptPage({ params }: { params: Promise<{ id: string }> }) {

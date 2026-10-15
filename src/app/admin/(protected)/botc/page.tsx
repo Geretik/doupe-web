@@ -60,7 +60,7 @@ export default async function SessionsPage() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-2xl font-bold">{a.upcoming}</h1>
           {edit && (
-            <Link href="/admin/botc/novy" className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:opacity-90">
+            <Link href="/admin/botc/novy" className="select-none rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:opacity-90">
               {a.createNew}
             </Link>
           )}
