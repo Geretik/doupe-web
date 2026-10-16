@@ -14,8 +14,23 @@ export type ChangelogEntry = { /** YYYY-MM-DD */ date: string; title: string; it
 export const changelog: ChangelogEntry[] = [
   {
     date: "2026-10-16",
-    title: "Krycí jména: kartička přes celý displej, uhádnutá pole, velikost desky; Půjčovna: balíčky her, krabice bez kódu, Správa knihovny zvlášť, přehlednější půjčení víc her; Statistiky klubu; prezenčka po ručním přidání prázdná",
+    title: "Krycí jména: kartička přes celý displej, uhádnutá pole, velikost desky; Půjčovna: balíčky her, krabice bez kódu, Správa knihovny zvlášť, přehlednější půjčení víc her; Statistiky klubu; prezenčka po ručním přidání prázdná; Klub v adminu na prvním místě; tisk Krycích jmen jako podstránka",
     items: [
+      {
+        for: "organizers",
+        text: "V adminu je Klub na prvním místě: na liště před Krvavkou a v Přehledu jako hlavní část s čísly a grafem večerů za tento školní rok. Kdo Klub nevidí, má hlavní dál Krvavku.",
+        href: "/admin",
+      },
+      {
+        for: "organizers",
+        text: "V grafu Lidí na večer je nad každým sloupečkem, kolik lidí přišlo; když se večery nevejdou, graf se posouvá do strany a začíná u nejnovějších.",
+        href: "/admin/statistiky-klubu",
+      },
+      {
+        for: "organizers",
+        text: "Tisk kartiček Krycích jmen na A4 má vlastní podstránku Tisk (na liště vedle Kartiček); sada je stejná jako na telefonu.",
+        href: "/admin/kryci-jmena/tisk",
+      },
       {
         for: "organizers",
         text: "Kartička Krycích jmen je vidět až na celé obrazovce a vyplní celý displej; kdo začíná a kolik polí každé barvy zbývá, je v pruhu bokem.",

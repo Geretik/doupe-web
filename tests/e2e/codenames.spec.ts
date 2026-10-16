@@ -151,9 +151,13 @@ test("admin: Codenames key cards are the print tool's, shown only in full screen
   await expect(board.locator("[data-mines]")).toHaveCount(42 - 3);
 });
 
-test("admin: Codenames print – the set on A4 pages, the cards of the phone, alone in print; how the modes are played", async ({ page }) => {
+test("admin: Codenames print – a subpage, the set on A4 pages, the cards of the phone, alone in print; how the modes are played", async ({ page }) => {
   await adminLogin(page);
   await page.goto("/admin/kryci-jmena");
+  await page.getByRole("link", { name: "Tisk na A4 →" }).click();
+  await expect(page).toHaveURL(/\/admin\/kryci-jmena\/tisk$/);
+  await expect(page.locator("h1")).toHaveText("Krycí jména – tisk na A4");
+  await expect(page.locator("main nav a[aria-current=page]")).toHaveText("Tisk");
   await page.getByText("Červení", { exact: true }).click();
   await page.fill("input[name=code]", "test01");
   const print = page.getByTestId("codenames-print");
@@ -186,6 +190,12 @@ test("admin: Codenames print – the set on A4 pages, the cards of the phone, al
   // the preview shows the same pages
   await print.locator("summary").click();
   await expect(print.locator("figure")).toHaveCount(2);
+
+  // the set is the phone's: the card page has the code and team picked here
+  await page.getByRole("link", { name: "← Kartička na telefonu" }).click();
+  await expect(page.locator("input[name=code]")).toHaveValue("test01");
+  await expect(page.getByTestId("codenames-card")).toHaveAttribute("data-starts", "RED");
+  await expect(page.getByTestId("codenames-print")).toHaveCount(0);
 
   // under the tool: how the game and both modes are played
   const rules = page.getByTestId("codenames-rules");

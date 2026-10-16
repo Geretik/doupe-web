@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BarList, ColumnChart, StatTile, type Column } from "@/components/admin/stat-charts";
+import { BarList, ColumnChart, everyNth, monthName, nightColumns, StatTile, type Column } from "@/components/admin/stat-charts";
 import { Button, Card, inputClass } from "@/components/ui";
 import { attendanceAffiliations } from "@/db/schema";
 import { getDict } from "@/i18n/server";
@@ -12,9 +12,6 @@ type Params = { od?: string; do?: string };
 
 const buttonClass = "select-none rounded-md border border-border bg-card px-3 py-2 text-sm hover:border-accent";
 const linkClass = "select-none text-sm font-medium text-accent hover:underline";
-
-/** Every how many columns keep their tick, so that at most `most` of `count` are shown */
-const everyNth = (count: number, most: number) => Math.max(1, Math.ceil(count / most));
 
 /**
  * Admin → Klub → Statistiky: the club's numbers for a period (this academic year by default) – the attendance sheet
@@ -33,8 +30,6 @@ export default async function ClubStatsPage({ searchParams }: { searchParams: Pr
   const s = t.admin.clubStats;
   const a = t.admin.attendance;
   const number = new Intl.NumberFormat(locale, { maximumFractionDigits: 1 });
-  const month = (m: string, style: "short" | "long") =>
-    new Intl.DateTimeFormat(locale, { month: style, ...(style === "long" && { year: "numeric" }), timeZone: "UTC" }).format(dayDate(`${m}-01`));
   // 7 January 2024 was a Sunday
   const weekday = (w: number) => {
     const name = new Intl.DateTimeFormat(locale, { weekday: "long", timeZone: "UTC" }).format(dayDate(addDays("2024-01-07", w)));
@@ -49,14 +44,6 @@ export default async function ClubStatsPage({ searchParams }: { searchParams: Pr
     { label: s.presets.all, from: "2000-01-01", to: today },
   ];
 
-  // the nights oldest first, a tick at the first night of a month
-  const chronological = [...nights].reverse();
-  const monthStarts = chronological.filter((n, i) => i === 0 || chronological[i - 1].day.slice(0, 7) !== n.day.slice(0, 7)).map((n) => n.day);
-  const monthStep = everyNth(monthStarts.length, 8);
-  const nightColumns: Column[] = chronological.map((n) => {
-    const at = monthStarts.indexOf(n.day);
-    return { key: n.day, value: n.total, label: formatShortDate(dayDate(n.day), locale), tick: at >= 0 && at % monthStep === 0 ? month(n.day.slice(0, 7), "short") : undefined };
-  });
   const hourStep = everyNth(att.arrivals.length / 2, 7);
   const arrivalColumns: Column[] = att.arrivals.map((x) => ({
     key: String(x.minute),
@@ -65,7 +52,7 @@ export default async function ClubStatsPage({ searchParams }: { searchParams: Pr
     tick: x.minute % 60 === 0 && (x.minute / 60) % hourStep === 0 ? clock(x.minute) : undefined,
   }));
   const loanStep = everyNth(loans.months.length, 8);
-  const monthColumns: Column[] = loans.months.map((m, i) => ({ key: m.month, value: m.loans, label: month(m.month, "long"), tick: i % loanStep === 0 ? month(m.month, "short") : undefined }));
+  const monthColumns: Column[] = loans.months.map((m, i) => ({ key: m.month, value: m.loans, label: monthName(m.month, locale, "long"), tick: i % loanStep === 0 ? monthName(m.month, locale, "short") : undefined }));
 
   return (
     <div className="flex flex-col gap-6">
@@ -128,7 +115,7 @@ export default async function ClubStatsPage({ searchParams }: { searchParams: Pr
           <>
             <section className="flex flex-col gap-2">
               <h3 className="font-semibold">{s.perNight}</h3>
-              <ColumnChart data={nightColumns} unit={s.peopleN} label={s.perNight} testId="club-stats-nights-chart" />
+              <ColumnChart data={nightColumns(nights, locale)} unit={s.peopleN} label={s.perNight} values testId="club-stats-nights-chart" />
             </section>
 
             <div className="grid gap-6 sm:grid-cols-2">

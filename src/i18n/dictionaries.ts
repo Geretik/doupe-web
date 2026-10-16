@@ -478,6 +478,7 @@ export const cs = {
       loans: "Půjčovna",
       codenames: "Krycí jména",
       keyCards: "Kartičky",
+      keyCardsPrint: "Tisk",
       news: "Novinky",
       newsUnread: "Přibyly novinky",
       accounts: "Účty",
@@ -948,6 +949,7 @@ export const cs = {
       games: "Sbírka her",
       attendanceTonight: (n: number) => `dnes ${n} ${cz(n, "člověk", "lidé", "lidí")}`,
       loansOut: (n: number) => `${n} ${cz(n, "hra půjčená", "hry půjčené", "her půjčeno")}`,
+      allStats: "Statistiky klubu →",
     },
     list: {
       upcoming: "Nadcházející termíny",
@@ -975,8 +977,9 @@ export const cs = {
     codenames: {
       title: "Krycí jména – kartičky",
       intro:
-        "Klíčová kartička pro vypravěče na telefonu a tisk celé sady na A4: nový režim se dá vyzkoušet dřív, než se kartičky vytisknou. Stejný kód sady, režim a začínající tým dají stejné kartičky na telefonu, na papíře i v tiskovém nástroji (karticky.html). Pod nástrojem je, jak se režimy hrají.",
-      overview: "Klíčová kartička pro vypravěče na telefonu i k tisku",
+        "Klíčová kartička pro vypravěče na telefonu: nový režim se dá vyzkoušet dřív, než se kartičky vytisknou. Stejný kód sady, režim a začínající tým dají stejné kartičky na telefonu, na papíře (Tisk na A4) i v tiskovém nástroji (karticky.html). Pod nástrojem je, jak se režimy hrají.",
+      overview: "Klíčová kartička pro vypravěče na telefonu",
+      toPrint: "Tisk na A4 →",
       mode: "Režim",
       mines: "7×6 · agenti 15/13 · 3 vrazi · čísla min",
       mirrors: "7×7 · agenti 18/16 · 1 vrah · souměrní agenti",
@@ -1007,8 +1010,10 @@ export const cs = {
         bigger: "Zvětšit desku",
       },
       print: {
-        title: "Tisk na A4",
-        hint: "Celá sada na papír, se stejným kódem, režimem a začínajícím týmem jako nahoře: kartička 5 na papíře je kartička 5 na telefonu.",
+        title: "Krycí jména – tisk na A4",
+        hint: "Celá sada kartiček na papír, jak ji tiskne tiskový nástroj karticky.html. Kód sady, režim a začínající tým jsou společné s kartičkou na telefonu: kartička 5 na papíře je kartička 5 na telefonu.",
+        overview: "celá sada kartiček na A4",
+        toCards: "← Kartička na telefonu",
         count: "Počet kartiček",
         perPage: "Na stránku A4",
         single: "1 velká",
@@ -1861,6 +1866,7 @@ export const en: Dict = {
       loans: "Game lending",
       codenames: "Codenames",
       keyCards: "Key cards",
+      keyCardsPrint: "Print",
       news: "What's new",
       newsUnread: "New changes",
       accounts: "Accounts",
@@ -2277,6 +2283,7 @@ export const en: Dict = {
       games: "Game collection",
       attendanceTonight: (n: number) => `${n} ${n === 1 ? "person" : "people"} today`,
       loansOut: (n: number) => `${n} ${n === 1 ? "game" : "games"} lent`,
+      allStats: "Club statistics →",
     },
     list: {
       upcoming: "Upcoming sessions",
@@ -2303,8 +2310,9 @@ export const en: Dict = {
     codenames: {
       title: "Codenames – key cards",
       intro:
-        "The spymasters' key card on a phone and the whole set printed on A4: try a new mode before the cards are printed. The same set code, mode and starting team give the same cards on the phone, on paper and in the print tool (karticky.html). Below the tool: how the modes are played.",
-      overview: "The spymasters' key card on a phone and to print",
+        "The spymasters' key card on a phone: try a new mode before the cards are printed. The same set code, mode and starting team give the same cards on the phone, on paper (Print on A4) and in the print tool (karticky.html). Below the tool: how the modes are played.",
+      overview: "The spymasters' key card on a phone",
+      toPrint: "Print on A4 →",
       mode: "Mode",
       mines: "7×6 · agents 15/13 · 3 assassins · mine numbers",
       mirrors: "7×7 · agents 18/16 · 1 assassin · symmetric agents",
@@ -2334,8 +2342,10 @@ export const en: Dict = {
         bigger: "Bigger board",
       },
       print: {
-        title: "Print on A4",
-        hint: "The whole set on paper, with the same code, mode and starting team as above: card 5 on paper is card 5 on the phone.",
+        title: "Codenames – print on A4",
+        hint: "The whole set of cards on paper, as the print tool karticky.html prints it. The set code, mode and starting team are the phone card's: card 5 on paper is card 5 on the phone.",
+        overview: "the whole set of cards on A4",
+        toCards: "← Key card on a phone",
         count: "Number of cards",
         perPage: "Per A4 page",
         single: "1 large",

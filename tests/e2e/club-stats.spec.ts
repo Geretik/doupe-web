@@ -29,10 +29,10 @@ test("club statistics: the attendance sheet and the loans of a period", async ({
       (12398, 'Archa Nova', 'Jana Nováková', '2025-11-03 19:00+02', '2025-11-05 19:00+01')`,
   );
 
-  // from the menu, then the period
-  await page.getByRole("navigation").getByRole("link", { name: "Statistiky" }).last().click();
+  // from the menu (the club's group comes before Krvavka's), then the period
+  await page.locator("[data-admin-nav]").getByRole("link", { name: "Statistiky" }).first().click();
   await expect(page.locator("h1")).toHaveText("Statistiky klubu");
-  await expect(page.getByRole("navigation").getByRole("link", { name: "Statistiky" }).last()).toHaveAttribute("aria-current", "page");
+  await expect(page.locator("[data-admin-nav]").getByRole("link", { name: "Statistiky" }).first()).toHaveAttribute("aria-current", "page");
   await page.goto(PERIOD);
 
   // 3 nights, 7 entries, 4 people (Jana's name once in small letters), Eva not new
@@ -45,6 +45,8 @@ test("club statistics: the attendance sheet and the loans of a period", async ({
   await expect(tiles).toContainText("Poprvé v klubu3");
   await expect(page.getByTestId("club-stats-nights-chart").getByRole("listitem")).toHaveCount(3);
   await expect(page.getByTestId("club-stats-nights-chart").locator('[aria-label="út 14. 10.: 3 lidé"]')).toHaveCount(1);
+  // every night shows how many came
+  await expect(page.getByTestId("club-stats-nights-chart").getByRole("listitem")).toHaveText(["2", "2", "3"], { useInnerText: true });
   await expect(page.getByTestId("club-stats-weekdays")).toHaveText(/Úterý\s*2,5\s*\(2 večery\)\s*Čtvrtek\s*2\s*\(1 večer\)/);
   await expect(page.getByTestId("club-stats-how-often")).toHaveText(/1×\s*2\s*2–3×\s*2\s*4–9×\s*0\s*10× a víc\s*0/);
   // arrivals by half an hour from 18:00 to the one after midnight; Ota, added by hand, is left out
@@ -78,4 +80,37 @@ test("club statistics: not for one who doesn't see the club", async ({ page }) =
   await expect(page.locator("[data-admin-nav]").getByRole("link", { name: "Statistiky" })).toHaveCount(1);
   await page.goto("/admin/statistiky-klubu");
   await expect(page).toHaveURL(/\/admin$/);
+});
+
+test("overview: the club leads, with this academic year's numbers; Krvavka leads for one who doesn't see the club", async ({ page }) => {
+  // tonight's club night (until 5 in the morning the evening before) and a game lent on it
+  const tonight = "((now() at time zone 'Europe/Prague') - interval '5 hours')::date";
+  await sql(`insert into attendance (day, first_name, last_name, affiliation) values (${tonight}, 'Jana', 'Nováková', 'up'), (${tonight}, 'Petr', 'Svoboda', 'none')`);
+  await sql(`insert into game_loans (game_id, game_name, borrower, lent_at) values (13611, 'Akropolis', 'Jana Nováková', now() - interval '5 hours')`);
+  await adminLogin(page);
+
+  // the club's group first in the menu, its card the main one with Krvavka beside it
+  const menu = await page.locator("[data-admin-nav]").innerText();
+  expect(menu.indexOf("Prezenčka")).toBeLessThan(menu.indexOf("Termíny"));
+  await expect(page.locator("#klub ~ div #krvavka")).toBeVisible();
+  const tiles = page.getByTestId("overview-club-stats");
+  await expect(tiles).toContainText("Večerů1");
+  await expect(tiles).toContainText("Různých lidí2");
+  await expect(tiles).toContainText("Průměr na večer2");
+  await expect(tiles).toContainText("Poprvé v klubu2");
+  await expect(tiles).toContainText("Výpůjček1");
+  await expect(tiles).toContainText("Různých her1");
+  await expect(page.getByTestId("overview-nights-chart").getByRole("listitem")).toHaveCount(1);
+  await expect(page.getByTestId("overview-loans")).toContainText("1 hra půjčená");
+  await page.getByRole("link", { name: "Statistiky klubu →" }).click();
+  await expect(page.locator("h1")).toHaveText("Statistiky klubu");
+
+  // without the club: Krvavka leads, the club only links its pages
+  await page.getByRole("button", { name: "Odhlásit" }).click();
+  await page.waitForURL((url) => url.pathname === "/");
+  await createAdminUser({ email: "krvavka@example.com", password: "krvavka-heslo-123", role: "organizer", club: "none" });
+  await adminLogin(page, { email: "krvavka@example.com", password: "krvavka-heslo-123" });
+  await expect(page.locator("#krvavka ~ div #klub")).toBeVisible();
+  await expect(page.getByTestId("overview-club-stats")).toHaveCount(0);
+  await expect(page.locator("#klub")).toContainText("Texty webu");
 });

@@ -36,10 +36,20 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     // column and uses up to 80rem so tables with names and e-mails fit without scrolling.
     <div className="relative left-1/2 flex w-[min(calc(100vw-2rem),80rem)] -translate-x-1/2 flex-col gap-6">
       <nav aria-label={n.label} className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border pb-3 text-sm print:hidden" data-admin-nav>
-        {/* sections grouped by module, the current page marked; on a phone each group is a line of its own */}
+        {/* sections grouped by module, the club first, the current page marked; on a phone each group is a line of its own */}
         <div className="-mx-2 flex flex-wrap items-center gap-x-2 gap-y-1">
           {/* wraps between links on a narrow phone, never inside one */}
           <NavLink href="/admin" className={linkClass}>{n.overview}</NavLink>
+          {(club || botc) && (
+            <div className="flex flex-wrap items-center gap-1 whitespace-nowrap sm:border-l sm:border-border sm:pl-2">
+              <span className={groupClass}>{n.club}</span>
+              {club && <NavLink href="/admin/prezence" prefixes={["/admin/prezence"]} className={linkClass}>{n.attendance}</NavLink>}
+              {club && <NavLink href="/admin/pujcovna" prefixes={["/admin/pujcovna"]} className={linkClass}>{n.loans}</NavLink>}
+              {club && <NavLink href="/admin/statistiky-klubu" className={linkClass}>{n.stats}</NavLink>}
+              {/* the texts of the Krvavka pages belong to Krvavka (pageArea) */}
+              <NavLink href="/admin/web" prefixes={["/admin/web"]} className={linkClass}>{n.web}</NavLink>
+            </div>
+          )}
           {botc && (
             <div className="flex flex-wrap items-center gap-1 sm:border-l sm:border-border sm:pl-2">
               <span className={groupClass}>{n.botc}</span>
@@ -62,20 +72,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               <NavLink href="/admin/botc/grimoary" prefixes={["/admin/botc/grimoary"]} className={linkClass}>{n.grimoires}</NavLink>
             </div>
           )}
-          {(club || botc) && (
-            <div className="flex flex-wrap items-center gap-1 whitespace-nowrap sm:border-l sm:border-border sm:pl-2">
-              <span className={groupClass}>{n.club}</span>
-              {club && <NavLink href="/admin/prezence" prefixes={["/admin/prezence"]} className={linkClass}>{n.attendance}</NavLink>}
-              {club && <NavLink href="/admin/pujcovna" prefixes={["/admin/pujcovna"]} className={linkClass}>{n.loans}</NavLink>}
-              {club && <NavLink href="/admin/statistiky-klubu" className={linkClass}>{n.stats}</NavLink>}
-              {/* the texts of the Krvavka pages belong to Krvavka (pageArea) */}
-              <NavLink href="/admin/web" prefixes={["/admin/web"]} className={linkClass}>{n.web}</NavLink>
-            </div>
-          )}
           {/* a tool without anyone's data: every account has it */}
           <div className="flex flex-wrap items-center gap-1 whitespace-nowrap sm:border-l sm:border-border sm:pl-2">
             <span className={groupClass}>{n.codenames}</span>
             <NavLink href="/admin/kryci-jmena" className={linkClass}>{n.keyCards}</NavLink>
+            <NavLink href="/admin/kryci-jmena/tisk" className={linkClass}>{n.keyCardsPrint}</NavLink>
           </div>
           {/* the admin itself, across modules; the group stays for the news */}
           <div className="flex flex-wrap items-center gap-1 whitespace-nowrap sm:border-l sm:border-border sm:pl-2">
