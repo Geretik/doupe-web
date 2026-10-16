@@ -29,10 +29,11 @@ test("club statistics: the attendance sheet and the loans of a period", async ({
       (12398, 'Archa Nova', 'Jana Nováková', '2025-11-03 19:00+02', '2025-11-05 19:00+01')`,
   );
 
-  // from the menu (the club's group comes before Krvavka's), then the period
-  await page.locator("[data-admin-nav]").getByRole("link", { name: "Statistiky" }).first().click();
+  // from the menu (Klub, then its pages), then the period
+  await page.locator("[data-admin-nav]").getByRole("link", { name: "Klub" }).click();
+  await page.locator("[data-admin-nav-pages]").getByRole("link", { name: "Statistiky" }).click();
   await expect(page.locator("h1")).toHaveText("Statistiky klubu");
-  await expect(page.locator("[data-admin-nav]").getByRole("link", { name: "Statistiky" }).first()).toHaveAttribute("aria-current", "page");
+  await expect(page.locator("[data-admin-nav]").getByRole("link", { name: "Statistiky" })).toHaveAttribute("aria-current", "page");
   await page.goto(PERIOD);
 
   // 3 nights, 7 entries, 4 people (Jana's name once in small letters), Eva not new
@@ -77,7 +78,11 @@ test("club statistics: the attendance sheet and the loans of a period", async ({
 test("club statistics: not for one who doesn't see the club", async ({ page }) => {
   await createAdminUser({ email: "krvavka@example.com", password: "krvavka-heslo-123", role: "organizer", club: "none" });
   await adminLogin(page, { email: "krvavka@example.com", password: "krvavka-heslo-123" });
+  // Krvavka's statistics only; the club has only the site texts left, a part without a line of its pages
+  await page.goto("/admin/botc");
   await expect(page.locator("[data-admin-nav]").getByRole("link", { name: "Statistiky" })).toHaveCount(1);
+  await page.goto("/admin/web");
+  await expect(page.locator("[data-admin-nav-pages]")).toHaveCount(0);
   await page.goto("/admin/statistiky-klubu");
   await expect(page).toHaveURL(/\/admin$/);
 });
@@ -91,7 +96,7 @@ test("overview: the club leads, with this academic year's numbers; Krvavka leads
 
   // the club's group first in the menu, its card the main one with Krvavka beside it
   const menu = await page.locator("[data-admin-nav]").innerText();
-  expect(menu.indexOf("Prezenčka")).toBeLessThan(menu.indexOf("Termíny"));
+  expect(menu.indexOf("Klub")).toBeLessThan(menu.indexOf("Krvavka"));
   await expect(page.locator("#klub ~ div #krvavka")).toBeVisible();
   const tiles = page.getByTestId("overview-club-stats");
   await expect(tiles).toContainText("Večerů1");

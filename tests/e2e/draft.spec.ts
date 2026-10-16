@@ -212,7 +212,9 @@ test("draft: invitations, snake turns over days, a race of two tabs, bundles, co
   // Bob sees the invitation in the menu and accepts it
   const bob = await loginAs(browser, "bob@example.com");
   await expect(bob.getByTestId("draft-badge")).toHaveText("1");
-  await bob.click("main nav >> text=Drafty");
+  // the badge is on Krvavka in the menu and on Drafty among its pages
+  await bob.click("main nav a:has-text('Krvavka')");
+  await bob.click("[data-admin-nav-pages] a:has-text('Drafty')");
   await expect(bob.getByTestId("drafts")).toContainText("Pozvánka čeká na tvou odpověď");
   await bob.click("[data-testid=drafts] a");
   await bob.click("#invitation button:has-text('Přijmout')");

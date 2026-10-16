@@ -14,8 +14,18 @@ export type ChangelogEntry = { /** YYYY-MM-DD */ date: string; title: string; it
 export const changelog: ChangelogEntry[] = [
   {
     date: "2026-10-16",
-    title: "Krycí jména: kartička přes celý displej, uhádnutá pole, velikost desky; Půjčovna: balíčky her, krabice bez kódu, Správa knihovny zvlášť, přehlednější půjčení víc her; Statistiky klubu; prezenčka po ručním přidání prázdná; Klub v adminu na prvním místě; tisk Krycích jmen jako podstránka",
+    title: "Krycí jména: kartička přes celý displej, uhádnutá pole, velikost desky; Půjčovna: balíčky her, krabice bez kódu, Správa knihovny zvlášť, přehlednější půjčení víc her; Statistiky klubu; prezenčka po ručním přidání prázdná; Klub v adminu na prvním místě; tisk Krycích jmen jako podstránka; menu adminu ve dvou řádcích; návod ve Správě knihovny",
     items: [
+      {
+        for: "organizers",
+        text: "Menu adminu je přehlednější: nahoře jen Přehled, Klub, Krvavka, Krycí jména a Administrace (odkaz otevře první stránku části), pod nimi stránky části, ve které jsi. Odznak draftů a tečka novinek jsou vidět i u části. Na profil vede tvoje přezdívka vpravo nahoře.",
+        href: "/admin",
+      },
+      {
+        for: "organizers",
+        text: "Ve Správě knihovny je rozbalovací návod: jak projít krabice a načíst jim kódy, přidat hře další kód (jiné vydání), označit krabici bez kódu a složit balíček her v jedné krabici.",
+        href: "/admin/pujcovna/knihovna",
+      },
       {
         for: "organizers",
         text: "V adminu je Klub na prvním místě: na liště před Krvavkou a v Přehledu jako hlavní část s čísly a grafem večerů za tento školní rok. Kdo Klub nevidí, má hlavní dál Krvavku.",

@@ -33,7 +33,8 @@ const SCRIPT = [
 
 test("scripts library: add a JSON pasted or as a file, see its characters, open it in the script tool, download, edit, delete", async ({ page, browser }) => {
   await adminLogin(page);
-  await page.click("nav a:has-text('Scripty')");
+  await page.click("main nav a:has-text('Krvavka')");
+  await page.click("main nav a:has-text('Scripty')");
   await expect(page).toHaveURL(/\/admin\/botc\/scripty$/);
   await expect(page.locator("main")).toContainText("Zatím tu žádný script není.");
 

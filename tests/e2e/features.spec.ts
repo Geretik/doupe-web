@@ -264,7 +264,7 @@ test("admin is available in English after switching the language", async ({ page
   // the header language switch sets the cookie shared with the public site
   await page.click("header button:has-text('English')");
   await expect(page.locator("main h1")).toHaveText("Hi, Správce");
-  await expect(page.locator("main nav")).toContainText("Statistics");
+  await expect(page.locator("main nav")).toContainText("Blood on the Clocktower");
   await page.goto("/admin/botc");
   await expect(page.locator("main h1")).toHaveText("Upcoming sessions");
 
@@ -310,6 +310,7 @@ test("accounts: first-run wizard, invitation link, roles", async ({ page, browse
   await fillSetup(E2E.adminPassword, "correct-horse-battery");
   await page.waitForURL(/\/admin$/);
   await expect(page.locator("main nav")).toContainText("Šéf");
+  await page.click("main nav a:has-text('Administrace')");
   await expect(page.locator("main nav")).toContainText("Účty");
   expect(await sql("select role, password_hash from admin_users where email='boss@example.com'")).toMatchObject([
     { role: "admin", password_hash: expect.stringMatching(/^scrypt\$/) },
@@ -346,6 +347,8 @@ test("accounts: first-run wizard, invitation link, roles", async ({ page, browse
   await p2.waitForURL(/\/admin$/);
   await expect(p2.locator("main nav")).toContainText("Pavel");
   // an organiser has no account management
+  await p2.click("main nav a:has-text('Administrace')");
+  await expect(p2).toHaveURL(/\/admin\/novinky$/);
   await expect(p2.locator("main nav")).not.toContainText("Účty");
   await p2.goto("/admin/ucty");
   await expect(p2).toHaveURL(/\/admin$/);
@@ -1369,7 +1372,8 @@ test("admin: change own password, other devices are logged out", async ({ browse
   // login cookies carry whole seconds; one issued in the same second as the change would survive it
   await page.waitForTimeout(1100);
 
-  await page.click("main nav >> text=Profil");
+  // the nickname in the menu leads to the profile
+  await page.click("main nav a[href='/admin/profil']");
   await expect(page).toHaveURL(/\/admin\/profil$/);
   const change = async (current: string, next: string, again = next) => {
     await page.fill("#currentPassword", current);
@@ -1422,7 +1426,7 @@ test("admin: a device logs in with a QR code approved on a phone; the phone logs
   await stranger.close();
 
   // the phone opens it from the profile's scan (here straight away) and approves
-  await page.click("main nav >> text=Profil");
+  await page.click("main nav a[href='/admin/profil']");
   await expect(page.getByRole("button", { name: "Naskenovat QR kód" })).toBeVisible();
   await page.goto(path);
   await expect(page.locator("h1")).toHaveText("Přihlásit zařízení?");
@@ -1431,7 +1435,7 @@ test("admin: a device logs in with a QR code approved on a phone; the phone logs
   await expect(page.locator("main")).toContainText("Zařízení se během pár vteřin přihlásí");
   // the tablet notices and opens the admin; the code is used up
   await tablet.waitForURL(/\/admin$/, { timeout: 15_000 });
-  await expect(tablet.locator("main nav")).toContainText("Profil");
+  await expect(tablet.locator("main nav a[href='/admin/profil']")).toBeVisible();
   await page.goto(path);
   await expect(page.locator("main")).toContainText("Tento QR kód už neplatí");
 
@@ -1595,7 +1599,7 @@ test("admin: log in with a one-time link from an e-mail, the same answer for unk
   await page.goto(`/admin/odkaz/${link.token}`);
   await page.click("main button[type=submit]");
   await page.waitForURL(/\/admin$/);
-  await expect(page.locator("main nav")).toContainText("Profil");
+  await expect(page.locator("main nav a[href='/admin/profil']")).toBeVisible();
   await page.context().clearCookies();
   await page.goto(`/admin/odkaz/${link.token}`);
   await expect(page.locator("main")).toContainText("Odkaz neplatí");
@@ -2014,49 +2018,68 @@ test("storytellers: how often each one ran a game, from the games' rosters, in a
   await expect(rows.nth(1).locator("td")).toHaveText(["Petra", "1", "1", /\d{4}$/, "1 / 0", "Bad Moon Rising 1×"]);
 });
 
-test("admin menu groups the sections and marks the current page", async ({ page }) => {
+test("admin menu: the parts of the admin, under them the pages of the part shown, the current page marked", async ({ page }) => {
   const id = await createSession({ title: "Menu večer" });
   await adminLogin(page);
   const current = page.locator("main nav a[aria-current=page]");
+  const pages = page.locator("[data-admin-nav-pages] a");
   await expect(current).toHaveText("Přehled");
-  await page.click("main nav a:has-text('Termíny')");
+  // the overview has a card for each part, the menu no line of pages
+  await expect(page.locator("[data-admin-nav-parts] a")).toHaveText(["Přehled", "Klub", "Krvavka", "Krycí jména", "Administrace"]);
+  await expect(page.locator("[data-admin-nav-pages]")).toHaveCount(0);
+  // a part opens its first page, its pages under it
+  await page.click("main nav a:has-text('Krvavka')");
   await expect(page).toHaveURL(/\/admin\/botc$/);
+  await expect(pages).toHaveText(["Termíny", "Statistiky", "Drafty", "Scripty", "Grimoáry"]);
   await expect(current).toHaveText("Termíny");
+  await expect(page.locator("main nav a[aria-current=true]")).toHaveText("Krvavka");
   await page.goto(`/admin/botc/termin/${id}`);
   await expect(current).toHaveText("Termíny");
-  await page.click("main nav a:has-text('Statistiky')");
+  await page.click("[data-admin-nav-pages] a:has-text('Statistiky')");
+  await expect(page).toHaveURL(/\/admin\/botc\/statistiky$/);
   await expect(current).toHaveText("Statistiky");
-  await page.click("main nav a:has-text('Texty webu')");
+  await page.click("main nav a:has-text('Klub')");
+  await expect(page).toHaveURL(/\/admin\/prezence$/);
+  await expect(page.locator("main nav a[aria-current=true]")).toHaveText("Klub");
+  await page.click("[data-admin-nav-pages] a:has-text('Texty webu')");
   await expect(page).toHaveURL(/\/admin\/web$/);
   await expect(current).toHaveText("Texty webu");
-  await page.click("main nav a:has-text('Účty')");
+  await page.click("main nav a:has-text('Administrace')");
+  await expect(page).toHaveURL(/\/admin\/ucty$/);
   await expect(current).toHaveText("Účty");
   await page.goto("/admin/botc");
   await page.click("main a:has-text('+ Nový termín')");
   await expect(page).toHaveURL(/\/admin\/botc\/novy$/);
   await expect(current).toHaveText("Termíny");
+  // the nickname leads to the profile, a page of no part
+  await page.click("main nav a[href='/admin/profil']");
+  await expect(current).toContainText("Správce");
+  await expect(page.locator("[data-admin-nav-pages]")).toHaveCount(0);
 });
 
 test("news: the changelog in the admin, a dot in the menu until it is read on this device", async ({ page }) => {
   await adminLogin(page);
   const dot = page.getByTestId("news-dot");
   await expect(dot).toBeVisible();
-  await page.click("main nav a:has-text('Novinky')");
+  await page.click("main nav a:has-text('Administrace')");
+  await page.click("[data-admin-nav-pages] a:has-text('Novinky')");
   await expect(page.locator("main nav a[aria-current=page]")).toContainText("Novinky");
   await expect(page.locator("h1")).toHaveText("Novinky");
   await expect(page.getByTestId("news-entry").last()).toContainText("Spuštění");
   await expect(dot).toHaveCount(0);
   await page.goto("/admin");
-  await expect(page.locator("main nav a:has-text('Novinky')")).toBeVisible();
+  await expect(page.locator("main nav a:has-text('Administrace')")).toBeVisible();
   await expect(dot).toHaveCount(0);
 });
 
-test("admin: accounts, history and news are a group of their own, not the club's", async ({ page }) => {
+test("admin: accounts, history and news are a part of their own, not the club's", async ({ page }) => {
   await adminLogin(page);
-  // the group labels are upper-cased by CSS
-  const group = (name: string) => page.locator("[data-admin-nav] span", { hasText: new RegExp(`^${name}$`, "i") }).locator("xpath=..");
-  await expect(group("Administrace").locator("a")).toHaveText(["Účty", "Historie", "Novinky"]);
-  await expect(group("Klub").locator("a")).toHaveText(["Prezenčka", "Půjčovna", "Statistiky", "Texty webu"]);
+  const pages = page.locator("[data-admin-nav-pages] a");
+  await page.click("main nav a:has-text('Administrace')");
+  await expect(pages).toHaveText(["Účty", "Historie", "Novinky"]);
+  await page.click("main nav a:has-text('Klub')");
+  await expect(pages).toHaveText(["Prezenčka", "Půjčovna", "Statistiky", "Texty webu"]);
+  await page.goto("/admin");
   await expect(page.locator("#administrace")).toContainText("Novinky");
   await expect(page.locator("#administrace a[href='/admin/historie']")).toBeVisible();
   await expect(page.locator("#klub a[href='/admin/ucty']")).toHaveCount(0);

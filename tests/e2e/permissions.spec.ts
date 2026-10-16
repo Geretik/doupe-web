@@ -63,7 +63,7 @@ test("accounts: the administrator changes roles and what organisers see and edit
   // of the site texts only the Krvavka pages are left
   await org.reload();
   const nav = org.locator("main nav");
-  await expect(nav).toContainText("Termíny");
+  await expect(nav).toContainText("Krvavka");
   await expect(nav).not.toContainText("Prezenčka");
   await expect(nav).not.toContainText("Půjčovna");
   for (const path of ["/admin/prezence", "/admin/pujcovna", "/admin/web/klub", "/admin/botc/novy", "/admin/botc/scripty/novy", "/admin/botc/drafty/novy"]) {
@@ -101,8 +101,9 @@ test("accounts: the administrator changes roles and what organisers see and edit
   // an administrator now: everything, the accounts too
   await setAccess(page, "org@example.com", "Role", "admin");
   await expect(page.locator("tr", { hasText: "org@example.com" })).toContainText("vše");
-  await org.goto("/admin");
+  await org.goto("/admin/ucty");
   await expect(nav).toContainText("Účty");
+  await org.goto("/admin/prezence");
   await expect(nav).toContainText("Prezenčka");
   expect(await recipients(id)).toEqual([E2E.adminEmail, "org@example.com"]);
   // and back
@@ -149,7 +150,7 @@ test("accounts: an invitation gives its parts; the club only for the new organis
   ]);
 
   // no Krvavka anywhere
-  await expect(p2.locator("main nav")).not.toContainText("Termíny");
+  await expect(p2.locator("main nav")).not.toContainText("Krvavka");
   await expect(p2.locator("#krvavka")).toHaveCount(0);
   await expect(p2.getByTestId("overview-attendance")).toBeVisible();
   for (const path of ["/admin/botc", "/admin/botc/drafty", "/admin/botc/scripty", "/admin/botc/grimoary", "/admin/botc/statistiky", "/admin/web/krvavka"]) {

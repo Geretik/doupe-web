@@ -10,8 +10,8 @@ import { parseId } from "@/lib/validation";
 
 /**
  * Admin → Půjčovna → Správa knihovny: the bar codes of the boxes, the boxes without one and the bundles of games in
- * one box, so that Půjčovna finds a game by a code. `?hra=` opens one game (links from Půjčovna and Historie). One who
- * only reads the club sees how many codes we know.
+ * one box, so that Půjčovna finds a game by a code; a guide to it opens under the intro. `?hra=` opens one game (links
+ * from Půjčovna and Historie). One who only reads the club sees how many codes we know.
  */
 export default async function GameLibraryPage({ searchParams }: { searchParams: Promise<{ hra?: string }> }) {
   const me = await requireAccess("club");
@@ -39,6 +39,24 @@ export default async function GameLibraryPage({ searchParams }: { searchParams: 
         <p className="max-w-3xl text-sm text-muted">{l.library.intro}</p>
         <p className="text-sm text-muted" data-testid="loan-codes-known">{l.codesKnown(known, games.length, none)}</p>
         {!edit && <Alert kind="info">{t.admin.readOnly}</Alert>}
+        {edit && (
+          <details className="max-w-3xl rounded-lg border border-border bg-card px-4 py-3 text-sm" data-testid="library-guide">
+            <summary className="cursor-pointer font-medium">{l.library.guideTitle}</summary>
+            <div className="mt-3 flex flex-col gap-4">
+              {l.library.guide.map((part) => (
+                <section key={part.title} className="flex flex-col gap-1.5">
+                  <h2 className="font-semibold">{part.title}</h2>
+                  <ol className="list-decimal space-y-1 pl-5 leading-relaxed">
+                    {part.steps.map((step) => (
+                      <li key={step}>{step}</li>
+                    ))}
+                  </ol>
+                </section>
+              ))}
+              <p className="text-muted">{l.library.guideEnd}</p>
+            </div>
+          </details>
+        )}
       </div>
 
       {edit && (

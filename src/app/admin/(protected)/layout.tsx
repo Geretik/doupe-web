@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { logoutAction } from "@/app/actions/admin";
-import { NavLink } from "@/components/nav-link";
+import { AdminNav, type AdminNavGroup } from "@/components/admin/admin-nav";
 import { Button } from "@/components/ui";
 import { changelogStamp } from "@/data/changelog";
 import { getDict } from "@/i18n/server";
@@ -11,9 +11,6 @@ import { countDraftAttention } from "@/modules/botc/lib/draft/queries";
 import { NEWS_COOKIE } from "@/lib/news";
 
 export const dynamic = "force-dynamic";
-
-const linkClass = "rounded-md px-2 py-1.5 whitespace-nowrap hover:underline";
-const groupClass = "px-2 text-xs font-medium uppercase tracking-wide text-muted";
 
 // The login and invitation pages live outside this route group, so they are never
 // wrapped by this layout and the redirect below cannot loop.
@@ -31,79 +28,75 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const newsUnread = jar.get(NEWS_COOKIE)?.value !== changelogStamp();
   // draft reminders that came due (a turn left for a day) go out with any admin page, not only with the daily cron
   dispatchDraftEventsLater();
+  // the parts of the admin by module, the club first; a link only to what the account may see
+  const groups: AdminNavGroup[] = [];
+  if (club || botc)
+    groups.push({
+      label: n.club,
+      items: [
+        ...(club
+          ? [
+              { href: "/admin/prezence", label: n.attendance, prefixes: ["/admin/prezence"] },
+              { href: "/admin/pujcovna", label: n.loans, prefixes: ["/admin/pujcovna"] },
+              { href: "/admin/statistiky-klubu", label: n.stats },
+            ]
+          : []),
+        // the texts of the Krvavka pages belong to Krvavka (pageArea)
+        { href: "/admin/web", label: n.web, prefixes: ["/admin/web"] },
+      ],
+    });
+  if (botc)
+    groups.push({
+      label: n.botc,
+      items: [
+        { href: "/admin/botc", label: n.sessions, prefixes: ["/admin/botc/termin", "/admin/botc/novy"] },
+        { href: "/admin/botc/statistiky", label: n.stats },
+        {
+          href: "/admin/botc/drafty",
+          label: n.drafts,
+          prefixes: ["/admin/botc/drafty"],
+          badge: draftBadge > 0 ? { count: draftBadge, title: n.draftsAttention(attention.turns, attention.invites), testId: "draft-badge" } : undefined,
+        },
+        { href: "/admin/botc/scripty", label: n.scripts, prefixes: ["/admin/botc/scripty"] },
+        { href: "/admin/botc/grimoary", label: n.grimoires, prefixes: ["/admin/botc/grimoary"] },
+      ],
+    });
+  // a tool without anyone's data: every account has it
+  groups.push({
+    label: n.codenames,
+    items: [
+      { href: "/admin/kryci-jmena", label: n.keyCards },
+      { href: "/admin/kryci-jmena/tisk", label: n.keyCardsPrint },
+    ],
+  });
+  // the admin itself, across modules; the group stays for the news
+  groups.push({
+    label: n.administration,
+    items: [
+      ...(hasRole(me, "admin")
+        ? [
+            { href: "/admin/ucty", label: n.accounts },
+            { href: "/admin/historie", label: n.log },
+          ]
+        : []),
+      { href: "/admin/novinky", label: n.news, badge: newsUnread ? { title: n.newsUnread, testId: "news-dot" } : undefined },
+    ],
+  });
   return (
     // The public site is narrow (max-w-3xl in the root layout); the admin breaks out of that
     // column and uses up to 80rem so tables with names and e-mails fit without scrolling.
     <div className="relative left-1/2 flex w-[min(calc(100vw-2rem),80rem)] -translate-x-1/2 flex-col gap-6">
-      <nav aria-label={n.label} className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border pb-3 text-sm print:hidden" data-admin-nav>
-        {/* sections grouped by module, the club first, the current page marked; on a phone each group is a line of its own */}
-        <div className="-mx-2 flex flex-wrap items-center gap-x-2 gap-y-1">
-          {/* wraps between links on a narrow phone, never inside one */}
-          <NavLink href="/admin" className={linkClass}>{n.overview}</NavLink>
-          {(club || botc) && (
-            <div className="flex flex-wrap items-center gap-1 whitespace-nowrap sm:border-l sm:border-border sm:pl-2">
-              <span className={groupClass}>{n.club}</span>
-              {club && <NavLink href="/admin/prezence" prefixes={["/admin/prezence"]} className={linkClass}>{n.attendance}</NavLink>}
-              {club && <NavLink href="/admin/pujcovna" prefixes={["/admin/pujcovna"]} className={linkClass}>{n.loans}</NavLink>}
-              {club && <NavLink href="/admin/statistiky-klubu" className={linkClass}>{n.stats}</NavLink>}
-              {/* the texts of the Krvavka pages belong to Krvavka (pageArea) */}
-              <NavLink href="/admin/web" prefixes={["/admin/web"]} className={linkClass}>{n.web}</NavLink>
-            </div>
-          )}
-          {botc && (
-            <div className="flex flex-wrap items-center gap-1 sm:border-l sm:border-border sm:pl-2">
-              <span className={groupClass}>{n.botc}</span>
-              <NavLink href="/admin/botc" prefixes={["/admin/botc/termin", "/admin/botc/novy"]} className={linkClass}>{n.sessions}</NavLink>
-              <NavLink href="/admin/botc/statistiky" className={linkClass}>{n.stats}</NavLink>
-              <NavLink href="/admin/botc/drafty" prefixes={["/admin/botc/drafty"]} className={linkClass}>
-                {n.drafts}
-                {draftBadge > 0 && (
-                  <span
-                    className="ml-1 rounded-full bg-accent px-1.5 text-xs font-semibold text-accent-foreground"
-                    title={n.draftsAttention(attention.turns, attention.invites)}
-                    aria-label={n.draftsAttention(attention.turns, attention.invites)}
-                    data-testid="draft-badge"
-                  >
-                    {draftBadge}
-                  </span>
-                )}
-              </NavLink>
-              <NavLink href="/admin/botc/scripty" prefixes={["/admin/botc/scripty"]} className={linkClass}>{n.scripts}</NavLink>
-              <NavLink href="/admin/botc/grimoary" prefixes={["/admin/botc/grimoary"]} className={linkClass}>{n.grimoires}</NavLink>
-            </div>
-          )}
-          {/* a tool without anyone's data: every account has it */}
-          <div className="flex flex-wrap items-center gap-1 whitespace-nowrap sm:border-l sm:border-border sm:pl-2">
-            <span className={groupClass}>{n.codenames}</span>
-            <NavLink href="/admin/kryci-jmena" className={linkClass}>{n.keyCards}</NavLink>
-            <NavLink href="/admin/kryci-jmena/tisk" className={linkClass}>{n.keyCardsPrint}</NavLink>
-          </div>
-          {/* the admin itself, across modules; the group stays for the news */}
-          <div className="flex flex-wrap items-center gap-1 whitespace-nowrap sm:border-l sm:border-border sm:pl-2">
-            <span className={groupClass}>{n.administration}</span>
-            {hasRole(me, "admin") && <NavLink href="/admin/ucty" className={linkClass}>{n.accounts}</NavLink>}
-            {hasRole(me, "admin") && <NavLink href="/admin/historie" className={linkClass}>{n.log}</NavLink>}
-            <NavLink href="/admin/novinky" className={linkClass}>
-              {n.news}
-              {newsUnread && (
-                <span
-                  className="ml-1 inline-block size-2 rounded-full bg-accent align-middle"
-                  title={n.newsUnread}
-                  aria-label={n.newsUnread}
-                  data-testid="news-dot"
-                />
-              )}
-            </NavLink>
-          </div>
-        </div>
-        <span className="ml-auto flex items-center gap-3">
-          <span className="truncate text-muted" title={me.email}>{me.nickname}</span>
-          <NavLink href="/admin/profil" className="hover:underline">{n.profile}</NavLink>
+      <AdminNav
+        label={n.label}
+        overview={n.overview}
+        groups={groups}
+        account={{ name: me.nickname, title: `${n.profile} – ${me.email}` }}
+        logout={
           <form action={logoutAction}>
             <Button type="submit" variant="secondary">{n.logout}</Button>
           </form>
-        </span>
-      </nav>
+        }
+      />
       {children}
     </div>
   );

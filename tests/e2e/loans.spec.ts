@@ -115,7 +115,9 @@ test("game names: a name in English finds the game listed in Czech", () => {
 test("lending: an unknown code goes to the game picked, names come from the attendance sheet, lend and return", async ({ page, context }) => {
   await sql("insert into attendance (day, first_name, last_name, affiliation) values (current_date - 7, 'Jana', 'Nováková', 'up'), (current_date - 14, 'Petr', 'Svoboda', 'none')");
   await adminLogin(page);
-  await page.getByRole("navigation").getByRole("link", { name: "Půjčovna" }).click();
+  // the site's header has a Klub link too
+  await page.locator("[data-admin-nav]").getByRole("link", { name: "Klub" }).click();
+  await page.locator("[data-admin-nav]").getByRole("link", { name: "Půjčovna" }).click();
   await expect(page.locator("h1")).toHaveText("Půjčovna her");
   // the codes and boxes are kept elsewhere
   await expect(page.getByTestId("loan-codes-known")).toHaveCount(0);
@@ -203,6 +205,12 @@ test("lending: an unknown code goes to the game picked, names come from the atte
   await page.getByTestId("loan-to-library").click();
   await expect(page.locator("h1")).toHaveText("Správa knihovny");
   await expect(page.getByRole("navigation").getByRole("link", { name: "Půjčovna" })).toHaveAttribute("aria-current", "page");
+  // the guide opens under the intro
+  const guide = page.getByTestId("library-guide");
+  await expect(guide.getByRole("heading", { name: "Hra s víc kódy" })).toBeHidden();
+  await guide.locator("summary").click();
+  await expect(guide.getByRole("heading", { name: "Hra s víc kódy" })).toBeVisible();
+  await expect(guide).toContainText("Krabice kód nemá");
   await expect(page.getByTestId("loan-codes-known")).toContainText("u 1 z");
   await expect(page.getByTestId("loan-game")).toContainText("1775: Rebellion");
   page.once("dialog", (d) => d.accept());

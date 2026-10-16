@@ -122,7 +122,8 @@ test("attendance admin: tonight's list, adding and deleting by hand, numbers of 
 
   await adminLogin(page);
   await expect(page.getByTestId("overview-attendance")).toContainText("dnes 1 člověk");
-  await page.click("[data-admin-nav] a:has-text('Prezenčka')");
+  // Klub in the menu opens its first page
+  await page.click("[data-admin-nav] a:has-text('Klub')");
   await expect(page).toHaveURL(/\/admin\/prezence$/);
   await expect(page.getByTestId("attendance-link")).toHaveText(/\/prezence$/);
   await expect(page.getByTestId("attendance-night")).toContainText("dnes · 1 člověk");

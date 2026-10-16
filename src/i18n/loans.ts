@@ -16,7 +16,44 @@ export const loansAdminCs = {
     title: "Správa knihovny",
     back: "← Půjčovna",
     intro:
-      "Aby Půjčovna našla hru podle čárového kódu, musí znát kód její krabice. Hru najdeš podle kódu nebo názvu a kód z krabice k ní načteš telefonem; kód, který ještě neznáme, dostane hra, kterou vybereš potom (nabídne se ta, kterou mu dává databáze GameUPC). Krabici bez kódu označíš a hra se hledá podle názvu. Rozšíření zabudované v krabici hry k ní přidáš jako balíček: půjčuje se s ní a najde ho kód kterékoli z nich.",
+      "Aby Půjčovna našla hru podle čárového kódu, musí znát kód její krabice. Tady kódy krabicím načítáš, označuješ krabice, které kód nemají, a skládáš balíčky her, které jsou v jedné krabici.",
+    guideTitle: "📖 Návod: kódy, krabice bez kódu a balíčky",
+    /** Each part: a heading and its steps */
+    guide: [
+      {
+        title: "Projít krabice ze skříně",
+        steps: [
+          "Ťukni na „📷 Načíst kód z krabice“ a namiř foťák na čárový kód. Číslo pod kódem jde napsat i do pole Hra (USB čtečka ho tam napíše sama).",
+          "Kód, který už známe, rovnou otevře svou hru – vidíš u ní její kódy a co je v její krabici.",
+          "Kód, který ještě neznáme: podle databáze GameUPC se nabídne, která hra ze sbírky to nejspíš je – ťukni na ni. Když nesedí, napiš název hry a vyber ji ze seznamu. Kód se k ní uloží a příště se hra najde sama. „Zahodit kód“ ho zahodí.",
+          "Další krabice: znovu „📷 Načíst kód z krabice“.",
+        ],
+      },
+      {
+        title: "Hra s víc kódy",
+        steps: [
+          "Má hra jiný kód na jiném vydání nebo dotisku? Otevři ji a u Čárových kódů ťukni na „📷 Načíst kód krabice“ – kód přibude k těm, co už má. Hra se pak najde podle kteréhokoli z nich.",
+          "Jeden kód patří jen jedné hře. Když ho načteš u jiné hry, web se zeptá, jestli ho má dát téhle.",
+          "Kód přiřazený ke špatné hře odebereš ✕ vedle něj.",
+        ],
+      },
+      {
+        title: "Hry bez kódu",
+        steps: [
+          "Dole je seznam Hry bez čárového kódu (dá se v něm hledat). Ťukni na hru, otevře se nahoře, a načti jí kód z krabice.",
+          "Krabice kód opravdu nemá (vlastní krabice, ustřižený kód…)? Ťukni u hry na „Krabice kód nemá“. Hra zmizí ze seznamu her bez kódu, má vlastní seznam Krabice bez kódu a v Půjčovně se hledá podle názvu. „Zrušit“ to vrátí.",
+        ],
+      },
+      {
+        title: "Víc her v jedné krabici (balíček)",
+        steps: [
+          "Otevři hru, v jejíž krabici jsou i jiné hry (třeba základní hru se zabudovaným rozšířením), a u V krabici ťukni na „+ Přidat hru do krabice“. Napiš název druhé hry a ťukni na ni.",
+          "Balíček najde kód kterékoli z jeho her a půjčuje se i vrací najednou. Kdo si bere jen základní hru, v Půjčovně ostatní odškrtne.",
+          "Hru z krabice vyndáš ✕ vedle ní, nebo „Vyjmout z krabice“ u té hry. Krabice se do sebe nevkládají: hra, v jejíž krabici jsou jiné, sama do další krabice nejde.",
+        ],
+      },
+    ],
+    guideEnd: "U každé hry vede „Půjčit nebo vrátit →“ zpátky do Půjčovny s touhle hrou.",
   },
   codesKnown: (n: number, total: number, none: number) =>
     `Čárový kód známe u ${n} z ${total} her${none ? `, ${none} ${cz(none, "hra", "hry", "her")} kód nemá` : ""}.`,
@@ -150,7 +187,43 @@ export const loansAdminEn: LoansAdminDict = {
     title: "Library",
     back: "← Game lending",
     intro:
-      "For the lending page to find a game by its bar code, it needs to know the code of its box. Find a game by a code or its name and read the code on its box with your phone; a code we don't know yet goes to the game you pick next (the one the GameUPC database gives it is offered). A box without a code you mark so, and the game is found by its name. An expansion built into a game's box you add to it as a bundle: it is lent with it and a code of any of them finds it.",
+      "For the lending page to find a game by its bar code, it needs to know the code of its box. Here you read the codes of the boxes, mark the boxes that have none and put together the bundles of games in one box.",
+    guideTitle: "📖 How to: codes, boxes without a code and bundles",
+    guide: [
+      {
+        title: "Going through the boxes on the shelf",
+        steps: [
+          "Tap “📷 Read the code on the box” and point the camera at the bar code. The number under the code can be typed into the Game field too (a USB reader types it there by itself).",
+          "A code we know opens its game straight away – you see its codes and what is in its box.",
+          "A code we don't know yet: the game of the collection it most likely is, by the GameUPC database, is offered – tap it. If it's wrong, type the game's name and pick it from the list. The code is saved to it and next time the game is found by itself. “Discard the code” drops it.",
+          "The next box: “📷 Read the code on the box” again.",
+        ],
+      },
+      {
+        title: "A game with several codes",
+        steps: [
+          "Another edition or print run with another code? Open the game and tap “📷 Read the box's code” by its Bar codes – the code is added to the ones it has. The game is then found by any of them.",
+          "A code belongs to one game only. Read it at another game and you're asked whether to give it to this one.",
+          "A code given to the wrong game is removed with the ✕ beside it.",
+        ],
+      },
+      {
+        title: "Games without a code",
+        steps: [
+          "At the bottom is the list of games without a bar code (you can search it). Tap a game, it opens at the top, and read the code on its box.",
+          "The box really has no code (a box of our own, the code cut off…)? Tap “The box has no code” at the game. It leaves the list of games without a code, has a list of its own, Boxes without a code, and is found by its name at the lending desk. “Undo” brings it back.",
+        ],
+      },
+      {
+        title: "Several games in one box (a bundle)",
+        steps: [
+          "Open the game whose box holds other games too (a base game with an expansion built in, say) and tap “+ Add a game to the box” by In the box. Type the other game's name and tap it.",
+          "A code of any game of the bundle finds it, and it is lent and returned together. One who takes only the base game unticks the others at the lending desk.",
+          "Take a game out with the ✕ beside it, or “Take out of the box” at that game. Boxes don't nest: a game with other games in its box doesn't go into another box.",
+        ],
+      },
+    ],
+    guideEnd: "At every game, “Lend or return →” leads back to the lending desk with that game.",
   },
   codesKnown: (n, total, none) => `We know the bar code of ${n} of ${total} games${none ? `; ${none} ${none === 1 ? "game has" : "games have"} none` : ""}.`,
   returnedTitle: "Recently returned",
