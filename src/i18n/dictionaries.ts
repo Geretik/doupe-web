@@ -476,7 +476,7 @@ export const cs = {
       web: "Texty webu",
       attendance: "Prezenčka",
       loans: "Půjčovna",
-      codenames: "Krycí jména",
+      knownNames: "Známá jména",
       keyCards: "Kartičky",
       keyCardsPrint: "Tisk",
       news: "Novinky",
@@ -973,9 +973,9 @@ export const cs = {
       audience: { players: "Hráči", organizers: "Organizátoři" },
       open: "Otevřít →",
     },
-    /** Admin → Krycí jména (modules/codenames). Plain strings only – passed to a client component. */
-    codenames: {
-      title: "Krycí jména – kartičky",
+    /** Admin → Známá jména (modules/known-names). Plain strings only – passed to a client component. */
+    knownNames: {
+      title: "Známá jména – kartičky",
       intro:
         "Klíčová kartička pro vypravěče na telefonu: nový režim se dá vyzkoušet dřív, než se kartičky vytisknou. Stejný kód sady, režim a začínající tým dají stejné kartičky na telefonu, na papíře (Tisk na A4) i v tiskovém nástroji (karticky.html). Pod nástrojem je, jak se režimy hrají.",
       overview: "Klíčová kartička pro vypravěče na telefonu",
@@ -1010,7 +1010,7 @@ export const cs = {
         bigger: "Zvětšit desku",
       },
       print: {
-        title: "Krycí jména – tisk na A4",
+        title: "Známá jména – tisk na A4",
         hint: "Celá sada kartiček na papír, jak ji tiskne tiskový nástroj karticky.html. Kód sady, režim a začínající tým jsou společné s kartičkou na telefonu: kartička 5 na papíře je kartička 5 na telefonu.",
         overview: "celá sada kartiček na A4",
         toCards: "← Kartička na telefonu",
@@ -1031,7 +1031,7 @@ export const cs = {
         title: "Jak se to hraje",
         sections: [
           {
-            title: "Krycí jména v kostce",
+            title: "Známá jména v kostce",
             items: [
               "Na stole leží mřížka karet se slovy – v klasické hře 5×5, v Big Mines 7×6, v Ultimate Mirrors 7×7. Hrají dva týmy, červení a modří; každý má velitele, ostatní jsou agenti v terénu.",
               "Velitelé vidí klíčovou kartičku: červená a modrá pole jsou agenti týmů, bílá civilisté, 💀 vrah. Kartičku (nebo telefon) položte natočenou stejně jako mřížku na stole.",
@@ -1864,7 +1864,7 @@ export const en: Dict = {
       web: "Site texts",
       attendance: "Attendance sheet",
       loans: "Game lending",
-      codenames: "Codenames",
+      knownNames: "Known Names",
       keyCards: "Key cards",
       keyCardsPrint: "Print",
       news: "What's new",
@@ -2307,8 +2307,8 @@ export const en: Dict = {
       audience: { players: "Players", organizers: "Organisers" },
       open: "Open →",
     },
-    codenames: {
-      title: "Codenames – key cards",
+    knownNames: {
+      title: "Known Names – key cards",
       intro:
         "The spymasters' key card on a phone: try a new mode before the cards are printed. The same set code, mode and starting team give the same cards on the phone, on paper (Print on A4) and in the print tool (karticky.html). Below the tool: how the modes are played.",
       overview: "The spymasters' key card on a phone",
@@ -2342,7 +2342,7 @@ export const en: Dict = {
         bigger: "Bigger board",
       },
       print: {
-        title: "Codenames – print on A4",
+        title: "Known Names – print on A4",
         hint: "The whole set of cards on paper, as the print tool karticky.html prints it. The set code, mode and starting team are the phone card's: card 5 on paper is card 5 on the phone.",
         overview: "the whole set of cards on A4",
         toCards: "← Key card on a phone",
@@ -2363,7 +2363,7 @@ export const en: Dict = {
         title: "How to play",
         sections: [
           {
-            title: "Codenames in short",
+            title: "Known Names in short",
             items: [
               "A grid of word cards lies on the table – 5×5 in the classic game, 7×6 in Big Mines, 7×7 in Ultimate Mirrors. Two teams play, red and blue; each has a spymaster, the others are field operatives.",
               "The spymasters see the key card: red and blue cells are the teams' agents, white ones bystanders, 💀 the assassin. Lay the card (or the phone) turned the same way as the grid on the table.",

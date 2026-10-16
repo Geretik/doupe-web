@@ -1,27 +1,27 @@
 import Link from "next/link";
 import { getDict } from "@/i18n/server";
 import { requireAdmin } from "@/lib/admin-auth";
-import { KeyCardTool } from "@/modules/codenames/components/key-card-tool";
+import { KeyCardTool } from "@/modules/known-names/components/key-card-tool";
 
 /**
- * Admin → Krycí jména: the spymasters' key card on a phone, to try the gold modes (Big Mines, Ultimate Mirrors), and how
+ * Admin → Známá jména: the spymasters' key card on a phone, to try the gold modes (Big Mines, Ultimate Mirrors), and how
  * the modes are played; the same set on A4 pages is the subpage Tisk. No data of anyone, so every account has it.
  */
-export default async function CodenamesPage() {
+export default async function KnownNamesPage() {
   await requireAdmin();
   const { t } = await getDict();
-  const c = t.admin.codenames;
+  const c = t.admin.knownNames;
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
         <h1 className="text-2xl font-bold">{c.title}</h1>
         <p className="max-w-3xl text-sm text-muted">{c.intro}</p>
-        <Link href="/admin/kryci-jmena/tisk" className="select-none self-start text-sm font-medium text-accent hover:underline">
+        <Link href="/admin/znama-jmena/tisk" className="select-none self-start text-sm font-medium text-accent hover:underline">
           {c.toPrint}
         </Link>
       </div>
       <KeyCardTool t={c} />
-      <section className="flex max-w-3xl flex-col gap-4 border-t border-border pt-6" data-testid="codenames-rules">
+      <section className="flex max-w-3xl flex-col gap-4 border-t border-border pt-6" data-testid="known-names-rules">
         <h2 className="text-lg font-semibold">{c.rules.title}</h2>
         {c.rules.sections.map((section) => (
           <div key={section.title} className="flex flex-col gap-2">

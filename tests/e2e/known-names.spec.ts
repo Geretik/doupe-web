@@ -17,7 +17,7 @@ const MIRRORS_RANDOM = [
 /** The board in full screen as rows like the ones above, from the cells' labels */
 async function screenRows(page: Page) {
   const sign: Record<string, string> = { "Červený agent": "R", "Modrý agent": "B", Civilista: ".", Vrah: "X" };
-  const board = page.getByTestId("codenames-board");
+  const board = page.getByTestId("known-names-board");
   const width = (await board.evaluate((el) => getComputedStyle(el).gridTemplateColumns.split(" ").length)) as number;
   const labels = await board.locator("[data-cell]").evaluateAll((els) => els.map((e) => e.getAttribute("aria-label")!));
   const rows: string[] = [];
@@ -25,16 +25,16 @@ async function screenRows(page: Page) {
   return rows.join("/");
 }
 
-test("admin: Codenames key cards are the print tool's, shown only in full screen over the whole display", async ({ page }) => {
+test("admin: Known Names key cards are the print tool's, shown only in full screen over the whole display", async ({ page }) => {
   await adminLogin(page);
-  await page.click("[data-testid=overview-codenames]");
-  await expect(page).toHaveURL(/\/admin\/kryci-jmena$/);
-  await expect(page.locator("[data-admin-nav]")).toContainText("Krycí jména");
+  await page.click("[data-testid=overview-known-names]");
+  await expect(page).toHaveURL(/\/admin\/znama-jmena$/);
+  await expect(page.locator("[data-admin-nav]")).toContainText("Známá jména");
 
   // Big Mines, red starts
   await page.getByText("Červení", { exact: true }).click();
   await page.fill("input[name=code]", "test01");
-  const card = page.getByTestId("codenames-card");
+  const card = page.getByTestId("known-names-card");
   await expect(card).toHaveAttribute("data-board", MINES_RED[0]);
   await expect(card).toHaveAttribute("data-seed", "test01/1");
   // on the page the card is hidden
@@ -42,8 +42,8 @@ test("admin: Codenames key cards are the print tool's, shown only in full screen
   await expect(page.locator("main [data-cell]")).toHaveCount(0);
 
   // full screen: the board over the display but for the strip at the side, with who starts and the counts there
-  const full = page.getByTestId("codenames-fullscreen");
-  const board = page.getByTestId("codenames-board");
+  const full = page.getByTestId("known-names-fullscreen");
+  const board = page.getByTestId("known-names-board");
   const open = () => page.getByRole("button", { name: "Na celou obrazovku" }).click();
   await open();
   await expect(full).toContainText("Big Mines · 1");
@@ -92,7 +92,7 @@ test("admin: Codenames key cards are the print tool's, shown only in full screen
   await page.keyboard.press("Escape");
   await expect(full).toBeHidden();
   await expect(card).toHaveAttribute("data-board", MINES_RED[1]);
-  await expect(page.getByTestId("codenames-card-number")).toHaveText("Kartička 2");
+  await expect(page.getByTestId("known-names-card-number")).toHaveText("Kartička 2");
 
   // another mode or team starts the set again
   await page.locator("label").filter({ hasText: "Ultimate Mirrors" }).click();
@@ -130,6 +130,15 @@ test("admin: Codenames key cards are the print tool's, shown only in full screen
   await expect(card).toHaveAttribute("data-seed", "test01/2");
   await expect(card).toHaveAttribute("data-board", MIRRORS_RANDOM[1]);
 
+  // a phone that kept the set while the tool was called Krycí jména still has it
+  await page.evaluate(() => {
+    localStorage.setItem("kryci-jmena-v1", localStorage.getItem("znama-jmena-v1")!);
+    localStorage.removeItem("znama-jmena-v1");
+  });
+  await page.reload();
+  await expect(card).toHaveAttribute("data-seed", "test01/2");
+  await expect(card).toHaveAttribute("data-board", MIRRORS_RANDOM[1]);
+
   // in English the texts at the side too
   await page.context().addCookies([{ name: "botc_lang", value: "en", url: new URL(page.url()).origin }]);
   await page.reload();
@@ -151,15 +160,15 @@ test("admin: Codenames key cards are the print tool's, shown only in full screen
   await expect(board.locator("[data-mines]")).toHaveCount(42 - 3);
 });
 
-test("admin: Codenames on a phone held upright – the board as wide as the display, its cells square, not stretched to its height", async ({ page }) => {
+test("admin: Known Names on a phone held upright – the board as wide as the display, its cells square, not stretched to its height", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await adminLogin(page);
-  await page.goto("/admin/kryci-jmena");
+  await page.goto("/admin/znama-jmena");
   await page.getByText("Červení", { exact: true }).click();
   await page.fill("input[name=code]", "test01");
-  await expect(page.getByTestId("codenames-card")).toHaveAttribute("data-board", MINES_RED[0]);
+  await expect(page.getByTestId("known-names-card")).toHaveAttribute("data-board", MINES_RED[0]);
   await page.getByRole("button", { name: "Na celou obrazovku" }).click();
-  const board = page.getByTestId("codenames-board");
+  const board = page.getByTestId("known-names-board");
   const square = async () => {
     for (const i of [0, 41]) {
       const cell = (await board.locator(`[data-cell='${i}']`).boundingBox())!;
@@ -179,17 +188,17 @@ test("admin: Codenames on a phone held upright – the board as wide as the disp
   await square();
 });
 
-test("admin: Codenames print – a subpage, the set on A4 pages, the cards of the phone, alone in print; how the modes are played", async ({ page }) => {
+test("admin: Known Names print – a subpage, the set on A4 pages, the cards of the phone, alone in print; how the modes are played", async ({ page }) => {
   await adminLogin(page);
-  await page.goto("/admin/kryci-jmena");
+  await page.goto("/admin/znama-jmena");
   await page.getByRole("link", { name: "Tisk na A4 →" }).click();
-  await expect(page).toHaveURL(/\/admin\/kryci-jmena\/tisk$/);
-  await expect(page.locator("h1")).toHaveText("Krycí jména – tisk na A4");
+  await expect(page).toHaveURL(/\/admin\/znama-jmena\/tisk$/);
+  await expect(page.locator("h1")).toHaveText("Známá jména – tisk na A4");
   await expect(page.locator("main nav a[aria-current=page]")).toHaveText("Tisk");
   await page.getByText("Červení", { exact: true }).click();
   await page.fill("input[name=code]", "test01");
-  const print = page.getByTestId("codenames-print");
-  const status = page.getByTestId("codenames-print-status");
+  const print = page.getByTestId("known-names-print");
+  const status = page.getByTestId("known-names-print-status");
   // 12 cards, 6 to a page by default
   await expect(status).toHaveText("12 kartiček · 2 strany A4");
   await print.locator("input[name=count]").fill("5");
@@ -197,7 +206,7 @@ test("admin: Codenames print – a subpage, the set on A4 pages, the cards of th
   await expect(status).toHaveText("5 kartiček · 2 strany A4");
 
   // the set the phone shows: cards 1–4 on the first page, card 5 on the second, each with its title and code
-  const pages = page.locator("[data-codenames-pages] > div");
+  const pages = page.locator("[data-known-names-pages] > div");
   await expect(pages).toHaveCount(2);
   for (const n of [1, 2, 3, 4]) {
     await expect(pages.nth(0)).toContainText(`Big Mines · ${n}`);
@@ -208,9 +217,9 @@ test("admin: Codenames print – a subpage, the set on A4 pages, the cards of th
   await expect(pages.nth(1)).not.toContainText("test01/5");
 
   // not on screen; in print the pages are all there is
-  await expect(page.locator("[data-codenames-pages]")).toBeHidden();
+  await expect(page.locator("[data-known-names-pages]")).toBeHidden();
   await page.emulateMedia({ media: "print" });
-  await expect(page.locator("[data-codenames-pages]")).toBeVisible();
+  await expect(page.locator("[data-known-names-pages]")).toBeVisible();
   await expect(page.locator("main")).toBeHidden();
   await page.emulateMedia({ media: "screen" });
   await expect(page.locator("main")).toBeVisible();
@@ -222,10 +231,10 @@ test("admin: Codenames print – a subpage, the set on A4 pages, the cards of th
   // the set is the phone's: the card page has the code and team picked here
   await page.getByRole("link", { name: "← Kartička na telefonu" }).click();
   await expect(page.locator("input[name=code]")).toHaveValue("test01");
-  await expect(page.getByTestId("codenames-card")).toHaveAttribute("data-starts", "RED");
-  await expect(page.getByTestId("codenames-print")).toHaveCount(0);
+  await expect(page.getByTestId("known-names-card")).toHaveAttribute("data-starts", "RED");
+  await expect(page.getByTestId("known-names-print")).toHaveCount(0);
 
   // under the tool: how the game and both modes are played
-  const rules = page.getByTestId("codenames-rules");
-  for (const title of ["Jak se to hraje", "Krycí jména v kostce", "Big Mines", "Ultimate Mirrors"]) await expect(rules).toContainText(title);
+  const rules = page.getByTestId("known-names-rules");
+  for (const title of ["Jak se to hraje", "Známá jména v kostce", "Big Mines", "Ultimate Mirrors"]) await expect(rules).toContainText(title);
 });

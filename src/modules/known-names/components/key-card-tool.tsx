@@ -2,10 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { KeyCardScreen, SCALE_MIN } from "@/modules/codenames/components/key-card-screen";
-import { SetForm, useKeyCardSettings, type Texts } from "@/modules/codenames/components/key-card-settings";
-import { generateKeyCards } from "@/modules/codenames/lib/keycard";
-import type { GeneratedBoard } from "@/modules/codenames/lib/types";
+import { KeyCardScreen, SCALE_MIN } from "@/modules/known-names/components/key-card-screen";
+import { SetForm, useKeyCardSettings, type Texts } from "@/modules/known-names/components/key-card-settings";
+import { generateKeyCards } from "@/modules/known-names/lib/keycard";
+import type { GeneratedBoard } from "@/modules/known-names/lib/types";
 
 /** The card's layout as rows of R, B, . (civilian) and X (assassin), for the tests. */
 function rowsOf(board: GeneratedBoard) {
@@ -18,10 +18,10 @@ function rowsOf(board: GeneratedBoard) {
 }
 
 /**
- * Admin → Krycí jména: the spymasters' key card on a phone, from the print tool's generator (modules/codenames/lib):
+ * Admin → Známá jména: the spymasters' key card on a phone, from the print tool's generator (modules/known-names/lib):
  * card `n` of a set is the print tool's card `n` of the same code, mode and starting team. The card shows only in full
  * screen (KeyCardScreen), which keeps the screen on, steps through the set and darkens the cells tapped as guessed.
- * The same set goes on A4 pages in Krycí jména → Tisk (KeyCardPrint). The card's own texts (starting team, counts)
+ * The same set goes on A4 pages in Známá jména → Tisk (KeyCardPrint). The card's own texts (starting team, counts)
  * follow the page's language; the print tool's are Czech.
  */
 export function KeyCardTool({ t }: { t: Texts }) {
@@ -92,7 +92,7 @@ export function KeyCardTool({ t }: { t: Texts }) {
 
       <div className="flex flex-col gap-3">
         {/* the card itself only in full screen */}
-        <div className="flex flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed border-border px-4 py-10 text-center" data-testid="codenames-card" {...cardData}>
+        <div className="flex flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed border-border px-4 py-10 text-center" data-testid="known-names-card" {...cardData}>
           <span className="text-4xl" aria-hidden>
             🙈
           </span>
@@ -105,7 +105,7 @@ export function KeyCardTool({ t }: { t: Texts }) {
           <button type="button" onClick={() => step(-1)} disabled={settings.card === 1} aria-label={t.previous} className={`${arrow} border border-border`}>
             ‹
           </button>
-          <span className="text-sm" data-testid="codenames-card-number">
+          <span className="text-sm" data-testid="known-names-card-number">
             {t.card} {settings.card}
           </span>
           <button type="button" onClick={() => step(1)} aria-label={t.next} className={`${arrow} border border-border`}>

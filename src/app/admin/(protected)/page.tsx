@@ -28,7 +28,7 @@ async function clubNumbers(from: string, to: string) {
  * The admin's home: the club at a glance, each module a section. The club (the main section): tonight's sheet, the
  * games lent and this academic year's numbers; Krvavka: the next sessions, drafts waiting for this account, its
  * grimoires in play (the main section for one who does not see the club, the club then only links its pages);
- * Krycí jména: the key cards; the admin itself: the latest news, accounts and history.
+ * Známá jména: the key cards; the admin itself: the latest news, accounts and history.
  * Only the parts the account sees.
  */
 export default async function AdminOverviewPage() {
@@ -177,20 +177,20 @@ export default async function AdminOverviewPage() {
       <div className={main ? "grid gap-6 lg:grid-cols-[2fr_1fr]" : "grid gap-6 lg:max-w-xl"}>
         {main}
 
-        {/* the other module, Krycí jména and the admin itself share the side column */}
+        {/* the other module, Známá jména and the admin itself share the side column */}
         <div className="flex flex-col gap-6">
           {side}
 
-          <Card className="flex flex-col gap-3" id="kryci-jmena">
-            <h2 className="text-xl font-bold">🕵️ {n.codenames}</h2>
+          <Card className="flex flex-col gap-3" id="znama-jmena">
+            <h2 className="text-xl font-bold">🕵️ {n.knownNames}</h2>
             <div className="flex flex-col gap-1">
-              <Link href="/admin/kryci-jmena" className={link} data-testid="overview-codenames">
+              <Link href="/admin/znama-jmena" className={link} data-testid="overview-known-names">
                 {n.keyCards}
-                <span className="ml-2 font-normal text-muted">{t.admin.codenames.overview}</span>
+                <span className="ml-2 font-normal text-muted">{t.admin.knownNames.overview}</span>
               </Link>
-              <Link href="/admin/kryci-jmena/tisk" className={link}>
+              <Link href="/admin/znama-jmena/tisk" className={link}>
                 {n.keyCardsPrint}
-                <span className="ml-2 font-normal text-muted">{t.admin.codenames.print.overview}</span>
+                <span className="ml-2 font-normal text-muted">{t.admin.knownNames.print.overview}</span>
               </Link>
             </div>
           </Card>

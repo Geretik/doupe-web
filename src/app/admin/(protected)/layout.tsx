@@ -63,10 +63,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     });
   // a tool without anyone's data: every account has it
   groups.push({
-    label: n.codenames,
+    label: n.knownNames,
     items: [
-      { href: "/admin/kryci-jmena", label: n.keyCards },
-      { href: "/admin/kryci-jmena/tisk", label: n.keyCardsPrint },
+      { href: "/admin/znama-jmena", label: n.keyCards },
+      { href: "/admin/znama-jmena/tisk", label: n.keyCardsPrint },
     ],
   });
   // the admin itself, across modules; the group stays for the news

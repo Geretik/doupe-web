@@ -5,11 +5,11 @@ import { createPortal } from "react-dom";
 import { inputClass } from "@/components/ui";
 import type { Locale } from "@/i18n/dictionaries";
 import { plural } from "@/i18n/plural";
-import { LAYOUTS, MAX_PRINT, SetForm, useKeyCardSettings, type Texts } from "@/modules/codenames/components/key-card-settings";
-import { generateKeyCards, renderSheets } from "@/modules/codenames/lib/keycard";
+import { LAYOUTS, MAX_PRINT, SetForm, useKeyCardSettings, type Texts } from "@/modules/known-names/components/key-card-settings";
+import { generateKeyCards, renderSheets } from "@/modules/known-names/lib/keycard";
 
 /**
- * Admin → Krycí jména → Tisk: the first cards of the set on A4 pages, as the print tool does, printed alone. The set
+ * Admin → Známá jména → Tisk: the first cards of the set on A4 pages, as the print tool does, printed alone. The set
  * (mode, starting team, code) is the phone's (KeyCardTool): card 5 on paper is card 5 on the phone. The pages' texts
  * follow the page's language; the print tool's are Czech.
  */
@@ -40,7 +40,7 @@ export function KeyCardPrint({ t, lang }: { t: Texts; lang: Locale }) {
     <div className="grid gap-6 md:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
       <SetForm t={t} settings={settings} mode={mode} code={code} update={update} />
 
-      <section className="flex flex-col gap-4" data-testid="codenames-print">
+      <section className="flex flex-col gap-4" data-testid="known-names-print">
         <div className="flex flex-wrap items-end gap-4">
           <label className="flex flex-col gap-1 text-sm">
             {t.print.count}
@@ -81,7 +81,7 @@ export function KeyCardPrint({ t, lang }: { t: Texts; lang: Locale }) {
           </div>
         </div>
         {print && (
-          <p className="text-sm" data-testid="codenames-print-status">
+          <p className="text-sm" data-testid="known-names-print-status">
             {plural(t.print.cards, print.cards)} · {plural(t.print.pages, print.pages.length)}
             {print.cards < settings.count && <> – {t.print.noMore}</>}
           </p>
@@ -122,12 +122,12 @@ export function KeyCardPrint({ t, lang }: { t: Texts; lang: Locale }) {
       <style>{`@page { size: A4 portrait; margin: 0; }
 @media print {
   html, body { background: #fff !important; }
-  body > :not([data-codenames-pages]) { display: none !important; }
-  [data-codenames-pages] { display: block !important; }
+  body > :not([data-known-names-pages]) { display: none !important; }
+  [data-known-names-pages] { display: block !important; }
 }`}</style>
       {print &&
         createPortal(
-          <div data-codenames-pages className="hidden" style={{ printColorAdjust: "exact", WebkitPrintColorAdjust: "exact" }}>
+          <div data-known-names-pages className="hidden" style={{ printColorAdjust: "exact", WebkitPrintColorAdjust: "exact" }}>
             {print.pages.map((page, i) => (
               <div key={i} className="h-[297mm] w-[210mm] overflow-hidden break-after-page last:break-after-auto [&>svg]:size-full" dangerouslySetInnerHTML={{ __html: page }} />
             ))}

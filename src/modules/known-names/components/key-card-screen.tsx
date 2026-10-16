@@ -1,10 +1,10 @@
 "use client";
 
 import type { Dict } from "@/i18n/dictionaries";
-import { KEY_CARD_COLORS } from "@/modules/codenames/lib/keycard";
-import type { CardType, GeneratedBoard, MirrorAxis, Team } from "@/modules/codenames/lib/types";
+import { KEY_CARD_COLORS } from "@/modules/known-names/lib/keycard";
+import type { CardType, GeneratedBoard, MirrorAxis, Team } from "@/modules/known-names/lib/types";
 
-type Texts = Dict["admin"]["codenames"];
+type Texts = Dict["admin"]["knownNames"];
 
 const FILL: Record<CardType, string> = {
   RED_AGENT: KEY_CARD_COLORS.RED,
@@ -104,7 +104,7 @@ export function KeyCardScreen({
   const frame = (cells: number) => 12 + 2 * (cells - 1);
 
   return (
-    <div role="dialog" aria-modal="true" aria-label={title} className="fixed inset-0 z-50 flex bg-black text-white portrait:flex-col" data-testid="codenames-fullscreen">
+    <div role="dialog" aria-modal="true" aria-label={title} className="fixed inset-0 z-50 flex bg-black text-white portrait:flex-col" data-testid="known-names-fullscreen">
       <aside className="flex shrink-0 gap-3 p-2 landscape:w-28 landscape:flex-col landscape:gap-2 landscape:overflow-y-auto portrait:flex-wrap portrait:items-center">
         <button type="button" onClick={onClose} aria-label={t.close} className={button}>
           ✕
@@ -158,7 +158,7 @@ export function KeyCardScreen({
             gridTemplateRows: `repeat(${board.height}, minmax(0, 1fr))`,
             borderColor: team,
           }}
-          data-testid="codenames-board"
+          data-testid="known-names-board"
         >
           {board.cards.map((c, i) => {
             const mines = showMines && (c.type !== "ASSASSIN" || minesOnAssassins);

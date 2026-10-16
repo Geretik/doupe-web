@@ -1,7 +1,7 @@
 /*
- * modules/codenames/lib: the generator of the print tool for Krycí jména (../mines-generator, src/), copied as it is
+ * modules/known-names/lib: the generator of the print tool for Známá jména (../mines-generator, src/), copied as it is
  * (only the imports lose ".ts"). Keep it in step with the tool: the same set code, mode and starting team must give
- * the same cards here as on paper (tests/e2e/codenames.spec.ts compares them), so the RNG and the order it is
+ * the same cards here as on paper (tests/e2e/known-names.spec.ts compares them), so the RNG and the order it is
  * consumed in must not change.
  */
 /** Tým. "primary" v konfiguraci se mapuje na startingTeam, nikdy napevno na barvu. */

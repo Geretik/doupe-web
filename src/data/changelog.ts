@@ -14,8 +14,13 @@ export type ChangelogEntry = { /** YYYY-MM-DD */ date: string; title: string; it
 export const changelog: ChangelogEntry[] = [
   {
     date: "2026-10-16",
-    title: "Krycí jména: kartička přes celý displej, uhádnutá pole, velikost desky; Půjčovna: balíčky her, krabice bez kódu, Správa knihovny zvlášť, přehlednější půjčení víc her; Statistiky klubu; prezenčka po ručním přidání prázdná; Klub v adminu na prvním místě; tisk Krycích jmen jako podstránka; menu adminu ve dvou řádcích; návod ve Správě knihovny",
+    title: "Krycí jména: kartička přes celý displej, uhádnutá pole, velikost desky; Půjčovna: balíčky her, krabice bez kódu, Správa knihovny zvlášť, přehlednější půjčení víc her; Statistiky klubu; prezenčka po ručním přidání prázdná; Klub v adminu na prvním místě; tisk Krycích jmen jako podstránka; menu adminu ve dvou řádcích; návod ve Správě knihovny; Krycí jména jsou Známá jména",
     items: [
+      {
+        for: "organizers",
+        text: "Krycí jména se teď jmenují Známá jména (anglicky Known Names), i v adrese stránky. Telefon si rozehranou sadu pamatuje dál.",
+        href: "/admin/znama-jmena",
+      },
       {
         for: "organizers",
         text: "Menu adminu je přehlednější: nahoře jen Přehled, Klub, Krvavka, Krycí jména a Administrace (odkaz otevře první stránku části), pod nimi stránky části, ve které jsi. Odznak draftů a tečka novinek jsou vidět i u části. Na profil vede tvoje přezdívka vpravo nahoře.",
@@ -39,27 +44,27 @@ export const changelog: ChangelogEntry[] = [
       {
         for: "organizers",
         text: "Tisk kartiček Krycích jmen na A4 má vlastní podstránku Tisk (na liště vedle Kartiček); sada je stejná jako na telefonu.",
-        href: "/admin/kryci-jmena/tisk",
+        href: "/admin/znama-jmena/tisk",
       },
       {
         for: "organizers",
         text: "Kartička Krycích jmen je vidět až na celé obrazovce a vyplní celý displej; kdo začíná a kolik polí každé barvy zbývá, je v pruhu bokem.",
-        href: "/admin/kryci-jmena",
+        href: "/admin/znama-jmena",
       },
       {
         for: "organizers",
         text: "Ťuknutím na pole kartičky ho ztmavíš jako uhádnuté (dalším ťuknutím vrátíš); pole zůstanou ztmavená i po zhasnutí telefonu, další kartička začíná čistá.",
-        href: "/admin/kryci-jmena",
+        href: "/admin/znama-jmena",
       },
       {
         for: "organizers",
         text: "Desku Krycích jmen jde na celé obrazovce tlačítky − a + zmenšit a zase zvětšit, telefon si velikost pamatuje.",
-        href: "/admin/kryci-jmena",
+        href: "/admin/znama-jmena",
       },
       {
         for: "organizers",
         text: "Na telefonu na výšku už deska Krycích jmen není roztažená do výšky: pole jsou čtvercová a deska je přes celou šířku displeje.",
-        href: "/admin/kryci-jmena",
+        href: "/admin/znama-jmena",
       },
       {
         for: "organizers",
@@ -115,12 +120,12 @@ export const changelog: ChangelogEntry[] = [
       {
         for: "organizers",
         text: "Krycí jména jdou tisknout přímo v adminu: celá sada na stránky A4 (počet kartiček, kolik na stránku, název a kód kartičky), s náhledem stránek – kartička 5 na papíře je kartička 5 na telefonu.",
-        href: "/admin/kryci-jmena",
+        href: "/admin/znama-jmena",
       },
       {
         for: "organizers",
         text: "Pod nástrojem Krycích jmen je vysvětlené, jak se hra hraje a co dělají režimy Big Mines (čísla min) a Ultimate Mirrors (souměrní agenti).",
-        href: "/admin/kryci-jmena",
+        href: "/admin/znama-jmena",
       },
       {
         for: "organizers",
@@ -135,12 +140,12 @@ export const changelog: ChangelogEntry[] = [
       {
         for: "organizers",
         text: "Kartička Krycích jmen má pod mřížkou počty polí – Č červení, M modří, B bílí, 💀 vrazi; v angličtině je celá kartička anglicky (R, B, W).",
-        href: "/admin/kryci-jmena",
+        href: "/admin/znama-jmena",
       },
       {
         for: "organizers",
         text: "Krycí jména nabízí jen to, co k režimu patří: čísla min jen u Big Mines (při výběru režimu zapnutá, jdou vypnout), osy souměrnosti týmů jsou u Ultimate Mirrors na kartičce vždy, bez volby.",
-        href: "/admin/kryci-jmena",
+        href: "/admin/znama-jmena",
       },
       {
         for: "players",
@@ -180,7 +185,7 @@ export const changelog: ChangelogEntry[] = [
       {
         for: "organizers",
         text: "Nová skupina Krycí jména v adminu: klíčová kartička pro vypravěče na telefonu v režimech Big Mines (čísla min u všech polí kromě vrahů, u nich se dají zapnout) a Ultimate Mirrors (osy souměrnosti týmů nakreslené přes pole). Na celé obrazovce je vidět jen kartička a displej nezhasne, šipkami se přepíná na další. Stejný kód sady dá stejné kartičky jako tiskový nástroj.",
-        href: "/admin/kryci-jmena",
+        href: "/admin/znama-jmena",
       },
       {
         for: "players",

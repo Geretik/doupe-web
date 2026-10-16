@@ -2025,7 +2025,7 @@ test("admin menu: the parts of the admin, under them the pages of the part shown
   const pages = page.locator("[data-admin-nav-pages] a");
   await expect(current).toHaveText("Přehled");
   // the overview has a card for each part, the menu no line of pages
-  await expect(page.locator("[data-admin-nav-parts] a")).toHaveText(["Přehled", "Klub", "Krvavka", "Krycí jména", "Administrace"]);
+  await expect(page.locator("[data-admin-nav-parts] a")).toHaveText(["Přehled", "Klub", "Krvavka", "Známá jména", "Administrace"]);
   await expect(page.locator("[data-admin-nav-pages]")).toHaveCount(0);
   // a part opens its first page, its pages under it
   await page.click("main nav a:has-text('Krvavka')");

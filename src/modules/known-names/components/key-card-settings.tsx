@@ -3,10 +3,10 @@
 import { useEffect, useMemo, useSyncExternalStore } from "react";
 import { inputClass } from "@/components/ui";
 import type { Dict } from "@/i18n/dictionaries";
-import { SCALE_MIN } from "@/modules/codenames/components/key-card-screen";
-import type { SheetLayout } from "@/modules/codenames/lib/keycard";
-import { GOLD_BIG_MINES, GOLD_ULTIMATE_MIRRORS } from "@/modules/codenames/lib/profiles";
-import type { BoardProfile, TeamChoice } from "@/modules/codenames/lib/types";
+import { SCALE_MIN } from "@/modules/known-names/components/key-card-screen";
+import type { SheetLayout } from "@/modules/known-names/lib/keycard";
+import { GOLD_BIG_MINES, GOLD_ULTIMATE_MIRRORS } from "@/modules/known-names/lib/profiles";
+import type { BoardProfile, TeamChoice } from "@/modules/known-names/lib/types";
 
 /*
  * The set of key cards that the card on a phone (KeyCardTool) and the A4 pages (KeyCardPrint) share: mode, starting
@@ -14,7 +14,7 @@ import type { BoardProfile, TeamChoice } from "@/modules/codenames/lib/types";
  * tool's (mines-generator) card `n` of the same code, mode and starting team.
  */
 
-export type Texts = Dict["admin"]["codenames"];
+export type Texts = Dict["admin"]["knownNames"];
 type ModeId = "GOLD_BIG_MINES" | "GOLD_ULTIMATE_MIRRORS";
 export type Mode = (typeof MODES)[number];
 
@@ -63,15 +63,17 @@ const PRINT_DEFAULTS = { count: 12, perPage: 6, showTitle: true, showSeed: true 
 // ---------------------------------------------------------------------------------------------
 // The settings, kept on this device: a reload (or a phone that slept) shows the same card again
 
-const KEY = "kryci-jmena-v1";
-const EVENT = "kryci-jmena";
+const KEY = "znama-jmena-v1";
+/** Where the settings were kept while the tool was called Krycí jména (until October 2026); read until saved anew */
+const OLD_KEY = "kryci-jmena-v1";
+const EVENT = "znama-jmena";
 /** What this page set, also where the browser keeps nothing (a private window) */
 let memory: string | null = null;
 
 function read() {
   if (memory !== null) return memory;
   try {
-    return localStorage.getItem(KEY);
+    return localStorage.getItem(KEY) ?? localStorage.getItem(OLD_KEY);
   } catch {
     return null;
   }
