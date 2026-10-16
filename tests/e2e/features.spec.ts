@@ -2056,7 +2056,7 @@ test("admin: accounts, history and news are a group of their own, not the club's
   // the group labels are upper-cased by CSS
   const group = (name: string) => page.locator("[data-admin-nav] span", { hasText: new RegExp(`^${name}$`, "i") }).locator("xpath=..");
   await expect(group("Administrace").locator("a")).toHaveText(["Účty", "Historie", "Novinky"]);
-  await expect(group("Klub").locator("a")).toHaveText(["Prezenčka", "Půjčovna", "Texty webu"]);
+  await expect(group("Klub").locator("a")).toHaveText(["Prezenčka", "Půjčovna", "Statistiky", "Texty webu"]);
   await expect(page.locator("#administrace")).toContainText("Novinky");
   await expect(page.locator("#administrace a[href='/admin/historie']")).toBeVisible();
   await expect(page.locator("#klub a[href='/admin/ucty']")).toHaveCount(0);

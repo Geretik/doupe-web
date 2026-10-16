@@ -1,4 +1,5 @@
 import { attendanceAdminCs, attendanceAdminEn, attendanceCs, attendanceEn } from "./attendance";
+import { clubStatsCs, clubStatsEn } from "./club-stats";
 import { draftCs, draftEn } from "./draft";
 import { grimoireCs, grimoireEn } from "./grimoire";
 import { loansAdminCs, loansAdminEn } from "./loans";
@@ -1347,6 +1348,7 @@ export const cs = {
     },
     attendance: attendanceAdminCs,
     loans: loansAdminCs,
+    clubStats: clubStatsCs,
     poster: {
       back: "← Zpět na termín",
       print: "🖨️ Vytisknout",
@@ -2668,6 +2670,7 @@ export const en: Dict = {
     },
     attendance: attendanceAdminEn,
     loans: loansAdminEn,
+    clubStats: clubStatsEn,
     poster: {
       back: "← Back to the session",
       print: "🖨️ Print",

@@ -14,7 +14,7 @@ export type ChangelogEntry = { /** YYYY-MM-DD */ date: string; title: string; it
 export const changelog: ChangelogEntry[] = [
   {
     date: "2026-10-16",
-    title: "Krycí jména: kartička přes celý displej, uhádnutá pole, velikost desky; Půjčovna: balíčky her, krabice bez kódu, Správa knihovny zvlášť, přehlednější půjčení víc her; prezenčka po ručním přidání prázdná",
+    title: "Krycí jména: kartička přes celý displej, uhádnutá pole, velikost desky; Půjčovna: balíčky her, krabice bez kódu, Správa knihovny zvlášť, přehlednější půjčení víc her; Statistiky klubu; prezenčka po ručním přidání prázdná",
     items: [
       {
         for: "organizers",
@@ -55,6 +55,21 @@ export const changelog: ChangelogEntry[] = [
         for: "organizers",
         text: "Půjčit víc her najednou je přehlednější: tři kroky (Komu, Které hry, Půjčit), foťák, hledání a vybrané hry jsou pohromadě a tlačítko ukazuje, komu hry půjčuješ.",
         href: "/admin/pujcovna",
+      },
+      {
+        for: "organizers",
+        text: "Nová záložka Klub → Statistiky: za vybrané období (tento nebo minulý školní rok, 90 dní, vše, nebo vlastní) počet večerů a lidí, průměr a nejvíc za večer, kolik lidí přišlo poprvé, graf lidí na večer, průměrný večer podle dne, kolikrát lidé přišli a kdy přicházejí.",
+        href: "/admin/statistiky-klubu",
+      },
+      {
+        for: "organizers",
+        text: "Ve Statistikách je i Půjčovna: kolik se půjčilo a jakých her, jak dlouho jsou hry průměrně venku, co je venku nejdéle, nejpůjčovanější hry a výpůjčky po měsících.",
+        href: "/admin/statistiky-klubu",
+      },
+      {
+        for: "organizers",
+        text: "Přehled za období z Prezenčky (tabulka podle vztahu k UP, jednotlivé večery a CSV pro výkazy) je teď ve Statistikách; v Prezenčce zůstal QR kód a seznam večera.",
+        href: "/admin/statistiky-klubu",
       },
       {
         for: "organizers",

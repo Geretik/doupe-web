@@ -123,6 +123,7 @@ export default async function AdminOverviewPage() {
                   {lent > 0 && <span className="ml-2 font-normal text-muted">{o.loansOut(lent)}</span>}
                 </Link>
               )}
+              {club && <Link href="/admin/statistiky-klubu" className={link}>{t.admin.clubStats.title}</Link>}
               {(club || botc) && <Link href="/admin/web" className={link}>{n.web}</Link>}
               <Link href="/" className={link}>{o.clubPage}</Link>
               <Link href="/hry" className={link}>{o.games}</Link>

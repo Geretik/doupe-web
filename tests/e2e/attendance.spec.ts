@@ -150,8 +150,12 @@ test("attendance admin: tonight's list, adding and deleting by hand, numbers of 
   await add.locator("button[type=submit]").click();
   await expect(add).toContainText("Jana Nováková už na prezenčce toho večera je");
 
-  // the period (from far back: two days ago may be before this academic year): 2 nights, 4 entries, 3 different people (Jana twice)
-  await page.goto("/admin/prezence?od=2000-01-01");
+  // the period in Statistiky klubu (all of it: two days ago may be before this academic year): 2 nights, 4 entries,
+  // 3 different people (Jana twice)
+  await page.getByTestId("attendance-stats-link").click();
+  await expect(page).toHaveURL(/\/admin\/statistiky-klubu$/);
+  await page.getByRole("link", { name: "Vše", exact: true }).click();
+  await expect(page).toHaveURL(/od=2000-01-01/);
   const summary = page.getByTestId("attendance-summary");
   await expect(summary).toContainText("2 večery");
   await expect(summary.locator("tr:has-text('Celkem')")).toHaveText(/Celkem\s*4\s*3/);
@@ -166,6 +170,7 @@ test("attendance admin: tonight's list, adding and deleting by hand, numbers of 
   expect(csv).toContain(";Ota;Malý;Ne;sám/sama");
 
   // deleting; the log has the night and the affiliation, never the name
+  await page.goto("/admin/prezence");
   page.once("dialog", (d) => d.accept());
   await page.click("button[aria-label='Smazat: Eva Černá']");
   await expect(page.getByTestId("attendance-entries")).not.toContainText("Černá");
@@ -177,6 +182,8 @@ test("attendance admin: tonight's list, adding and deleting by hand, numbers of 
   ]);
 
   // an older night through the list of nights
+  await page.goto("/admin/statistiky-klubu?od=2000-01-01");
+  await page.getByTestId("attendance-nights-list").locator("summary").click();
   await page.getByTestId("attendance-nights").locator("tbody tr").nth(1).locator("a").click();
   await expect(page.getByTestId("attendance-entries")).toContainText("Malý");
 
