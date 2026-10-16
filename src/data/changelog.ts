@@ -13,6 +13,32 @@ export type ChangelogEntry = { /** YYYY-MM-DD */ date: string; title: string; it
 
 export const changelog: ChangelogEntry[] = [
   {
+    date: "2026-10-16",
+    title: "Krycí jména: kartička přes celý displej, uhádnutá pole; hledání v hrách bez kódu; prezenčka po ručním přidání prázdná",
+    items: [
+      {
+        for: "organizers",
+        text: "Kartička Krycích jmen je vidět až na celé obrazovce a vyplní celý displej; kdo začíná a kolik polí každé barvy zbývá, je v pruhu bokem.",
+        href: "/admin/kryci-jmena",
+      },
+      {
+        for: "organizers",
+        text: "Ťuknutím na pole kartičky ho ztmavíš jako uhádnuté (dalším ťuknutím vrátíš); pole zůstanou ztmavená i po zhasnutí telefonu, další kartička začíná čistá.",
+        href: "/admin/kryci-jmena",
+      },
+      {
+        for: "organizers",
+        text: "Seznam her bez čárového kódu v Půjčovně jde prohledat podle názvu (i jiného, třeba Ark Nova).",
+        href: "/admin/pujcovna",
+      },
+      {
+        for: "organizers",
+        text: "Po ručním přidání na prezenčku se formulář vyprázdní pro dalšího člověka, datum zůstane.",
+        href: "/admin/prezence",
+      },
+    ],
+  },
+  {
     date: "2026-10-15",
     title: "Krycí jména: tisk na A4, pravidla režimů, počty polí na kartičce; tlačítka bez označování textu; počet hráčů draftu",
     items: [

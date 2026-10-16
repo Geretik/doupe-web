@@ -137,6 +137,12 @@ test("attendance admin: tonight's list, adding and deleting by hand, numbers of 
   await add.locator("button[type=submit]").click();
   await expect(add).toContainText("Eva Černá je na prezenčce.");
   await expect(page.getByTestId("attendance-entries")).toContainText("Černá");
+  // the form is empty for the next one, the night stays
+  await expect(add.locator("#add-firstName")).toHaveValue("");
+  await expect(add.locator("#add-firstName")).toBeFocused();
+  await expect(add.locator("#add-lastName")).toHaveValue("");
+  await expect(add.getByLabel("Ano", { exact: true })).not.toBeChecked();
+  await expect(add.locator("#add-day")).toHaveValue(day);
   await expect(page.getByTestId("attendance-entries")).toContainText("přidal/a Správce");
   await add.locator("#add-firstName").fill("Jana");
   await add.locator("#add-lastName").fill("Nováková");

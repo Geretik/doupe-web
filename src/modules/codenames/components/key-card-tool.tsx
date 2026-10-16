@@ -5,7 +5,8 @@ import { createPortal } from "react-dom";
 import { inputClass } from "@/components/ui";
 import type { Dict, Locale } from "@/i18n/dictionaries";
 import { plural } from "@/i18n/plural";
-import { generateKeyCards, keyCardSize, renderKeyCardSvg, renderSheets, type SheetLayout } from "@/modules/codenames/lib/keycard";
+import { KeyCardScreen } from "@/modules/codenames/components/key-card-screen";
+import { generateKeyCards, renderSheets, type SheetLayout } from "@/modules/codenames/lib/keycard";
 import { GOLD_BIG_MINES, GOLD_ULTIMATE_MIRRORS } from "@/modules/codenames/lib/profiles";
 import type { BoardProfile, GeneratedBoard, TeamChoice } from "@/modules/codenames/lib/types";
 
@@ -22,9 +23,6 @@ const MODES: { id: ModeId; name: string; profile: BoardProfile; mines: boolean; 
 ];
 
 const TEAMS: TeamChoice[] = ["RANDOM", "RED", "BLUE"];
-
-/** The card's width in mm, as two to an A4 page in the print tool; on screen it only sets the proportions. */
-const CARD_WIDTH = 92;
 
 /** Cards per A4 page and how they are laid out, as in the print tool */
 const LAYOUTS: Record<number, SheetLayout> = {
@@ -49,6 +47,8 @@ type Settings = {
   perPage: number;
   showTitle: boolean;
   showSeed: boolean;
+  /** the cells darkened as guessed in full screen, of the card `card` (another card starts with none) */
+  guessed: { card: string; cells: number[] } | null;
 };
 
 const PRINT_DEFAULTS = { count: 12, perPage: 6, showTitle: true, showSeed: true };
@@ -104,6 +104,10 @@ function parse(raw: string | null): Settings | null {
       perPage: LAYOUTS[s.perPage!] ? s.perPage! : PRINT_DEFAULTS.perPage,
       showTitle: s.showTitle !== false,
       showSeed: s.showSeed !== false,
+      guessed:
+        typeof s.guessed?.card === "string" && Array.isArray(s.guessed.cells) && s.guessed.cells.every((c) => Number.isInteger(c))
+          ? { card: s.guessed.card, cells: s.guessed.cells }
+          : null,
     };
   } catch {
     return null;
@@ -119,7 +123,7 @@ function newCode() {
 }
 
 function fresh(): Settings {
-  return { mode: "GOLD_BIG_MINES", team: "RANDOM", showMines: true, minesOnAssassins: false, code: newCode(), card: 1, ...PRINT_DEFAULTS };
+  return { mode: "GOLD_BIG_MINES", team: "RANDOM", showMines: true, minesOnAssassins: false, code: newCode(), card: 1, ...PRINT_DEFAULTS, guessed: null };
 }
 
 /** The card's layout as rows of R, B, . (civilian) and X (assassin), for the tests. */
@@ -136,9 +140,10 @@ function rowsOf(board: GeneratedBoard) {
 
 /**
  * Admin → Krycí jména: the spymasters' key card on a phone, from the print tool's generator (modules/codenames/lib):
- * card `n` of a set is the print tool's card `n` of the same code, mode and starting team. Full screen shows only the
- * card, keeps the screen on and steps through the set. Printing puts the first cards of the same set on A4 pages, as the
- * print tool does. The card's own texts (starting team, counts) follow the page's language; the print tool's are Czech.
+ * card `n` of a set is the print tool's card `n` of the same code, mode and starting team. The card shows only in full
+ * screen (KeyCardScreen), which keeps the screen on, steps through the set and darkens the cells tapped as guessed.
+ * Printing puts the first cards of the same set on A4 pages, as the print tool does. The card's own texts (starting
+ * team, counts) follow the page's language; the print tool's are Czech.
  */
 export function KeyCardTool({ t, lang }: { t: Texts; lang: Locale }) {
   const raw = useSyncExternalStore(subscribe, read, () => null);
@@ -157,20 +162,9 @@ export function KeyCardTool({ t, lang }: { t: Texts; lang: Locale }) {
     const set = generateKeyCards({ ...mode.profile, primaryTeam: settings.team }, settings.card, code);
     return set[set.length - 1] ?? null;
   }, [settings, mode, code]);
-  const svg = useMemo(
-    () =>
-      board && settings
-        ? renderKeyCardSvg(board, keyCardSize(board, CARD_WIDTH, 1000), {
-            showMines: mode.mines && settings.showMines,
-            minesOnAssassins: settings.minesOnAssassins,
-            showAxes: true,
-            title: `${mode.name} · ${settings.card}`,
-            note: board.seed,
-            lang,
-          })
-        : null,
-    [board, settings, mode, lang],
-  );
+  // the marks belong to this very card: another one (stepping, another mode, team or code) starts with none
+  const boardKey = board && settings ? `${mode.id}/${settings.team}/${board.seed}` : "";
+  const guessed = settings?.guessed?.card === boardKey ? settings.guessed.cells : [];
 
   // the set on A4 pages: one SVG per page, printed alone (the rest of the page is hidden in print)
   const print = useMemo(() => {
@@ -192,6 +186,8 @@ export function KeyCardTool({ t, lang }: { t: Texts; lang: Locale }) {
 
   const update = (change: Partial<Settings>) => settings && save({ ...settings, ...change });
   const step = (by: number) => settings && save({ ...settings, card: Math.max(1, settings.card + by) });
+  const toggle = (cell: number) =>
+    update({ guessed: { card: boardKey, cells: guessed.includes(cell) ? guessed.filter((c) => c !== cell) : [...guessed, cell] } });
 
   // full screen: only the card, over the whole site; the browser's own full screen where it has one (an iPhone has
   // none: the card still fills the window), and the screen stays on in the middle of a game
@@ -237,16 +233,8 @@ export function KeyCardTool({ t, lang }: { t: Texts; lang: Locale }) {
   const option = "flex cursor-pointer flex-col rounded-lg border border-border bg-card px-3 py-2 has-[:checked]:border-accent has-[:checked]:ring-1 has-[:checked]:ring-accent";
   const segment = "flex-1 cursor-pointer px-2 py-1.5 text-center text-sm has-[:checked]:bg-accent has-[:checked]:font-medium has-[:checked]:text-accent-foreground";
   const arrow = "flex size-11 items-center justify-center rounded-full text-2xl disabled:opacity-30";
-  const card = (className: string) =>
-    svg && (
-      <div
-        className={className}
-        data-board={board ? rowsOf(board) : undefined}
-        data-starts={board?.startingTeam}
-        data-seed={board?.seed}
-        dangerouslySetInnerHTML={{ __html: svg }}
-      />
-    );
+  /** what the tests read of the card shown */
+  const cardData = board ? { "data-board": rowsOf(board), "data-starts": board.startingTeam, "data-seed": board.seed } : {};
 
   return (
     <div className="grid gap-6 md:grid-cols-[minmax(0,22rem)_minmax(0,28rem)]">
@@ -325,7 +313,16 @@ export function KeyCardTool({ t, lang }: { t: Texts; lang: Locale }) {
       </form>
 
       <div className="flex flex-col gap-3">
-        {card("[&>svg]:h-auto [&>svg]:w-full")}
+        {/* the card itself only in full screen */}
+        <div className="flex flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed border-border px-4 py-10 text-center" data-testid="codenames-card" {...cardData}>
+          <span className="text-4xl" aria-hidden>
+            🙈
+          </span>
+          <p className="text-sm text-muted">{t.hidden}</p>
+          <button type="button" onClick={open} disabled={!board} className="rounded-md bg-accent px-4 py-3 font-medium text-accent-foreground hover:opacity-90 disabled:opacity-50">
+            {t.fullscreen}
+          </button>
+        </div>
         <div className="flex items-center justify-between gap-2">
           <button type="button" onClick={() => step(-1)} disabled={settings.card === 1} aria-label={t.previous} className={`${arrow} border border-border`}>
             ‹
@@ -337,9 +334,6 @@ export function KeyCardTool({ t, lang }: { t: Texts; lang: Locale }) {
             ›
           </button>
         </div>
-        <button type="button" onClick={open} disabled={!svg} className="rounded-md bg-accent px-4 py-3 font-medium text-accent-foreground hover:opacity-90 disabled:opacity-50">
-          {t.fullscreen}
-        </button>
         <p className="text-xs text-muted">{t.fullscreenHint}</p>
       </div>
 
@@ -444,19 +438,20 @@ export function KeyCardTool({ t, lang }: { t: Texts; lang: Locale }) {
 
       {/* in <body>: the admin's column is moved with a transform, which would hold a fixed box inside it */}
       {fullscreen &&
+        board &&
         createPortal(
-          <div role="dialog" aria-modal="true" aria-label={`${mode.name} · ${settings.card}`} className="fixed inset-0 z-50 bg-black text-white" data-testid="codenames-fullscreen">
-            {card("absolute inset-0 p-2 [&>svg]:size-full")}
-            <button type="button" onClick={() => setFullscreen(false)} aria-label={t.close} className={`${arrow} absolute right-2 top-2 bg-white/10 text-white/70`}>
-              ✕
-            </button>
-            <button type="button" onClick={() => step(-1)} disabled={settings.card === 1} aria-label={t.previous} className={`${arrow} absolute bottom-2 left-2 bg-white/10 text-white/70`}>
-              ‹
-            </button>
-            <button type="button" onClick={() => step(1)} aria-label={t.next} className={`${arrow} absolute bottom-2 right-2 bg-white/10 text-white/70`}>
-              ›
-            </button>
-          </div>,
+          <KeyCardScreen
+            board={board}
+            title={`${mode.name} · ${settings.card}`}
+            showMines={mode.mines && settings.showMines}
+            minesOnAssassins={settings.minesOnAssassins}
+            guessed={guessed}
+            onToggle={toggle}
+            onClose={() => setFullscreen(false)}
+            onStep={step}
+            first={settings.card === 1}
+            t={t}
+          />,
           document.body,
         )}
     </div>

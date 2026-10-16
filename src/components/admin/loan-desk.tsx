@@ -127,6 +127,8 @@ export function LoanDesk({
   t: Desk;
 }) {
   const [query, setQuery] = useState("");
+  /** The search in the list of games without a code */
+  const [missingQuery, setMissingQuery] = useState("");
   const [selectedId, setSelectedId] = useState<number | null>(initialGameId);
   const [pendingCode, setPendingCode] = useState<string | null>(null);
   const [guess, setGuess] = useState<Guess | null>(null);
@@ -149,6 +151,15 @@ export function LoanDesk({
     const coded = new Set(codes.map((c) => c.gameId));
     return games.filter((g) => !coded.has(g.id));
   }, [games, codes]);
+
+  // the list without codes searched like the desk: by the name, then by another name
+  const missingShown: { game: DeskGame; aka?: string }[] = missingQuery.trim()
+    ? missing.flatMap((g) => {
+        if (matchesWords(g.name, missingQuery)) return [{ game: g }];
+        const aka = g.aka.find((n) => matchesWords(n, missingQuery));
+        return aka ? [{ game: g, aka }] : [];
+      })
+    : missing.map((g) => ({ game: g }));
 
   const game = selectedId !== null && !batch ? gameById.get(selectedId) : undefined;
   const loan = game ? loanByGame.get(game.id) : undefined;
@@ -613,16 +624,36 @@ export function LoanDesk({
           ) : (
             <>
               <p className="mt-2 text-sm text-muted">{t.missingHint}</p>
-              <ul className="mt-2 columns-1 gap-6 text-sm sm:columns-2 lg:columns-3">
-                {missing.map((g) => (
-                  <li key={g.id} className="break-inside-avoid">
-                    <button type="button" onClick={() => show(g.id)} className="py-0.5 text-left hover:text-accent hover:underline">
-                      {g.name}
-                      {g.expansion && <span className="ml-1 text-xs text-muted">{t.expansion}</span>}
-                    </button>
-                  </li>
-                ))}
-              </ul>
+              <input
+                type="search"
+                value={missingQuery}
+                onChange={(e) => setMissingQuery(e.target.value)}
+                placeholder={t.missingSearch}
+                aria-label={t.missingSearch}
+                enterKeyHint="search"
+                autoComplete="off"
+                className={`${inputClass} mt-2 w-full sm:max-w-sm`}
+                data-testid="loan-missing-search"
+              />
+              {missingShown.length === 0 ? (
+                <p className="mt-2 text-sm text-muted">{t.noMatch}</p>
+              ) : (
+                <ul className="mt-2 columns-1 gap-6 text-sm sm:columns-2 lg:columns-3">
+                  {missingShown.map(({ game: g, aka }) => (
+                    <li key={g.id} className="break-inside-avoid">
+                      <button type="button" onClick={() => show(g.id)} className="py-0.5 text-left hover:text-accent hover:underline">
+                        {g.name}
+                        {g.expansion && <span className="ml-1 text-xs text-muted">{t.expansion}</span>}
+                        {aka && (
+                          <span className="ml-1 text-xs text-muted">
+                            {t.aka} {aka}
+                          </span>
+                        )}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </>
           )}
         </details>

@@ -989,8 +989,16 @@ export const cs = {
       previous: "Předchozí kartička",
       next: "Další kartička",
       fullscreen: "Na celou obrazovku",
-      fullscreenHint: "Na celé obrazovce je vidět jen kartička a displej nezhasne. Šipky dole přepínají kartičky, ✕ (nebo Esc) celou obrazovku zavře.",
+      hidden: "Kartička je schovaná, ukáže se až na celé obrazovce.",
+      fullscreenHint:
+        "Kartička vyplní celý displej a displej nezhasne. Ťuknutím na pole ho ztmavíš jako uhádnuté (dalším ťuknutím vrátíš). V pruhu bokem je, kdo začíná, a kolik polí každé barvy zbývá; šipky tam přepínají kartičky, ✕ (nebo Esc) celou obrazovku zavře.",
       close: "Zavřít",
+      /** The card in full screen: who starts and the counts at the side, the cells to tap */
+      screen: {
+        starts: { RED: "Začínají červení", BLUE: "Začínají modří" },
+        types: { RED_AGENT: "Červení agenti", BLUE_AGENT: "Modří agenti", CIVILIAN: "Civilisté", ASSASSIN: "Vrazi" },
+        cell: { RED_AGENT: "Červený agent", BLUE_AGENT: "Modrý agent", CIVILIAN: "Civilista", ASSASSIN: "Vrah" },
+      },
       print: {
         title: "Tisk na A4",
         hint: "Celá sada na papír, se stejným kódem, režimem a začínajícím týmem jako nahoře: kartička 5 na papíře je kartička 5 na telefonu.",
@@ -1015,7 +1023,7 @@ export const cs = {
             items: [
               "Na stole leží mřížka karet se slovy – v klasické hře 5×5, v Big Mines 7×6, v Ultimate Mirrors 7×7. Hrají dva týmy, červení a modří; každý má velitele, ostatní jsou agenti v terénu.",
               "Velitelé vidí klíčovou kartičku: červená a modrá pole jsou agenti týmů, bílá civilisté, 💀 vrah. Kartičku (nebo telefon) položte natočenou stejně jako mřížku na stole.",
-              "Barva rámečku a text dole říkají, kdo začíná – začínající tým má o agenta víc. Pod mřížkou jsou počty: Č červení, M modří, B bílí, 💀 vrazi.",
+              "Barva rámečku a nápis říkají, kdo začíná – začínající tým má o agenta víc. Na papíře jsou pod mřížkou počty (Č červení, M modří, B bílí, 💀 vrazi), na telefonu jsou bokem a ubývají, jak velitel ťuknutím ztmavuje uhádnutá pole.",
               "Velitel na tahu řekne jedno slovo a číslo: kolik slov na stole se k nápovědě vztahuje. Agenti v terénu se poradí a ukazují slova po jednom, velitel každé zakryje kartou podle kartičky.",
               "Vlastní agent: hádá se dál. Civilista nebo agent soupeře: tah končí (a soupeř má o agenta míň). Vrah: tým okamžitě prohrává.",
               "V klasické hře se smí hádat nejvýš o jedno slovo víc, než bylo číslo. Vyhrává tým, který první najde všechny své agenty.",
@@ -1037,7 +1045,7 @@ export const cs = {
               "Zlatý režim aplikace Codenames. Mřížka 7×7, tedy 49 slov: začínající tým má 18 agentů, druhý 16, k tomu 14 civilistů a 1 vrah.",
               "Agenti každého týmu jsou rozmístění souměrně podle jedné osy – svislé, vodorovné nebo jedné z úhlopříček. Týmy můžou mít stejnou osu i každý jinou (většinou vyjde stejná). Civilisté a vrah souměrní nejsou.",
               "Agenti v terénu vědí, že rozložení je souměrné, ale ne podle které osy – tu odhalují z odkrytých agentů. Jakmile ji znají, každý nalezený agent prozradí i svůj zrcadlový protějšek (pole na ose je protějškem sám sobě).",
-              "Velitel vidí osy na kartičce: ikony v záhlaví a přerušované čáry v barvě týmu přes mřížku.",
+              "Velitel vidí osy na kartičce: přerušované čáry v barvě týmu přes mřížku (na papíře i ikony v záhlaví).",
               "Počet tipů není omezený, stejně jako u Big Mines.",
             ],
           },
@@ -2302,8 +2310,15 @@ export const en: Dict = {
       previous: "Previous card",
       next: "Next card",
       fullscreen: "Full screen",
-      fullscreenHint: "In full screen only the card shows and the screen stays on. The arrows at the bottom switch cards, ✕ (or Esc) closes it.",
+      hidden: "The card is hidden; it shows only in full screen.",
+      fullscreenHint:
+        "The card fills the whole screen and the screen stays on. Tap a cell to darken it as guessed (tap again to undo). The strip at the side shows who starts and how many cells of each colour are left; its arrows switch cards, ✕ (or Esc) closes full screen.",
       close: "Close",
+      screen: {
+        starts: { RED: "Red starts", BLUE: "Blue starts" },
+        types: { RED_AGENT: "Red agents", BLUE_AGENT: "Blue agents", CIVILIAN: "Civilians", ASSASSIN: "Assassins" },
+        cell: { RED_AGENT: "Red agent", BLUE_AGENT: "Blue agent", CIVILIAN: "Civilian", ASSASSIN: "Assassin" },
+      },
       print: {
         title: "Print on A4",
         hint: "The whole set on paper, with the same code, mode and starting team as above: card 5 on paper is card 5 on the phone.",
@@ -2328,7 +2343,7 @@ export const en: Dict = {
             items: [
               "A grid of word cards lies on the table – 5×5 in the classic game, 7×6 in Big Mines, 7×7 in Ultimate Mirrors. Two teams play, red and blue; each has a spymaster, the others are field operatives.",
               "The spymasters see the key card: red and blue cells are the teams' agents, white ones bystanders, 💀 the assassin. Lay the card (or the phone) turned the same way as the grid on the table.",
-              "The colour of the frame and the text at the bottom tell who starts – the starting team has one agent more. Under the grid are the counts: R red, B blue, W white, 💀 assassins.",
+              "The colour of the frame and the text tell who starts – the starting team has one agent more. On paper the counts are under the grid (R red, B blue, W white, 💀 assassins); on the phone they are at the side and go down as the spymaster taps the guessed cells dark.",
               "The spymaster on turn says one word and a number: how many words on the table the clue is about. The operatives talk it over and point at words one at a time; the spymaster covers each with a card as the key card says.",
               "Own agent: keep guessing. A bystander or the other team's agent: the turn ends (and the other team has one agent less to find). The assassin: the team loses at once.",
               "In the classic game the operatives may guess at most one word more than the number. The team that first finds all its agents wins.",
@@ -2350,7 +2365,7 @@ export const en: Dict = {
               "A gold mode of the Codenames app. A 7×7 grid, 49 words: the starting team has 18 agents, the other 16, plus 14 bystanders and 1 assassin.",
               "Each team's agents are laid out symmetrically along one axis – vertical, horizontal or one of the diagonals. The teams may share the axis or each have another (mostly it is the same). Bystanders and the assassin follow no symmetry.",
               "The operatives know the layout is symmetric, but not along which axis – they find it from the agents revealed. Once they know it, every agent found gives away its mirror image too (a cell on the axis is its own mirror image).",
-              "The spymaster sees the axes on the key card: icons in the header and dashed lines in the team's colour across the grid.",
+              "The spymaster sees the axes on the key card: dashed lines in the team's colour across the grid (on paper icons in the header too).",
               "Guesses are unlimited, as in Big Mines.",
             ],
           },

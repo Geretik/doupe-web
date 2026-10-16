@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { adminLogin } from "./helpers";
 
 /*
@@ -14,7 +14,18 @@ const MIRRORS_RANDOM = [
   ".BRBB.B/.BRRX../BR....B/BBRR.RB/BR.R.RR/RBRBRBB/RRBBB..",
 ];
 
-test("admin: Codenames key cards are the print tool's, full screen shows only the card", async ({ page }) => {
+/** The board in full screen as rows like the ones above, from the cells' labels */
+async function screenRows(page: Page) {
+  const sign: Record<string, string> = { "Červený agent": "R", "Modrý agent": "B", Civilista: ".", Vrah: "X" };
+  const board = page.getByTestId("codenames-board");
+  const width = (await board.evaluate((el) => getComputedStyle(el).gridTemplateColumns.split(" ").length)) as number;
+  const labels = await board.locator("[data-cell]").evaluateAll((els) => els.map((e) => e.getAttribute("aria-label")!));
+  const rows: string[] = [];
+  for (let i = 0; i < labels.length; i += width) rows.push(labels.slice(i, i + width).map((l) => sign[l]).join(""));
+  return rows.join("/");
+}
+
+test("admin: Codenames key cards are the print tool's, shown only in full screen over the whole display", async ({ page }) => {
   await adminLogin(page);
   await page.click("[data-testid=overview-codenames]");
   await expect(page).toHaveURL(/\/admin\/kryci-jmena$/);
@@ -23,23 +34,63 @@ test("admin: Codenames key cards are the print tool's, full screen shows only th
   // Big Mines, red starts
   await page.getByText("Červení", { exact: true }).click();
   await page.fill("input[name=code]", "test01");
-  const card = page.locator("main [data-board]").first();
+  const card = page.getByTestId("codenames-card");
   await expect(card).toHaveAttribute("data-board", MINES_RED[0]);
   await expect(card).toHaveAttribute("data-seed", "test01/1");
-  await expect(card.locator("svg")).toContainText("Big Mines · 1");
-  await expect(card.locator("svg")).toContainText("Začínají červení");
-  // under the grid how many of each there are: red, blue, white (civilians), assassins
-  for (const count of ["Č: 15", "M: 13", "B: 11", "💀: 3"]) await expect(card.locator("svg")).toContainText(count);
-  // mine numbers on every cell but the three assassins', which end the game anyway – unless asked for
-  await expect(card.locator("svg text:has(tspan)")).toHaveCount(42 - 3);
+  // on the page the card is hidden
+  await expect(card).toContainText("ukáže se až na celé obrazovce");
+  await expect(page.locator("main [data-cell]")).toHaveCount(0);
+
+  // full screen: the board over the display but for the strip at the side, with who starts and the counts there
+  const full = page.getByTestId("codenames-fullscreen");
+  const board = page.getByTestId("codenames-board");
+  const open = () => page.getByRole("button", { name: "Na celou obrazovku" }).click();
+  await open();
+  await expect(full).toContainText("Big Mines · 1");
+  await expect(full).toContainText("Začínají červení");
+  expect(await screenRows(page)).toBe(MINES_RED[0]);
+  const viewport = page.viewportSize()!;
+  const area = (await board.boundingBox())!;
+  expect(area.height).toBeGreaterThan(viewport.height - 20);
+  expect(area.width).toBeGreaterThan(viewport.width - 150);
+  const count = (type: string) => full.locator(`[data-count=${type}]`);
+  for (const [type, n] of [["RED_AGENT", 15], ["BLUE_AGENT", 13], ["CIVILIAN", 11], ["ASSASSIN", 3]] as const) await expect(count(type)).toHaveText(new RegExp(`:${n}$`));
+  // mine numbers on every cell but the three assassins', which end the game anyway
+  await expect(board.locator("[data-mines]")).toHaveCount(42 - 3);
+  // a tap darkens a cell as guessed (its colour is left one fewer), another brings it back
+  const blue = board.locator("[data-cell='1']");
+  await blue.click();
+  await expect(blue).toHaveAttribute("aria-pressed", "true");
+  await expect(count("BLUE_AGENT")).toHaveText(/:12\/13$/);
+  await blue.click();
+  await expect(blue).toHaveAttribute("aria-pressed", "false");
+  await expect(count("BLUE_AGENT")).toHaveText(/:13$/);
+  await blue.click();
+  await full.getByRole("button", { name: "Zavřít" }).click();
+  await expect(full).toBeHidden();
+
+  // the mine numbers on the assassins too – when asked for
   await page.getByLabel("I u vrahů").check();
-  await expect(card.locator("svg text:has(tspan)")).toHaveCount(42);
+  await open();
+  await expect(board.locator("[data-mines]")).toHaveCount(42);
+  await page.keyboard.press("Escape");
   await page.getByLabel("I u vrahů").uncheck();
   // they can be turned off; the axes are no option here (Big Mines has none)
   await page.locator("input[name=showMines]").uncheck();
-  await expect(card.locator("svg text:has(tspan)")).toHaveCount(0);
   await expect(page.locator("input[name=showAxes]")).toHaveCount(0);
-  await page.getByRole("button", { name: "Další kartička" }).click();
+  await open();
+  await expect(board.locator("[data-mines]")).toHaveCount(0);
+  // the cell guessed is still dark after a reload (a phone that slept), the next card has none
+  await page.reload();
+  await open();
+  await expect(board.locator("[aria-pressed=true]")).toHaveCount(1);
+  await expect(board.locator("[data-cell='1']")).toHaveAttribute("aria-pressed", "true");
+  await page.keyboard.press("ArrowRight");
+  await expect(full).toContainText("Big Mines · 2");
+  expect(await screenRows(page)).toBe(MINES_RED[1]);
+  await expect(board.locator("[aria-pressed=true]")).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await expect(full).toBeHidden();
   await expect(card).toHaveAttribute("data-board", MINES_RED[1]);
   await expect(page.getByTestId("codenames-card-number")).toHaveText("Kartička 2");
 
@@ -51,38 +102,39 @@ test("admin: Codenames key cards are the print tool's, full screen shows only th
   // no mine numbers in this mode, not even as an option; the axes are always on the card, with no option either
   await expect(page.locator("input[name=showMines]")).toHaveCount(0);
   await expect(page.locator("input[name=showAxes]")).toHaveCount(0);
-  await expect(card.locator("svg text:has(tspan)")).toHaveCount(0);
-  // both teams' axis is vertical: two icons in the header, across the cells a white line under a red and a blue dashed one
-  await expect(card.locator("svg line")).toHaveCount(2 + 3);
 
-  // full screen: only the card, the arrow keys step through the set, Esc closes it
-  await page.getByRole("button", { name: "Na celou obrazovku" }).click();
-  const full = page.getByTestId("codenames-fullscreen");
-  await expect(full.locator("[data-board]")).toHaveAttribute("data-board", MIRRORS_RANDOM[0]);
-  const box = await full.boundingBox();
-  const viewport = page.viewportSize()!;
-  expect(box).toEqual({ x: 0, y: 0, width: viewport.width, height: viewport.height });
+  // full screen fills the window; the arrow keys step through the set, Esc closes it
+  await open();
+  expect(await full.boundingBox()).toEqual({ x: 0, y: 0, width: viewport.width, height: viewport.height });
+  expect(await screenRows(page)).toBe(MIRRORS_RANDOM[0]);
+  await expect(board.locator("[data-mines]")).toHaveCount(0);
+  // both teams' axis is vertical: across the cells a white line under a red and a blue dashed one
+  await expect(board.locator("svg line")).toHaveCount(3);
   await page.keyboard.press("ArrowRight");
-  await expect(full.locator("[data-board]")).toHaveAttribute("data-board", MIRRORS_RANDOM[1]);
+  expect(await screenRows(page)).toBe(MIRRORS_RANDOM[1]);
   await page.keyboard.press("Escape");
   await expect(full).toBeHidden();
 
-  // a reload (a phone that slept) shows the same card
+  // a reload shows the same card
   await page.reload();
   await expect(card).toHaveAttribute("data-seed", "test01/2");
   await expect(card).toHaveAttribute("data-board", MIRRORS_RANDOM[1]);
 
-  // in English the card's texts too, the counts with R, B, W
+  // in English the texts at the side too
   await page.context().addCookies([{ name: "botc_lang", value: "en", url: new URL(page.url()).origin }]);
   await page.reload();
   await expect(card).toHaveAttribute("data-board", MIRRORS_RANDOM[1]);
   await expect(card).toHaveAttribute("data-starts", "BLUE");
-  for (const text of ["Blue starts", "R: 16", "B: 18", "W: 14", "💀: 1"]) await expect(card.locator("svg")).toContainText(text);
+  await page.getByRole("button", { name: "Full screen" }).click();
+  await expect(full).toContainText("Blue starts");
+  for (const [type, n] of [["RED_AGENT", 16], ["BLUE_AGENT", 18], ["CIVILIAN", 14], ["ASSASSIN", 1]] as const) await expect(count(type)).toHaveText(new RegExp(`:${n}$`));
+  await page.keyboard.press("Escape");
 
   // back in Big Mines the mine numbers are on again, though they were turned off there
   await page.locator("label").filter({ hasText: "Big Mines" }).click();
   await expect(page.locator("input[name=showMines]")).toBeChecked();
-  await expect(card.locator("svg text:has(tspan)")).toHaveCount(42 - 3);
+  await page.getByRole("button", { name: "Full screen" }).click();
+  await expect(board.locator("[data-mines]")).toHaveCount(42 - 3);
 });
 
 test("admin: Codenames print – the set on A4 pages, the cards of the phone, alone in print; how the modes are played", async ({ page }) => {

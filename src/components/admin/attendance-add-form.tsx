@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useRef } from "react";
 import { addAttendanceAction, type AddAttendanceState } from "@/app/actions/attendance-admin";
 import type { Dict } from "@/i18n/dictionaries";
 import { keepValues } from "../keep-values";
@@ -8,7 +8,7 @@ import { Alert, Button, Field, inputClass } from "../ui";
 
 type Affiliation = keyof Dict["attendance"]["form"]["answers"];
 
-/** Admin → Prezenčka: puts someone on the sheet of a night by hand. */
+/** Admin → Prezenčka: puts someone on the sheet of a night by hand; the form empties after each one added. */
 export function AttendanceAddForm({
   t,
   fields,
@@ -19,11 +19,22 @@ export function AttendanceAddForm({
   /** "YYYY-MM-DD" the form starts with: the night shown */
   day: string;
 }) {
-  const [state, action, pending] = useActionState<AddAttendanceState, FormData>(addAttendanceAction, {});
+  const formRef = useRef<HTMLFormElement>(null);
+  const [state, action, pending] = useActionState<AddAttendanceState, FormData>(async (prev, formData) => {
+    const result = await addAttendanceAction(prev, formData);
+    const form = formRef.current;
+    if (result.ok && form) {
+      // the next one most likely came the same night: the day stays as it was sent, the name is typed again
+      form.reset();
+      (form.elements.namedItem("day") as HTMLInputElement).value = String(formData.get("day"));
+      (form.elements.namedItem("firstName") as HTMLInputElement).focus();
+    }
+    return result;
+  }, {});
   const fe = state.fieldErrors ?? {};
   return (
     // a new night shown = a new form with that day
-    <form key={day} action={action} onSubmit={keepValues(action)} className="flex flex-col gap-3" data-testid="attendance-add">
+    <form key={day} ref={formRef} action={action} onSubmit={keepValues(action)} className="flex flex-col gap-3" data-testid="attendance-add">
       <p className="text-sm text-muted">{t.hint}</p>
       {state.error && <Alert kind="error">{state.error}</Alert>}
       {state.ok && state.message && <Alert kind="success">{state.message}</Alert>}

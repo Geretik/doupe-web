@@ -330,6 +330,16 @@ test("lending: the games without a code, a box read for the game shown", async (
   await expect(missing.locator("summary")).toHaveText(`Hry bez čárového kódu (${TOTAL - 1})`);
   await missing.locator("summary").click();
   await expect(missing.getByRole("button", { name: "1775: Rebellion" })).toHaveCount(0);
+  // the list searched by the name or another one; a game with a code is not in it
+  const search = missing.getByTestId("loan-missing-search");
+  await search.fill("rebel");
+  await expect(missing.getByRole("listitem")).toHaveText(["Princezny rebelky"]);
+  await search.fill("ark nova");
+  await expect(missing.getByRole("listitem")).toHaveCount(3);
+  await expect(missing.getByRole("listitem").first()).toHaveText(/^Archa Nova\s*též Ark Nova$/);
+  await search.fill("1775");
+  await expect(missing).toContainText("Žádná hra ze sbírky neodpovídá.");
+  await search.fill("6 bere");
   await missing.getByRole("button", { name: /^6 bere! Jubilejní edice/ }).click();
   const game = page.getByTestId("loan-game");
   await expect(game).toContainText("6 bere! Jubilejní edice");
@@ -344,6 +354,9 @@ test("lending: the games without a code, a box read for the game shown", async (
   await expect(page.getByTestId("loan-notice")).toContainText(`Kód ${CODE} teď patří ke hře 6 bere! Jubilejní edice.`, { timeout: 20_000 });
   expect(await barcodes()).toEqual([{ code: CODE, game_id: SIX }]);
   await expect(game.getByTestId("loan-code")).toHaveText(new RegExp(CODE));
+  // the search stays as it was: 1775 is back in the list, but not among "6 bere"
+  await expect(search).toHaveValue("6 bere");
+  await search.clear();
   await expect(missing.getByRole("button", { name: "1775: Rebellion" })).toHaveCount(1);
   await expect(missing.getByRole("button", { name: /^6 bere! Jubilejní edice/ })).toHaveCount(0);
 
