@@ -151,6 +151,34 @@ test("admin: Codenames key cards are the print tool's, shown only in full screen
   await expect(board.locator("[data-mines]")).toHaveCount(42 - 3);
 });
 
+test("admin: Codenames on a phone held upright – the board as wide as the display, its cells square, not stretched to its height", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await adminLogin(page);
+  await page.goto("/admin/kryci-jmena");
+  await page.getByText("Červení", { exact: true }).click();
+  await page.fill("input[name=code]", "test01");
+  await expect(page.getByTestId("codenames-card")).toHaveAttribute("data-board", MINES_RED[0]);
+  await page.getByRole("button", { name: "Na celou obrazovku" }).click();
+  const board = page.getByTestId("codenames-board");
+  const square = async () => {
+    for (const i of [0, 41]) {
+      const cell = (await board.locator(`[data-cell='${i}']`).boundingBox())!;
+      expect(cell.height).toBeCloseTo(cell.width, 0);
+    }
+  };
+  const whole = (await board.boundingBox())!;
+  expect(whole.width).toBeCloseTo(390 - 16, 0);
+  expect(whole.height).toBeLessThan(844 / 2);
+  await square();
+  // smaller, it stays square
+  await page.getByRole("button", { name: "Zmenšit desku" }).click();
+  await page.getByRole("button", { name: "Zmenšit desku" }).click();
+  const smaller = (await board.boundingBox())!;
+  expect(smaller.width).toBeCloseTo(whole.width * 0.8, 0);
+  expect(smaller.y + smaller.height / 2).toBeCloseTo(whole.y + whole.height / 2, 0);
+  await square();
+});
+
 test("admin: Codenames print – a subpage, the set on A4 pages, the cards of the phone, alone in print; how the modes are played", async ({ page }) => {
   await adminLogin(page);
   await page.goto("/admin/kryci-jmena");

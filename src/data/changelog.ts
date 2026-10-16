@@ -48,6 +48,11 @@ export const changelog: ChangelogEntry[] = [
       },
       {
         for: "organizers",
+        text: "Na telefonu na výšku už deska Krycích jmen není roztažená do výšky: pole jsou čtvercová a deska je přes celou šířku displeje.",
+        href: "/admin/kryci-jmena",
+      },
+      {
+        for: "organizers",
         text: "Hru, jejíž krabice čárový kód nemá, jde označit tlačítkem Krabice kód nemá: zmizí ze seznamu her bez kódu (má vlastní seznam) a hledá se podle názvu.",
         href: "/admin/pujcovna/knihovna",
       },

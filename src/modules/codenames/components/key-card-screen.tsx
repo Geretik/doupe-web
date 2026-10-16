@@ -60,9 +60,10 @@ function AxisLines({ board }: { board: GeneratedBoard }) {
 
 /**
  * The key card in full screen: the board over the whole display (its cells stretched to fill it, like the word cards on
- * the table), who starts and the counts in a strip at the side (on the left held sideways, at the top held upright).
- * A tap darkens a cell as guessed, another brings it back; the counts are of the cells not yet guessed. − and + make
- * the board smaller (in the middle of the display) and back.
+ * the table, but never taller than wide: held upright the board is as wide as the display), who starts and the counts
+ * in a strip at the side (on the left held sideways, at the top held upright). A tap darkens a cell as guessed, another
+ * brings it back; the counts are of the cells not yet guessed. − and + make the board smaller (in the middle of the
+ * display) and back.
  */
 export function KeyCardScreen({
   board,
@@ -99,6 +100,8 @@ export function KeyCardScreen({
   const done = new Set(guessed);
   const button = "flex size-11 shrink-0 items-center justify-center rounded-full bg-white/10 text-2xl text-white/70 disabled:opacity-30";
   const small = "flex size-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-xl text-white/70 disabled:opacity-30";
+  // the board's border, padding and gaps, in px (border-4, p-0.5, gap-0.5): the cells get the rest
+  const frame = (cells: number) => 12 + 2 * (cells - 1);
 
   return (
     <div role="dialog" aria-modal="true" aria-label={title} className="fixed inset-0 z-50 flex bg-black text-white portrait:flex-col" data-testid="codenames-fullscreen">
@@ -144,12 +147,13 @@ export function KeyCardScreen({
         </div>
       </aside>
 
-      <div className="flex min-h-0 min-w-0 flex-1 items-center justify-center p-2 landscape:pl-0 portrait:pt-0">
+      <div className="flex min-h-0 min-w-0 flex-1 items-center justify-center p-2 @container-size landscape:pl-0 portrait:pt-0">
         <div
           className="relative grid gap-0.5 rounded-md border-4 bg-[#4A4A4A] p-0.5"
           style={{
-            width: `${scale}%`,
-            height: `${scale}%`,
+            width: `${scale}cqw`,
+            // at most square cells: held upright the full height would make them twice as tall as wide
+            height: `min(${scale}cqh, calc((${scale}cqw - ${frame(board.width)}px) * ${board.height / board.width} + ${frame(board.height)}px))`,
             gridTemplateColumns: `repeat(${board.width}, minmax(0, 1fr))`,
             gridTemplateRows: `repeat(${board.height}, minmax(0, 1fr))`,
             borderColor: team,
