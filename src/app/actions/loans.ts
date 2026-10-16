@@ -6,7 +6,7 @@ import { getDict } from "@/i18n/server";
 import { requireAccess } from "@/lib/admin-auth";
 import { logAction } from "@/lib/admin-log";
 import { normalizeBarcode } from "@/lib/barcode";
-import { assignBarcode, cleanName, findGame, guessGamesByCode, lendGame, removeBarcode, returnLoan } from "@/lib/loans";
+import { assignBarcode, boxOfGame, cleanName, findGame, guessGamesByCode, lendGame, packGame, removeBarcode, returnLoan, setNoBarcode } from "@/lib/loans";
 import { parseId } from "@/lib/validation";
 
 /** What the desk shows after an action: `message` when it went through, `error` when not. */
@@ -56,16 +56,53 @@ export async function guessGameAction(input: { code: string }): Promise<{ name: 
   return guessGamesByCode(code);
 }
 
-/** The game of an open loan came back. */
-export async function returnLoanAction(loanId: number): Promise<LoanActionResult> {
+/** The games of open loans came back: one, or a bundle lent together. */
+export async function returnLoansAction(loanIds: number[]): Promise<LoanActionResult> {
   const me = await requireAccess("club", "edit");
   const { t } = await getDict();
-  const id = parseId(loanId);
-  const loan = id ? await returnLoan(id, me.id) : undefined;
+  const ids = Array.isArray(loanIds) ? [...new Set(loanIds.slice(0, 50).map(parseId).filter((id) => id !== null))] : [];
+  const returned: string[] = [];
+  for (const id of ids) {
+    const loan = await returnLoan(id, me.id);
+    if (!loan) continue;
+    returned.push(loan.gameName);
+    await logAction(me, "loan.return", { game: { id: loan.gameId, name: loan.gameName } });
+  }
   revalidatePath(PAGE);
-  if (!loan) return { ok: false, error: t.admin.loans.notLent };
-  await logAction(me, "loan.return", { game: { id: loan.gameId, name: loan.gameName } });
-  return { ok: true, message: t.admin.loans.returned(loan.gameName) };
+  if (returned.length === 0) return { ok: false, error: t.admin.loans.notLent };
+  return { ok: true, message: t.admin.loans.returned(returned) };
+}
+
+/** The box of the game (of its bundle) has no bar code: it is found by its name only; `value` false takes that back. */
+export async function setNoBarcodeAction(input: { gameId: number; value: boolean }): Promise<LoanActionResult> {
+  const me = await requireAccess("club", "edit");
+  const { t } = await getDict();
+  const l = t.admin.loans;
+  const shown = findGame(Number(input?.gameId));
+  const game = shown && findGame(await boxOfGame(shown.id));
+  if (!game) return { ok: false, error: l.noGame };
+  const value = input.value === true;
+  await setNoBarcode(game.id, value, me.id);
+  await logAction(me, "loan.noBarcode", { game: { id: game.id, name: game.name }, value });
+  revalidatePath(PAGE);
+  return { ok: true, message: value ? l.noBarcodeSaved(game.name) : l.noBarcodeRemoved(game.name) };
+}
+
+/** The game goes in the box of `box` (an expansion built into the base game) and is lent with it; null takes it out. */
+export async function packGameAction(input: { gameId: number; box: number | null }): Promise<LoanActionResult> {
+  const me = await requireAccess("club", "edit");
+  const { t } = await getDict();
+  const l = t.admin.loans;
+  const game = findGame(Number(input?.gameId));
+  const box = input?.box === null ? null : findGame(Number(input?.box));
+  if (!game || (input.box !== null && !box)) return { ok: false, error: l.noGame };
+  if (box?.id === game.id) return { ok: false, error: t.admin.errors.checkForm };
+  const outcome = await packGame(game.id, box?.id ?? null, me.id);
+  if (outcome === "nested") return { ok: false, error: l.packNested(game.name) };
+  if (outcome === "inside") return { ok: false, error: l.packInside(box!.name) };
+  await logAction(me, "loan.pack", { game: { id: game.id, name: game.name }, box: box && { id: box.id, name: box.name } });
+  revalidatePath(PAGE);
+  return { ok: true, message: box ? l.packed(game.name, box.name) : l.unpacked(game.name) };
 }
 
 /** The bar code read from a box belongs to this game; scanning it again finds the game. */

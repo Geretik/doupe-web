@@ -16,6 +16,7 @@ const CODE = "4006381333931";
 const REBELLION = 4019; // "1775: Rebellion" in src/data/game-collection.json
 const SIX = 4282; // "6 bere! Jubilejní edice"
 const ARCHA = 12398; // "Archa Nova", also "Ark Nova"
+const MARINE = 14284; // "Archa Nova: Vodní světy", an expansion of it
 const AKROPOLIS = 13611;
 /** The code on the box of Archa Nova, which the fake GameUPC calls Ark Nova */
 const ARK_CODE = "8595558304998";
@@ -83,6 +84,7 @@ test.beforeEach(async () => {
 type Loan = { game_id: number; game_name: string; borrower: string | null; note: string | null; lent_by: number | null; returned_at: Date | null };
 const loans = () => sql<Loan>("select game_id, game_name, borrower, note, lent_by, returned_at from game_loans order by id");
 const barcodes = () => sql<{ code: string; game_id: number }>("select code, game_id from game_barcodes order by code");
+const lending = () => sql<{ game_id: number; no_barcode: boolean; packed_in: number | null }>("select game_id, no_barcode, packed_in from game_lending order by game_id");
 
 test("bar codes: EAN-13, EAN-8 and UPC-A, typos refused", () => {
   expect(normalizeBarcode("4006381333931")).toBe("4006381333931");
@@ -363,6 +365,135 @@ test("lending: the games without a code, a box read for the game shown", async (
   // read again: it is this game's already
   await game.getByTestId("loan-add-code").click();
   await expect(page.getByTestId("loan-notice")).toContainText(`Kód ${CODE} už u téhle hry je.`, { timeout: 20_000 });
+});
+
+test("lending: a box without a code, a bundle found by a code of any of its games, lent and returned together", async ({ page }) => {
+  // the expansion still has its own box with its code
+  await sql("insert into game_barcodes (code, game_id) values ($1, $2)", [CODE, MARINE]);
+  await adminLogin(page);
+  await page.goto(`/admin/pujcovna?hra=${SIX}`);
+  const game = page.getByTestId("loan-game");
+  const notice = page.getByTestId("loan-notice");
+  const missing = page.getByTestId("loan-missing");
+  await expect(missing.locator("summary")).toHaveText(`Hry bez čárového kódu (${TOTAL - 1})`);
+
+  // the box of 6 bere! has no code: out of the list of games without one, found by its name
+  await game.getByRole("button", { name: "Krabice kód nemá" }).click();
+  await expect(notice).toContainText("6 bere! Jubilejní edice: krabice kód nemá, hra se hledá podle názvu.");
+  await expect(game.getByTestId("loan-no-barcode")).toBeVisible();
+  await expect(missing.locator("summary")).toHaveText(`Hry bez čárového kódu (${TOTAL - 2})`);
+  await expect(page.getByTestId("loan-no-code").locator("summary")).toHaveText("Krabice bez kódu (1)");
+  await expect(page.getByTestId("loan-codes-known")).toHaveText(`Čárový kód známe u 1 z ${TOTAL} her, 1 hra kód nemá.`);
+  expect(await lending()).toEqual([{ game_id: SIX, no_barcode: true, packed_in: null }]);
+  // taken back: missing again
+  await game.getByRole("button", { name: "Zrušit" }).click();
+  await expect(notice).toContainText("6 bere! Jubilejní edice je zpátky mezi hrami bez čárového kódu.");
+  await expect(page.getByTestId("loan-no-code")).toHaveCount(0);
+  await game.getByRole("button", { name: "Krabice kód nemá" }).click();
+  await expect(page.getByTestId("loan-no-code")).toBeVisible();
+
+  // Vodní světy built into the box of Archa Nova
+  const search = page.getByTestId("loan-search");
+  await search.fill("archa nova");
+  await page.getByTestId("loan-found").getByRole("button", { name: /^Archa Nova \(/ }).click();
+  await expect(game.getByTestId("loan-box")).toContainText("jen tahle hra");
+  await game.getByTestId("loan-pack-add").click();
+  const pack = game.getByTestId("loan-pack");
+  await pack.getByRole("searchbox").fill("vodni svety");
+  await pack.getByRole("button", { name: /Archa Nova: Vodní světy/ }).click();
+  await expect(notice).toContainText("Archa Nova: Vodní světy je v krabici hry Archa Nova a půjčuje se s ní.");
+  await expect(game.getByTestId("loan-bundle")).toHaveText(/Balíček:\s*Archa Nova\s*\+ Archa Nova: Vodní světy/);
+  expect(await lending()).toEqual([
+    { game_id: SIX, no_barcode: true, packed_in: null },
+    { game_id: MARINE, no_barcode: false, packed_in: ARCHA },
+  ]);
+  // the expansion's code finds the bundle: neither game is missing a code now
+  await expect(game).toContainText("Vlastní kód nemá, balíček najde kód jiné hry z krabice.");
+  await expect(missing.locator("summary")).toHaveText(`Hry bez čárového kódu (${TOTAL - 3})`);
+  await expect(page.getByTestId("loan-codes-known")).toContainText(`u 2 z ${TOTAL} her`);
+  await expect(page.getByTestId("loan-bundles").locator("li")).toHaveText([/^Archa Nova\s*\+ Archa Nova: Vodní světy$/]);
+  // boxes don't nest: a box with games in it is not offered for another box
+  await search.fill("akropolis");
+  await page.getByTestId("loan-found").getByRole("button").first().click();
+  await game.getByTestId("loan-pack-add").click();
+  await pack.getByRole("searchbox").fill("archa nova");
+  await expect(pack.getByRole("button", { name: /Archa Nova: Plány zoo/ })).toHaveCount(1);
+  await expect(pack.getByRole("button", { name: /^Archa Nova \(/ })).toHaveCount(0);
+  await expect(pack.getByRole("button", { name: /Vodní světy/ })).toContainText("v krabici hry Archa Nova");
+  await pack.getByRole("button", { name: "Zrušit" }).click();
+
+  // the code read: the game it belongs to, lent with the whole bundle
+  await search.fill(CODE);
+  await search.press("Enter");
+  await expect(game.locator("h3")).toContainText("Archa Nova: Vodní světy");
+  await expect(game.getByTestId("loan-box")).toContainText("je v krabici hry Archa Nova");
+  const bundleGames = game.getByTestId("loan-bundle-games");
+  await expect(bundleGames.getByRole("checkbox")).toHaveCount(2);
+  await game.getByTestId("loan-borrower").fill("Petr Svoboda");
+  await game.getByRole("button", { name: "Půjčit 2 hry" }).click();
+  await expect(notice).toContainText("Půjčeno 2 hry → Petr Svoboda: Archa Nova, Archa Nova: Vodní světy.");
+  expect((await loans()).map((l) => [l.game_id, l.borrower])).toEqual([
+    [ARCHA, "Petr Svoboda"],
+    [MARINE, "Petr Svoboda"],
+  ]);
+  // one row of the open loans, returned together
+  const open = page.getByTestId("loan-open").getByRole("listitem");
+  await expect(open).toHaveCount(1);
+  await expect(open).toContainText("📦 Archa Nova + Archa Nova: Vodní světy");
+  page.once("dialog", (d) => {
+    expect(d.message()).toBe("Je vrácený celý balíček: Archa Nova, Archa Nova: Vodní světy?");
+    d.accept();
+  });
+  await open.getByRole("button", { name: "✓ Vráceno" }).click();
+  await expect(notice).toContainText("Vráceno: Archa Nova, Archa Nova: Vodní světy.");
+  expect((await loans()).every((l) => l.returned_at !== null)).toBe(true);
+
+  // lending several: a game of the bundle brings the others along
+  await page.getByTestId("loan-batch-start").click();
+  await search.fill(CODE);
+  await search.press("Enter");
+  await expect(notice).toContainText("Přidáno: Archa Nova: Vodní světy, Archa Nova.");
+  await expect(page.getByTestId("loan-batch-games").getByRole("listitem")).toHaveCount(2);
+  await page.getByTestId("loan-batch").getByRole("button", { name: "Zrušit" }).click();
+
+  // only the base game, the expansion unticked
+  await search.fill("archa nova");
+  await page.getByTestId("loan-found").getByRole("button", { name: /^Archa Nova \(/ }).click();
+  await bundleGames.getByLabel("Archa Nova: Vodní světy").uncheck();
+  await game.getByTestId("loan-borrower").fill("Jana Nováková");
+  await game.getByRole("button", { name: "Půjčit", exact: true }).click();
+  await expect(notice).toContainText("Půjčeno: Archa Nova → Jana Nováková.");
+  // then the expansion too: the base game is shown as lent
+  await search.fill(CODE);
+  await search.press("Enter");
+  await expect(bundleGames.getByRole("checkbox").first()).toBeDisabled();
+  await expect(bundleGames).toContainText("Půjčená: Jana Nováková");
+  await game.getByTestId("loan-borrower").fill("Jana Nováková");
+  await game.getByRole("button", { name: "Půjčit", exact: true }).click();
+  await expect(notice).toContainText("Půjčeno: Archa Nova: Vodní světy → Jana Nováková.");
+  // back from the game: only it, or the whole bundle
+  await search.fill(CODE);
+  await search.press("Enter");
+  await game.getByRole("button", { name: "Vrátit jen tuhle hru" }).click();
+  await expect(notice).toContainText("Vráceno: Archa Nova: Vodní světy.");
+  await expect(page.getByTestId("loan-open").getByRole("listitem")).toHaveText([/^Archa Nova\s*Jana Nováková/]);
+
+  // out of the box: lent on its own, missing a code again
+  await search.fill("archa nova");
+  await page.getByTestId("loan-found").getByRole("button", { name: /^Archa Nova \(/ }).click();
+  await game.getByRole("button", { name: "Vyjmout z krabice: Archa Nova: Vodní světy" }).click();
+  await expect(notice).toContainText("Archa Nova: Vodní světy je vyjmutá z krabice, půjčuje se zvlášť.");
+  await expect(game.getByTestId("loan-bundle")).toHaveCount(0);
+  await expect(missing.locator("summary")).toHaveText(`Hry bez čárového kódu (${TOTAL - 2})`);
+  await expect(page.getByTestId("loan-bundles")).toHaveCount(0);
+  expect((await lending()).find((r) => r.game_id === MARINE)?.packed_in).toBeNull();
+
+  // the history
+  const log = await sql<{ action: string }>("select action from admin_log where action in ('loan.noBarcode', 'loan.pack') order by id");
+  expect(log.map((r) => r.action)).toEqual(["loan.noBarcode", "loan.noBarcode", "loan.noBarcode", "loan.pack", "loan.pack"]);
+  await page.goto("/admin/historie");
+  await expect(page.getByTestId("log-entry").filter({ hasText: "Hra v krabici jiné hry" }).first()).toContainText("vyjmutá z krabice");
+  await expect(page.getByTestId("log-entry").filter({ hasText: "Hra v krabici jiné hry" }).last()).toContainText("📦 Archa Nova");
 });
 
 test("lending: overview count, names deleted a year after the return", async ({ page, request }) => {

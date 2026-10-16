@@ -737,6 +737,8 @@ export const cs = {
         "loan.return": "Vrácená hra",
         "loan.code": "Čárový kód přiřazený ke hře",
         "loan.codeRemove": "Čárový kód odebraný od hry",
+        "loan.noBarcode": "Krabice bez čárového kódu",
+        "loan.pack": "Hra v krabici jiné hry",
       } satisfies Record<LogAction, string>,
       loginMethods: { password: "heslem", link: "odkazem z e-mailu", qr: "QR kódem", reset: "odkazem pro nové heslo", invite: "z pozvánky, nový účet", setup: "první účet" } satisfies Record<LoginMethod, string>,
       intents: { save: "uloženo", default: "vráceno na text z kódu", restore: "vrácena starší verze" },
@@ -775,6 +777,8 @@ export const cs = {
       yes: "ano",
       no: "ne",
       none: "nic",
+      undone: "zrušeno",
+      unpacked: "vyjmutá z krabice",
       registrationStates: { open: "otevřené", not_open: "zatím neotevřené", paused: "pozastavené" },
       arrivalModes: { times: "přesné časy", late: "jen „přijdu později“" } as Record<string, string>,
       pollClosed: "ukončeno",
@@ -991,13 +995,15 @@ export const cs = {
       fullscreen: "Na celou obrazovku",
       hidden: "Kartička je schovaná, ukáže se až na celé obrazovce.",
       fullscreenHint:
-        "Kartička vyplní celý displej a displej nezhasne. Ťuknutím na pole ho ztmavíš jako uhádnuté (dalším ťuknutím vrátíš). V pruhu bokem je, kdo začíná, a kolik polí každé barvy zbývá; šipky tam přepínají kartičky, ✕ (nebo Esc) celou obrazovku zavře.",
+        "Kartička vyplní celý displej a displej nezhasne. Ťuknutím na pole ho ztmavíš jako uhádnuté (dalším ťuknutím vrátíš). V pruhu bokem je, kdo začíná, a kolik polí každé barvy zbývá; − a + tam desku zmenší a zvětší, šipky přepínají kartičky, ✕ (nebo Esc) celou obrazovku zavře.",
       close: "Zavřít",
       /** The card in full screen: who starts and the counts at the side, the cells to tap */
       screen: {
         starts: { RED: "Začínají červení", BLUE: "Začínají modří" },
         types: { RED_AGENT: "Červení agenti", BLUE_AGENT: "Modří agenti", CIVILIAN: "Civilisté", ASSASSIN: "Vrazi" },
         cell: { RED_AGENT: "Červený agent", BLUE_AGENT: "Modrý agent", CIVILIAN: "Civilista", ASSASSIN: "Vrah" },
+        smaller: "Zmenšit desku",
+        bigger: "Zvětšit desku",
       },
       print: {
         title: "Tisk na A4",
@@ -2101,6 +2107,8 @@ export const en: Dict = {
         "loan.return": "Game returned",
         "loan.code": "Bar code given to a game",
         "loan.codeRemove": "Bar code removed from a game",
+        "loan.noBarcode": "Box without a bar code",
+        "loan.pack": "Game in the box of another",
       },
       loginMethods: { password: "with password", link: "with an e-mailed link", qr: "with a QR code", reset: "with a new password link", invite: "from an invitation, new account", setup: "first account" },
       intents: { save: "saved", default: "back to the text in the code", restore: "earlier version restored" },
@@ -2139,6 +2147,8 @@ export const en: Dict = {
       yes: "yes",
       no: "no",
       none: "nothing",
+      undone: "undone",
+      unpacked: "taken out of the box",
       registrationStates: { open: "open", not_open: "not open yet", paused: "paused" },
       arrivalModes: { times: "exact times", late: "\"I'll arrive later\" only" },
       pollClosed: "closed",
@@ -2312,12 +2322,14 @@ export const en: Dict = {
       fullscreen: "Full screen",
       hidden: "The card is hidden; it shows only in full screen.",
       fullscreenHint:
-        "The card fills the whole screen and the screen stays on. Tap a cell to darken it as guessed (tap again to undo). The strip at the side shows who starts and how many cells of each colour are left; its arrows switch cards, ✕ (or Esc) closes full screen.",
+        "The card fills the whole screen and the screen stays on. Tap a cell to darken it as guessed (tap again to undo). The strip at the side shows who starts and how many cells of each colour are left; there − and + make the board smaller and bigger, the arrows switch cards, ✕ (or Esc) closes full screen.",
       close: "Close",
       screen: {
         starts: { RED: "Red starts", BLUE: "Blue starts" },
         types: { RED_AGENT: "Red agents", BLUE_AGENT: "Blue agents", CIVILIAN: "Civilians", ASSASSIN: "Assassins" },
         cell: { RED_AGENT: "Red agent", BLUE_AGENT: "Blue agent", CIVILIAN: "Civilian", ASSASSIN: "Assassin" },
+        smaller: "Smaller board",
+        bigger: "Bigger board",
       },
       print: {
         title: "Print on A4",

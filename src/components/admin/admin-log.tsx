@@ -241,6 +241,33 @@ function details(entry: LogEntry, ctx: Ctx): ReactNode[] {
         "code" in entry.data && <span key="c" className="font-mono">{entry.data.code}</span>,
       ];
     }
+    case "loan.noBarcode": {
+      const { game, value } = entry.data;
+      return [
+        <Ref key="g" href={`/admin/pujcovna?hra=${game.id}`} live>
+          {game.name}
+        </Ref>,
+        !value && ctx.t.log.undone,
+      ];
+    }
+    case "loan.pack": {
+      const { game, box } = entry.data;
+      return [
+        <Ref key="g" href={`/admin/pujcovna?hra=${game.id}`} live>
+          {game.name}
+        </Ref>,
+        box ? (
+          <span key="b">
+            📦{" "}
+            <Ref href={`/admin/pujcovna?hra=${box.id}`} live>
+              {box.name}
+            </Ref>
+          </span>
+        ) : (
+          ctx.t.log.unpacked
+        ),
+      ];
+    }
   }
 }
 

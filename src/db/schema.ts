@@ -756,6 +756,26 @@ export const gameBarcodes = pgTable(
 );
 
 /**
+ * How a game of the collection is lent (lib/loans), set at the desk; a row only for a game with something set. Its box
+ * has no bar code (found by its name only), or it lives in the box of another game (an expansion built into the base
+ * game): that game and the games packed in it are a bundle, found by a code of any of them and lent together.
+ */
+export const gameLending = pgTable(
+  "game_lending",
+  {
+    /** The game's id on Zatrolené hry, as in the collection */
+    gameId: integer("game_id").primaryKey(),
+    /** The box has no bar code (a box of our own, the code cut off…): not among the games whose code is missing */
+    noBarcode: boolean("no_barcode").notNull().default(false),
+    /** The game whose box this one lives in; that game is in no other box */
+    packedIn: integer("packed_in"),
+    updatedBy: integer("updated_by").references(() => adminUsers.id, { onDelete: "set null" }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("game_lending_packed_idx").on(t.packedIn)],
+);
+
+/**
  * Games of the club lent to someone (admin → Půjčovna, lib/loans): one row per loan, open until the game comes
  * back. A game is lent to one person at a time. The daily cron deletes the borrower's name LOAN_RETENTION_DAYS
  * after the return.

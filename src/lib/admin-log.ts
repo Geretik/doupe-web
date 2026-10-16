@@ -117,6 +117,10 @@ export type LogData = {
   "loan.return": OnGame;
   "loan.code": OnGame & { code: string };
   "loan.codeRemove": OnGame & { code: string };
+  /** `value` false: the mark taken back */
+  "loan.noBarcode": OnGame & { value: boolean };
+  /** `box`: the game whose box it is in now, null when taken out */
+  "loan.pack": OnGame & { box: NamedRef | null };
 };
 
 export type LogAction = keyof LogData;

@@ -110,6 +110,16 @@ test("admin: Codenames key cards are the print tool's, shown only in full screen
   await expect(board.locator("[data-mines]")).toHaveCount(0);
   // both teams' axis is vertical: across the cells a white line under a red and a blue dashed one
   await expect(board.locator("svg line")).toHaveCount(3);
+  // − and + scale the board, in the middle of its space; the size is kept on the device
+  const whole = (await board.boundingBox())!;
+  await expect(full.getByRole("button", { name: "Zvětšit desku" })).toBeDisabled();
+  await full.getByRole("button", { name: "Zmenšit desku" }).click();
+  await full.getByRole("button", { name: "Zmenšit desku" }).click();
+  const smaller = (await board.boundingBox())!;
+  expect(smaller.width).toBeCloseTo(whole.width * 0.8, 0);
+  expect(smaller.height).toBeCloseTo(whole.height * 0.8, 0);
+  expect(smaller.x + smaller.width / 2).toBeCloseTo(whole.x + whole.width / 2, 0);
+  expect(smaller.y + smaller.height / 2).toBeCloseTo(whole.y + whole.height / 2, 0);
   await page.keyboard.press("ArrowRight");
   expect(await screenRows(page)).toBe(MIRRORS_RANDOM[1]);
   await page.keyboard.press("Escape");
@@ -127,6 +137,10 @@ test("admin: Codenames key cards are the print tool's, shown only in full screen
   await expect(card).toHaveAttribute("data-starts", "BLUE");
   await page.getByRole("button", { name: "Full screen" }).click();
   await expect(full).toContainText("Blue starts");
+  await expect(full.locator("[data-scale]")).toHaveAttribute("data-scale", "80");
+  await full.getByRole("button", { name: "Bigger board" }).click();
+  await full.getByRole("button", { name: "Bigger board" }).click();
+  await expect(full.getByRole("button", { name: "Bigger board" })).toBeDisabled();
   for (const [type, n] of [["RED_AGENT", 16], ["BLUE_AGENT", 18], ["CIVILIAN", 14], ["ASSASSIN", 1]] as const) await expect(count(type)).toHaveText(new RegExp(`:${n}$`));
   await page.keyboard.press("Escape");
 

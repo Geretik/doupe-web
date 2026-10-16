@@ -14,7 +14,7 @@ export type ChangelogEntry = { /** YYYY-MM-DD */ date: string; title: string; it
 export const changelog: ChangelogEntry[] = [
   {
     date: "2026-10-16",
-    title: "Krycí jména: kartička přes celý displej, uhádnutá pole; hledání v hrách bez kódu; prezenčka po ručním přidání prázdná",
+    title: "Krycí jména: kartička přes celý displej, uhádnutá pole, velikost desky; Půjčovna: balíčky her a krabice bez kódu; prezenčka po ručním přidání prázdná",
     items: [
       {
         for: "organizers",
@@ -25,6 +25,21 @@ export const changelog: ChangelogEntry[] = [
         for: "organizers",
         text: "Ťuknutím na pole kartičky ho ztmavíš jako uhádnuté (dalším ťuknutím vrátíš); pole zůstanou ztmavená i po zhasnutí telefonu, další kartička začíná čistá.",
         href: "/admin/kryci-jmena",
+      },
+      {
+        for: "organizers",
+        text: "Desku Krycích jmen jde na celé obrazovce tlačítky − a + zmenšit a zase zvětšit, telefon si velikost pamatuje.",
+        href: "/admin/kryci-jmena",
+      },
+      {
+        for: "organizers",
+        text: "Hru, jejíž krabice čárový kód nemá, jde v Půjčovně označit tlačítkem Krabice kód nemá: zmizí ze seznamu her bez kódu (má vlastní seznam) a hledá se podle názvu.",
+        href: "/admin/pujcovna",
+      },
+      {
+        for: "organizers",
+        text: "Balíčky her: rozšíření zabudované v krabici hry k ní přidáš (V krabici → Přidat hru do krabice). Balíček najde kód kterékoli z jeho her, půjčuje se a vrací najednou (jen základní hru jde odškrtnout) a v Půjčené teď je jedním řádkem.",
+        href: "/admin/pujcovna",
       },
       {
         for: "organizers",

@@ -34,6 +34,7 @@ export async function resetDb() {
   await sql("delete from attendance");
   await sql("delete from game_loans");
   await sql("delete from game_barcodes");
+  await sql("delete from game_lending");
 }
 
 type Access = "none" | "view" | "edit";

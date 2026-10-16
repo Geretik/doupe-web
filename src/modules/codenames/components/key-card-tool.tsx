@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { inputClass } from "@/components/ui";
 import type { Dict, Locale } from "@/i18n/dictionaries";
 import { plural } from "@/i18n/plural";
-import { KeyCardScreen } from "@/modules/codenames/components/key-card-screen";
+import { KeyCardScreen, SCALE_MIN } from "@/modules/codenames/components/key-card-screen";
 import { generateKeyCards, renderSheets, type SheetLayout } from "@/modules/codenames/lib/keycard";
 import { GOLD_BIG_MINES, GOLD_ULTIMATE_MIRRORS } from "@/modules/codenames/lib/profiles";
 import type { BoardProfile, GeneratedBoard, TeamChoice } from "@/modules/codenames/lib/types";
@@ -49,6 +49,8 @@ type Settings = {
   showSeed: boolean;
   /** the cells darkened as guessed in full screen, of the card `card` (another card starts with none) */
   guessed: { card: string; cells: number[] } | null;
+  /** the board's size in full screen, per cent of the display (100 fills it) */
+  scale: number;
 };
 
 const PRINT_DEFAULTS = { count: 12, perPage: 6, showTitle: true, showSeed: true };
@@ -108,6 +110,7 @@ function parse(raw: string | null): Settings | null {
         typeof s.guessed?.card === "string" && Array.isArray(s.guessed.cells) && s.guessed.cells.every((c) => Number.isInteger(c))
           ? { card: s.guessed.card, cells: s.guessed.cells }
           : null,
+      scale: Number.isInteger(s.scale) ? Math.min(100, Math.max(SCALE_MIN, s.scale!)) : 100,
     };
   } catch {
     return null;
@@ -123,7 +126,7 @@ function newCode() {
 }
 
 function fresh(): Settings {
-  return { mode: "GOLD_BIG_MINES", team: "RANDOM", showMines: true, minesOnAssassins: false, code: newCode(), card: 1, ...PRINT_DEFAULTS, guessed: null };
+  return { mode: "GOLD_BIG_MINES", team: "RANDOM", showMines: true, minesOnAssassins: false, code: newCode(), card: 1, ...PRINT_DEFAULTS, guessed: null, scale: 100 };
 }
 
 /** The card's layout as rows of R, B, . (civilian) and X (assassin), for the tests. */
@@ -450,6 +453,8 @@ export function KeyCardTool({ t, lang }: { t: Texts; lang: Locale }) {
             onClose={() => setFullscreen(false)}
             onStep={step}
             first={settings.card === 1}
+            scale={settings.scale}
+            onScale={(scale) => update({ scale: Math.min(100, Math.max(SCALE_MIN, scale)) })}
             t={t}
           />,
           document.body,

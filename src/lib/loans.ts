@@ -3,7 +3,8 @@ import { alias } from "drizzle-orm/pg-core";
 import data from "@/data/game-collection.json";
 import otherNames from "@/data/game-names.json";
 import { db } from "@/db";
-import { adminUsers, attendance, gameBarcodes, gameLoans, type GameLoan } from "@/db/schema";
+import { adminUsers, attendance, gameBarcodes, gameLending, gameLoans, type GameLoan } from "@/db/schema";
+import type { PackedIn } from "./game-boxes";
 import { guessGames } from "./game-match";
 import { gameUpcNames } from "./gameupc";
 import type { CollectionGame } from "./zatrolene";
@@ -12,6 +13,7 @@ import type { CollectionGame } from "./zatrolene";
  * Lending the club's games (admin → Půjčovna). An organiser finds the game by the bar code on its box, read with the
  * phone's camera, or by its name, and writes who takes it; the name is suggested from the attendance sheet. Codes
  * are learned: the first scan of an unknown one asks which game it is, offering the games named as GameUPC names it.
+ * A box without a code is marked so (found by its name only); games in one box are a bundle (lib/game-boxes).
  */
 
 /** The borrower's name (and the note, which may name people too) is deleted this many days after the game came back. */
@@ -47,6 +49,46 @@ export async function guessGamesByCode(code: string): Promise<{ name: string | n
 /** Every known code with its game. */
 export function listBarcodes() {
   return db.select({ code: gameBarcodes.code, gameId: gameBarcodes.gameId }).from(gameBarcodes).orderBy(asc(gameBarcodes.createdAt));
+}
+
+/** The boxes marked as having no bar code, and which game's box each game packed in another lives in. */
+export async function lendingSettings(): Promise<{ noBarcode: number[]; packedIn: PackedIn }> {
+  const rows = await db.select({ gameId: gameLending.gameId, noBarcode: gameLending.noBarcode, packedIn: gameLending.packedIn }).from(gameLending);
+  return {
+    noBarcode: rows.filter((r) => r.noBarcode).map((r) => r.gameId),
+    packedIn: Object.fromEntries(rows.flatMap((r) => (r.packedIn === null ? [] : [[r.gameId, r.packedIn]]))),
+  };
+}
+
+/** The game whose box `gameId` lives in (itself unless packed in another): a box's marks are its game's. */
+export async function boxOfGame(gameId: number) {
+  const [row] = await db.select({ packedIn: gameLending.packedIn }).from(gameLending).where(eq(gameLending.gameId, gameId));
+  return row?.packedIn ?? gameId;
+}
+
+/** The box of the game has no bar code (`value` false: it may have one after all). */
+export async function setNoBarcode(gameId: number, value: boolean, by: number) {
+  await db
+    .insert(gameLending)
+    .values({ gameId, noBarcode: value, updatedBy: by })
+    .onConflictDoUpdate({ target: gameLending.gameId, set: { noBarcode: value, updatedBy: by, updatedAt: new Date() } });
+}
+
+/**
+ * Puts `gameId` in the box of `box` (out of any other), or takes it out with null. Boxes don't nest: "nested" when
+ * games are packed in `gameId`, "inside" when `box` is itself in the box of another game.
+ */
+export async function packGame(gameId: number, box: number | null, by: number): Promise<"ok" | "nested" | "inside"> {
+  if (box !== null) {
+    const [packed] = await db.select({ id: gameLending.gameId }).from(gameLending).where(eq(gameLending.packedIn, gameId)).limit(1);
+    if (packed) return "nested";
+    if ((await boxOfGame(box)) !== box) return "inside";
+  }
+  await db
+    .insert(gameLending)
+    .values({ gameId, packedIn: box, updatedBy: by })
+    .onConflictDoUpdate({ target: gameLending.gameId, set: { packedIn: box, updatedBy: by, updatedAt: new Date() } });
+  return "ok";
 }
 
 const lender = alias(adminUsers, "lender");

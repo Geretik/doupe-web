@@ -14,6 +14,10 @@ const FILL: Record<CardType, string> = {
 };
 const TYPES: CardType[] = ["RED_AGENT", "BLUE_AGENT", "CIVILIAN", "ASSASSIN"];
 
+/** The board's size in per cent of its space: from this, by these steps, up to 100 */
+export const SCALE_MIN = 40;
+export const SCALE_STEP = 10;
+
 /** Where an axis crosses the board, as a share of it: the board is stretched, so its lines are too */
 const AXIS_ENDS: Record<MirrorAxis, [string, string, string, string]> = {
   VERTICAL: ["50%", "0", "50%", "100%"],
@@ -57,7 +61,8 @@ function AxisLines({ board }: { board: GeneratedBoard }) {
 /**
  * The key card in full screen: the board over the whole display (its cells stretched to fill it, like the word cards on
  * the table), who starts and the counts in a strip at the side (on the left held sideways, at the top held upright).
- * A tap darkens a cell as guessed, another brings it back; the counts are of the cells not yet guessed.
+ * A tap darkens a cell as guessed, another brings it back; the counts are of the cells not yet guessed. − and + make
+ * the board smaller (in the middle of the display) and back.
  */
 export function KeyCardScreen({
   board,
@@ -69,6 +74,8 @@ export function KeyCardScreen({
   onClose,
   onStep,
   first,
+  scale,
+  onScale,
   t,
 }: {
   board: GeneratedBoard;
@@ -83,15 +90,19 @@ export function KeyCardScreen({
   onStep: (by: number) => void;
   /** The first card of the set: no previous one */
   first: boolean;
+  /** How big the board is, in per cent of the space it has (SCALE_MIN–100) */
+  scale: number;
+  onScale: (scale: number) => void;
   t: Texts;
 }) {
   const team = KEY_CARD_COLORS[board.startingTeam];
   const done = new Set(guessed);
   const button = "flex size-11 shrink-0 items-center justify-center rounded-full bg-white/10 text-2xl text-white/70 disabled:opacity-30";
+  const small = "flex size-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-xl text-white/70 disabled:opacity-30";
 
   return (
     <div role="dialog" aria-modal="true" aria-label={title} className="fixed inset-0 z-50 flex bg-black text-white portrait:flex-col" data-testid="codenames-fullscreen">
-      <aside className="flex shrink-0 gap-3 p-2 landscape:w-28 landscape:flex-col portrait:flex-wrap portrait:items-center">
+      <aside className="flex shrink-0 gap-3 p-2 landscape:w-28 landscape:flex-col landscape:gap-2 landscape:overflow-y-auto portrait:flex-wrap portrait:items-center">
         <button type="button" onClick={onClose} aria-label={t.close} className={button}>
           ✕
         </button>
@@ -101,7 +112,7 @@ export function KeyCardScreen({
             {t.screen.starts[board.startingTeam]}
           </p>
         </div>
-        <ul className="flex gap-x-5 gap-y-3 text-xl font-bold landscape:flex-col portrait:order-last portrait:w-full portrait:justify-center">
+        <ul className="flex gap-x-5 gap-y-2 text-xl font-bold landscape:flex-col portrait:order-last portrait:w-full portrait:justify-center">
           {TYPES.map((type) => {
             const total = board.cards.filter((c) => c.type === type).length;
             const left = board.cards.filter((c, i) => c.type === type && !done.has(i)).length;
@@ -115,7 +126,15 @@ export function KeyCardScreen({
             );
           })}
         </ul>
-        <div className="flex gap-2 landscape:mt-auto">
+        <div className="flex gap-1 landscape:mt-auto" data-scale={scale}>
+          <button type="button" onClick={() => onScale(scale - SCALE_STEP)} disabled={scale <= SCALE_MIN} aria-label={t.screen.smaller} className={small}>
+            −
+          </button>
+          <button type="button" onClick={() => onScale(scale + SCALE_STEP)} disabled={scale >= 100} aria-label={t.screen.bigger} className={small}>
+            +
+          </button>
+        </div>
+        <div className="flex gap-2">
           <button type="button" onClick={() => onStep(-1)} disabled={first} aria-label={t.previous} className={button}>
             ‹
           </button>
@@ -125,10 +144,12 @@ export function KeyCardScreen({
         </div>
       </aside>
 
-      <div className="min-h-0 min-w-0 flex-1 p-2 landscape:pl-0 portrait:pt-0">
+      <div className="flex min-h-0 min-w-0 flex-1 items-center justify-center p-2 landscape:pl-0 portrait:pt-0">
         <div
-          className="relative grid size-full gap-0.5 rounded-md border-4 bg-[#4A4A4A] p-0.5"
+          className="relative grid gap-0.5 rounded-md border-4 bg-[#4A4A4A] p-0.5"
           style={{
+            width: `${scale}%`,
+            height: `${scale}%`,
             gridTemplateColumns: `repeat(${board.width}, minmax(0, 1fr))`,
             gridTemplateRows: `repeat(${board.height}, minmax(0, 1fr))`,
             borderColor: team,
