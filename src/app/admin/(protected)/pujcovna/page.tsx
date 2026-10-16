@@ -1,8 +1,9 @@
-import { LoanDesk, type DeskGame, type DeskLoan } from "@/components/admin/loan-desk";
+import Link from "next/link";
+import type { DeskGame } from "@/components/admin/game-finder";
+import { LoanDesk, type DeskLoan } from "@/components/admin/loan-desk";
 import { Alert, Card } from "@/components/ui";
 import { getDict } from "@/i18n/server";
 import { canAccess, requireAccess } from "@/lib/admin-auth";
-import { boxesWithCode, boxOf } from "@/lib/game-boxes";
 import { collectionGames, knownPeople, lastReturnedLoans, lendingSettings, listBarcodes, listOpenLoans, listReturnedLoans, LOAN_RETENTION_DAYS, otherGameNames } from "@/lib/loans";
 import { formatShortDate, pragueDaysBetween } from "@/lib/time";
 import { parseId } from "@/lib/validation";
@@ -11,13 +12,13 @@ import { parseId } from "@/lib/validation";
  * Admin → Půjčovna: lending the club's games. The desk finds a game by the bar code on its box or by its name and
  * lends it (or several to one person, or a bundle of games in one box) or takes it back; below, the latest loans that
  * came back. `?hra=` opens one game (links from Historie). One who only reads the club sees what is lent instead of
- * the desk.
+ * the desk. The codes and boxes are kept in Správa knihovny (./knihovna).
  */
 export default async function LoansPage({ searchParams }: { searchParams: Promise<{ hra?: string }> }) {
   const me = await requireAccess("club");
   const edit = canAccess(me, "club", "edit");
   const params = await searchParams;
-  const [{ locale, t }, codes, open, returned, lastRows, people, { noBarcode, packedIn }] = await Promise.all([
+  const [{ locale, t }, codes, open, returned, lastRows, people, { packedIn }] = await Promise.all([
     getDict(),
     listBarcodes(),
     listOpenLoans(),
@@ -48,11 +49,6 @@ export default async function LoansPage({ searchParams }: { searchParams: Promis
   const last = Object.fromEntries(
     lastRows.map((r) => [r.gameId, `${r.borrower ?? l.erased}, ${date(r.lentAt)} – ${r.returnedAt ? date(r.returnedAt) : ""}`]),
   );
-  // a game is found by a code of any game of its box; a box marked as having none is found by its name
-  const withCode = boxesWithCode(codes.filter((c) => inCollection.has(c.gameId)), packedIn);
-  const marked = new Set(noBarcode);
-  const known = games.filter((g) => withCode.has(boxOf(g.id, packedIn))).length;
-  const none = games.filter((g) => !withCode.has(boxOf(g.id, packedIn)) && marked.has(boxOf(g.id, packedIn))).length;
   const requested = parseId(params.hra);
   const initialGameId = requested && inCollection.has(requested) ? requested : null;
 
@@ -61,7 +57,12 @@ export default async function LoansPage({ searchParams }: { searchParams: Promis
       <div className="flex flex-col gap-2">
         <h1 className="text-2xl font-bold">{l.title}</h1>
         <p className="max-w-3xl text-sm text-muted">{l.intro(LOAN_RETENTION_DAYS)}</p>
-        <p className="text-sm text-muted" data-testid="loan-codes-known">{l.codesKnown(known, games.length, none)}</p>
+        <p className="text-sm">
+          <Link href="/admin/pujcovna/knihovna" className="font-medium text-accent hover:underline" data-testid="loan-library-link">
+            {l.toLibrary}
+          </Link>
+          <span className="text-muted"> – {l.toLibraryHint}</span>
+        </p>
         {!edit && <Alert kind="info">{t.admin.readOnly}</Alert>}
       </div>
 
@@ -72,7 +73,6 @@ export default async function LoansPage({ searchParams }: { searchParams: Promis
             key={initialGameId ?? "desk"}
             games={games}
             codes={codes}
-            noBarcode={noBarcode}
             packedIn={packedIn}
             loans={loans}
             last={last}

@@ -12,7 +12,9 @@ import { parseId } from "@/lib/validation";
 /** What the desk shows after an action: `message` when it went through, `error` when not. */
 export type LoanActionResult = { ok: true; message: string } | { ok: false; error: string };
 
-const PAGE = "/admin/pujcovna";
+/** Půjčovna and its Správa knihovny: both find games by the codes and show the bundles */
+const PAGES = ["/admin/pujcovna", "/admin/pujcovna/knihovna"];
+const refresh = () => PAGES.forEach((p) => revalidatePath(p));
 
 const lendSchema = z.object({
   gameIds: z.array(z.number().int().positive()).min(1).max(50),
@@ -43,7 +45,7 @@ export async function lendGamesAction(input: { gameIds: number[]; borrower: stri
     // who borrowed it stays out of the log, like a name on the attendance sheet
     await logAction(me, "loan.lend", { game: { id: game.id, name: game.name } });
   }
-  revalidatePath(PAGE);
+  refresh();
   if (lent.length === 0) return { ok: false, error: refused.join(" ") };
   return { ok: true, message: [l.lent(lent, borrower), ...refused].join(" ") };
 }
@@ -68,7 +70,7 @@ export async function returnLoansAction(loanIds: number[]): Promise<LoanActionRe
     returned.push(loan.gameName);
     await logAction(me, "loan.return", { game: { id: loan.gameId, name: loan.gameName } });
   }
-  revalidatePath(PAGE);
+  refresh();
   if (returned.length === 0) return { ok: false, error: t.admin.loans.notLent };
   return { ok: true, message: t.admin.loans.returned(returned) };
 }
@@ -84,7 +86,7 @@ export async function setNoBarcodeAction(input: { gameId: number; value: boolean
   const value = input.value === true;
   await setNoBarcode(game.id, value, me.id);
   await logAction(me, "loan.noBarcode", { game: { id: game.id, name: game.name }, value });
-  revalidatePath(PAGE);
+  refresh();
   return { ok: true, message: value ? l.noBarcodeSaved(game.name) : l.noBarcodeRemoved(game.name) };
 }
 
@@ -101,7 +103,7 @@ export async function packGameAction(input: { gameId: number; box: number | null
   if (outcome === "nested") return { ok: false, error: l.packNested(game.name) };
   if (outcome === "inside") return { ok: false, error: l.packInside(box!.name) };
   await logAction(me, "loan.pack", { game: { id: game.id, name: game.name }, box: box && { id: box.id, name: box.name } });
-  revalidatePath(PAGE);
+  refresh();
   return { ok: true, message: box ? l.packed(game.name, box.name) : l.unpacked(game.name) };
 }
 
@@ -116,7 +118,7 @@ export async function assignBarcodeAction(input: { code: string; gameId: number 
   if (!game) return { ok: false, error: l.noGame };
   await assignBarcode(code, game.id, me.id);
   await logAction(me, "loan.code", { game: { id: game.id, name: game.name }, code });
-  revalidatePath(PAGE);
+  refresh();
   return { ok: true, message: l.codeSaved(code, game.name) };
 }
 
@@ -127,7 +129,7 @@ export async function removeBarcodeAction(input: { code: string }): Promise<Loan
   const l = t.admin.loans;
   const code = typeof input?.code === "string" ? normalizeBarcode(input.code) : null;
   const row = code ? await removeBarcode(code) : undefined;
-  revalidatePath(PAGE);
+  refresh();
   if (!row) return { ok: false, error: l.codeGone };
   const game = findGame(row.gameId);
   await logAction(me, "loan.codeRemove", { game: { id: row.gameId, name: game?.name ?? String(row.gameId) }, code: row.code });

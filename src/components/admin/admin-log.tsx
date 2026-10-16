@@ -231,20 +231,25 @@ function details(entry: LogEntry, ctx: Ctx): ReactNode[] {
     }
     case "loan.lend":
     case "loan.return":
+      return [
+        <Ref key="g" href={`/admin/pujcovna?hra=${entry.data.game.id}`} live>
+          {entry.data.game.name}
+        </Ref>,
+      ];
     case "loan.code":
     case "loan.codeRemove": {
-      const { game } = entry.data;
+      const { game, code } = entry.data;
       return [
-        <Ref key="g" href={`/admin/pujcovna?hra=${game.id}`} live>
+        <Ref key="g" href={`/admin/pujcovna/knihovna?hra=${game.id}`} live>
           {game.name}
         </Ref>,
-        "code" in entry.data && <span key="c" className="font-mono">{entry.data.code}</span>,
+        <span key="c" className="font-mono">{code}</span>,
       ];
     }
     case "loan.noBarcode": {
       const { game, value } = entry.data;
       return [
-        <Ref key="g" href={`/admin/pujcovna?hra=${game.id}`} live>
+        <Ref key="g" href={`/admin/pujcovna/knihovna?hra=${game.id}`} live>
           {game.name}
         </Ref>,
         !value && ctx.t.log.undone,
@@ -253,13 +258,13 @@ function details(entry: LogEntry, ctx: Ctx): ReactNode[] {
     case "loan.pack": {
       const { game, box } = entry.data;
       return [
-        <Ref key="g" href={`/admin/pujcovna?hra=${game.id}`} live>
+        <Ref key="g" href={`/admin/pujcovna/knihovna?hra=${game.id}`} live>
           {game.name}
         </Ref>,
         box ? (
           <span key="b">
             📦{" "}
-            <Ref href={`/admin/pujcovna?hra=${box.id}`} live>
+            <Ref href={`/admin/pujcovna/knihovna?hra=${box.id}`} live>
               {box.name}
             </Ref>
           </span>

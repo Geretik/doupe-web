@@ -9,7 +9,15 @@ const cz = (n: number, one: string, few: string, many: string) => (n === 1 ? one
 export const loansAdminCs = {
   title: "Půjčovna her",
   intro: (days: number) =>
-    `Komu jsou půjčené hry z klubové sbírky. Hru najdeš tak, že telefonem načteš čárový kód z krabice, nebo podle názvu. Kód, který ještě neznáme, jednou přiřadíš ke hře (nabídne se ta, kterou mu dává databáze GameUPC) a příště se hra najde sama. Víc her jednomu člověku půjčíš najednou. Rozšíření zabudované v krabici hry k ní přidáš jako balíček: půjčuje se s ní a najde ho kód kterékoli z nich. Krabici bez kódu označíš a hra se hledá podle názvu. Jména se našeptávají z prezenčky a z dřívějších výpůjček; ${days} dní po vrácení hry se jména smažou.`,
+    `Komu jsou půjčené hry z klubové sbírky. Hru najdeš tak, že telefonem načteš čárový kód z krabice, nebo podle názvu. Kód, který ještě neznáme, jednou přiřadíš ke hře (nabídne se ta, kterou mu dává databáze GameUPC) a příště se hra najde sama. Víc her jednomu člověku půjčíš najednou, hry z jedné krabice (balíček) se půjčují spolu. Jména se našeptávají z prezenčky a z dřívějších výpůjček; ${days} dní po vrácení hry se jména smažou.`,
+  toLibrary: "📚 Správa knihovny",
+  toLibraryHint: "čárové kódy, krabice bez kódu, balíčky her",
+  library: {
+    title: "Správa knihovny",
+    back: "← Půjčovna",
+    intro:
+      "Aby Půjčovna našla hru podle čárového kódu, musí znát kód její krabice. Hru najdeš podle kódu nebo názvu a kód z krabice k ní načteš telefonem; kód, který ještě neznáme, dostane hra, kterou vybereš potom (nabídne se ta, kterou mu dává databáze GameUPC). Krabici bez kódu označíš a hra se hledá podle názvu. Rozšíření zabudované v krabici hry k ní přidáš jako balíček: půjčuje se s ní a najde ho kód kterékoli z nich.",
+  },
   codesKnown: (n: number, total: number, none: number) =>
     `Čárový kód známe u ${n} z ${total} her${none ? `, ${none} ${cz(none, "hra", "hry", "her")} kód nemá` : ""}.`,
   returnedTitle: "Naposledy vrácené",
@@ -89,6 +97,8 @@ export const loansAdminCs = {
     removeCodeConfirm: "Odebrat kód {code} od této hry?",
     expansion: "rozšíření",
     zatrolene: "Na Zatrolených hrách",
+    toLibrary: "Čárové kódy a krabice →",
+    toDesk: "Půjčit nebo vrátit →",
     other: "Jiná hra",
     available: "Hra je k dispozici.",
     lentTo: "Půjčená:",
@@ -109,7 +119,10 @@ export const loansAdminCs = {
     lent: "Půjčená",
     batchStart: "📚 Půjčit víc her najednou",
     batchTitle: "Půjčit víc her jednomu člověku",
-    batchHint: "Napiš, komu hry půjčuješ, a načítej kódy z krabic jeden po druhém – foťák zůstane zapnutý. Hru najdeš i podle názvu.",
+    batchWho: "Komu",
+    batchWhat: "Které hry",
+    batchFinish: "Půjčit",
+    batchHint: "Načítej kódy z krabic jeden po druhém – foťák zůstane zapnutý a každou hru přidá do seznamu. Hru najdeš i podle názvu.",
     batchScan: "📷 Načítat kódy",
     batchEmpty: "Zatím žádná hra – načti kód z krabice nebo hru najdi podle názvu.",
     batchAdded: "Přidáno: {game}.",
@@ -130,7 +143,15 @@ export type LoansAdminDict = typeof loansAdminCs;
 export const loansAdminEn: LoansAdminDict = {
   title: "Game lending",
   intro: (days) =>
-    `Who has which game of the club's collection. Find a game by reading the bar code on its box with your phone, or by its name. A code we don't know yet you give to its game once (the one the GameUPC database gives it is offered), and next time the game is found straight away. Several games for one person you lend at once. An expansion built into a game's box you add to it as a bundle: it is lent with it and a code of any of them finds it. A box without a code you mark so, and the game is found by its name. Names are suggested from the attendance sheet and from earlier loans; they are deleted ${days} days after the game comes back.`,
+    `Who has which game of the club's collection. Find a game by reading the bar code on its box with your phone, or by its name. A code we don't know yet you give to its game once (the one the GameUPC database gives it is offered), and next time the game is found straight away. Several games for one person you lend at once; the games of one box (a bundle) are lent together. Names are suggested from the attendance sheet and from earlier loans; they are deleted ${days} days after the game comes back.`,
+  toLibrary: "📚 Library",
+  toLibraryHint: "bar codes, boxes without a code, game bundles",
+  library: {
+    title: "Library",
+    back: "← Game lending",
+    intro:
+      "For the lending page to find a game by its bar code, it needs to know the code of its box. Find a game by a code or its name and read the code on its box with your phone; a code we don't know yet goes to the game you pick next (the one the GameUPC database gives it is offered). A box without a code you mark so, and the game is found by its name. An expansion built into a game's box you add to it as a bundle: it is lent with it and a code of any of them finds it.",
+  },
   codesKnown: (n, total, none) => `We know the bar code of ${n} of ${total} games${none ? `; ${none} ${none === 1 ? "game has" : "games have"} none` : ""}.`,
   returnedTitle: "Recently returned",
   noReturned: "Nothing has come back yet.",
@@ -207,6 +228,8 @@ export const loansAdminEn: LoansAdminDict = {
     removeCodeConfirm: "Remove code {code} from this game?",
     expansion: "expansion",
     zatrolene: "On Zatrolené hry",
+    toLibrary: "Bar codes and boxes →",
+    toDesk: "Lend or return →",
     other: "Another game",
     available: "The game is available.",
     lentTo: "Lent to:",
@@ -227,7 +250,10 @@ export const loansAdminEn: LoansAdminDict = {
     lent: "Lent",
     batchStart: "📚 Lend several games",
     batchTitle: "Lend several games to one person",
-    batchHint: "Write who you're lending the games to and read the codes on the boxes one after another – the camera stays on. You can find a game by its name too.",
+    batchWho: "To whom",
+    batchWhat: "Which games",
+    batchFinish: "Lend",
+    batchHint: "Read the codes on the boxes one after another – the camera stays on and adds each game to the list. You can find a game by its name too.",
     batchScan: "📷 Read codes",
     batchEmpty: "No game yet – read the code on a box or find the game by its name.",
     batchAdded: "Added: {game}.",
